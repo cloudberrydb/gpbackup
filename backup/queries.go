@@ -1,6 +1,6 @@
 package backup
 
- /*
+/*
  * This file contains structs and functions related to executing specific
  * queries that gather object metadata and database information that will
  * be backed up during a dump.
@@ -23,40 +23,44 @@ import (
  *
  * All structs in this file whose names begin with "Query" are intended only
  * for use with the functions immediately following them.  Structs in the utils
- * package (especially Table and DBObject) are intended for more general use.
+ * package (especially Table and Schema) are intended for more general use.
  */
 
-func GetAllUserSchemas(connection *utils.DBConn) []utils.DBObject {
+/*
+ * Queries requiring their own structs
+ */
+
+func GetAllUserSchemas(connection *utils.DBConn) []utils.Schema {
 	/* This query is constructed from scratch, but the list of schemas to exclude
 	 * is copied from gpcrondump so that gpbackup exhibits similar behavior regarding
 	 * which schemas are dumped.
 	 */
 	query := `
 SELECT
-	oid AS objoid,
-	nspname AS objname,
-	obj_description(oid, 'pg_namespace') AS objcomment
+	oid AS schemaoid,
+	nspname AS schemaname,
+	obj_description(oid, 'pg_namespace') AS comment
 FROM pg_namespace
 WHERE nspname NOT LIKE 'pg_temp_%'
 AND nspname NOT LIKE 'pg_toast%'
 AND nspname NOT IN ('gp_toolkit', 'information_schema', 'pg_aoseg', 'pg_bitmapindex', 'pg_catalog')
-ORDER BY objname;`
-	results := make([]utils.DBObject, 0)
+ORDER BY schemaname;`
+	results := make([]utils.Schema, 0)
 
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results
 }
 
-func GetAllUserTables(connection *utils.DBConn) []utils.Table {
+func GetAllUserTables(connection *utils.DBConn) []utils.Relation {
 	// This query is adapted from the getTables() function in pg_dump.c.
 	query := `
 SELECT
 	n.oid AS schemaoid,
-	c.oid AS tableoid,
+	c.oid AS relationoid,
 	n.nspname AS schemaname,
-	c.relname AS tablename,
-	obj_description(c.oid, 'pg_class') AS tablecomment
+	c.relname AS relationname,
+	obj_description(c.oid, 'pg_class') AS comment
 FROM pg_class c
 LEFT JOIN pg_partition_rule pr
 	ON c.oid = pr.parchildrelid
@@ -74,9 +78,9 @@ JOIN pg_exttable e
 WHERE e.reloid IS NULL)
 AND (c.relnamespace > 16384
 OR n.nspname = 'public')
-ORDER BY schemaname, tablename;`
+ORDER BY schemaname, relationname;`
 
-	results := make([]utils.Table, 0)
+	results := make([]utils.Relation, 0)
 
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
@@ -121,7 +125,7 @@ ORDER BY a.attrelid,
 }
 
 type QueryTableDefault struct {
-	AdNum  int
+	AdNum      int
 	DefaultVal string
 }
 
@@ -166,104 +170,19 @@ WHERE conrelid = %d;
 	return results
 }
 
-type QueryDistPolicy struct {
-	AttName string
-}
-
-func GetDistributionPolicy(connection *utils.DBConn, oid uint32) string {
-	// This query is adapted from the addDistributedBy() function in pg_dump.c.
-	query := fmt.Sprintf(`
-SELECT a.attname
-FROM pg_attribute a
-JOIN (
-	SELECT
-		unnest(attrnums) AS attnum, 
-		localoid
-	FROM gp_distribution_policy
-) p
-ON (p.localoid,p.attnum) = (a.attrelid,a.attnum)
-WHERE a.attrelid = %d;`, oid)
-	results := make([]QueryDistPolicy, 0)
-	err := connection.Select(&results, query)
-	utils.CheckError(err)
-	if len(results) == 0 {
-		return "DISTRIBUTED RANDOMLY"
-	} else {
-		distCols := make([]string, 0)
-		for _, dist := range results {
-			distCols = append(distCols, utils.QuoteIdent(dist.AttName))
-		}
-		return fmt.Sprintf("DISTRIBUTED BY (%s)", strings.Join(distCols, ", "))
-	}
-}
-
-type QueryPartDef struct {
-	PartitionDef string
-}
-
-func GetDefinitionStatement(connection *utils.DBConn, query string) string {
-	results := make([]QueryPartDef, 0)
-	err := connection.Select(&results, query)
-	utils.CheckError(err)
-	if len(results) == 1 {
-		return results[0].PartitionDef
-	} else if len(results) > 1 {
-		logger.Fatal("Too many rows returned from query to get object definition: got %d rows, expected 1 row", len(results))
-	}
-	return ""
-}
-
-func GetPartitionDefinition(connection *utils.DBConn, oid uint32) string {
-	/* This query is adapted from the gp_partitioning_available == true case of the dumpTableSchema
-	 * function in pg_dump.c.
-	 */
-	query := fmt.Sprintf("SELECT * FROM pg_get_partition_def(%d, true, true) AS partitiondef WHERE partitiondef IS NOT NULL", oid)
-	return GetDefinitionStatement(connection, query)
-}
-
-func GetPartitionTemplateDefinition(connection *utils.DBConn, oid uint32) string {
-	/* This query is adapted from the isTemplatesSupported == true case of the dumpTableSchema
-	 * function in pg_dump.c.
-	 */
-	query := fmt.Sprintf("SELECT * FROM pg_get_partition_template_def(%d, true, true) AS partitiondef WHERE partitiondef IS NOT NULL", oid)
-	return GetDefinitionStatement(connection, query)
-}
-
-type QueryIndexDef struct {
-	IndexDef string
-}
-
-func GetIndexDefinitions(connection *utils.DBConn, oid uint32) []QueryIndexDef {
-	query := fmt.Sprintf("SELECT pg_get_indexdef(i.indexrelid) AS indexdef FROM pg_index i JOIN pg_class t ON (t.oid = i.indexrelid) WHERE i.indrelid = %d", oid)
-	results := make([]QueryIndexDef, 0)
-	err := connection.Select(&results, query)
-	utils.CheckError(err)
-	return results
-}
-
-type QueryStorageOptions struct {
-	StorageOptions sql.NullString
-}
-
-func GetStorageOptions(connection *utils.DBConn, oid uint32) string {
-	query := fmt.Sprintf(`
-SELECT array_to_string(reloptions, ', ') as storageoptions
-FROM pg_class
-WHERE oid = %d AND reloptions IS NOT NULL;`, oid)
-	results := make([]QueryStorageOptions, 0)
-	err := connection.Select(&results, query)
-	utils.CheckError(err)
-	if len(results) == 1 {
-		return results[0].StorageOptions.String
-	} else if len(results) > 1 {
-		logger.Fatal("Too many rows returned from query to get storage options: got %d rows, expected 1 row", len(results))
-	}
-	return ""
-}
-
-func GetAllSequences(connection *utils.DBConn) []utils.DBObject {
-	query := "SELECT oid AS objoid, relname AS objname, obj_description(oid, 'pg_class') as objcomment FROM pg_class WHERE relkind = 'S'"
-	results := make([]utils.DBObject, 0)
+func GetAllSequences(connection *utils.DBConn) []utils.Relation {
+	query := `SELECT
+	n.oid AS schemaoid,
+	c.oid AS relationoid,
+	n.nspname AS schemaname,
+	c.relname AS relationname,
+	obj_description(c.oid, 'pg_class') AS comment
+FROM pg_class c
+LEFT JOIN pg_namespace n
+	ON c.relnamespace = n.oid
+WHERE relkind = 'S'
+ORDER BY schemaname, relationname;`
+	results := make([]utils.Relation, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results
@@ -308,16 +227,112 @@ func GetSessionGUCs(connection *utils.DBConn) QuerySessionGUCs {
 	return result
 }
 
-type QueryDatabaseGUC struct {
-	DatConfig string
+/*
+ * Queries using generic structs
+ */
+
+func GetDistributionPolicy(connection *utils.DBConn, oid uint32) string {
+	// This query is adapted from the addDistributedBy() function in pg_dump.c.
+	query := fmt.Sprintf(`
+SELECT a.attname as string
+FROM pg_attribute a
+JOIN (
+	SELECT
+		unnest(attrnums) AS attnum,
+		localoid
+	FROM gp_distribution_policy
+) p
+ON (p.localoid,p.attnum) = (a.attrelid,a.attnum)
+WHERE a.attrelid = %d;`, oid)
+
+	results := SelectStringSlice(connection, query)
+	if len(results) == 0 {
+		return "DISTRIBUTED RANDOMLY"
+	} else {
+		distCols := make([]string, 0)
+		for _, dist := range results {
+			distCols = append(distCols, utils.QuoteIdent(dist))
+		}
+		return fmt.Sprintf("DISTRIBUTED BY (%s)", strings.Join(distCols, ", "))
+	}
 }
 
-func GetDatabaseGUCs(connection *utils.DBConn) []QueryDatabaseGUC {
-	results := make([]QueryDatabaseGUC, 0)
-	query := fmt.Sprintf(`SELECT unnest(datconfig) as datconfig
-FROM   pg_database
-WHERE  datname = '%s' `, connection.DBName)
+func GetDatabaseGUCs(connection *utils.DBConn) []string {
+	query := fmt.Sprintf(`SELECT unnest(datconfig) as string
+FROM  pg_database
+WHERE datname = '%s';`, connection.DBName)
+	return SelectStringSlice(connection, query)
+}
+
+func GetPartitionDefinition(connection *utils.DBConn, oid uint32) string {
+	/* This query is adapted from the gp_partitioning_available == true case of the dumpTableSchema
+	 * function in pg_dump.c.
+	 */
+	query := fmt.Sprintf("SELECT * FROM pg_get_partition_def(%d, true, true) AS string WHERE string IS NOT NULL", oid)
+	return SelectString(connection, query)
+}
+
+func GetPartitionTemplateDefinition(connection *utils.DBConn, oid uint32) string {
+	/* This query is adapted from the isTemplatesSupported == true case of the dumpTableSchema
+	 * function in pg_dump.c.
+	 */
+	query := fmt.Sprintf("SELECT * FROM pg_get_partition_template_def(%d, true, true) AS string WHERE string IS NOT NULL", oid)
+	return SelectString(connection, query)
+}
+
+func GetIndexDefinitions(connection *utils.DBConn, oid uint32) []string {
+	query := fmt.Sprintf("SELECT pg_get_indexdef(i.indexrelid) AS string FROM pg_index i JOIN pg_class t ON (t.oid = i.indexrelid) WHERE i.indrelid = %d", oid)
+	return SelectStringSlice(connection, query)
+}
+
+func GetStorageOptions(connection *utils.DBConn, oid uint32) string {
+	query := fmt.Sprintf(`
+SELECT array_to_string(reloptions, ', ') as string
+FROM pg_class
+WHERE oid = %d AND reloptions IS NOT NULL;`, oid)
+	return SelectString(connection, query)
+}
+
+func GetDatabaseComment(connection *utils.DBConn) string {
+	query := fmt.Sprintf(`SELECT description AS string FROM pg_shdescription
+JOIN pg_database ON objoid = pg_database.oid
+WHERE datname = '%s';`, connection.DBName)
+	return SelectString(connection, query)
+}
+
+/*
+ * Helper functions
+ */
+
+type QuerySingleString struct {
+	String string
+}
+
+/*
+ * This is a convenience function for Select() when we're selecting single string
+ * that may be NULL or not exist.  We can't use Get() because that expects exactly
+ * one string and will panic if no rows are returned, even if using a sql.NullString.
+ */
+func SelectString(connection *utils.DBConn, query string) string {
+	results := make([]QuerySingleString, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
-	return results
+	if len(results) == 1 {
+		return results[0].String
+	} else if len(results) > 1 {
+		logger.Fatal("Too many rows returned from query: got %d rows, expected 1 row", len(results))
+	}
+	return ""
+}
+
+// This is a convenience function for Select() when we're selecting single strings.
+func SelectStringSlice(connection *utils.DBConn, query string) []string {
+	results := make([]QuerySingleString, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	retval := make([]string, 0)
+	for _, str := range results {
+		retval = append(retval, str.String)
+	}
+	return retval
 }

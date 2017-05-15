@@ -13,12 +13,12 @@ import (
 	"sort"
 )
 
-func GetIndexesForAllTables(connection *utils.DBConn, tables []utils.Table) []string {
+func GetIndexesForAllTables(connection *utils.DBConn, tables []utils.Relation) []string {
 	indexes := make([]string, 0)
 	for _, table := range tables {
-		indexList := GetIndexDefinitions(connection, table.TableOid)
+		indexList := GetIndexDefinitions(connection, table.RelationOid)
 		for _, index := range indexList {
-			indexes = append(indexes, fmt.Sprintf("\n\n%s;", index.IndexDef))
+			indexes = append(indexes, fmt.Sprintf("\n\n%s;", index))
 		}
 	}
 	return indexes

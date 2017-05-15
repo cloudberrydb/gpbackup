@@ -25,6 +25,57 @@ var _ = Describe("backup/queries tests", func() {
 		testutils.SetupTestLogger()
 	})
 
+	Describe("SelectString", func() {
+		header := []string{"string"}
+		rowOne := []driver.Value{"one"}
+		rowTwo := []driver.Value{"two"}
+
+		It("returns a single string if the query selects a single string", func() {
+			fakeResult := sqlmock.NewRows(header).AddRow(rowOne...)
+			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
+			result := backup.SelectString(connection, "SELECT foo FROM bar")
+			Expect(result).To(Equal("one"))
+		})
+		It("returns an empty string if the query selects no strings", func() {
+			fakeResult := sqlmock.NewRows(header)
+			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
+			result := backup.SelectString(connection, "SELECT foo FROM bar")
+			Expect(result).To(Equal(""))
+		})
+		It("panics if the query selects multiple strings", func() {
+			fakeResult := sqlmock.NewRows(header).AddRow(rowOne...).AddRow(rowTwo...)
+			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
+			defer testutils.ShouldPanicWithMessage("Too many rows returned from query: got 2 rows, expected 1 row")
+			backup.SelectString(connection, "SELECT foo FROM bar")
+		})
+	})
+	Describe("SelectStringSlice", func() {
+		header := []string{"string"}
+		rowOne := []driver.Value{"one"}
+		rowTwo := []driver.Value{"two"}
+
+		It("returns a slice containing a single string if the query selects a single string", func() {
+			fakeResult := sqlmock.NewRows(header).AddRow(rowOne...)
+			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
+			results := backup.SelectStringSlice(connection, "SELECT foo FROM bar")
+			Expect(len(results)).To(Equal(1))
+			Expect(results[0]).To(Equal("one"))
+		})
+		It("returns an empty slice if the query selects no strings", func() {
+			fakeResult := sqlmock.NewRows(header)
+			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
+			results := backup.SelectStringSlice(connection, "SELECT foo FROM bar")
+			Expect(len(results)).To(Equal(0))
+		})
+		It("returns a slice containing multiple strings if the query selects multiple strings", func() {
+			fakeResult := sqlmock.NewRows(header).AddRow(rowOne...).AddRow(rowTwo...)
+			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
+			results := backup.SelectStringSlice(connection, "SELECT foo FROM bar")
+			Expect(len(results)).To(Equal(2))
+			Expect(results[0]).To(Equal("one"))
+			Expect(results[1]).To(Equal("two"))
+		})
+	})
 	Describe("GetTableAttributes", func() {
 		header := []string{"attname", "attnotnull", "atthasdefault", "attisdropped", "atttypname", "attencoding", "attcomment"}
 		rowOne := []driver.Value{"i", "f", "f", "f", "int", nil, nil}
@@ -110,12 +161,12 @@ var _ = Describe("backup/queries tests", func() {
 	})
 	Describe("GetConstraints", func() {
 		header := []string{"conname", "condef"}
-		rowOneUnique := []driver.Value{"tablename_i_uniq", "UNIQUE (i)"}
-		rowTwoUnique := []driver.Value{"tablename_j_uniq", "UNIQUE (j)"}
-		rowPrimarySingle := []driver.Value{"tablename_pkey", "PRIMARY KEY (i)"}
-		rowPrimaryComposite := []driver.Value{"tablename_pkey", "PRIMARY KEY (i, j)"}
-		rowOneForeign := []driver.Value{"tablename_i_fkey", "FOREIGN KEY (i) REFERENCES other_tablename(a)"}
-		rowTwoForeign := []driver.Value{"tablename_j_fkey", "FOREIGN KEY (j) REFERENCES other_tablename(b)"}
+		rowOneUnique := []driver.Value{"relationname_i_uniq", "UNIQUE (i)"}
+		rowTwoUnique := []driver.Value{"relationname_j_uniq", "UNIQUE (j)"}
+		rowPrimarySingle := []driver.Value{"relationname_pkey", "PRIMARY KEY (i)"}
+		rowPrimaryComposite := []driver.Value{"relationname_pkey", "PRIMARY KEY (i, j)"}
+		rowOneForeign := []driver.Value{"relationname_i_fkey", "FOREIGN KEY (i) REFERENCES other_tablename(a)"}
+		rowTwoForeign := []driver.Value{"relationname_j_fkey", "FOREIGN KEY (j) REFERENCES other_tablename(b)"}
 		rowCheckSingle := []driver.Value{"check_i", "CHECK (i <> 42)"}
 		rowCheckComposite := []driver.Value{"check_ij", "CHECK (i <> 42 AND j::text <> ''::text)"}
 
@@ -133,7 +184,7 @@ var _ = Describe("backup/queries tests", func() {
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
 				results := backup.GetConstraints(connection, 0)
 				Expect(len(results)).To(Equal(1))
-				Expect(results[0].ConName).To(Equal("tablename_i_uniq"))
+				Expect(results[0].ConName).To(Equal("relationname_i_uniq"))
 				Expect(results[0].ConDef).To(Equal("UNIQUE (i)"))
 			})
 			It("returns a slice for a table with two UNIQUE columns", func() {
@@ -141,9 +192,9 @@ var _ = Describe("backup/queries tests", func() {
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
 				results := backup.GetConstraints(connection, 0)
 				Expect(len(results)).To(Equal(2))
-				Expect(results[0].ConName).To(Equal("tablename_i_uniq"))
+				Expect(results[0].ConName).To(Equal("relationname_i_uniq"))
 				Expect(results[0].ConDef).To(Equal("UNIQUE (i)"))
-				Expect(results[1].ConName).To(Equal("tablename_j_uniq"))
+				Expect(results[1].ConName).To(Equal("relationname_j_uniq"))
 				Expect(results[1].ConDef).To(Equal("UNIQUE (j)"))
 			})
 			It("returns a slice for a table with a PRIMARY KEY on one column", func() {
@@ -151,7 +202,7 @@ var _ = Describe("backup/queries tests", func() {
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
 				results := backup.GetConstraints(connection, 0)
 				Expect(len(results)).To(Equal(1))
-				Expect(results[0].ConName).To(Equal("tablename_pkey"))
+				Expect(results[0].ConName).To(Equal("relationname_pkey"))
 				Expect(results[0].ConDef).To(Equal("PRIMARY KEY (i)"))
 			})
 			It("returns a slice for a table with a composite PRIMARY KEY on two columns", func() {
@@ -159,7 +210,7 @@ var _ = Describe("backup/queries tests", func() {
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
 				results := backup.GetConstraints(connection, 0)
 				Expect(len(results)).To(Equal(1))
-				Expect(results[0].ConName).To(Equal("tablename_pkey"))
+				Expect(results[0].ConName).To(Equal("relationname_pkey"))
 				Expect(results[0].ConDef).To(Equal("PRIMARY KEY (i, j)"))
 			})
 			It("returns a slice for a table with one FOREIGN KEY column", func() {
@@ -167,7 +218,7 @@ var _ = Describe("backup/queries tests", func() {
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
 				results := backup.GetConstraints(connection, 0)
 				Expect(len(results)).To(Equal(1))
-				Expect(results[0].ConName).To(Equal("tablename_i_fkey"))
+				Expect(results[0].ConName).To(Equal("relationname_i_fkey"))
 				Expect(results[0].ConDef).To(Equal("FOREIGN KEY (i) REFERENCES other_tablename(a)"))
 			})
 			It("returns a slice for a table with two FOREIGN KEY columns", func() {
@@ -175,9 +226,9 @@ var _ = Describe("backup/queries tests", func() {
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
 				results := backup.GetConstraints(connection, 0)
 				Expect(len(results)).To(Equal(2))
-				Expect(results[0].ConName).To(Equal("tablename_i_fkey"))
+				Expect(results[0].ConName).To(Equal("relationname_i_fkey"))
 				Expect(results[0].ConDef).To(Equal("FOREIGN KEY (i) REFERENCES other_tablename(a)"))
-				Expect(results[1].ConName).To(Equal("tablename_j_fkey"))
+				Expect(results[1].ConName).To(Equal("relationname_j_fkey"))
 				Expect(results[1].ConDef).To(Equal("FOREIGN KEY (j) REFERENCES other_tablename(b)"))
 			})
 			It("returns a slice for a table with a CHECK on one column", func() {
@@ -203,9 +254,9 @@ var _ = Describe("backup/queries tests", func() {
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
 				results := backup.GetConstraints(connection, 0)
 				Expect(len(results)).To(Equal(3))
-				Expect(results[0].ConName).To(Equal("tablename_i_uniq"))
+				Expect(results[0].ConName).To(Equal("relationname_i_uniq"))
 				Expect(results[0].ConDef).To(Equal("UNIQUE (i)"))
-				Expect(results[1].ConName).To(Equal("tablename_i_fkey"))
+				Expect(results[1].ConName).To(Equal("relationname_i_fkey"))
 				Expect(results[1].ConDef).To(Equal("FOREIGN KEY (i) REFERENCES other_tablename(a)"))
 				Expect(results[2].ConName).To(Equal("check_i"))
 				Expect(results[2].ConDef).To(Equal("CHECK (i <> 42)"))
@@ -215,9 +266,9 @@ var _ = Describe("backup/queries tests", func() {
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
 				results := backup.GetConstraints(connection, 0)
 				Expect(len(results)).To(Equal(3))
-				Expect(results[0].ConName).To(Equal("tablename_i_fkey"))
+				Expect(results[0].ConName).To(Equal("relationname_i_fkey"))
 				Expect(results[0].ConDef).To(Equal("FOREIGN KEY (i) REFERENCES other_tablename(a)"))
-				Expect(results[1].ConName).To(Equal("tablename_pkey"))
+				Expect(results[1].ConName).To(Equal("relationname_pkey"))
 				Expect(results[1].ConDef).To(Equal("PRIMARY KEY (i, j)"))
 				Expect(results[2].ConName).To(Equal("check_ij"))
 				Expect(results[2].ConDef).To(Equal("CHECK (i <> 42 AND j::text <> ''::text)"))
@@ -225,7 +276,7 @@ var _ = Describe("backup/queries tests", func() {
 		})
 	})
 	Describe("GetDistributionPolicy", func() {
-		header := []string{"attname"}
+		header := []string{"string"}
 		rowDistOne := []driver.Value{"i"}
 		rowDistTwo := []driver.Value{"j"}
 
@@ -248,141 +299,49 @@ var _ = Describe("backup/queries tests", func() {
 			Expect(results).To(Equal("DISTRIBUTED BY (i, j)"))
 		})
 	})
-	Describe("GetPartitionDefinition", func() {
-		header := []string{"partitiondef"}
-		partRow := []driver.Value{`PARTITION BY RANGE(year)
-	(
-	START (2001) END (2002) EVERY (1) WITH (tablename='rank_1_prt_2', appendonly=false ),
-	START (2002) END (2003) EVERY (1) WITH (tablename='rank_1_prt_3', appendonly=false ),
-	DEFAULT PARTITION extra  WITH (tablename='rank_1_prt_extra', appendonly=false )
-	);`}
-
-		It("returns a partition definition for a partition table", func() {
-			fakeResult := sqlmock.NewRows(header).AddRow(partRow...)
-			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
-			result := backup.GetPartitionDefinition(connection, 0)
-			Expect(result).To(Equal(`PARTITION BY RANGE(year)
-	(
-	START (2001) END (2002) EVERY (1) WITH (tablename='rank_1_prt_2', appendonly=false ),
-	START (2002) END (2003) EVERY (1) WITH (tablename='rank_1_prt_3', appendonly=false ),
-	DEFAULT PARTITION extra  WITH (tablename='rank_1_prt_extra', appendonly=false )
-	);`))
-		})
-		It("returns empty string for a non-partition table", func() {
-			fakeResult := sqlmock.NewRows(header)
-			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
-			result := backup.GetPartitionDefinition(connection, 0)
-			Expect(result).To(Equal(""))
-		})
-	})
-	Describe("GetPartitionTemplateDefinition", func() {
-		header := []string{"partitiondef"}
-		partRow := []driver.Value{`ALTER TABLE tablename
-SET SUBPARTITION TEMPLATE
-          (
-          SUBPARTITION usa VALUES('usa') WITH (tablename='tablename'),
-          SUBPARTITION asia VALUES('asia') WITH (tablename='tablename'),
-          SUBPARTITION europe VALUES('europe') WITH (tablename='tablename'),
-          DEFAULT SUBPARTITION other_regions  WITH (tablename='tablename')
-          )
-`}
-
-		It("returns a subpartition template definition for a multi-level partition table", func() {
-			fakeResult := sqlmock.NewRows(header).AddRow(partRow...)
-			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
-			result := backup.GetPartitionTemplateDefinition(connection, 0)
-			Expect(result).To(Equal(`ALTER TABLE tablename
-SET SUBPARTITION TEMPLATE
-          (
-          SUBPARTITION usa VALUES('usa') WITH (tablename='tablename'),
-          SUBPARTITION asia VALUES('asia') WITH (tablename='tablename'),
-          SUBPARTITION europe VALUES('europe') WITH (tablename='tablename'),
-          DEFAULT SUBPARTITION other_regions  WITH (tablename='tablename')
-          )
-`))
-		})
-		It("returns empty string for a non-partition table", func() {
-			fakeResult := sqlmock.NewRows(header)
-			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
-			result := backup.GetPartitionTemplateDefinition(connection, 0)
-			Expect(result).To(Equal(""))
-		})
-	})
-	Describe("GetStorageOptions", func() {
-		header := []string{"storageoptions"}
-		rowAo := []driver.Value{"(appendonly=true)"}
-		rowCo := []driver.Value{"(appendonly=true, orientation=column)"}
-		rowFill := []driver.Value{"(fillfactor=42)"}
-		rowAoFill := []driver.Value{"(appendonly=true, fillfactor=42)"}
-		rowCoFill := []driver.Value{"(appendonly=true, orientation=column, fillfactor=42)"}
-		rowCoMany := []driver.Value{"(appendonly=true, orientation=column, fillfactor=42, compresstype=zlib, blocksize=32768, compresslevel=1)"}
-
-		It("returns a slice for an append-optimized table", func() {
-			fakeResult := sqlmock.NewRows(header).AddRow(rowAo...)
-			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
-			results := backup.GetStorageOptions(connection, 0)
-			Expect(results).To(Equal("(appendonly=true)"))
-		})
-		It("returns a slice for a column oriented table", func() {
-			fakeResult := sqlmock.NewRows(header).AddRow(rowCo...)
-			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
-			results := backup.GetStorageOptions(connection, 0)
-			Expect(results).To(Equal("(appendonly=true, orientation=column)"))
-		})
-		It("returns a slice for a heap table", func() {
-			fakeResult := sqlmock.NewRows(header)
-			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
-			results := backup.GetStorageOptions(connection, 0)
-			Expect(results).To(Equal(""))
-		})
-		It("returns a slice for an append-optimized table with a fill factor", func() {
-			fakeResult := sqlmock.NewRows(header).AddRow(rowAoFill...)
-			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
-			results := backup.GetStorageOptions(connection, 0)
-			Expect(results).To(Equal("(appendonly=true, fillfactor=42)"))
-		})
-		It("returns a slice for a column oriented table with a fill factor", func() {
-			fakeResult := sqlmock.NewRows(header).AddRow(rowCoFill...)
-			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
-			results := backup.GetStorageOptions(connection, 0)
-			Expect(results).To(Equal("(appendonly=true, orientation=column, fillfactor=42)"))
-		})
-		It("returns a slice for a heap table with a fill factor", func() {
-			fakeResult := sqlmock.NewRows(header).AddRow(rowFill...)
-			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
-			results := backup.GetStorageOptions(connection, 0)
-			Expect(results).To(Equal("(fillfactor=42)"))
-		})
-		It("returns a slice for a column oriented table with several storage options", func() {
-			fakeResult := sqlmock.NewRows(header).AddRow(rowCoMany...)
-			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
-			results := backup.GetStorageOptions(connection, 0)
-			Expect(results).To(Equal("(appendonly=true, orientation=column, fillfactor=42, compresstype=zlib, blocksize=32768, compresslevel=1)"))
-		})
-	})
 	Describe("GetAllSequences", func() {
-		header := []string{"objoid", "objname"}
-		rowOne := []driver.Value{1, "seq_one"}
-		rowTwo := []driver.Value{2, "seq_two"}
+		header := []string{"schemaoid", "schemaname", "relationoid", "relationname", "comment"}
+		withoutCommentOne := []driver.Value{0, "public", 1, "seq_one", nil}
+		withoutCommentTwo := []driver.Value{0, "public", 2, "seq_two", nil}
+		withCommentOne := []driver.Value{0, "public", 1, "seq_one", "This is a sequence comment."}
+		withCommentTwo := []driver.Value{0, "public", 2, "seq_two", "This is another sequence comment."}
 
 		It("returns a slice of sequences", func() {
-			fakeResult := sqlmock.NewRows(header).AddRow(rowOne...).AddRow(rowTwo...)
+			fakeResult := sqlmock.NewRows(header).AddRow(withoutCommentOne...).AddRow(withoutCommentTwo...)
 			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
 			results := backup.GetAllSequences(connection)
 			Expect(len(results)).To(Equal(2))
-			Expect(results[0].ObjOid).To(Equal(uint32(1)))
-			Expect(results[0].ObjName).To(Equal("seq_one"))
-			Expect(results[1].ObjOid).To(Equal(uint32(2)))
-			Expect(results[1].ObjName).To(Equal("seq_two"))
+			Expect(results[0].SchemaOid).To(Equal(uint32(0)))
+			Expect(results[0].SchemaName).To(Equal("public"))
+			Expect(results[0].RelationOid).To(Equal(uint32(1)))
+			Expect(results[0].RelationName).To(Equal("seq_one"))
+			Expect(results[0].Comment.Valid).To(BeFalse())
+			Expect(results[1].SchemaOid).To(Equal(uint32(0)))
+			Expect(results[1].SchemaName).To(Equal("public"))
+			Expect(results[1].RelationOid).To(Equal(uint32(2)))
+			Expect(results[1].RelationName).To(Equal("seq_two"))
+			Expect(results[1].Comment.Valid).To(BeFalse())
+		})
+		It("returns a slice of sequences with comments", func() {
+			fakeResult := sqlmock.NewRows(header).AddRow(withCommentOne...).AddRow(withCommentTwo...)
+			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
+			results := backup.GetAllSequences(connection)
+			Expect(len(results)).To(Equal(2))
+			Expect(results[0].RelationName).To(Equal("seq_one"))
+			Expect(results[0].Comment.Valid).To(BeTrue())
+			Expect(results[0].Comment.String).To(Equal("This is a sequence comment."))
+			Expect(results[1].RelationName).To(Equal("seq_two"))
+			Expect(results[1].Comment.Valid).To(BeTrue())
+			Expect(results[1].Comment.String).To(Equal("This is another sequence comment."))
 		})
 	})
 	Describe("GetAllSequenceDefinitions", func() {
-		headerSeq := []string{"objoid", "objname"}
-		seqOne := []driver.Value{1, "seq_one"}
-		seqTwo := []driver.Value{2, "seq_two"}
+		headerSeq := []string{"schemaoid", "schemaname", "relationoid", "relationname", "comment"}
+		seqOne := []driver.Value{0, "public", 1, "seq_one", nil}
+		seqTwo := []driver.Value{0, "public", 2, "seq_two", nil}
 		headerSeqDef := []string{"sequence_name", "last_value", "increment_by", "max_value", "min_value", "cache_value", "log_cnt", "is_cycled", "is_called"}
-		seqDefOne := []driver.Value{"seq_one", 3, 1, 1000, 1, 2, 41, "f", "f"}
-		seqDefTwo := []driver.Value{"seq_two", 7, 1, 9223372036854775807, 1, 5, 42, "f", "f"}
+		seqDefOne := []driver.Value{"public.seq_one", 3, 1, 1000, 1, 2, 41, "f", "f"}
+		seqDefTwo := []driver.Value{"public.seq_two", 7, 1, 9223372036854775807, 1, 5, 42, "f", "f"}
 
 		It("returns a slice of definitions for all sequences", func() {
 			fakeSequences := sqlmock.NewRows(headerSeq).AddRow(seqOne...).AddRow(seqTwo...)
@@ -393,16 +352,16 @@ SET SUBPARTITION TEMPLATE
 			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResultTwo)
 			results := backup.GetAllSequenceDefinitions(connection)
 			Expect(len(results)).To(Equal(2))
-			Expect(results[0].Name).To(Equal("seq_one"))
+			Expect(results[0].Name).To(Equal("public.seq_one"))
 			Expect(results[0].LastVal).To(Equal(int64(3)))
 			Expect(results[0].Increment).To(Equal(int64(1)))
-			Expect(results[1].Name).To(Equal("seq_two"))
+			Expect(results[1].Name).To(Equal("public.seq_two"))
 			Expect(results[1].LastVal).To(Equal(int64(7)))
 			Expect(results[1].Increment).To(Equal(int64(1)))
 		})
 	})
 	Describe("GetAllUserSchemas", func() {
-		headerSchema := []string{"objoid", "objname", "objcomment"}
+		headerSchema := []string{"schemaoid", "schemaname", "comment"}
 		schemaOne := []driver.Value{1, "schema_one", nil}
 		schemaTwo := []driver.Value{2, "schema_two", "some_comment"}
 
@@ -411,13 +370,13 @@ SET SUBPARTITION TEMPLATE
 			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeSchema)
 			results := backup.GetAllUserSchemas(connection)
 			Expect(len(results)).To(Equal(2))
-			Expect(results[0].ObjOid).To(Equal(uint32(1)))
-			Expect(results[0].ObjName).To(Equal("schema_one"))
-			Expect(results[0].ObjComment.Valid).To(Equal(false))
-			Expect(results[1].ObjOid).To(Equal(uint32(2)))
-			Expect(results[1].ObjName).To(Equal("schema_two"))
-			Expect(results[1].ObjComment.Valid).To(Equal(true))
-			Expect(results[1].ObjComment.String).To(Equal("some_comment"))
+			Expect(results[0].SchemaOid).To(Equal(uint32(1)))
+			Expect(results[0].SchemaName).To(Equal("schema_one"))
+			Expect(results[0].Comment.Valid).To(Equal(false))
+			Expect(results[1].SchemaOid).To(Equal(uint32(2)))
+			Expect(results[1].SchemaName).To(Equal("schema_two"))
+			Expect(results[1].Comment.Valid).To(Equal(true))
+			Expect(results[1].Comment.String).To(Equal("some_comment"))
 		})
 	})
 	Describe("GetSessionGUCs", func() {
@@ -440,31 +399,6 @@ SET SUBPARTITION TEMPLATE
 			Expect(results.ClientEncoding).To(Equal("UTF8"))
 			Expect(results.StdConformingStrings).To(Equal("on"))
 			Expect(results.DefaultWithOids).To(Equal("false"))
-		})
-	})
-	Describe("GetDatabaseGUCs", func() {
-		headerDatabaseGUC := []string{"datconfig"}
-		defaultOIDGUC := []driver.Value{"default_with_oids=true"}
-		searchPathGUC := []driver.Value{"search_path=pg_catalog, public"}
-		storageOptionsGUC := []driver.Value{"gp_default_storage_options=appendonly=true,blocksize=32768,compresstype=none,checksum=true,orientation=row"}
-
-		It("returns a single database GUC", func() {
-			fakeDatabaseGUCs := sqlmock.NewRows(headerDatabaseGUC).AddRow(defaultOIDGUC...)
-
-			mock.ExpectQuery("SELECT(.*)").WillReturnRows(fakeDatabaseGUCs)
-			results := backup.GetDatabaseGUCs(connection)
-			Expect(len(results)).To(Equal(1))
-			Expect(results[0].DatConfig).To(Equal("default_with_oids=true"))
-		})
-		It("returns multiple database GUCs", func() {
-			fakeDatabaseGUCs := sqlmock.NewRows(headerDatabaseGUC).AddRow(defaultOIDGUC...).AddRow(searchPathGUC...).AddRow(storageOptionsGUC...)
-
-			mock.ExpectQuery("SELECT(.*)").WillReturnRows(fakeDatabaseGUCs)
-			results := backup.GetDatabaseGUCs(connection)
-			Expect(len(results)).To(Equal(3))
-			Expect(results[0].DatConfig).To(Equal("default_with_oids=true"))
-			Expect(results[1].DatConfig).To(Equal("search_path=pg_catalog, public"))
-			Expect(results[2].DatConfig).To(Equal("gp_default_storage_options=appendonly=true,blocksize=32768,compresstype=none,checksum=true,orientation=row"))
 		})
 	})
 })

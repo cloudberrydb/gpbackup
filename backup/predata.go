@@ -38,14 +38,14 @@ type TableDefinition struct {
  * single table and assembles the metadata into ColumnDef and TableDef structs
  * for more convenient handling in the PrintCreateTableStatement() function.
  */
-func ConstructDefinitionsForTable(connection *utils.DBConn, table utils.Table) ([]ColumnDefinition, TableDefinition) {
-	tableAttributes := GetTableAttributes(connection, table.TableOid)
-	tableDefaults := GetTableDefaults(connection, table.TableOid)
+func ConstructDefinitionsForTable(connection *utils.DBConn, table utils.Relation) ([]ColumnDefinition, TableDefinition) {
+	tableAttributes := GetTableAttributes(connection, table.RelationOid)
+	tableDefaults := GetTableDefaults(connection, table.RelationOid)
 
-	distributionPolicy := GetDistributionPolicy(connection, table.TableOid)
-	partitionDef := GetPartitionDefinition(connection, table.TableOid)
-	partTemplateDef := GetPartitionTemplateDefinition(connection, table.TableOid)
-	storageOptions := GetStorageOptions(connection, table.TableOid)
+	distributionPolicy := GetDistributionPolicy(connection, table.RelationOid)
+	partitionDef := GetPartitionDefinition(connection, table.RelationOid)
+	partTemplateDef := GetPartitionTemplateDefinition(connection, table.RelationOid)
+	storageOptions := GetStorageOptions(connection, table.RelationOid)
 
 	columnDefs := ConsolidateColumnInfo(tableAttributes, tableDefaults)
 	tableDef := TableDefinition{distributionPolicy, partitionDef, partTemplateDef, storageOptions}
@@ -58,11 +58,11 @@ func ConstructDefinitionsForTable(connection *utils.DBConn, table utils.Table) (
  * tables.  Two slices are needed because FOREIGN KEY constraints must be dumped
  * after PRIMARY KEY constraints, so they're separated out to be handled last.
  */
-func ConstructConstraintsForAllTables(connection *utils.DBConn, tables []utils.Table) ([]string, []string) {
+func ConstructConstraintsForAllTables(connection *utils.DBConn, tables []utils.Relation) ([]string, []string) {
 	allConstraints := make([]string, 0)
 	allFkConstraints := make([]string, 0)
 	for _, table := range tables {
-		constraintList := GetConstraints(connection, table.TableOid)
+		constraintList := GetConstraints(connection, table.RelationOid)
 		tableConstraints, tableFkConstraints := ProcessConstraints(table, constraintList)
 		allConstraints = append(allConstraints, tableConstraints...)
 		allFkConstraints = append(allFkConstraints, tableFkConstraints...)
@@ -113,7 +113,7 @@ func ConsolidateColumnInfo(atts []QueryTableAtts, defs []QueryTableDefault) []Co
  * There's no built-in function to generate constraint definitions like there is for other types of
  * metadata, so this function constructs them.
  */
-func ProcessConstraints(table utils.Table, constraints []QueryConstraint) ([]string, []string) {
+func ProcessConstraints(table utils.Relation, constraints []QueryConstraint) ([]string, []string) {
 	alterStr := fmt.Sprintf("\n\nALTER TABLE ONLY %s ADD CONSTRAINT %s %s;", table.ToString(), "%s", "%s")
 	commentStr := fmt.Sprintf("\n\nCOMMENT ON CONSTRAINT %s ON %s IS '%s';", "%s", table.ToString(), "%s")
 	cons := make([]string, 0)
@@ -142,7 +142,7 @@ func PrintCreateDatabaseStatement(predataFile io.Writer) {
  * the search_path; this will aid in later filtering to include or exclude certain tables during the
  * backup process, and allows customers to copy just the CREATE TABLE block in order to use it directly.
  */
-func PrintCreateTableStatement(predataFile io.Writer, table utils.Table, columnDefs []ColumnDefinition, tableDef TableDefinition) {
+func PrintCreateTableStatement(predataFile io.Writer, table utils.Relation, columnDefs []ColumnDefinition, tableDef TableDefinition) {
 	fmt.Fprintf(predataFile, "\n\nCREATE TABLE %s (\n", table.ToString())
 	lines := make([]string, 0)
 	for _, column := range columnDefs {
@@ -175,8 +175,8 @@ func PrintCreateTableStatement(predataFile io.Writer, table utils.Table, columnD
 	if tableDef.PartTemplateDef != "" {
 		fmt.Fprintf(predataFile, "%s;\n", strings.TrimSpace(tableDef.PartTemplateDef))
 	}
-	if table.TableComment.Valid {
-		fmt.Fprintf(predataFile, "\n\nCOMMENT ON TABLE %s IS '%s';\n", table.ToString(), table.TableComment.String)
+	if table.Comment.Valid {
+		fmt.Fprintf(predataFile, "\n\nCOMMENT ON TABLE %s IS '%s';\n", table.ToString(), table.Comment.String)
 	}
 
 	for _, att := range columnDefs {
@@ -197,14 +197,14 @@ func PrintConstraintStatements(predataFile io.Writer, constraints []string, fkCo
 	}
 }
 
-func PrintCreateSchemaStatements(predataFile io.Writer, schemas []utils.DBObject) {
+func PrintCreateSchemaStatements(predataFile io.Writer, schemas []utils.Schema) {
 	for _, schema := range schemas {
 		fmt.Fprintln(predataFile)
-		if schema.ObjName != "public" {
+		if schema.SchemaName != "public" {
 			fmt.Fprintf(predataFile, "\nCREATE SCHEMA %s;", schema.ToString())
 		}
-		if schema.ObjComment.Valid {
-			fmt.Fprintf(predataFile, "\nCOMMENT ON SCHEMA %s IS '%s';", schema.ToString(), schema.ObjComment.String)
+		if schema.Comment.Valid {
+			fmt.Fprintf(predataFile, "\nCOMMENT ON SCHEMA %s IS '%s';", schema.ToString(), schema.Comment.String)
 		}
 	}
 }
@@ -213,10 +213,11 @@ func GetAllSequenceDefinitions(connection *utils.DBConn) []QuerySequence {
 	allSequences := GetAllSequences(connection)
 	sequenceDefs := make([]QuerySequence, 0)
 	for _, sequence := range allSequences {
-		sequenceDef := GetSequence(connection, sequence.ObjName)
-		if sequence.ObjComment.Valid {
-			sequenceDef.Comment = sequence.ObjComment.String
+		sequenceDef := GetSequence(connection, sequence.ToString())
+		if sequence.Comment.Valid {
+			sequenceDef.Comment = sequence.Comment.String
 		}
+		sequenceDef.Name = sequence.ToString()
 		sequenceDefs = append(sequenceDefs, sequenceDef)
 	}
 	return sequenceDefs
@@ -270,8 +271,8 @@ SET default_with_oids = %s
 `, gucs.ClientEncoding, gucs.StdConformingStrings, gucs.DefaultWithOids)
 }
 
-func PrintDatabaseGUCs(predataFile io.Writer, gucs []QueryDatabaseGUC, dbname string) {
+func PrintDatabaseGUCs(predataFile io.Writer, gucs []string, dbname string) {
 	for _, guc := range gucs {
-		fmt.Fprintf(predataFile, "\nALTER DATABASE %s SET %s;", dbname, guc.DatConfig)
+		fmt.Fprintf(predataFile, "\nALTER DATABASE %s SET %s;", dbname, guc)
 	}
 }

@@ -97,9 +97,9 @@ func CreateDumpDirs(segConfig []QuerySegConfig) {
  * TODO: Move the segment configuration code into a shared directory after the master merge
  */
 type QuerySegConfig struct {
-	Content    int
-	Hostname   string
-	DataDir string
+	Content  int
+	Hostname string
+	DataDir  string
 }
 
 func GetSegmentConfiguration(connection *DBConn) []QuerySegConfig {

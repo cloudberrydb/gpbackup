@@ -26,16 +26,16 @@ var _ = Describe("backup/postdata tests", func() {
 	})
 
 	Describe("GetIndexesForAllTables", func() {
-		tableOne := utils.Table{0, 0, "public", "table_one", sql.NullString{"", false}}
-		tableTwo := utils.Table{0, 0, "public", "table_two", sql.NullString{"", false}}
-		tableWithout := utils.Table{0, 0, "public", "table_no_index", sql.NullString{"", false}}
+		tableOne := utils.Relation{0, 0, "public", "table_one", sql.NullString{"", false}}
+		tableTwo := utils.Relation{0, 0, "public", "table_two", sql.NullString{"", false}}
+		tableWithout := utils.Relation{0, 0, "public", "table_no_index", sql.NullString{"", false}}
 
-		header := []string{"indexdef"}
+		header := []string{"string"}
 		resultEmpty := sqlmock.NewRows(header)
 
 		Context("Indexes on a single column", func() {
 			It("returns a slice containing one CREATE INDEX statement for one table", func() {
-				testTables := []utils.Table{tableOne}
+				testTables := []utils.Relation{tableOne}
 				rowOneIndex := []driver.Value{"CREATE INDEX btree_idx1 ON table_one USING btree (i)"}
 				resultOne := sqlmock.NewRows(header).AddRow(rowOneIndex...)
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(resultOne)
@@ -44,7 +44,7 @@ var _ = Describe("backup/postdata tests", func() {
 				Expect(indexes[0]).To(Equal("\n\nCREATE INDEX btree_idx1 ON table_one USING btree (i);"))
 			})
 			It("returns a slice containing one CREATE INDEX statement for two tables", func() {
-				testTables := []utils.Table{tableOne, tableTwo}
+				testTables := []utils.Relation{tableOne, tableTwo}
 				rowOneIndex := []driver.Value{"CREATE INDEX btree_idx1 ON table_one USING btree (i)"}
 				rowTwoIndex := []driver.Value{"CREATE INDEX btree_idx2 ON table_two USING btree (j)"}
 				resultOne := sqlmock.NewRows(header).AddRow(rowOneIndex...)
@@ -57,7 +57,7 @@ var _ = Describe("backup/postdata tests", func() {
 				Expect(indexes[1]).To(Equal("\n\nCREATE INDEX btree_idx2 ON table_two USING btree (j);"))
 			})
 			It("returns a slice containing two CREATE INDEX statement for one table", func() {
-				testTables := []utils.Table{tableOne, tableTwo}
+				testTables := []utils.Relation{tableOne, tableTwo}
 				rowOneIndexOne := []driver.Value{"CREATE INDEX btree_idx1 ON table_one USING btree (i)"}
 				rowOneIndexTwo := []driver.Value{"CREATE INDEX bitmap_idx1 ON table_one USING bitmap (i)"}
 				rowTwoIndex := []driver.Value{"CREATE INDEX btree_idx2 ON table_two USING btree (j)"}
@@ -72,7 +72,7 @@ var _ = Describe("backup/postdata tests", func() {
 				Expect(indexes[2]).To(Equal("\n\nCREATE INDEX btree_idx2 ON table_two USING btree (j);"))
 			})
 			It("returns a slice containing one CREATE INDEX statement when one table has an index and one does not", func() {
-				testTables := []utils.Table{tableOne, tableWithout}
+				testTables := []utils.Relation{tableOne, tableWithout}
 				rowOneIndex := []driver.Value{"CREATE INDEX btree_idx1 ON table_one USING btree (i)"}
 				resultOne := sqlmock.NewRows(header).AddRow(rowOneIndex...)
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(resultOne)

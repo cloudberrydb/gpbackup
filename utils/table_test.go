@@ -27,8 +27,8 @@ var _ = Describe("utils/table tests", func() {
 			Expect(output).To(Equal(`"table""name"`))
 		})
 		It("properly escapes capital letters", func() {
-			names := []string{"Tablename", "TABLENAME", "TaBlEnAmE"}
-			expected := []string{`"Tablename"`, `"TABLENAME"`, `"TaBlEnAmE"`}
+			names := []string{"Relationname", "TABLENAME", "TaBlEnAmE"}
+			expected := []string{`"Relationname"`, `"TABLENAME"`, `"TaBlEnAmE"`}
 			for i := range names {
 				output := utils.QuoteIdent(names[i])
 				Expect(output).To(Equal(expected[i]))
@@ -70,111 +70,111 @@ var _ = Describe("utils/table tests", func() {
 			}
 		})
 	})
-	Describe("DBObject.ToString", func() {
+	Describe("Schema.ToString", func() {
 		It("remains unquoted if it contains no special characters", func() {
-			testSchema := utils.DBObject{0, `schemaname`, sql.NullString{"", false}}
+			testSchema := utils.Schema{0, `schemaname`, sql.NullString{"", false}}
 			expected := `schemaname`
 			Expect(testSchema.ToString()).To(Equal(expected))
 		})
 		It("is quoted if it contains special characters", func() {
-			testSchema := utils.DBObject{0, `schema,name`, sql.NullString{"", false}}
+			testSchema := utils.Schema{0, `schema,name`, sql.NullString{"", false}}
 			expected := `"schema,name"`
 			Expect(testSchema.ToString()).To(Equal(expected))
 		})
 	})
-	Describe("DBObjectFromString", func() {
+	Describe("SchemaFromString", func() {
 		It("can parse an unquoted string", func() {
 			testString := `schemaname`
-			newSchema := utils.DBObjectFromString(testString)
-			Expect(newSchema.ObjOid).To(Equal(uint32(0)))
-			Expect(newSchema.ObjName).To(Equal(`schemaname`))
+			newSchema := utils.SchemaFromString(testString)
+			Expect(newSchema.SchemaOid).To(Equal(uint32(0)))
+			Expect(newSchema.SchemaName).To(Equal(`schemaname`))
 		})
 		It("can parse a quoted string", func() {
 			testString := `"schema,name"`
-			newSchema := utils.DBObjectFromString(testString)
-			Expect(newSchema.ObjOid).To(Equal(uint32(0)))
-			Expect(newSchema.ObjName).To(Equal(`schema,name`))
+			newSchema := utils.SchemaFromString(testString)
+			Expect(newSchema.SchemaOid).To(Equal(uint32(0)))
+			Expect(newSchema.SchemaName).To(Equal(`schema,name`))
 		})
 	})
-	Describe("Table.ToString", func() {
+	Describe("Relation.ToString", func() {
 		It("remains unquoted if neither the schema nor the table name contains special characters", func() {
-			testTable := utils.Table{0, 0, `schemaname`, `tablename`, sql.NullString{"", false}}
+			testTable := utils.Relation{0, 0, `schemaname`, `tablename`, sql.NullString{"", false}}
 			expected := `schemaname.tablename`
 			Expect(testTable.ToString()).To(Equal(expected))
 		})
 		It("is quoted if the schema name contains special characters", func() {
-			testTable := utils.Table{0, 0, `schema,name`, `tablename`, sql.NullString{"", false}}
+			testTable := utils.Relation{0, 0, `schema,name`, `tablename`, sql.NullString{"", false}}
 			expected := `"schema,name".tablename`
 			Expect(testTable.ToString()).To(Equal(expected))
 		})
 		It("is quoted if the table name contains special characters", func() {
-			testTable := utils.Table{0, 0, `schemaname`, `table,name`, sql.NullString{"", false}}
+			testTable := utils.Relation{0, 0, `schemaname`, `table,name`, sql.NullString{"", false}}
 			expected := `schemaname."table,name"`
 			Expect(testTable.ToString()).To(Equal(expected))
 		})
 		It("is quoted if both the schema and the table name contain special characters", func() {
-			testTable := utils.Table{0, 0, `schema,name`, `table,name`, sql.NullString{"", false}}
+			testTable := utils.Relation{0, 0, `schema,name`, `table,name`, sql.NullString{"", false}}
 			expected := `"schema,name"."table,name"`
 			Expect(testTable.ToString()).To(Equal(expected))
 		})
 	})
-	Describe("TableFromString", func() {
+	Describe("RelationFromString", func() {
 		It("can parse an unquoted string", func() {
 			testString := `schemaname.tablename`
-			newTable := utils.TableFromString(testString)
+			newTable := utils.RelationFromString(testString)
 			Expect(newTable.SchemaOid).To(Equal(uint32(0)))
-			Expect(newTable.TableOid).To(Equal(uint32(0)))
+			Expect(newTable.RelationOid).To(Equal(uint32(0)))
 			Expect(newTable.SchemaName).To(Equal(`schemaname`))
-			Expect(newTable.TableName).To(Equal(`tablename`))
+			Expect(newTable.RelationName).To(Equal(`tablename`))
 		})
 		It("can parse a string with a quoted schema", func() {
 			testString := `"schema,name".tablename`
-			newTable := utils.TableFromString(testString)
+			newTable := utils.RelationFromString(testString)
 			Expect(newTable.SchemaOid).To(Equal(uint32(0)))
-			Expect(newTable.TableOid).To(Equal(uint32(0)))
+			Expect(newTable.RelationOid).To(Equal(uint32(0)))
 			Expect(newTable.SchemaName).To(Equal(`schema,name`))
-			Expect(newTable.TableName).To(Equal(`tablename`))
+			Expect(newTable.RelationName).To(Equal(`tablename`))
 		})
 		It("can parse a string with a quoted table", func() {
 			testString := `schemaname."table,name"`
-			newTable := utils.TableFromString(testString)
+			newTable := utils.RelationFromString(testString)
 			Expect(newTable.SchemaOid).To(Equal(uint32(0)))
-			Expect(newTable.TableOid).To(Equal(uint32(0)))
+			Expect(newTable.RelationOid).To(Equal(uint32(0)))
 			Expect(newTable.SchemaName).To(Equal(`schemaname`))
-			Expect(newTable.TableName).To(Equal(`table,name`))
+			Expect(newTable.RelationName).To(Equal(`table,name`))
 		})
 		It("can parse a string with both schema and table quoted", func() {
 			testString := `"schema,name"."table,name"`
-			newTable := utils.TableFromString(testString)
+			newTable := utils.RelationFromString(testString)
 			Expect(newTable.SchemaOid).To(Equal(uint32(0)))
-			Expect(newTable.TableOid).To(Equal(uint32(0)))
+			Expect(newTable.RelationOid).To(Equal(uint32(0)))
 			Expect(newTable.SchemaName).To(Equal(`schema,name`))
-			Expect(newTable.TableName).To(Equal(`table,name`))
+			Expect(newTable.RelationName).To(Equal(`table,name`))
 		})
 	})
 	Describe("GetUniqueSchemas", func() {
-		alphabeticalAFoo := utils.Table{1, 0, "otherschema", "foo", sql.NullString{"", false}}
-		alphabeticalABar := utils.Table{1, 0, "otherschema", "bar", sql.NullString{"", false}}
-		schemaOther := utils.DBObject{2, "otherschema", sql.NullString{"", false}}
-		alphabeticalBFoo := utils.Table{2, 0, "public", "foo", sql.NullString{"", false}}
-		alphabeticalBBar := utils.Table{2, 0, "public", "bar", sql.NullString{"", false}}
-		schemaPublic := utils.DBObject{1, "public", sql.NullString{"Standard public schema", true}}
-		schemas := []utils.DBObject{schemaOther, schemaPublic}
+		alphabeticalAFoo := utils.Relation{1, 0, "otherschema", "foo", sql.NullString{"", false}}
+		alphabeticalABar := utils.Relation{1, 0, "otherschema", "bar", sql.NullString{"", false}}
+		schemaOther := utils.Schema{2, "otherschema", sql.NullString{"", false}}
+		alphabeticalBFoo := utils.Relation{2, 0, "public", "foo", sql.NullString{"", false}}
+		alphabeticalBBar := utils.Relation{2, 0, "public", "bar", sql.NullString{"", false}}
+		schemaPublic := utils.Schema{1, "public", sql.NullString{"Standard public schema", true}}
+		schemas := []utils.Schema{schemaOther, schemaPublic}
 
 		It("has multiple tables in a single schema", func() {
-			tables := []utils.Table{alphabeticalAFoo, alphabeticalABar}
+			tables := []utils.Relation{alphabeticalAFoo, alphabeticalABar}
 			uniqueSchemas := utils.GetUniqueSchemas(schemas, tables)
-			Expect(uniqueSchemas).To(Equal([]utils.DBObject{schemaPublic}))
+			Expect(uniqueSchemas).To(Equal([]utils.Schema{schemaPublic}))
 		})
 		It("has multiple schemas, each with multiple tables", func() {
-			tables := []utils.Table{alphabeticalBFoo, alphabeticalBBar, alphabeticalAFoo, alphabeticalABar}
+			tables := []utils.Relation{alphabeticalBFoo, alphabeticalBBar, alphabeticalAFoo, alphabeticalABar}
 			uniqueSchemas := utils.GetUniqueSchemas(schemas, tables)
-			Expect(uniqueSchemas).To(Equal([]utils.DBObject{schemaOther, schemaPublic}))
+			Expect(uniqueSchemas).To(Equal([]utils.Schema{schemaOther, schemaPublic}))
 		})
 		It("has no tables", func() {
-			tables := []utils.Table{}
+			tables := []utils.Relation{}
 			uniqueSchemas := utils.GetUniqueSchemas(schemas, tables)
-			Expect(uniqueSchemas).To(Equal([]utils.DBObject{}))
+			Expect(uniqueSchemas).To(Equal([]utils.Schema{}))
 		})
 	})
 })

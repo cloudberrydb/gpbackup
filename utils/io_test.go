@@ -120,15 +120,15 @@ var _ = Describe("utils/io tests", func() {
 		})
 	})
 	Describe("WriteTableMapFile", func() {
-		tableOne := utils.Table{0, 1234, "public", "foo", sql.NullString{"", false}}
-		tableTwo := utils.Table{0, 2345, "public", "foo|bar", sql.NullString{"", false}}
+		tableOne := utils.Relation{0, 1234, "public", "foo", sql.NullString{"", false}}
+		tableTwo := utils.Relation{0, 2345, "public", "foo|bar", sql.NullString{"", false}}
 
 		It("writes a map file containing one table", func() {
 			filePath := ""
 			r, w, _ := os.Pipe()
 			utils.FPOsCreate = func(name string) (*os.File, error) { filePath = name; return w, nil }
 			defer func() { utils.FPOsCreate = os.Create }()
-			tables := []utils.Table{tableOne}
+			tables := []utils.Relation{tableOne}
 			backup.WriteTableMapFile(tables)
 			w.Close()
 			output, _ := ioutil.ReadAll(r)
@@ -140,7 +140,7 @@ var _ = Describe("utils/io tests", func() {
 			r, w, _ := os.Pipe()
 			utils.FPOsCreate = func(name string) (*os.File, error) { filePath = name; return w, nil }
 			defer func() { utils.FPOsCreate = os.Create }()
-			tables := []utils.Table{tableOne, tableTwo}
+			tables := []utils.Relation{tableOne, tableTwo}
 			backup.WriteTableMapFile(tables)
 			w.Close()
 			output, _ := ioutil.ReadAll(r)

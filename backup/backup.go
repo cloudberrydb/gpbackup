@@ -87,7 +87,7 @@ func DoBackup() {
 	connection.Commit()
 }
 
-func backupPredata(filename string, tables []utils.Table) {
+func backupPredata(filename string, tables []utils.Relation) {
 	predataFile := utils.MustOpenFile(filename)
 
 	logger.Verbose("Writing session GUCs to predata file")
@@ -100,6 +100,12 @@ func backupPredata(filename string, tables []utils.Table) {
 	logger.Verbose("Writing database GUCs to predata file")
 	databaseGucs := GetDatabaseGUCs(connection)
 	PrintDatabaseGUCs(predataFile, databaseGucs, connection.DBName)
+
+	logger.Verbose("Writing database comment to predata file")
+	databaseComment := GetDatabaseComment(connection)
+	if databaseComment != "" {
+		fmt.Fprintf(predataFile, "\nCOMMENT ON DATABASE %s IS '%s';\n", connection.DBName, databaseComment)
+	}
 
 	logger.Verbose("Writing CREATE SCHEMA statements to predata file")
 	schemas := GetAllUserSchemas(connection)
@@ -120,7 +126,7 @@ func backupPredata(filename string, tables []utils.Table) {
 	PrintCreateSequenceStatements(predataFile, sequenceDefs)
 }
 
-func backupData(tables []utils.Table) {
+func backupData(tables []utils.Relation) {
 	for _, table := range tables {
 		logger.Verbose("Writing data for table %s to file", table.ToString())
 		CopyTableOut(connection, table)
@@ -129,7 +135,7 @@ func backupData(tables []utils.Table) {
 	WriteTableMapFile(tables)
 }
 
-func backupPostdata(filename string, tables []utils.Table) {
+func backupPostdata(filename string, tables []utils.Relation) {
 	postdataFile := utils.MustOpenFile(filename)
 
 	logger.Verbose("Writing session GUCs to predata file")

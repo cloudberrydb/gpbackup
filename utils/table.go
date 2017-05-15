@@ -30,18 +30,18 @@ var (
 )
 
 // This will mostly be used for schemas, but can be used for any database object with an oid.
-type DBObject struct {
-	ObjOid     uint32
-	ObjName    string
-	ObjComment sql.NullString
+type Schema struct {
+	SchemaOid  uint32
+	SchemaName string
+	Comment    sql.NullString
 }
 
-type Table struct {
+type Relation struct {
 	SchemaOid    uint32
-	TableOid     uint32
+	RelationOid  uint32
 	SchemaName   string
-	TableName    string
-	TableComment sql.NullString
+	RelationName string
+	Comment      sql.NullString
 }
 
 /*
@@ -61,21 +61,21 @@ func QuoteIdent(ident string) string {
  * This function prints a table in fully-qualified schema.table format, with
  * everything quoted and escaped appropriately.
  */
-func (t Table) ToString() string {
+func (t Relation) ToString() string {
 	schema := QuoteIdent(t.SchemaName)
-	table := QuoteIdent(t.TableName)
+	table := QuoteIdent(t.RelationName)
 	return fmt.Sprintf("%s.%s", schema, table)
 }
 
-func (s DBObject) ToString() string {
-	return QuoteIdent(s.ObjName)
+func (s Schema) ToString() string {
+	return QuoteIdent(s.SchemaName)
 }
 
-/* Parse an appropriately-escaped schema.table string into a Table.  The Table's
+/* Parse an appropriately-escaped schema.table string into a Relation.  The Relation's
  * Oid fields are left at 0, and will need to be filled in with the real values
- * if the Table is to be used in any Get[Something]() function in queries.go.
+ * if the Relation is to be used in any Get[Something]() function in queries.go.
  */
-func TableFromString(name string) Table {
+func RelationFromString(name string) Relation {
 	var schema, table string
 	var matches []string
 	if matches = quotedOrUnquotedString.FindStringSubmatch(name); len(matches) != 0 {
@@ -92,10 +92,10 @@ func TableFromString(name string) Table {
 	} else {
 		logger.Fatal("\"%s\" is not a valid fully-qualified table expression", name)
 	}
-	return Table{0, 0, schema, table, sql.NullString{"", false}}
+	return Relation{0, 0, schema, table, sql.NullString{"", false}}
 }
 
-func DBObjectFromString(name string) DBObject {
+func SchemaFromString(name string) Schema {
 	var object string
 	var matches []string
 	if matches = quotedIdentifier.FindStringSubmatch(name); len(matches) != 0 {
@@ -105,52 +105,52 @@ func DBObjectFromString(name string) DBObject {
 	} else {
 		logger.Fatal("\"%s\" is not a valid identifier", name)
 	}
-	return DBObject{0, object, sql.NullString{"", false}}
+	return Schema{0, object, sql.NullString{"", false}}
 }
 
 /*
  * Functions for sorting schemas and tables
  */
 
-type DBObjects []DBObject
+type Schemas []Schema
 
-func (slice DBObjects) Len() int {
+func (slice Schemas) Len() int {
 	return len(slice)
 }
 
-func (slice DBObjects) Less(i int, j int) bool {
-	return slice[i].ObjName < slice[j].ObjName
+func (slice Schemas) Less(i int, j int) bool {
+	return slice[i].SchemaName < slice[j].SchemaName
 }
 
-func (slice DBObjects) Swap(i int, j int) {
+func (slice Schemas) Swap(i int, j int) {
 	slice[i], slice[j] = slice[j], slice[i]
 }
 
-func SortDBObjects(objects DBObjects) {
+func SortSchemas(objects Schemas) {
 	sort.Sort(objects)
 }
 
-type Tables []Table
+type Relations []Relation
 
-func (slice Tables) Len() int {
+func (slice Relations) Len() int {
 	return len(slice)
 }
 
-func (slice Tables) Less(i int, j int) bool {
+func (slice Relations) Less(i int, j int) bool {
 	if slice[i].SchemaName < slice[j].SchemaName {
 		return true
 	}
-	if slice[i].TableName < slice[j].TableName {
+	if slice[i].RelationName < slice[j].RelationName {
 		return true
 	}
 	return false
 }
 
-func (slice Tables) Swap(i int, j int) {
+func (slice Relations) Swap(i int, j int) {
 	slice[i], slice[j] = slice[j], slice[i]
 }
 
-func SortTables(tables Tables) {
+func SortRelations(tables Relations) {
 	sort.Sort(tables)
 }
 
@@ -159,16 +159,16 @@ func SortTables(tables Tables) {
  */
 
 /*
- * Given a list of Tables, this function returns a sorted list of their Schemas.
- * It assumes that the Table list is sorted by schema and then by table, so it
+ * Given a list of Relations, this function returns a sorted list of their Schemas.
+ * It assumes that the Relation list is sorted by schema and then by table, so it
  * doesn't need to do any sorting itself.
  */
-func GetUniqueSchemas(schemas []DBObject, tables []Table) []DBObject {
+func GetUniqueSchemas(schemas []Schema, tables []Relation) []Schema {
 	currentSchemaOid := uint32(0)
-	uniqueSchemas := make([]DBObject, 0)
-	schemaMap := make(map[uint32]DBObject, 0)
+	uniqueSchemas := make([]Schema, 0)
+	schemaMap := make(map[uint32]Schema, 0)
 	for _, schema := range schemas {
-		schemaMap[schema.ObjOid] = schema
+		schemaMap[schema.SchemaOid] = schema
 	}
 	for _, table := range tables {
 		if table.SchemaOid != currentSchemaOid {
