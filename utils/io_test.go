@@ -4,6 +4,7 @@ import (
 	"backup_restore/backup"
 	"backup_restore/testutils"
 	"backup_restore/utils"
+	"database/sql"
 	"database/sql/driver"
 	"errors"
 	"io/ioutil"
@@ -119,8 +120,8 @@ var _ = Describe("utils/io tests", func() {
 		})
 	})
 	Describe("WriteTableMapFile", func() {
-		tableOne := utils.Table{0, 1234, "public", "foo"}
-		tableTwo := utils.Table{0, 2345, "public", "foo|bar"}
+		tableOne := utils.Table{0, 1234, "public", "foo", sql.NullString{"", false}}
+		tableTwo := utils.Table{0, 2345, "public", "foo|bar", sql.NullString{"", false}}
 
 		It("writes a map file containing one table", func() {
 			filePath := ""

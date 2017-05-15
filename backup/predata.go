@@ -8,7 +8,6 @@ package backup
 
 import (
 	"backup_restore/utils"
-	"database/sql"
 	"fmt"
 	"io"
 	"sort"
@@ -22,7 +21,8 @@ type ColumnDefinition struct {
 	HasDefault bool
 	IsDropped  bool
 	TypName    string
-	Encoding   sql.NullString
+	Encoding   string
+	Comment    string
 	DefaultVal string
 }
 
@@ -100,7 +100,8 @@ func ConsolidateColumnInfo(atts []QueryTableAtts, defs []QueryTableDefault) []Co
 			HasDefault: atts[i].AttHasDefault,
 			IsDropped:  atts[i].AttIsDropped,
 			TypName:    atts[i].AttTypName,
-			Encoding:   atts[i].AttEncoding,
+			Encoding:   atts[i].AttEncoding.String,
+			Comment:    atts[i].AttComment.String,
 			DefaultVal: defaultVal,
 		}
 		colDefs = append(colDefs, colDef)
@@ -113,11 +114,15 @@ func ConsolidateColumnInfo(atts []QueryTableAtts, defs []QueryTableDefault) []Co
  * metadata, so this function constructs them.
  */
 func ProcessConstraints(table utils.Table, constraints []QueryConstraint) ([]string, []string) {
-	alterStr := fmt.Sprintf("\n\nALTER TABLE ONLY %s ADD CONSTRAINT", table.ToString())
+	alterStr := fmt.Sprintf("\n\nALTER TABLE ONLY %s ADD CONSTRAINT %s %s;", table.ToString(), "%s", "%s")
+	commentStr := fmt.Sprintf("\n\nCOMMENT ON CONSTRAINT %s ON %s IS '%s';", "%s", table.ToString(), "%s")
 	cons := make([]string, 0)
 	fkCons := make([]string, 0)
 	for _, constraint := range constraints {
-		conStr := fmt.Sprintf("%s %s %s;", alterStr, constraint.ConName, constraint.ConDef)
+		conStr := fmt.Sprintf(alterStr, constraint.ConName, constraint.ConDef)
+		if constraint.ConComment.Valid {
+			conStr += fmt.Sprintf(commentStr, constraint.ConName, constraint.ConComment.String)
+		}
 		if constraint.ConType == "f" {
 			fkCons = append(fkCons, conStr)
 		} else {
@@ -149,8 +154,8 @@ func PrintCreateTableStatement(predataFile io.Writer, table utils.Table, columnD
 			if column.NotNull {
 				line += " NOT NULL"
 			}
-			if column.Encoding.Valid {
-				line += fmt.Sprintf(" ENCODING (%s)", column.Encoding.String)
+			if column.Encoding != "" {
+				line += fmt.Sprintf(" ENCODING (%s)", column.Encoding)
 			}
 			lines = append(lines, line)
 		}
@@ -169,6 +174,15 @@ func PrintCreateTableStatement(predataFile io.Writer, table utils.Table, columnD
 	fmt.Fprintln(predataFile, ";")
 	if tableDef.PartTemplateDef != "" {
 		fmt.Fprintf(predataFile, "%s;\n", strings.TrimSpace(tableDef.PartTemplateDef))
+	}
+	if table.TableComment.Valid {
+		fmt.Fprintf(predataFile, "\n\nCOMMENT ON TABLE %s IS '%s';\n", table.ToString(), table.TableComment.String)
+	}
+
+	for _, att := range columnDefs {
+		if att.Comment != "" {
+			fmt.Fprintf(predataFile, "\n\nCOMMENT ON COLUMN %s.%s IS '%s';\n", table.ToString(), att.Name, att.Comment)
+		}
 	}
 }
 
@@ -200,6 +214,9 @@ func GetAllSequenceDefinitions(connection *utils.DBConn) []QuerySequence {
 	sequenceDefs := make([]QuerySequence, 0)
 	for _, sequence := range allSequences {
 		sequenceDef := GetSequence(connection, sequence.ObjName)
+		if sequence.ObjComment.Valid {
+			sequenceDef.Comment = sequence.ObjComment.String
+		}
 		sequenceDefs = append(sequenceDefs, sequenceDef)
 	}
 	return sequenceDefs
@@ -236,6 +253,10 @@ func PrintCreateSequenceStatements(predataFile io.Writer, sequences []QuerySeque
 		fmt.Fprintf(predataFile, "\tCACHE %d%s;", sequence.CacheVal, cycleStr)
 
 		fmt.Fprintf(predataFile, "\n\nSELECT pg_catalog.setval('%s', %d, %v);\n", sequence.Name, sequence.LastVal, sequence.IsCalled)
+
+		if sequence.Comment != "" {
+			fmt.Fprintf(predataFile, "\n\nCOMMENT ON SEQUENCE %s IS '%s';\n", sequence.Name, sequence.Comment)
+		}
 	}
 }
 

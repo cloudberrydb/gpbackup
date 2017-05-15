@@ -37,10 +37,11 @@ type DBObject struct {
 }
 
 type Table struct {
-	SchemaOid  uint32
-	TableOid   uint32
-	SchemaName string
-	TableName  string
+	SchemaOid    uint32
+	TableOid     uint32
+	SchemaName   string
+	TableName    string
+	TableComment sql.NullString
 }
 
 /*
@@ -91,7 +92,7 @@ func TableFromString(name string) Table {
 	} else {
 		logger.Fatal("\"%s\" is not a valid fully-qualified table expression", name)
 	}
-	return Table{0, 0, schema, table}
+	return Table{0, 0, schema, table, sql.NullString{"", false}}
 }
 
 func DBObjectFromString(name string) DBObject {

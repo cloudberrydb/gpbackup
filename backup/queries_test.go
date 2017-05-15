@@ -26,11 +26,11 @@ var _ = Describe("backup/queries tests", func() {
 	})
 
 	Describe("GetTableAttributes", func() {
-		header := []string{"attname", "attnotnull", "atthasdefault", "attisdropped", "atttypname", "attencoding"}
-		rowOne := []driver.Value{"i", "f", "f", "f", "int", nil}
-		rowTwo := []driver.Value{"j", "f", "f", "f", "character varying(20)", nil}
-		rowEncoded := []driver.Value{"j", "f", "f", "f", "character varying(20)", "compresstype=zlib, blocksize=65536"}
-		rowNotNull := []driver.Value{"j", "t", "f", "f", "character varying(20)", nil}
+		header := []string{"attname", "attnotnull", "atthasdefault", "attisdropped", "atttypname", "attencoding", "attcomment"}
+		rowOne := []driver.Value{"i", "f", "f", "f", "int", nil, nil}
+		rowTwo := []driver.Value{"j", "f", "f", "f", "character varying(20)", nil, nil}
+		rowEncoded := []driver.Value{"j", "f", "f", "f", "character varying(20)", "compresstype=zlib, blocksize=65536", nil}
+		rowNotNull := []driver.Value{"j", "t", "f", "f", "character varying(20)", nil, nil}
 
 		It("returns a slice for a table with one column", func() {
 			fakeResult := sqlmock.NewRows(header).AddRow(rowOne...)

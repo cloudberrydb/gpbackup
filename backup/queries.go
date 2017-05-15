@@ -55,7 +55,8 @@ SELECT
 	n.oid AS schemaoid,
 	c.oid AS tableoid,
 	n.nspname AS schemaname,
-	c.relname AS tablename
+	c.relname AS tablename,
+	obj_description(c.oid, 'pg_class') AS tablecomment
 FROM pg_class c
 LEFT JOIN pg_partition_rule pr
 	ON c.oid = pr.parchildrelid
@@ -90,6 +91,7 @@ type QueryTableAtts struct {
 	AttIsDropped  bool
 	AttTypName    string
 	AttEncoding   sql.NullString
+	AttComment    sql.NullString
 }
 
 func GetTableAttributes(connection *utils.DBConn, oid uint32) []QueryTableAtts {
@@ -98,10 +100,11 @@ func GetTableAttributes(connection *utils.DBConn, oid uint32) []QueryTableAtts {
 SELECT a.attnum,
 	a.attname,
 	a.attnotnull,
-	a.atthasdefault,
+	a.atthasdef AS atthasdefault,
 	a.attisdropped,
 	pg_catalog.format_type(t.oid,a.atttypmod) AS atttypname,
-	pg_catalog.array_to_string(e.attoptions, ',') AS attencoding
+	pg_catalog.array_to_string(e.attoptions, ',') AS attencoding,
+	pg_catalog.col_description(a.attrelid, a.attnum) AS attcomment
 FROM pg_catalog.pg_attribute a
 	LEFT JOIN pg_catalog.pg_type t ON a.atttypid = t.oid
 	LEFT OUTER JOIN pg_catalog.pg_attribute_encoding e ON e.attrelid = a.attrelid
@@ -139,9 +142,10 @@ ORDER BY adrelid,
 }
 
 type QueryConstraint struct {
-	ConName string
-	ConType string
-	ConDef  string
+	ConName    string
+	ConType    string
+	ConDef     string
+	ConComment sql.NullString
 }
 
 func GetConstraints(connection *utils.DBConn, oid uint32) []QueryConstraint {
@@ -150,7 +154,8 @@ func GetConstraints(connection *utils.DBConn, oid uint32) []QueryConstraint {
 SELECT
 	conname,
 	contype,
-	pg_catalog.pg_get_constraintdef(oid, TRUE) AS condef
+	pg_catalog.pg_get_constraintdef(oid, TRUE) AS condef,
+	obj_description(oid, 'pg_constraint') AS concomment
 FROM pg_catalog.pg_constraint
 WHERE conrelid = %d;
 `, oid)
@@ -257,7 +262,7 @@ WHERE oid = %d AND reloptions IS NOT NULL;`, oid)
 }
 
 func GetAllSequences(connection *utils.DBConn) []utils.DBObject {
-	query := "SELECT oid AS objoid, relname AS objname FROM pg_class WHERE relkind = 'S'"
+	query := "SELECT oid AS objoid, relname AS objname, obj_description(oid, 'pg_class') as objcomment FROM pg_class WHERE relkind = 'S'"
 	results := make([]utils.DBObject, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
@@ -274,6 +279,7 @@ type QuerySequence struct {
 	LogCnt    int64  `db:"log_cnt"`
 	IsCycled  bool   `db:"is_cycled"`
 	IsCalled  bool   `db:"is_called"`
+	Comment   string
 }
 
 func GetSequence(connection *utils.DBConn, seqName string) QuerySequence {

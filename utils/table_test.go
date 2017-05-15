@@ -98,22 +98,22 @@ var _ = Describe("utils/table tests", func() {
 	})
 	Describe("Table.ToString", func() {
 		It("remains unquoted if neither the schema nor the table name contains special characters", func() {
-			testTable := utils.Table{0, 0, `schemaname`, `tablename`}
+			testTable := utils.Table{0, 0, `schemaname`, `tablename`, sql.NullString{"", false}}
 			expected := `schemaname.tablename`
 			Expect(testTable.ToString()).To(Equal(expected))
 		})
 		It("is quoted if the schema name contains special characters", func() {
-			testTable := utils.Table{0, 0, `schema,name`, `tablename`}
+			testTable := utils.Table{0, 0, `schema,name`, `tablename`, sql.NullString{"", false}}
 			expected := `"schema,name".tablename`
 			Expect(testTable.ToString()).To(Equal(expected))
 		})
 		It("is quoted if the table name contains special characters", func() {
-			testTable := utils.Table{0, 0, `schemaname`, `table,name`}
+			testTable := utils.Table{0, 0, `schemaname`, `table,name`, sql.NullString{"", false}}
 			expected := `schemaname."table,name"`
 			Expect(testTable.ToString()).To(Equal(expected))
 		})
 		It("is quoted if both the schema and the table name contain special characters", func() {
-			testTable := utils.Table{0, 0, `schema,name`, `table,name`}
+			testTable := utils.Table{0, 0, `schema,name`, `table,name`, sql.NullString{"", false}}
 			expected := `"schema,name"."table,name"`
 			Expect(testTable.ToString()).To(Equal(expected))
 		})
@@ -153,11 +153,11 @@ var _ = Describe("utils/table tests", func() {
 		})
 	})
 	Describe("GetUniqueSchemas", func() {
-		alphabeticalAFoo := utils.Table{1, 0, "otherschema", "foo"}
-		alphabeticalABar := utils.Table{1, 0, "otherschema", "bar"}
+		alphabeticalAFoo := utils.Table{1, 0, "otherschema", "foo", sql.NullString{"", false}}
+		alphabeticalABar := utils.Table{1, 0, "otherschema", "bar", sql.NullString{"", false}}
 		schemaOther := utils.DBObject{2, "otherschema", sql.NullString{"", false}}
-		alphabeticalBFoo := utils.Table{2, 0, "public", "foo"}
-		alphabeticalBBar := utils.Table{2, 0, "public", "bar"}
+		alphabeticalBFoo := utils.Table{2, 0, "public", "foo", sql.NullString{"", false}}
+		alphabeticalBBar := utils.Table{2, 0, "public", "bar", sql.NullString{"", false}}
 		schemaPublic := utils.DBObject{1, "public", sql.NullString{"Standard public schema", true}}
 		schemas := []utils.DBObject{schemaOther, schemaPublic}
 

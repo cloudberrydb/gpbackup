@@ -4,6 +4,7 @@ import (
 	"backup_restore/backup"
 	"backup_restore/testutils"
 	"backup_restore/utils"
+	"database/sql"
 	"database/sql/driver"
 	"testing"
 
@@ -25,9 +26,9 @@ var _ = Describe("backup/postdata tests", func() {
 	})
 
 	Describe("GetIndexesForAllTables", func() {
-		tableOne := utils.Table{0, 0, "public", "table_one"}
-		tableTwo := utils.Table{0, 0, "public", "table_two"}
-		tableWithout := utils.Table{0, 0, "public", "table_no_index"}
+		tableOne := utils.Table{0, 0, "public", "table_one", sql.NullString{"", false}}
+		tableTwo := utils.Table{0, 0, "public", "table_two", sql.NullString{"", false}}
+		tableWithout := utils.Table{0, 0, "public", "table_no_index", sql.NullString{"", false}}
 
 		header := []string{"indexdef"}
 		resultEmpty := sqlmock.NewRows(header)
