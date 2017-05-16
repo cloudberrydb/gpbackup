@@ -6,16 +6,11 @@ import (
 	"backup_restore/utils"
 	"database/sql/driver"
 	"errors"
-	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
-
-func TestQueries(t *testing.T) {
-	RegisterFailHandler(Fail)
-}
 
 var _ = Describe("backup/queries tests", func() {
 	var connection *utils.DBConn

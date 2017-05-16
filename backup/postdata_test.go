@@ -6,16 +6,11 @@ import (
 	"backup_restore/utils"
 	"database/sql"
 	"database/sql/driver"
-	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
-
-func TestPostdata(t *testing.T) {
-	RegisterFailHandler(Fail)
-}
 
 var _ = Describe("backup/postdata tests", func() {
 	var connection *utils.DBConn
@@ -88,8 +83,7 @@ var _ = Describe("backup/postdata tests", func() {
 
 CREATE INDEX btree_idx1 ON table_one USING btree (i);
 
-COMMENT ON INDEX btree_idx1 IS 'This is an index comment.';
-`))
+COMMENT ON INDEX btree_idx1 IS 'This is an index comment.';`))
 			})
 		})
 	})

@@ -4,15 +4,10 @@ import (
 	"backup_restore/utils"
 	"database/sql"
 	"fmt"
-	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
-
-func TestTable(t *testing.T) {
-	RegisterFailHandler(Fail)
-}
 
 var _ = Describe("utils/table tests", func() {
 	Describe("QuoteIdent", func() {

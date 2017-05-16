@@ -4,7 +4,6 @@ import (
 	"backup_restore/testutils"
 	"backup_restore/utils"
 	"os"
-	"testing"
 
 	"github.com/jmoiron/sqlx"
 	. "github.com/onsi/ginkgo"
@@ -14,10 +13,6 @@ import (
 
 var connection *utils.DBConn
 var mock sqlmock.Sqlmock
-
-func TestDB(t *testing.T) {
-	RegisterFailHandler(Fail)
-}
 
 var _ = Describe("utils/db tests", func() {
 	BeforeSuite(func() {

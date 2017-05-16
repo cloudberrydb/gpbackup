@@ -5,16 +5,11 @@ import (
 	"backup_restore/testutils"
 	"backup_restore/utils"
 	"database/sql"
-	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 )
-
-func TestPredata(t *testing.T) {
-	RegisterFailHandler(Fail)
-}
 
 var _ = Describe("backup/predata tests", func() {
 	Describe("PrintCreateTableStatement", func() {

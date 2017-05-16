@@ -5,16 +5,10 @@ import (
 	"backup_restore/testutils"
 	"backup_restore/utils"
 	"database/sql"
-	"testing"
 
 	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
-
-func TestData(t *testing.T) {
-	RegisterFailHandler(Fail)
-}
 
 var _ = Describe("backup/data tests", func() {
 	var connection *utils.DBConn

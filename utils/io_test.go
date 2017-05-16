@@ -9,16 +9,11 @@ import (
 	"errors"
 	"io/ioutil"
 	"os"
-	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
-
-func TestIO(t *testing.T) {
-	RegisterFailHandler(Fail)
-}
 
 var _ = Describe("utils/io tests", func() {
 	var connection *utils.DBConn

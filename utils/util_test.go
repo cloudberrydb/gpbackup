@@ -2,17 +2,11 @@ package utils_test
 
 import (
 	"backup_restore/utils"
-	"testing"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
-
-func TestUtil(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "utils tests")
-}
 
 var _ = Describe("utils/util tests", func() {
 	Context("CurrentTimestamp", func() {
