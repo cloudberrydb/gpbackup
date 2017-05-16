@@ -16,9 +16,13 @@ import (
 func GetIndexesForAllTables(connection *utils.DBConn, tables []utils.Relation) []string {
 	indexes := make([]string, 0)
 	for _, table := range tables {
-		indexList := GetIndexDefinitions(connection, table.RelationOid)
+		indexList := GetIndexMetadata(connection, table.RelationOid)
 		for _, index := range indexList {
-			indexes = append(indexes, fmt.Sprintf("\n\n%s;", index))
+			indexStr := fmt.Sprintf("\n\n%s;\n", index.Def)
+			if index.Comment.Valid {
+				indexStr += fmt.Sprintf("\nCOMMENT ON INDEX %s IS '%s';", index.Name, index.Comment.String)
+			}
+			indexes = append(indexes, indexStr)
 		}
 	}
 	return indexes

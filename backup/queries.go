@@ -227,6 +227,30 @@ func GetSessionGUCs(connection *utils.DBConn) QuerySessionGUCs {
 	return result
 }
 
+type QueryIndexMetadata struct {
+	Name string
+	Def  string
+	Comment   sql.NullString
+}
+
+func GetIndexMetadata(connection *utils.DBConn, oid uint32) []QueryIndexMetadata {
+	query := fmt.Sprintf(`
+SELECT
+	t.relname AS name,
+	pg_get_indexdef(i.indexrelid) AS def,
+	obj_description(t.oid, 'pg_class') AS comment
+FROM pg_index i
+JOIN pg_class t
+	ON (t.oid = i.indexrelid)
+WHERE i.indrelid = %d
+ORDER BY name;`, oid)
+
+	results := make([]QueryIndexMetadata, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
+}
+
 /*
  * Queries using generic structs
  */
@@ -278,11 +302,6 @@ func GetPartitionTemplateDefinition(connection *utils.DBConn, oid uint32) string
 	 */
 	query := fmt.Sprintf("SELECT * FROM pg_get_partition_template_def(%d, true, true) AS string WHERE string IS NOT NULL", oid)
 	return SelectString(connection, query)
-}
-
-func GetIndexDefinitions(connection *utils.DBConn, oid uint32) []string {
-	query := fmt.Sprintf("SELECT pg_get_indexdef(i.indexrelid) AS string FROM pg_index i JOIN pg_class t ON (t.oid = i.indexrelid) WHERE i.indrelid = %d", oid)
-	return SelectStringSlice(connection, query)
 }
 
 func GetStorageOptions(connection *utils.DBConn, oid uint32) string {
