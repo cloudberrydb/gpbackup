@@ -17,6 +17,10 @@ var (
 	defaultLogDir   = "gpAdminLogs"
 	headerFormatStr = "%s:%s:%s:%06d-[%s]:-" // PROGRAMNAME:USERNAME:HOSTNAME:PID-[LOGLEVEL]:-, to match gpcrondump
 
+	/*
+	 * The following variables, and any others named "FP[package][function name]",
+	 * are function pointers used to enable unit testing.
+	 */
 	FPSetLogger = SetLogger
 	FPOsGetpid  = os.Getpid
 )

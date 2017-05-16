@@ -18,6 +18,10 @@ var (
 	DumpTimestamp string
 	DumpDatestamp string
 
+	/*
+	 * The following variables, and any others named "FP[package][function name]",
+	 * are function pointers used to enable unit testing.
+	 */
 	FPTimeNow  = time.Now
 	FPOsGetenv = os.Getenv
 )

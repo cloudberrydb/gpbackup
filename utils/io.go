@@ -12,6 +12,8 @@ import (
 	"strings"
 )
 
+const DefaultSegmentDir = "<SEG_DATA_DIR>"
+
 var (
 	/*
 	 * The following two variables are used to construct the dump path for all
@@ -20,7 +22,7 @@ var (
 	 * query, and so can use <SEG_DATA_DIR> and <SEGID> instead of explicitly
 	 * constructing paths for each segment.
 	 */
-	BaseDumpDir    = "<SEG_DATA_DIR>"
+	BaseDumpDir    = DefaultSegmentDir
 	DumpPathFmtStr = ""
 
 	/*
@@ -38,8 +40,6 @@ var (
 	FPDirectoryMustExist = DirectoryMustExist
 	FPGetUserAndHostInfo = GetUserAndHostInfo
 	FPMustOpenFile       = MustOpenFile
-	FPOsIsNotExist       = os.IsNotExist
-	FPOsMkdir            = os.Mkdir
 	FPOsMkdirAll         = os.MkdirAll
 	FPOsCreate           = os.Create
 	FPOsStat             = os.Stat
@@ -81,7 +81,7 @@ func CreateDumpDirs(segConfig []QuerySegConfig) {
 	SegHostMap = make(map[int]string, 0)
 	SegDirMap = make(map[int]string, 0)
 	for _, seg := range segConfig {
-		dumpPath := strings.Replace(DumpPathFmtStr, "<SEG_DATA_DIR>", seg.DataDir, -1)
+		dumpPath := strings.Replace(DumpPathFmtStr, DefaultSegmentDir, seg.DataDir, -1)
 		logger.Verbose("Creating directory %s", dumpPath)
 		err := FPOsMkdirAll(dumpPath, 0700)
 		if err != nil {
