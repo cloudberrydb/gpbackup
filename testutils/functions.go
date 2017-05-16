@@ -1,8 +1,8 @@
 package testutils
 
 import (
-	"backup_restore/backup"
-	"backup_restore/utils"
+	"gpbackup/backup"
+	"gpbackup/utils"
 	"fmt"
 	"regexp"
 	"strings"

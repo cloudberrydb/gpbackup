@@ -1,7 +1,7 @@
 package main
 
 import (
-	. "backup_restore/backup"
+	. "gpbackup/backup"
 )
 
 func main() {

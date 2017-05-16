@@ -1,9 +1,9 @@
 package utils_test
 
 import (
-	"backup_restore/backup"
-	"backup_restore/testutils"
-	"backup_restore/utils"
+	"gpbackup/backup"
+	"gpbackup/testutils"
+	"gpbackup/utils"
 	"database/sql"
 	"database/sql/driver"
 	"errors"

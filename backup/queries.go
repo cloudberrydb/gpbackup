@@ -7,7 +7,7 @@ package backup
  */
 
 import (
-	"backup_restore/utils"
+	"gpbackup/utils"
 	"database/sql"
 	"fmt"
 	"strings"

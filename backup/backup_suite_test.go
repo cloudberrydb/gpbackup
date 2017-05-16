@@ -6,7 +6,7 @@ package backup_test
  */
 
 import (
-	//"backup_restore/utils"
+	//"gpbackup/utils"
 	//"fmt"
 	"os/exec"
 	"testing"
