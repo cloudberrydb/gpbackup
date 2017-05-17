@@ -7,8 +7,6 @@ package utils
 
 import (
 	"io"
-	"os"
-	"os/user"
 	"strings"
 )
 
@@ -32,17 +30,6 @@ var (
 	 */
 	SegHostMap map[int]string
 	SegDirMap  map[int]string
-
-	/*
-	 * The following variables, and any others named "FP[package][function name]",
-	 * are function pointers used to enable unit testing.
-	 */
-	FPDirectoryMustExist = DirectoryMustExist
-	FPGetUserAndHostInfo = GetUserAndHostInfo
-	FPMustOpenFile       = MustOpenFile
-	FPOsMkdirAll         = os.MkdirAll
-	FPOsCreate           = os.Create
-	FPOsStat             = os.Stat
 )
 
 /*
@@ -50,14 +37,14 @@ var (
  */
 
 func DirectoryMustExist(dirname string) {
-	_, statErr := FPOsStat(dirname)
+	_, statErr := System.Stat(dirname)
 	if statErr != nil {
 		logger.Fatal("Cannot stat directory %s: %s", dirname, statErr)
 	}
 }
 
 func MustOpenFile(filename string) io.Writer {
-	logFileHandle, err := FPOsCreate(filename)
+	logFileHandle, err := System.Create(filename)
 	if err != nil {
 		logger.Fatal("Unable to create or open file %s: %s", filename, err)
 	}
@@ -65,10 +52,10 @@ func MustOpenFile(filename string) io.Writer {
 }
 
 func GetUserAndHostInfo() (string, string, string) {
-	currentUser, _ := user.Current()
+	currentUser, _ := System.CurrentUser()
 	userName := currentUser.Username
 	userDir := currentUser.HomeDir
-	hostname, _ := os.Hostname()
+	hostname, _ := System.Hostname()
 	return userName, userDir, hostname
 }
 
@@ -83,7 +70,7 @@ func CreateDumpDirs(segConfig []QuerySegConfig) {
 	for _, seg := range segConfig {
 		dumpPath := strings.Replace(DumpPathFmtStr, DefaultSegmentDir, seg.DataDir, -1)
 		logger.Verbose("Creating directory %s", dumpPath)
-		err := FPOsMkdirAll(dumpPath, 0700)
+		err := System.MkdirAll(dumpPath, 0700)
 		if err != nil {
 			logger.Fatal("Cannot create directory %s on host %s: %s", seg.DataDir, seg.Hostname, err.Error())
 		}

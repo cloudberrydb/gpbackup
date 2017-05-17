@@ -25,27 +25,27 @@ var _ = Describe("utils/io tests", func() {
 
 	Describe("DirectoryMustExist", func() {
 		It("does nothing if the directory exists", func() {
-			utils.FPOsStat = func(name string) (os.FileInfo, error) { return nil, nil }
-			defer func() { utils.FPOsStat = os.Stat }()
+			utils.System.Stat = func(name string) (os.FileInfo, error) { return nil, nil }
+			defer func() { utils.System.Stat = os.Stat }()
 			utils.DirectoryMustExist("dirname")
 		})
 		It("panics if the directory does not exist", func() {
-			utils.FPOsStat = func(name string) (os.FileInfo, error) { return nil, errors.New("No such file or directory") }
-			defer func() { utils.FPOsStat = os.Stat }()
+			utils.System.Stat = func(name string) (os.FileInfo, error) { return nil, errors.New("No such file or directory") }
+			defer func() { utils.System.Stat = os.Stat }()
 			defer testutils.ShouldPanicWithMessage("Cannot stat directory dirname: No such file or directory")
 			utils.DirectoryMustExist("dirname")
 		})
 	})
 	Describe("MustOpenFile", func() {
 		It("creates or opens the file for writing", func() {
-			utils.FPOsCreate = func(name string) (*os.File, error) { return os.Stdout, nil }
-			defer func() { utils.FPOsCreate = os.Create }()
+			utils.System.Create = func(name string) (*os.File, error) { return os.Stdout, nil }
+			defer func() { utils.System.Create = os.Create }()
 			fileHandle := utils.MustOpenFile("filename")
 			Expect(fileHandle).To(Equal(os.Stdout))
 		})
 		It("panics on error", func() {
-			utils.FPOsCreate = func(name string) (*os.File, error) { return nil, errors.New("Permission denied") }
-			defer func() { utils.FPOsCreate = os.Create }()
+			utils.System.Create = func(name string) (*os.File, error) { return nil, errors.New("Permission denied") }
+			defer func() { utils.System.Create = os.Create }()
 			defer testutils.ShouldPanicWithMessage("Unable to create or open file filename: Permission denied")
 			utils.MustOpenFile("filename")
 		})
@@ -88,12 +88,12 @@ var _ = Describe("utils/io tests", func() {
 
 		It("creates directories relative to the segment data directory", func() {
 			checkMap := make(map[string]bool, 0)
-			utils.FPOsMkdirAll = func(path string, perm os.FileMode) error {
+			utils.System.MkdirAll = func(path string, perm os.FileMode) error {
 				checkMap[path] = true
 				Expect(perm).To(Equal(os.FileMode(0700)))
 				return nil
 			}
-			defer func() { utils.FPOsMkdirAll = os.MkdirAll }()
+			defer func() { utils.System.MkdirAll = os.MkdirAll }()
 			utils.DumpPathFmtStr = "<SEG_DATA_DIR>/backups/20170101/20170101010101"
 			utils.CreateDumpDirs(segConfig)
 			Expect(len(checkMap)).To(Equal(2))
@@ -102,12 +102,12 @@ var _ = Describe("utils/io tests", func() {
 		})
 		It("creates directories relative to a user-specified directory", func() {
 			checkMap := make(map[string]bool, 0)
-			utils.FPOsMkdirAll = func(path string, perm os.FileMode) error {
+			utils.System.MkdirAll = func(path string, perm os.FileMode) error {
 				checkMap[path] = true
 				Expect(perm).To(Equal(os.FileMode(0700)))
 				return nil
 			}
-			defer func() { utils.FPOsMkdirAll = os.MkdirAll }()
+			defer func() { utils.System.MkdirAll = os.MkdirAll }()
 			utils.DumpPathFmtStr = "/tmp/foo/backups/20170101/20170101010101"
 			utils.CreateDumpDirs(segConfig)
 			Expect(len(checkMap)).To(Equal(1))
@@ -121,8 +121,8 @@ var _ = Describe("utils/io tests", func() {
 		It("writes a map file containing one table", func() {
 			filePath := ""
 			r, w, _ := os.Pipe()
-			utils.FPOsCreate = func(name string) (*os.File, error) { filePath = name; return w, nil }
-			defer func() { utils.FPOsCreate = os.Create }()
+			utils.System.Create = func(name string) (*os.File, error) { filePath = name; return w, nil }
+			defer func() { utils.System.Create = os.Create }()
 			tables := []utils.Relation{tableOne}
 			backup.WriteTableMapFile(tables)
 			w.Close()
@@ -133,8 +133,8 @@ var _ = Describe("utils/io tests", func() {
 		It("writes a map file containing multiple tables", func() {
 			filePath := ""
 			r, w, _ := os.Pipe()
-			utils.FPOsCreate = func(name string) (*os.File, error) { filePath = name; return w, nil }
-			defer func() { utils.FPOsCreate = os.Create }()
+			utils.System.Create = func(name string) (*os.File, error) { filePath = name; return w, nil }
+			defer func() { utils.System.Create = os.Create }()
 			tables := []utils.Relation{tableOne, tableTwo}
 			backup.WriteTableMapFile(tables)
 			w.Close()

@@ -21,7 +21,7 @@ var ( // Command-line flags
 
 // This function handles setup that can be done before parsing flags.
 func DoInit() {
-	SetLogger(utils.InitializeLogging("gpbackup", "", utils.LOGINFO))
+	SetLogger(utils.InitializeLogging("gpbackup", ""))
 }
 
 func SetLogger(log *utils.Logger) {

@@ -7,9 +7,7 @@ package utils
 
 import (
 	"fmt"
-	"os"
 	"strings"
-	"time"
 
 	"github.com/go-errors/errors"
 )
@@ -17,13 +15,6 @@ import (
 var (
 	DumpTimestamp string
 	DumpDatestamp string
-
-	/*
-	 * The following variables, and any others named "FP[package][function name]",
-	 * are function pointers used to enable unit testing.
-	 */
-	FPTimeNow  = time.Now
-	FPOsGetenv = os.Getenv
 )
 
 /*
@@ -75,15 +66,15 @@ func CheckError(err error) {
  */
 
 func CurrentDatestamp() string {
-	return FPTimeNow().Format("20060102")
+	return System.Now().Format("20060102")
 }
 
 func CurrentTimestamp() string {
-	return FPTimeNow().Format("20060102150405")
+	return System.Now().Format("20060102150405")
 }
 
 func TryEnv(varname string, defval string) string {
-	val := FPOsGetenv(varname)
+	val := System.Getenv(varname)
 	if val == "" {
 		return defval
 	}

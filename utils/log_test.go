@@ -4,38 +4,31 @@ import (
 	"gpbackup/testutils"
 	"gpbackup/utils"
 	"fmt"
-	"io"
 	"os"
+	"os/user"
 	"reflect"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("utils/log tests", func() {
 	logger, stdout, stderr, logfile := testutils.SetupTestLogger()
-	fakeFile := gbytes.NewBuffer()
+	fakeFile := &os.File{}
 	var testLogger, sampleLogger *utils.Logger
 	var testLogDir string
 
 	BeforeEach(func() {
-		utils.FPDirectoryMustExist = func(dirname string) {
-			if dirname != testLogDir {
-				Fail(fmt.Sprintf("Wrong log directory: found %s, expected %s", dirname, testLogDir))
-			}
-		}
-		utils.FPMustOpenFile = func(filename string) io.Writer { return fakeFile }
-		utils.FPGetUserAndHostInfo = func() (string, string, string) { return "testUser", "testDir", "testHost" }
-		utils.FPSetLogger = func(log *utils.Logger) { testLogger = log }
-		utils.FPOsGetpid = func() int { return 0 }
+		utils.System.Create = func(filename string) (*os.File, error) { return fakeFile, nil }
+		utils.System.CurrentUser = func() (*user.User, error) { return &user.User{Username: "testUser", HomeDir: "testDir"}, nil }
+		utils.System.Getpid = func() int { return 0 }
+		utils.System.Hostname = func() (string, error) { return "testHost", nil }
+		utils.System.Now = func() time.Time { return time.Date(2017, time.January, 1, 1, 1, 1, 1, time.Local) }
+		utils.System.Stat = func(name string) (os.FileInfo, error) { return nil, nil }
 	})
 	AfterEach(func() {
-		utils.FPDirectoryMustExist = utils.DirectoryMustExist
-		utils.FPMustOpenFile = utils.MustOpenFile
-		utils.FPGetUserAndHostInfo = utils.GetUserAndHostInfo
-		utils.FPSetLogger = utils.SetLogger
-		utils.FPOsGetpid = os.Getpid
+		utils.System = utils.InitializeSystemFunctions()
 	})
 
 	Describe("InitializeLogging", func() {
@@ -46,7 +39,8 @@ var _ = Describe("utils/log tests", func() {
 		Context("Logger initialized with default log directory and Info log level", func() {
 			It("creates a new logger writing to gpAdminLogs and sets utils.logger to this new logger", func() {
 				testLogDir = "testDir/gpAdminLogs"
-				newLogger := utils.InitializeLogging("testProgram", "", utils.LOGINFO)
+				newLogger := utils.InitializeLogging("testProgram", "")
+				testLogger = utils.GetLogger()
 				if testLogger == nil || !(newLogger == testLogger) {
 					Fail("Created logger was not assigned to utils.logger")
 				}
@@ -58,7 +52,8 @@ var _ = Describe("utils/log tests", func() {
 		Context("Logger initialized with a specified log directory and Info log level", func() {
 			It("creates a new logger writing to the specified log directory and sets utils.logger to this new logger", func() {
 				testLogDir = "/tmp/log_dir"
-				newLogger := utils.InitializeLogging("testProgram", "/tmp/log_dir", utils.LOGINFO)
+				newLogger := utils.InitializeLogging("testProgram", "/tmp/log_dir")
+				testLogger = utils.GetLogger()
 				if testLogger == nil || !(newLogger == testLogger) {
 					Fail("Created logger was not assigned to utils.logger")
 				}

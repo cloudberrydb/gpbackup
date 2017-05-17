@@ -4,6 +4,7 @@ import (
 	"gpbackup/testutils"
 	"gpbackup/utils"
 	"os"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	. "github.com/onsi/ginkgo"
@@ -15,8 +16,9 @@ var connection *utils.DBConn
 var mock sqlmock.Sqlmock
 
 var _ = Describe("utils/db tests", func() {
-	BeforeSuite(func() {
+	BeforeEach(func() {
 		testutils.SetupTestLogger()
+		utils.System.Now = func() time.Time { return time.Date(2017, time.January, 1, 1, 1, 1, 1, time.Local) }
 	})
 	Describe("NewDBConn", func() {
 		Context("Database given with -dbname flag", func() {

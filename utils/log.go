@@ -16,13 +16,6 @@ var (
 
 	defaultLogDir   = "gpAdminLogs"
 	headerFormatStr = "%s:%s:%s:%06d-[%s]:-" // PROGRAMNAME:USERNAME:HOSTNAME:PID-[LOGLEVEL]:-, to match gpcrondump
-
-	/*
-	 * The following variables, and any others named "FP[package][function name]",
-	 * are function pointers used to enable unit testing.
-	 */
-	FPSetLogger = SetLogger
-	FPOsGetpid  = os.Getpid
 )
 
 /*
@@ -86,6 +79,10 @@ func NewLogger(stdout io.Writer, stderr io.Writer, logFile io.Writer, verbosity 
 	}
 }
 
+func GetLogger() *Logger {
+	return logger
+}
+
 func SetLogger(log *Logger) {
 	logger = log
 }
@@ -94,26 +91,26 @@ func SetLogger(log *Logger) {
  * This function creates a logger, sets it to global so it's usable in utils/,
  * and then returns it so the same logger can be used in backup/ and restore/.
  */
-func InitializeLogging(program string, logdir string, verbosity int) *Logger {
-	user, homedir, host := FPGetUserAndHostInfo()
-	pid := FPOsGetpid()
+func InitializeLogging(program string, logdir string) *Logger {
+	user, homedir, host := GetUserAndHostInfo()
+	pid := System.Getpid()
 	header := fmt.Sprintf(headerFormatStr, program, user, host, pid, "%s")
 
 	if logdir == "" {
 		logdir = fmt.Sprintf("%s/%s", homedir, defaultLogDir)
 	}
-	FPDirectoryMustExist(logdir)
+	DirectoryMustExist(logdir)
 
 	logfile := fmt.Sprintf("%s/%s_%s.log", logdir, program, CurrentDatestamp())
-	logFileHandle := FPMustOpenFile(logfile)
+	logFileHandle := MustOpenFile(logfile)
 
-	logger := NewLogger(os.Stdout, os.Stderr, logFileHandle, verbosity, header)
-	FPSetLogger(logger)
+	logger := NewLogger(os.Stdout, os.Stderr, logFileHandle, LOGINFO, header)
+	SetLogger(logger)
 	return logger
 }
 
 func (logger *Logger) GetLogPrefix(level string) string {
-	logTimestamp := FPTimeNow().Format("20060102:15:04:05")
+	logTimestamp := System.Now().Format("20060102:15:04:05")
 	return fmt.Sprintf("%s %s", logTimestamp, fmt.Sprintf(logger.header, level))
 }
 
