@@ -1,9 +1,9 @@
 package backup
 
 import (
-	"gpbackup/utils"
 	"flag"
 	"fmt"
+	"gpbackup/utils"
 )
 
 var (
@@ -29,8 +29,8 @@ func SetLogger(log *utils.Logger) {
 }
 
 /*
- * This function handles argument parsing and validation, e.g. checking that a passed filename exists.
- * It should only validate; initialization with any sort of side effects should go in DoInit or DoSetup.
+* This function handles argument parsing and validation, e.g. checking that a passed filename exists.
+* It should only validate; initialization with any sort of side effects should go in DoInit or DoSetup.
  */
 func DoValidation() {
 	flag.Parse()
@@ -55,7 +55,6 @@ func DoSetup() {
 		utils.BaseDumpDir = *dumpDir
 	}
 	logger.Verbose("Creating dump directories")
-	utils.DumpPathFmtStr = fmt.Sprintf("%s/backups/%s/%s", utils.BaseDumpDir, utils.DumpDatestamp, utils.DumpTimestamp)
 	segConfig := utils.GetSegmentConfiguration(connection)
 	utils.CreateDumpDirs(segConfig)
 }
@@ -65,7 +64,9 @@ func DoBackup() {
 	logger.Info("Dump Database = %s", utils.QuoteIdent(connection.DBName))
 	logger.Info("Database Size = %s", connection.GetDBSize())
 
-	masterDumpDir := utils.SegDirMap[-1]
+	segDirMap := utils.GetSegmentConfiguration(connection).DirMap
+	masterDumpDir := segDirMap[-1]
+
 	predataFilename := fmt.Sprintf("%s/predata.sql", masterDumpDir)
 	postdataFilename := fmt.Sprintf("%s/postdata.sql", masterDumpDir)
 
@@ -77,7 +78,7 @@ func DoBackup() {
 	logger.Info("Pre-data metadata dump complete")
 
 	logger.Info("Writing data to file")
-	backupData(tables)
+	backupData(tables, segDirMap)
 	logger.Info("Data dump complete")
 
 	logger.Info("Writing post-data metadata to %s", postdataFilename)
@@ -126,13 +127,14 @@ func backupPredata(filename string, tables []utils.Relation) {
 	PrintCreateSequenceStatements(predataFile, sequenceDefs)
 }
 
-func backupData(tables []utils.Relation) {
+func backupData(tables []utils.Relation, segDirMap map[int]string) {
 	for _, table := range tables {
 		logger.Verbose("Writing data for table %s to file", table.ToString())
-		CopyTableOut(connection, table)
+		dumpFile := CreateTableDumpPath(table)
+		CopyTableOut(connection, table, dumpFile)
 	}
-	logger.Verbose("Writing table map file to %s/gpbackup_%s_table_map", utils.SegDirMap[-1], utils.DumpTimestamp)
-	WriteTableMapFile(tables)
+	logger.Verbose("Writing table map file to %s/gpbackup_%s_table_map", segDirMap[-1], utils.DumpTimestamp)
+	WriteTableMapFile(tables, segDirMap[-1])
 }
 
 func backupPostdata(filename string, tables []utils.Relation) {

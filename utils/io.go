@@ -6,6 +6,7 @@ package utils
  */
 
 import (
+	"fmt"
 	"io"
 	"strings"
 )
@@ -13,23 +14,13 @@ import (
 const DefaultSegmentDir = "<SEG_DATA_DIR>"
 
 var (
-	/*
-	 * The following two variables are used to construct the dump path for all
-	 * backup files for the duration of the dump and must be set in DoSetup()
-	 * function in backup.go.  They're used in the data dump COPY ... TO SEGMENT;
-	 * query, and so can use <SEG_DATA_DIR> and <SEGID> instead of explicitly
-	 * constructing paths for each segment.
-	 */
-	BaseDumpDir    = DefaultSegmentDir
-	DumpPathFmtStr = ""
+	BaseDumpDir = DefaultSegmentDir
 
 	/*
 	 * The following two maps map a segment's content id to its host and segment
 	 * data directory, respectively.  They're set in the CreateDumpDirectories
 	 * function for use throughout the rest of the dump.
 	 */
-	SegHostMap map[int]string
-	SegDirMap  map[int]string
 )
 
 /*
@@ -64,44 +55,52 @@ func GetUserAndHostInfo() (string, string, string) {
  */
 
 // TODO: Handle multi-node clusters
-func CreateDumpDirs(segConfig []QuerySegConfig) {
-	SegHostMap = make(map[int]string, 0)
-	SegDirMap = make(map[int]string, 0)
-	for _, seg := range segConfig {
-		dumpPath := strings.Replace(DumpPathFmtStr, DefaultSegmentDir, seg.DataDir, -1)
+func CreateDumpDirs(segConfigMaps SegConfigMaps) {
+	for segId, dumpPath := range segConfigMaps.DirMap {
 		logger.Verbose("Creating directory %s", dumpPath)
 		err := System.MkdirAll(dumpPath, 0700)
 		if err != nil {
-			logger.Fatal("Cannot create directory %s on host %s: %s", seg.DataDir, seg.Hostname, err.Error())
+			logger.Fatal("Cannot create directory %s on host %s: %s", dumpPath, segConfigMaps.HostMap[segId], err.Error())
 		}
 		CheckError(err)
-		SegHostMap[seg.Content] = seg.Hostname
-		SegDirMap[seg.Content] = dumpPath
 	}
 }
 
-/*
- * TODO: Move the segment configuration code into a shared directory after the master merge
- */
+var segConfigMaps SegConfigMaps
+
+type SegConfigMaps struct {
+	DirMap  map[int]string
+	HostMap map[int]string
+}
+
 type QuerySegConfig struct {
 	Content  int
 	Hostname string
 	DataDir  string
 }
 
-func GetSegmentConfiguration(connection *DBConn) []QuerySegConfig {
+func GetSegmentConfiguration(connection *DBConn) SegConfigMaps {
 	query := `SELECT
-	content,
-	hostname,
-	fselocation as datadir
+content,
+hostname,
+fselocation as datadir
 FROM pg_catalog.gp_segment_configuration
 JOIN pg_catalog.pg_filespace_entry
-	ON (dbid = fsedbid)
+ON (dbid = fsedbid)
 WHERE role = 'p'
 ORDER BY content;`
 
 	results := make([]QuerySegConfig, 0)
 	err := connection.Select(&results, query)
 	CheckError(err)
-	return results
+
+	segConfigMaps.DirMap = make(map[int]string, 0)
+	segConfigMaps.HostMap = make(map[int]string, 0)
+	dumpPathFmtStr := fmt.Sprintf("%s/backups/%s/%s", BaseDumpDir, DumpTimestamp[0:8], DumpTimestamp)
+	for _, seg := range results {
+		dumpPath := strings.Replace(dumpPathFmtStr, DefaultSegmentDir, seg.DataDir, -1)
+		segConfigMaps.DirMap[seg.Content] = dumpPath
+		segConfigMaps.HostMap[seg.Content] = seg.Hostname
+	}
+	return segConfigMaps
 }

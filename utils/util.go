@@ -14,7 +14,6 @@ import (
 
 var (
 	DumpTimestamp string
-	DumpDatestamp string
 )
 
 /*
@@ -83,6 +82,5 @@ func TryEnv(varname string, defval string) string {
 
 func SetDumpTimestamp() string {
 	DumpTimestamp = CurrentTimestamp()
-	DumpDatestamp = DumpTimestamp[0:8]
 	return DumpTimestamp
 }

@@ -1,12 +1,12 @@
 package utils_test
 
 import (
-	"gpbackup/backup"
-	"gpbackup/testutils"
-	"gpbackup/utils"
 	"database/sql"
 	"database/sql/driver"
 	"errors"
+	"gpbackup/backup"
+	"gpbackup/testutils"
+	"gpbackup/utils"
 	"io/ioutil"
 	"os"
 
@@ -55,36 +55,49 @@ var _ = Describe("utils/io tests", func() {
 		localSegOne := []driver.Value{"0", "localhost", "/data/gpseg0"}
 		localSegTwo := []driver.Value{"1", "localhost", "/data/gpseg1"}
 		remoteSegOne := []driver.Value{"2", "remotehost", "/data/gpseg2"}
+		utils.DumpTimestamp = "20170101010101"
+		BeforeEach(func() {
+			utils.BaseDumpDir = "<SEG_DATA_DIR>"
+		})
 
 		It("returns a configuration for a single-host, single-segment cluster", func() {
 			fakeResult := sqlmock.NewRows(header).AddRow(localSegOne...)
 			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
-			results := utils.GetSegmentConfiguration(connection)
-			Expect(len(results)).To(Equal(1))
-			Expect(results[0].DataDir).To(Equal("/data/gpseg0"))
+			segConfig := utils.GetSegmentConfiguration(connection)
+			Expect(len(segConfig.DirMap)).To(Equal(1))
+			Expect(segConfig.DirMap[0]).To(Equal("/data/gpseg0/backups/20170101/20170101010101"))
+			Expect(segConfig.HostMap[0]).To(Equal("localhost"))
 		})
 		It("returns a configuration for a single-host, multi-segment cluster", func() {
 			fakeResult := sqlmock.NewRows(header).AddRow(localSegOne...).AddRow(localSegTwo...)
 			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
-			results := utils.GetSegmentConfiguration(connection)
-			Expect(len(results)).To(Equal(2))
-			Expect(results[0].DataDir).To(Equal("/data/gpseg0"))
-			Expect(results[1].DataDir).To(Equal("/data/gpseg1"))
+			segConfig := utils.GetSegmentConfiguration(connection)
+			Expect(len(segConfig.DirMap)).To(Equal(2))
+			Expect(segConfig.DirMap[0]).To(Equal("/data/gpseg0/backups/20170101/20170101010101"))
+			Expect(segConfig.HostMap[0]).To(Equal("localhost"))
+			Expect(segConfig.DirMap[1]).To(Equal("/data/gpseg1/backups/20170101/20170101010101"))
+			Expect(segConfig.HostMap[1]).To(Equal("localhost"))
 		})
 		It("returns a configuration for a multi-host, multi-segment cluster", func() {
 			fakeResult := sqlmock.NewRows(header).AddRow(localSegOne...).AddRow(localSegTwo...).AddRow(remoteSegOne...)
 			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
-			results := utils.GetSegmentConfiguration(connection)
-			Expect(len(results)).To(Equal(3))
-			Expect(results[0].DataDir).To(Equal("/data/gpseg0"))
-			Expect(results[1].DataDir).To(Equal("/data/gpseg1"))
-			Expect(results[2].DataDir).To(Equal("/data/gpseg2"))
+			segConfig := utils.GetSegmentConfiguration(connection)
+			Expect(len(segConfig.DirMap)).To(Equal(3))
+			Expect(segConfig.DirMap[0]).To(Equal("/data/gpseg0/backups/20170101/20170101010101"))
+			Expect(segConfig.HostMap[0]).To(Equal("localhost"))
+			Expect(segConfig.DirMap[1]).To(Equal("/data/gpseg1/backups/20170101/20170101010101"))
+			Expect(segConfig.HostMap[1]).To(Equal("localhost"))
+			Expect(segConfig.DirMap[2]).To(Equal("/data/gpseg2/backups/20170101/20170101010101"))
+			Expect(segConfig.HostMap[2]).To(Equal("remotehost"))
 		})
 	})
 	Describe("CreateDumpDirs", func() {
-		segOne := utils.QuerySegConfig{0, "localhost", "/data/gpseg0"}
-		segTwo := utils.QuerySegConfig{1, "localhost", "/data/gpseg1"}
-		segConfig := []utils.QuerySegConfig{segOne, segTwo}
+		var segConfig utils.SegConfigMaps
+		segConfig.DirMap = make(map[int]string)
+		segConfig.HostMap = make(map[int]string)
+		segConfig.HostMap[0] = "localhost"
+		segConfig.HostMap[1] = "localhost"
+		utils.DumpTimestamp = "20170101010101"
 
 		It("creates directories relative to the segment data directory", func() {
 			checkMap := make(map[string]bool, 0)
@@ -94,7 +107,9 @@ var _ = Describe("utils/io tests", func() {
 				return nil
 			}
 			defer func() { utils.System.MkdirAll = os.MkdirAll }()
-			utils.DumpPathFmtStr = "<SEG_DATA_DIR>/backups/20170101/20170101010101"
+			utils.BaseDumpDir = "<SEG_DATA_DIR>"
+			segConfig.DirMap[0] = "/data/gpseg0/backups/20170101/20170101010101"
+			segConfig.DirMap[1] = "/data/gpseg1/backups/20170101/20170101010101"
 			utils.CreateDumpDirs(segConfig)
 			Expect(len(checkMap)).To(Equal(2))
 			Expect(checkMap["/data/gpseg0/backups/20170101/20170101010101"]).To(BeTrue())
@@ -108,7 +123,9 @@ var _ = Describe("utils/io tests", func() {
 				return nil
 			}
 			defer func() { utils.System.MkdirAll = os.MkdirAll }()
-			utils.DumpPathFmtStr = "/tmp/foo/backups/20170101/20170101010101"
+			utils.BaseDumpDir = "/tmp/foo"
+			segConfig.DirMap[0] = "/tmp/foo/backups/20170101/20170101010101"
+			segConfig.DirMap[1] = "/tmp/foo/backups/20170101/20170101010101"
 			utils.CreateDumpDirs(segConfig)
 			Expect(len(checkMap)).To(Equal(1))
 			Expect(checkMap["/tmp/foo/backups/20170101/20170101010101"]).To(BeTrue())
@@ -124,7 +141,7 @@ var _ = Describe("utils/io tests", func() {
 			utils.System.Create = func(name string) (*os.File, error) { filePath = name; return w, nil }
 			defer func() { utils.System.Create = os.Create }()
 			tables := []utils.Relation{tableOne}
-			backup.WriteTableMapFile(tables)
+			backup.WriteTableMapFile(tables, "/data/gpseg0/backups/20170101/20170101010101")
 			w.Close()
 			output, _ := ioutil.ReadAll(r)
 			testutils.ExpectRegex(string(output), `public.foo: 1234
@@ -136,7 +153,7 @@ var _ = Describe("utils/io tests", func() {
 			utils.System.Create = func(name string) (*os.File, error) { filePath = name; return w, nil }
 			defer func() { utils.System.Create = os.Create }()
 			tables := []utils.Relation{tableOne, tableTwo}
-			backup.WriteTableMapFile(tables)
+			backup.WriteTableMapFile(tables, "/data/gpseg0/backups/20170101/20170101010101")
 			w.Close()
 			output, _ := ioutil.ReadAll(r)
 			testutils.ExpectRegex(string(output), `public.foo: 1234
