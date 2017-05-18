@@ -1,9 +1,9 @@
 package testutils
 
 import (
+	"fmt"
 	"gpbackup/backup"
 	"gpbackup/utils"
-	"fmt"
 	"regexp"
 	"strings"
 
@@ -20,7 +20,7 @@ import (
 
 func CreateAndConnectMockDB() (*utils.DBConn, sqlmock.Sqlmock) {
 	mockdb, mock := CreateMockDB()
-	driver := utils.TestDriver{DBExists: true, DB: mockdb, DBName: "testdb"}
+	driver := TestDriver{DBExists: true, DB: mockdb, DBName: "testdb"}
 	connection := utils.NewDBConn("testdb")
 	connection.Driver = driver
 	connection.Connect()
@@ -56,7 +56,7 @@ func CreateMockDB() (*sqlx.DB, sqlmock.Sqlmock) {
  */
 
 func ExpectBegin(mock sqlmock.Sqlmock) {
-	fakeResult := utils.TestResult{Rows: 0}
+	fakeResult := TestResult{Rows: 0}
 	mock.ExpectBegin()
 	mock.ExpectExec("SET TRANSACTION(.*)").WillReturnResult(fakeResult)
 }

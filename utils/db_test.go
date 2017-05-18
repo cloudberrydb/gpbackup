@@ -53,7 +53,7 @@ var _ = Describe("utils/db tests", func() {
 			It("connects successfully", func() {
 				var mockdb *sqlx.DB
 				mockdb, mock = testutils.CreateMockDB()
-				driver := utils.TestDriver{DBExists: true, DB: mockdb}
+				driver := testutils.TestDriver{DBExists: true, DB: mockdb}
 				connection = utils.NewDBConn("testdb")
 				connection.Driver = driver
 				Expect(connection.DBName).To(Equal("testdb"))
@@ -64,7 +64,7 @@ var _ = Describe("utils/db tests", func() {
 			It("fails", func() {
 				var mockdb *sqlx.DB
 				mockdb, mock = testutils.CreateMockDB()
-				driver := utils.TestDriver{DBExists: false, DB: mockdb, DBName: "testdb"}
+				driver := testutils.TestDriver{DBExists: false, DB: mockdb, DBName: "testdb"}
 				connection = utils.NewDBConn("testdb")
 				connection.Driver = driver
 				Expect(connection.DBName).To(Equal("testdb"))
@@ -76,7 +76,7 @@ var _ = Describe("utils/db tests", func() {
 	Describe("DBConn.Exec", func() {
 		It("executes an INSERT outside of a transaction", func() {
 			connection, mock = testutils.CreateAndConnectMockDB()
-			fakeResult := utils.TestResult{Rows: 1}
+			fakeResult := testutils.TestResult{Rows: 1}
 			mock.ExpectExec("INSERT (.*)").WillReturnResult(fakeResult)
 
 			res, err := connection.Exec("INSERT INTO pg_tables VALUES ('schema', 'table')")
@@ -86,7 +86,7 @@ var _ = Describe("utils/db tests", func() {
 		})
 		It("executes an INSERT in a transaction", func() {
 			connection, mock = testutils.CreateAndConnectMockDB()
-			fakeResult := utils.TestResult{Rows: 1}
+			fakeResult := testutils.TestResult{Rows: 1}
 			testutils.ExpectBegin(mock)
 			mock.ExpectExec("INSERT (.*)").WillReturnResult(fakeResult)
 			mock.ExpectCommit()
