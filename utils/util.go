@@ -64,10 +64,6 @@ func CheckError(err error) {
  * General helper functions
  */
 
-func CurrentDatestamp() string {
-	return System.Now().Format("20060102")
-}
-
 func CurrentTimestamp() string {
 	return System.Now().Format("20060102150405")
 }

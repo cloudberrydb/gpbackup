@@ -51,6 +51,15 @@ func CreateMockDB() (*sqlx.DB, sqlmock.Sqlmock) {
 	return mockdb, mock
 }
 
+func SetDefaultSegmentConfiguration() {
+	utils.BaseDumpDir = utils.DefaultSegmentDir
+	utils.DumpTimestamp = "20170101010101"
+	configMaster := utils.QuerySegConfig{-1, "localhost", "/data/gpseg-1"}
+	configSegOne := utils.QuerySegConfig{0, "localhost", "/data/gpseg0"}
+	configSegTwo := utils.QuerySegConfig{1, "localhost", "/data/gpseg1"}
+	utils.SetupSegmentConfiguration([]utils.QuerySegConfig{configMaster, configSegOne, configSegTwo})
+}
+
 /*
  * Wrapper functions aroung gomega operators for ease of use in tests
  */

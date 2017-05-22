@@ -27,12 +27,12 @@ var _ = Describe("backup/data tests", func() {
 			backup.CopyTableOut(connection, testTable, filename)
 		})
 	})
-	Describe("CreateTableDumpPath", func() {
+	Describe("GetTableDumpFilePath", func() {
 		It("will create the dump path for data", func() {
 			testTable := utils.Relation{2345, 3456, "public", "foo", sql.NullString{"", false}}
 			utils.DumpTimestamp = "20170101010101"
 			expectedFilename := "<SEG_DATA_DIR>/backups/20170101/20170101010101/gpbackup_<SEGID>_20170101010101_3456"
-			actualFilename := backup.CreateTableDumpPath(testTable)
+			actualFilename := backup.GetTableDumpFilePath(testTable)
 			Expect(actualFilename).To(Equal(expectedFilename))
 		})
 	})

@@ -16,11 +16,9 @@ const DefaultSegmentDir = "<SEG_DATA_DIR>"
 var (
 	BaseDumpDir = DefaultSegmentDir
 
-	/*
-	 * The following two maps map a segment's content id to its host and segment
-	 * data directory, respectively.  They're set in the CreateDumpDirectories
-	 * function for use throughout the rest of the dump.
-	 */
+	contentList []int
+	segDirMap  map[int]string
+	segHostMap map[int]string
 )
 
 /*
@@ -55,23 +53,20 @@ func GetUserAndHostInfo() (string, string, string) {
  */
 
 // TODO: Handle multi-node clusters
-func CreateDumpDirs(segConfigMaps SegConfigMaps) {
-	for segId, dumpPath := range segConfigMaps.DirMap {
+func CreateDumpDirs() {
+	for segId, dumpPath := range segDirMap {
 		logger.Verbose("Creating directory %s", dumpPath)
 		err := System.MkdirAll(dumpPath, 0700)
 		if err != nil {
-			logger.Fatal("Cannot create directory %s on host %s: %s", dumpPath, segConfigMaps.HostMap[segId], err.Error())
+			logger.Fatal("Cannot create directory %s on host %s: %s", dumpPath, segHostMap[segId], err.Error())
 		}
 		CheckError(err)
 	}
 }
 
-var segConfigMaps SegConfigMaps
-
-type SegConfigMaps struct {
-	DirMap  map[int]string
-	HostMap map[int]string
-}
+/*
+ * Functions for working with the segment configuration
+ */
 
 type QuerySegConfig struct {
 	Content  int
@@ -79,7 +74,7 @@ type QuerySegConfig struct {
 	DataDir  string
 }
 
-func GetSegmentConfiguration(connection *DBConn) SegConfigMaps {
+func GetSegmentConfiguration(connection *DBConn) []QuerySegConfig {
 	query := `SELECT
 content,
 hostname,
@@ -93,14 +88,37 @@ ORDER BY content;`
 	results := make([]QuerySegConfig, 0)
 	err := connection.Select(&results, query)
 	CheckError(err)
+	return results
+}
 
-	segConfigMaps.DirMap = make(map[int]string, 0)
-	segConfigMaps.HostMap = make(map[int]string, 0)
-	dumpPathFmtStr := fmt.Sprintf("%s/backups/%s/%s", BaseDumpDir, DumpTimestamp[0:8], DumpTimestamp)
-	for _, seg := range results {
-		dumpPath := strings.Replace(dumpPathFmtStr, DefaultSegmentDir, seg.DataDir, -1)
-		segConfigMaps.DirMap[seg.Content] = dumpPath
-		segConfigMaps.HostMap[seg.Content] = seg.Hostname
+func SetupSegmentConfiguration(segConfigs []QuerySegConfig) {
+	contentList = make([]int, 0)
+	segDirMap = make(map[int]string, 0)
+	segHostMap = make(map[int]string, 0)
+	for _, seg := range segConfigs {
+		dumpPath := strings.Replace(GetGenericSegDir(), DefaultSegmentDir, seg.DataDir, -1)
+		contentList = append(contentList, seg.Content)
+		segDirMap[seg.Content] = dumpPath
+		segHostMap[seg.Content] = seg.Hostname
 	}
-	return segConfigMaps
+}
+
+func GetContentList() []int {
+	return contentList
+}
+
+func GetHostForContent(content int) string {
+	return segHostMap[content]
+}
+
+func GetDirForContent(content int) string {
+	return segDirMap[content]
+}
+
+/*
+ * Returns a segment directory with the BaseDumpDir intact (for use with <SEG_DUMP_DIR>
+ * in COPY ... ON SEGMENT), instead of a directory corresponding to a particular segment.
+ */
+func GetGenericSegDir() string {
+	return fmt.Sprintf("%s/backups/%s/%s", BaseDumpDir, DumpTimestamp[0:8], DumpTimestamp)
 }

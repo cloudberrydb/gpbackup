@@ -56,7 +56,8 @@ func DoSetup() {
 	}
 	logger.Verbose("Creating dump directories")
 	segConfig := utils.GetSegmentConfiguration(connection)
-	utils.CreateDumpDirs(segConfig)
+	utils.SetupSegmentConfiguration(segConfig)
+	utils.CreateDumpDirs()
 }
 
 func DoBackup() {
@@ -64,8 +65,7 @@ func DoBackup() {
 	logger.Info("Dump Database = %s", utils.QuoteIdent(connection.DBName))
 	logger.Info("Database Size = %s", connection.GetDBSize())
 
-	segDirMap := utils.GetSegmentConfiguration(connection).DirMap
-	masterDumpDir := segDirMap[-1]
+	masterDumpDir := utils.GetDirForContent(-1)
 
 	predataFilename := fmt.Sprintf("%s/predata.sql", masterDumpDir)
 	postdataFilename := fmt.Sprintf("%s/postdata.sql", masterDumpDir)
@@ -78,7 +78,7 @@ func DoBackup() {
 	logger.Info("Pre-data metadata dump complete")
 
 	logger.Info("Writing data to file")
-	backupData(tables, segDirMap)
+	backupData(tables)
 	logger.Info("Data dump complete")
 
 	logger.Info("Writing post-data metadata to %s", postdataFilename)
@@ -127,14 +127,14 @@ func backupPredata(filename string, tables []utils.Relation) {
 	PrintCreateSequenceStatements(predataFile, sequenceDefs)
 }
 
-func backupData(tables []utils.Relation, segDirMap map[int]string) {
+func backupData(tables []utils.Relation) {
 	for _, table := range tables {
 		logger.Verbose("Writing data for table %s to file", table.ToString())
-		dumpFile := CreateTableDumpPath(table)
+		dumpFile := GetTableDumpFilePath(table)
 		CopyTableOut(connection, table, dumpFile)
 	}
-	logger.Verbose("Writing table map file to %s/gpbackup_%s_table_map", segDirMap[-1], utils.DumpTimestamp)
-	WriteTableMapFile(tables, segDirMap[-1])
+	logger.Verbose("Writing table map file to %s", GetTableMapFilePath())
+	WriteTableMapFile(tables)
 }
 
 func backupPostdata(filename string, tables []utils.Relation) {
