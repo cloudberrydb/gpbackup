@@ -31,7 +31,11 @@ type TableDefinition struct {
 	PartDef         string
 	PartTemplateDef string
 	StorageOpts     string
-	Owner           string
+}
+
+type SequenceDefinition struct {
+	utils.Relation
+	QuerySequence
 }
 
 /*
@@ -47,10 +51,9 @@ func ConstructDefinitionsForTable(connection *utils.DBConn, table utils.Relation
 	partitionDef := GetPartitionDefinition(connection, table.RelationOid)
 	partTemplateDef := GetPartitionTemplateDefinition(connection, table.RelationOid)
 	storageOptions := GetStorageOptions(connection, table.RelationOid)
-	owner := GetObjectOwner(connection, table.RelationOid)
 
 	columnDefs := ConsolidateColumnInfo(tableAttributes, tableDefaults)
-	tableDef := TableDefinition{distributionPolicy, partitionDef, partTemplateDef, storageOptions, owner}
+	tableDef := TableDefinition{distributionPolicy, partitionDef, partTemplateDef, storageOptions}
 	return columnDefs, tableDef
 }
 
@@ -102,8 +105,8 @@ func ConsolidateColumnInfo(atts []QueryTableAtts, defs []QueryTableDefault) []Co
 			HasDefault: atts[i].AttHasDefault,
 			IsDropped:  atts[i].AttIsDropped,
 			TypName:    atts[i].AttTypName,
-			Encoding:   atts[i].AttEncoding.String,
-			Comment:    atts[i].AttComment.String,
+			Encoding:   atts[i].AttEncoding,
+			Comment:    atts[i].AttComment,
 			DefaultVal: defaultVal,
 		}
 		colDefs = append(colDefs, colDef)
@@ -122,8 +125,8 @@ func ProcessConstraints(table utils.Relation, constraints []QueryConstraint) ([]
 	fkCons := make([]string, 0)
 	for _, constraint := range constraints {
 		conStr := fmt.Sprintf(alterStr, constraint.ConName, constraint.ConDef)
-		if constraint.ConComment.Valid {
-			conStr += fmt.Sprintf(commentStr, constraint.ConName, constraint.ConComment.String)
+		if constraint.ConComment != "" {
+			conStr += fmt.Sprintf(commentStr, constraint.ConName, constraint.ConComment)
 		}
 		if constraint.ConType == "f" {
 			fkCons = append(fkCons, conStr)
@@ -177,18 +180,17 @@ func PrintCreateTableStatement(predataFile io.Writer, table utils.Relation, colu
 	if tableDef.PartTemplateDef != "" {
 		fmt.Fprintf(predataFile, "%s;\n", strings.TrimSpace(tableDef.PartTemplateDef))
 	}
-	if table.Comment.Valid {
-		fmt.Fprintf(predataFile, "\n\nCOMMENT ON TABLE %s IS '%s';\n", table.ToString(), table.Comment.String)
+	if table.Comment != ""{
+		fmt.Fprintf(predataFile, "\n\nCOMMENT ON TABLE %s IS '%s';\n", table.ToString(), table.Comment)
+	}
+	if table.Owner != "" {
+		fmt.Fprintf(predataFile, "\n\nALTER TABLE %s OWNER TO %s;\n", table.ToString(), utils.QuoteIdent(table.Owner))
 	}
 
 	for _, att := range columnDefs {
 		if att.Comment != "" {
 			fmt.Fprintf(predataFile, "\n\nCOMMENT ON COLUMN %s.%s IS '%s';\n", table.ToString(), att.Name, att.Comment)
 		}
-	}
-
-	if tableDef.Owner != "" {
-		fmt.Fprintf(predataFile, "\n\nALTER TABLE %s OWNER TO %s;\n", table.ToString(), utils.QuoteIdent(tableDef.Owner))
 	}
 }
 
@@ -209,21 +211,21 @@ func PrintCreateSchemaStatements(predataFile io.Writer, schemas []utils.Schema) 
 		if schema.SchemaName != "public" {
 			fmt.Fprintf(predataFile, "\nCREATE SCHEMA %s;", schema.ToString())
 		}
-		if schema.Comment.Valid {
-			fmt.Fprintf(predataFile, "\nCOMMENT ON SCHEMA %s IS '%s';", schema.ToString(), schema.Comment.String)
+		if schema.Owner != "" {
+			fmt.Fprintf(predataFile, "\nALTER SCHEMA %s OWNER TO %s;", schema.ToString(), utils.QuoteIdent(schema.Owner))
+		}
+		if schema.Comment != "" {
+			fmt.Fprintf(predataFile, "\nCOMMENT ON SCHEMA %s IS '%s';", schema.ToString(), schema.Comment)
 		}
 	}
 }
 
-func GetAllSequenceDefinitions(connection *utils.DBConn) []QuerySequence {
+func GetAllSequenceDefinitions(connection *utils.DBConn) []SequenceDefinition {
 	allSequences := GetAllSequences(connection)
-	sequenceDefs := make([]QuerySequence, 0)
-	for _, sequence := range allSequences {
-		sequenceDef := GetSequence(connection, sequence.ToString())
-		if sequence.Comment.Valid {
-			sequenceDef.Comment = sequence.Comment.String
-		}
-		sequenceDef.Name = sequence.ToString()
+	sequenceDefs := make([]SequenceDefinition, 0)
+	for _, seq := range allSequences {
+		sequence := GetSequence(connection, seq.ToString())
+		sequenceDef := SequenceDefinition{seq, sequence}
 		sequenceDefs = append(sequenceDefs, sequenceDef)
 	}
 	return sequenceDefs
@@ -233,11 +235,11 @@ func GetAllSequenceDefinitions(connection *utils.DBConn) []QuerySequence {
  * This function is largely derived from the dumpSequence() function in pg_dump.c.  The values of
  * minVal and maxVal come from SEQ_MINVALUE and SEQ_MAXVALUE, defined in include/commands/sequence.h.
  */
-func PrintCreateSequenceStatements(predataFile io.Writer, sequences []QuerySequence) {
+func PrintCreateSequenceStatements(predataFile io.Writer, sequences []SequenceDefinition) {
 	maxVal := int64(9223372036854775807)
 	minVal := int64(-9223372036854775807)
 	for _, sequence := range sequences {
-		fmt.Fprintln(predataFile, "\n\nCREATE SEQUENCE", sequence.Name)
+		fmt.Fprintln(predataFile, "\n\nCREATE SEQUENCE", sequence.ToString())
 		if !sequence.IsCalled {
 			fmt.Fprintln(predataFile, "\tSTART WITH", sequence.LastVal)
 		}
@@ -259,10 +261,14 @@ func PrintCreateSequenceStatements(predataFile io.Writer, sequences []QuerySeque
 		}
 		fmt.Fprintf(predataFile, "\tCACHE %d%s;", sequence.CacheVal, cycleStr)
 
-		fmt.Fprintf(predataFile, "\n\nSELECT pg_catalog.setval('%s', %d, %v);\n", sequence.Name, sequence.LastVal, sequence.IsCalled)
+		fmt.Fprintf(predataFile, "\n\nSELECT pg_catalog.setval('%s', %d, %v);\n", sequence.ToString(), sequence.LastVal, sequence.IsCalled)
+
+		if sequence.Owner != "" {
+			fmt.Fprintf(predataFile, "\n\nALTER TABLE %s OWNER TO %s;\n", sequence.ToString(), utils.QuoteIdent(sequence.Owner))
+		}
 
 		if sequence.Comment != "" {
-			fmt.Fprintf(predataFile, "\n\nCOMMENT ON SEQUENCE %s IS '%s';\n", sequence.Name, sequence.Comment)
+			fmt.Fprintf(predataFile, "\n\nCOMMENT ON SEQUENCE %s IS '%s';\n", sequence.ToString(), sequence.Comment)
 		}
 	}
 }
@@ -273,7 +279,7 @@ SET check_function_bodies = false;
 SET client_min_messages = warning;
 SET client_encoding = '%s';
 SET standard_conforming_strings = %s;
-SET default_with_oids = %s
+SET default_with_oids = %s;
 `, gucs.ClientEncoding, gucs.StdConformingStrings, gucs.DefaultWithOids)
 }
 

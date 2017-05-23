@@ -7,7 +7,6 @@ package backup
  */
 
 import (
-	"database/sql"
 	"fmt"
 	"gpbackup/utils"
 	"strings"
@@ -41,7 +40,8 @@ func GetAllUserSchemas(connection *utils.DBConn) []utils.Schema {
 SELECT
 	oid AS schemaoid,
 	nspname AS schemaname,
-	obj_description(oid, 'pg_namespace') AS comment
+	coalesce(obj_description(oid, 'pg_namespace'), '') AS comment,
+	pg_get_userbyid(nspowner) AS owner
 FROM pg_namespace
 WHERE nspname NOT LIKE 'pg_temp_%'
 AND nspname NOT LIKE 'pg_toast%'
@@ -62,7 +62,8 @@ SELECT
 	c.oid AS relationoid,
 	n.nspname AS schemaname,
 	c.relname AS relationname,
-	obj_description(c.oid, 'pg_class') AS comment
+	coalesce(obj_description(c.oid, 'pg_class'), '') AS comment,
+	pg_get_userbyid(c.relowner) AS owner
 FROM pg_class c
 LEFT JOIN pg_partition_rule pr
 	ON c.oid = pr.parchildrelid
@@ -96,8 +97,8 @@ type QueryTableAtts struct {
 	AttHasDefault bool
 	AttIsDropped  bool
 	AttTypName    string
-	AttEncoding   sql.NullString
-	AttComment    sql.NullString
+	AttEncoding   string
+	AttComment    string
 }
 
 func GetTableAttributes(connection *utils.DBConn, oid uint32) []QueryTableAtts {
@@ -109,8 +110,8 @@ SELECT a.attnum,
 	a.atthasdef AS atthasdefault,
 	a.attisdropped,
 	pg_catalog.format_type(t.oid,a.atttypmod) AS atttypname,
-	pg_catalog.array_to_string(e.attoptions, ',') AS attencoding,
-	pg_catalog.col_description(a.attrelid, a.attnum) AS attcomment
+	coalesce(pg_catalog.array_to_string(e.attoptions, ','), '') AS attencoding,
+	coalesce(pg_catalog.col_description(a.attrelid, a.attnum), '') AS attcomment
 FROM pg_catalog.pg_attribute a
 	LEFT JOIN pg_catalog.pg_type t ON a.atttypid = t.oid
 	LEFT OUTER JOIN pg_catalog.pg_attribute_encoding e ON e.attrelid = a.attrelid
@@ -151,7 +152,7 @@ type QueryConstraint struct {
 	ConName    string
 	ConType    string
 	ConDef     string
-	ConComment sql.NullString
+	ConComment string
 }
 
 func GetConstraints(connection *utils.DBConn, oid uint32) []QueryConstraint {
@@ -161,7 +162,7 @@ SELECT
 	conname,
 	contype,
 	pg_catalog.pg_get_constraintdef(oid, TRUE) AS condef,
-	obj_description(oid, 'pg_constraint') AS concomment
+	coalesce(obj_description(oid, 'pg_constraint'), '') AS concomment
 FROM pg_catalog.pg_constraint
 WHERE conrelid = %d;
 `, oid)
@@ -178,7 +179,8 @@ func GetAllSequences(connection *utils.DBConn) []utils.Relation {
 	c.oid AS relationoid,
 	n.nspname AS schemaname,
 	c.relname AS relationname,
-	obj_description(c.oid, 'pg_class') AS comment
+	coalesce(obj_description(c.oid, 'pg_class'), '') AS comment,
+	pg_get_userbyid(c.relowner) AS owner
 FROM pg_class c
 LEFT JOIN pg_namespace n
 	ON c.relnamespace = n.oid
@@ -200,7 +202,6 @@ type QuerySequence struct {
 	LogCnt    int64  `db:"log_cnt"`
 	IsCycled  bool   `db:"is_cycled"`
 	IsCalled  bool   `db:"is_called"`
-	Comment   string
 }
 
 func GetSequence(connection *utils.DBConn, seqName string) QuerySequence {
@@ -232,7 +233,7 @@ func GetSessionGUCs(connection *utils.DBConn) QuerySessionGUCs {
 type QueryIndexMetadata struct {
 	Name    string
 	Def     string
-	Comment sql.NullString
+	Comment string
 }
 
 func GetIndexMetadata(connection *utils.DBConn, oid uint32) []QueryIndexMetadata {
@@ -240,7 +241,7 @@ func GetIndexMetadata(connection *utils.DBConn, oid uint32) []QueryIndexMetadata
 SELECT
 	t.relname AS name,
 	pg_get_indexdef(i.indexrelid) AS def,
-	obj_description(t.oid, 'pg_class') AS comment
+	coalesce(obj_description(t.oid, 'pg_class'), '') AS comment
 FROM pg_index i
 JOIN pg_class t
 	ON (t.oid = i.indexrelid)
@@ -318,11 +319,6 @@ func GetDatabaseComment(connection *utils.DBConn) string {
 	query := fmt.Sprintf(`SELECT description AS string FROM pg_shdescription
 JOIN pg_database ON objoid = pg_database.oid
 WHERE datname = '%s';`, connection.DBName)
-	return SelectString(connection, query)
-}
-
-func GetObjectOwner(connection *utils.DBConn, oid uint32) string {
-	query := fmt.Sprintf("SELECT pg_get_userbyid(relowner) AS string FROM pg_class WHERE oid = '%d';", oid)
 	return SelectString(connection, query)
 }
 

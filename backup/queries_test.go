@@ -73,10 +73,10 @@ var _ = Describe("backup/queries tests", func() {
 	})
 	Describe("GetTableAttributes", func() {
 		header := []string{"attname", "attnotnull", "atthasdefault", "attisdropped", "atttypname", "attencoding", "attcomment"}
-		rowOne := []driver.Value{"i", "f", "f", "f", "int", nil, nil}
-		rowTwo := []driver.Value{"j", "f", "f", "f", "character varying(20)", nil, nil}
-		rowEncoded := []driver.Value{"j", "f", "f", "f", "character varying(20)", "compresstype=zlib, blocksize=65536", nil}
-		rowNotNull := []driver.Value{"j", "t", "f", "f", "character varying(20)", nil, nil}
+		rowOne := []driver.Value{"i", "f", "f", "f", "int", "", ""}
+		rowTwo := []driver.Value{"j", "f", "f", "f", "character varying(20)", "", ""}
+		rowEncoded := []driver.Value{"j", "f", "f", "f", "character varying(20)", "compresstype=zlib, blocksize=65536", ""}
+		rowNotNull := []driver.Value{"j", "t", "f", "f", "character varying(20)", "", ""}
 
 		It("returns a slice for a table with one column", func() {
 			fakeResult := sqlmock.NewRows(header).AddRow(rowOne...)
@@ -103,10 +103,9 @@ var _ = Describe("backup/queries tests", func() {
 			results := backup.GetTableAttributes(connection, 0)
 			Expect(len(results)).To(Equal(2))
 			Expect(results[0].AttName).To(Equal("i"))
-			Expect(results[0].AttEncoding.Valid).To(Equal(false))
+			Expect(results[0].AttEncoding).To(Equal(""))
 			Expect(results[1].AttName).To(Equal("j"))
-			Expect(results[1].AttEncoding.Valid).To(Equal(true))
-			Expect(results[1].AttEncoding.String).To(Equal("compresstype=zlib, blocksize=65536"))
+			Expect(results[1].AttEncoding).To(Equal("compresstype=zlib, blocksize=65536"))
 		})
 		It("returns a slice for a table with one NOT NULL column", func() {
 			fakeResult := sqlmock.NewRows(header).AddRow(rowOne...).AddRow(rowNotNull...)
@@ -114,7 +113,7 @@ var _ = Describe("backup/queries tests", func() {
 			results := backup.GetTableAttributes(connection, 0)
 			Expect(len(results)).To(Equal(2))
 			Expect(results[0].AttName).To(Equal("i"))
-			Expect(results[0].AttEncoding.Valid).To(Equal(false))
+			Expect(results[0].AttEncoding).To(Equal(""))
 			Expect(results[1].AttName).To(Equal("j"))
 			Expect(results[1].AttNotNull).To(Equal(true))
 		})
@@ -271,12 +270,12 @@ var _ = Describe("backup/queries tests", func() {
 		})
 	})
 	Describe("GetAllUserTables", func() {
-		header := []string{"schemaoid", "schemaname", "relationoid", "relationname", "comment"}
-		tableOne := []driver.Value{0, "public", 1, "table_one", nil}
-		tableTwo := []driver.Value{0, "public", 2, "table_two", "This is a comment."}
-		tableThree := []driver.Value{1, "testschema", 3, "table_three", nil}
+		header := []string{"schemaoid", "schemaname", "relationoid", "relationname", "comment", "owner"}
+		tableOne := []driver.Value{0, "public", 1, "table_one", "", ""}
+		tableTwo := []driver.Value{0, "public", 2, "table_two", "This is a comment.", ""}
+		tableThree := []driver.Value{1, "testschema", 3, "table_three", "", "testrole"}
 
-		It("returns a slice of tables with schemas and comments", func() {
+		It("returns a slice of tables with schemas, comments, and owners", func() {
 			fakeResult := sqlmock.NewRows(header).AddRow(tableOne...).AddRow(tableTwo...).AddRow(tableThree...)
 			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
 			results := backup.GetAllUserTables(connection)
@@ -285,17 +284,20 @@ var _ = Describe("backup/queries tests", func() {
 			Expect(results[0].SchemaName).To(Equal("public"))
 			Expect(results[0].RelationOid).To(Equal(uint32(1)))
 			Expect(results[0].RelationName).To(Equal("table_one"))
-			Expect(results[0].Comment.Valid).To(BeFalse())
+			Expect(results[0].Comment).To(Equal(""))
+			Expect(results[0].Owner).To(Equal(""))
 			Expect(results[1].SchemaOid).To(Equal(uint32(0)))
 			Expect(results[1].SchemaName).To(Equal("public"))
 			Expect(results[1].RelationOid).To(Equal(uint32(2)))
 			Expect(results[1].RelationName).To(Equal("table_two"))
-			Expect(results[1].Comment.String).To(Equal("This is a comment."))
+			Expect(results[1].Comment).To(Equal("This is a comment."))
+			Expect(results[1].Owner).To(Equal(""))
 			Expect(results[2].SchemaOid).To(Equal(uint32(1)))
 			Expect(results[2].SchemaName).To(Equal("testschema"))
 			Expect(results[2].RelationOid).To(Equal(uint32(3)))
 			Expect(results[2].RelationName).To(Equal("table_three"))
-			Expect(results[2].Comment.Valid).To(BeFalse())
+			Expect(results[2].Comment).To(Equal(""))
+			Expect(results[2].Owner).To(Equal("testrole"))
 		})
 	})
 	Describe("GetDistributionPolicy", func() {
@@ -324,8 +326,8 @@ var _ = Describe("backup/queries tests", func() {
 	})
 	Describe("GetAllSequences", func() {
 		header := []string{"schemaoid", "schemaname", "relationoid", "relationname", "comment"}
-		withoutCommentOne := []driver.Value{0, "public", 1, "seq_one", nil}
-		withoutCommentTwo := []driver.Value{0, "public", 2, "seq_two", nil}
+		withoutCommentOne := []driver.Value{0, "public", 1, "seq_one", ""}
+		withoutCommentTwo := []driver.Value{0, "public", 2, "seq_two", ""}
 		withCommentOne := []driver.Value{0, "public", 1, "seq_one", "This is a sequence comment."}
 		withCommentTwo := []driver.Value{0, "public", 2, "seq_two", "This is another sequence comment."}
 
@@ -338,12 +340,12 @@ var _ = Describe("backup/queries tests", func() {
 			Expect(results[0].SchemaName).To(Equal("public"))
 			Expect(results[0].RelationOid).To(Equal(uint32(1)))
 			Expect(results[0].RelationName).To(Equal("seq_one"))
-			Expect(results[0].Comment.Valid).To(BeFalse())
+			Expect(results[0].Comment).To(Equal(""))
 			Expect(results[1].SchemaOid).To(Equal(uint32(0)))
 			Expect(results[1].SchemaName).To(Equal("public"))
 			Expect(results[1].RelationOid).To(Equal(uint32(2)))
 			Expect(results[1].RelationName).To(Equal("seq_two"))
-			Expect(results[1].Comment.Valid).To(BeFalse())
+			Expect(results[1].Comment).To(Equal(""))
 		})
 		It("returns a slice of sequences with comments", func() {
 			fakeResult := sqlmock.NewRows(header).AddRow(withCommentOne...).AddRow(withCommentTwo...)
@@ -351,17 +353,15 @@ var _ = Describe("backup/queries tests", func() {
 			results := backup.GetAllSequences(connection)
 			Expect(len(results)).To(Equal(2))
 			Expect(results[0].RelationName).To(Equal("seq_one"))
-			Expect(results[0].Comment.Valid).To(BeTrue())
-			Expect(results[0].Comment.String).To(Equal("This is a sequence comment."))
+			Expect(results[0].Comment).To(Equal("This is a sequence comment."))
 			Expect(results[1].RelationName).To(Equal("seq_two"))
-			Expect(results[1].Comment.Valid).To(BeTrue())
-			Expect(results[1].Comment.String).To(Equal("This is another sequence comment."))
+			Expect(results[1].Comment).To(Equal("This is another sequence comment."))
 		})
 	})
 	Describe("GetAllSequenceDefinitions", func() {
-		headerSeq := []string{"schemaoid", "schemaname", "relationoid", "relationname", "comment"}
-		seqOne := []driver.Value{0, "public", 1, "seq_one", nil}
-		seqTwo := []driver.Value{0, "public", 2, "seq_two", nil}
+		headerSeq := []string{"schemaoid", "schemaname", "relationoid", "relationname", "comment", "owner"}
+		seqOne := []driver.Value{0, "public", 1, "seq_one", "This is a comment.", ""}
+		seqTwo := []driver.Value{0, "public", 2, "seq_two", "", "testrole"}
 		headerSeqDef := []string{"sequence_name", "last_value", "increment_by", "max_value", "min_value", "cache_value", "log_cnt", "is_cycled", "is_called"}
 		seqDefOne := []driver.Value{"public.seq_one", 3, 1, 1000, 1, 2, 41, "f", "f"}
 		seqDefTwo := []driver.Value{"public.seq_two", 7, 1, 9223372036854775807, 1, 5, 42, "f", "f"}
@@ -378,15 +378,19 @@ var _ = Describe("backup/queries tests", func() {
 			Expect(results[0].Name).To(Equal("public.seq_one"))
 			Expect(results[0].LastVal).To(Equal(int64(3)))
 			Expect(results[0].Increment).To(Equal(int64(1)))
+			Expect(results[0].Comment).To(Equal("This is a comment."))
+			Expect(results[0].Owner).To(Equal(""))
 			Expect(results[1].Name).To(Equal("public.seq_two"))
 			Expect(results[1].LastVal).To(Equal(int64(7)))
 			Expect(results[1].Increment).To(Equal(int64(1)))
+			Expect(results[1].Comment).To(Equal(""))
+			Expect(results[1].Owner).To(Equal("testrole"))
 		})
 	})
 	Describe("GetAllUserSchemas", func() {
-		headerSchema := []string{"schemaoid", "schemaname", "comment"}
-		schemaOne := []driver.Value{1, "schema_one", nil}
-		schemaTwo := []driver.Value{2, "schema_two", "some_comment"}
+		headerSchema := []string{"schemaoid", "schemaname", "comment", "owner"}
+		schemaOne := []driver.Value{1, "schema_one", "", "testrole"}
+		schemaTwo := []driver.Value{2, "schema_two", "some_comment", ""}
 
 		It("returns a slice of definitions for all schemas", func() {
 			fakeSchema := sqlmock.NewRows(headerSchema).AddRow(schemaOne...).AddRow(schemaTwo...)
@@ -395,11 +399,12 @@ var _ = Describe("backup/queries tests", func() {
 			Expect(len(results)).To(Equal(2))
 			Expect(results[0].SchemaOid).To(Equal(uint32(1)))
 			Expect(results[0].SchemaName).To(Equal("schema_one"))
-			Expect(results[0].Comment.Valid).To(Equal(false))
+			Expect(results[0].Comment).To(Equal(""))
+			Expect(results[0].Owner).To(Equal("testrole"))
 			Expect(results[1].SchemaOid).To(Equal(uint32(2)))
 			Expect(results[1].SchemaName).To(Equal("schema_two"))
-			Expect(results[1].Comment.Valid).To(Equal(true))
-			Expect(results[1].Comment.String).To(Equal("some_comment"))
+			Expect(results[1].Comment).To(Equal("some_comment"))
+			Expect(results[1].Owner).To(Equal(""))
 		})
 	})
 	Describe("GetSessionGUCs", func() {
@@ -425,8 +430,8 @@ var _ = Describe("backup/queries tests", func() {
 		})
 	})
 	Describe("GetSequence", func() {
-		header := []string{"sequence_name", "last_value", "increment_by", "max_value", "min_value", "cache_value", "log_cnt", "is_cycled", "is_called", "comment"}
-		sequenceOne := []driver.Value{"seq_name", "42", 1, 1000, 1, 41, 2, false, false, ""}
+		header := []string{"sequence_name", "last_value", "increment_by", "max_value", "min_value", "cache_value", "log_cnt", "is_cycled", "is_called"}
+		sequenceOne := []driver.Value{"seq_name", "42", 1, 1000, 1, 41, 2, false, false}
 
 		It("returns a slice of tables with schemas and comments", func() {
 			fakeResult := sqlmock.NewRows(header).AddRow(sequenceOne...)
@@ -441,7 +446,6 @@ var _ = Describe("backup/queries tests", func() {
 			Expect(result.LogCnt).To(Equal(int64(2)))
 			Expect(result.IsCycled).To(BeFalse())
 			Expect(result.IsCalled).To(BeFalse())
-			Expect(result.Comment).To(Equal(""))
 		})
 	})
 })

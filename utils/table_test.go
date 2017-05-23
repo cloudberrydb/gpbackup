@@ -1,7 +1,6 @@
 package utils_test
 
 import (
-	"database/sql"
 	"fmt"
 	"gpbackup/utils"
 
@@ -67,12 +66,12 @@ var _ = Describe("utils/table tests", func() {
 	})
 	Describe("Schema.ToString", func() {
 		It("remains unquoted if it contains no special characters", func() {
-			testSchema := utils.Schema{0, `schemaname`, sql.NullString{"", false}}
+			testSchema := utils.BasicSchema(`schemaname`)
 			expected := `schemaname`
 			Expect(testSchema.ToString()).To(Equal(expected))
 		})
 		It("is quoted if it contains special characters", func() {
-			testSchema := utils.Schema{0, `schema,name`, sql.NullString{"", false}}
+			testSchema := utils.BasicSchema(`schema,name`)
 			expected := `"schema,name"`
 			Expect(testSchema.ToString()).To(Equal(expected))
 		})
@@ -93,22 +92,22 @@ var _ = Describe("utils/table tests", func() {
 	})
 	Describe("Relation.ToString", func() {
 		It("remains unquoted if neither the schema nor the table name contains special characters", func() {
-			testTable := utils.Relation{0, 0, `schemaname`, `tablename`, sql.NullString{"", false}}
+			testTable := utils.BasicRelation(`schemaname`, `tablename`)
 			expected := `schemaname.tablename`
 			Expect(testTable.ToString()).To(Equal(expected))
 		})
 		It("is quoted if the schema name contains special characters", func() {
-			testTable := utils.Relation{0, 0, `schema,name`, `tablename`, sql.NullString{"", false}}
+			testTable := utils.BasicRelation(`schema,name`, `tablename`)
 			expected := `"schema,name".tablename`
 			Expect(testTable.ToString()).To(Equal(expected))
 		})
 		It("is quoted if the table name contains special characters", func() {
-			testTable := utils.Relation{0, 0, `schemaname`, `table,name`, sql.NullString{"", false}}
+			testTable := utils.BasicRelation(`schemaname`, `table,name`)
 			expected := `schemaname."table,name"`
 			Expect(testTable.ToString()).To(Equal(expected))
 		})
 		It("is quoted if both the schema and the table name contain special characters", func() {
-			testTable := utils.Relation{0, 0, `schema,name`, `table,name`, sql.NullString{"", false}}
+			testTable := utils.BasicRelation(`schema,name`, `table,name`)
 			expected := `"schema,name"."table,name"`
 			Expect(testTable.ToString()).To(Equal(expected))
 		})
@@ -148,12 +147,12 @@ var _ = Describe("utils/table tests", func() {
 		})
 	})
 	Describe("GetUniqueSchemas", func() {
-		alphabeticalAFoo := utils.Relation{1, 0, "otherschema", "foo", sql.NullString{"", false}}
-		alphabeticalABar := utils.Relation{1, 0, "otherschema", "bar", sql.NullString{"", false}}
-		schemaOther := utils.Schema{2, "otherschema", sql.NullString{"", false}}
-		alphabeticalBFoo := utils.Relation{2, 0, "public", "foo", sql.NullString{"", false}}
-		alphabeticalBBar := utils.Relation{2, 0, "public", "bar", sql.NullString{"", false}}
-		schemaPublic := utils.Schema{1, "public", sql.NullString{"Standard public schema", true}}
+		alphabeticalAFoo := utils.Relation{1, 0, "otherschema", "foo", "", ""}
+		alphabeticalABar := utils.Relation{1, 0, "otherschema", "bar", "", ""}
+		schemaOther := utils.Schema{2, "otherschema", "", ""}
+		alphabeticalBFoo := utils.Relation{2, 0, "public", "foo", "", ""}
+		alphabeticalBBar := utils.Relation{2, 0, "public", "bar", "", ""}
+		schemaPublic := utils.Schema{1, "public", "Standard public schema", ""}
 		schemas := []utils.Schema{schemaOther, schemaPublic}
 
 		It("has multiple tables in a single schema", func() {

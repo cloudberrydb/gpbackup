@@ -1,7 +1,6 @@
 package backup_test
 
 import (
-	"database/sql"
 	"gpbackup/backup"
 	"gpbackup/testutils"
 	"gpbackup/utils"
@@ -14,7 +13,7 @@ import (
 var _ = Describe("backup/predata tests", func() {
 	Describe("PrintCreateTableStatement", func() {
 		buffer := gbytes.NewBuffer()
-		testTable := utils.Relation{0, 0, "public", "tablename", sql.NullString{"", false}}
+		testTable := utils.BasicRelation("public", "tablename")
 		rowOne := backup.ColumnDefinition{1, "i", false, false, false, "int", "", "", ""}
 		rowTwo := backup.ColumnDefinition{2, "j", false, false, false, "character varying(20)", "", "", ""}
 		rowDropped := backup.ColumnDefinition{2, "j", false, false, true, "character varying(20)", "", "", ""}
@@ -58,13 +57,10 @@ SET SUBPARTITION TEMPLATE
 		heapFillOpts := "fillfactor=42"
 		coManyOpts := "appendonly=true, orientation=column, fillfactor=42, compresstype=zlib, blocksize=32768, compresslevel=1"
 
-		noOwner := ""
-		hasOwner := "testrole"
-
 		Context("No special table attributes", func() {
 			It("prints a CREATE TABLE block with one line", func() {
 				col := []backup.ColumnDefinition{rowOne}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, noOwner}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int
@@ -72,7 +68,7 @@ SET SUBPARTITION TEMPLATE
 			})
 			It("prints a CREATE TABLE block with one line per attribute", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, noOwner}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int,
@@ -81,35 +77,24 @@ SET SUBPARTITION TEMPLATE
 			})
 			It("prints a CREATE TABLE block with no attributes", func() {
 				col := []backup.ColumnDefinition{}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, noOwner}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 ) DISTRIBUTED RANDOMLY;`)
 			})
 			It("prints a CREATE TABLE block without a dropped attribute", func() {
 				col := []backup.ColumnDefinition{rowOne, rowDropped}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, noOwner}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int
 ) DISTRIBUTED RANDOMLY;`)
 			})
-			It("prints an ALTER TABLE ... OWNER TO statement to set the table owner", func() {
-				col := []backup.ColumnDefinition{rowOne, rowDropped}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, hasOwner}
-				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
-				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int
-) DISTRIBUTED RANDOMLY;
-
-
-ALTER TABLE public.tablename OWNER TO testrole;`)
-			})
 		})
 		Context("One special table attribute", func() {
 			It("prints a CREATE TABLE block where one line has the given ENCODING and the other has the default ENCODING", func() {
 				col := []backup.ColumnDefinition{rowOneEncoding, rowTwoEncoding}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, noOwner}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int ENCODING (compresstype=none,blocksize=32768,compresslevel=0),
@@ -118,7 +103,7 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 			})
 			It("prints a CREATE TABLE block where one line contains NOT NULL", func() {
 				col := []backup.ColumnDefinition{rowOne, rowNotNull}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, noOwner}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int,
@@ -127,7 +112,7 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 			})
 			It("prints a CREATE TABLE block where one line contains DEFAULT", func() {
 				col := []backup.ColumnDefinition{rowOneDef, rowTwo}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, noOwner}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int DEFAULT 42,
@@ -136,7 +121,7 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 			})
 			It("prints a CREATE TABLE block where both lines contain DEFAULT", func() {
 				col := []backup.ColumnDefinition{rowOneDef, rowTwoDef}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, noOwner}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int DEFAULT 42,
@@ -147,7 +132,7 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 		Context("Multiple special table attributes on one column", func() {
 			It("prints a CREATE TABLE block where one line contains both NOT NULL and ENCODING", func() {
 				col := []backup.ColumnDefinition{rowOneEncoding, rowEncodingNotNull}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, noOwner}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int ENCODING (compresstype=none,blocksize=32768,compresslevel=0),
@@ -156,7 +141,7 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 			})
 			It("prints a CREATE TABLE block where one line contains both DEFAULT and NOT NULL", func() {
 				col := []backup.ColumnDefinition{rowOne, rowNotNullDef}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, noOwner}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int,
@@ -165,7 +150,7 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 			})
 			It("prints a CREATE TABLE block where one line contains both DEFAULT and ENCODING", func() {
 				col := []backup.ColumnDefinition{rowOneEncoding, rowTwoEncodingDef}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, noOwner}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int ENCODING (compresstype=none,blocksize=32768,compresslevel=0),
@@ -174,7 +159,7 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 			})
 			It("prints a CREATE TABLE block where one line contains all three of DEFAULT, NOT NULL, and ENCODING", func() {
 				col := []backup.ColumnDefinition{rowOneEncoding, rowEncodingNotNullDef}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, noOwner}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int ENCODING (compresstype=none,blocksize=32768,compresslevel=0),
@@ -185,7 +170,7 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 		Context("Table qualities (distribution keys and storage options)", func() {
 			It("has a single-column distribution key", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distSingle, partDefEmpty, partTemplateDefEmpty, heapOpts, noOwner}
+				tableDef := backup.TableDefinition{distSingle, partDefEmpty, partTemplateDefEmpty, heapOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int,
@@ -194,7 +179,7 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 			})
 			It("has a multiple-column composite distribution key", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distComposite, partDefEmpty, partTemplateDefEmpty, heapOpts, noOwner}
+				tableDef := backup.TableDefinition{distComposite, partDefEmpty, partTemplateDefEmpty, heapOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int,
@@ -203,7 +188,7 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 			})
 			It("is an append-optimized table", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, aoOpts, noOwner}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, aoOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int,
@@ -212,7 +197,7 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 			})
 			It("is an append-optimized table with a single-column distribution key", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distSingle, partDefEmpty, partTemplateDefEmpty, aoOpts, noOwner}
+				tableDef := backup.TableDefinition{distSingle, partDefEmpty, partTemplateDefEmpty, aoOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int,
@@ -221,7 +206,7 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 			})
 			It("is an append-optimized table with a two-column composite distribution key", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distComposite, partDefEmpty, partTemplateDefEmpty, aoOpts, noOwner}
+				tableDef := backup.TableDefinition{distComposite, partDefEmpty, partTemplateDefEmpty, aoOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int,
@@ -230,7 +215,7 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 			})
 			It("is an append-optimized column-oriented table", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, coOpts, noOwner}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, coOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int,
@@ -239,7 +224,7 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 			})
 			It("is an append-optimized column-oriented table with a single-column distribution key", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distSingle, partDefEmpty, partTemplateDefEmpty, coOpts, noOwner}
+				tableDef := backup.TableDefinition{distSingle, partDefEmpty, partTemplateDefEmpty, coOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int,
@@ -248,7 +233,7 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 			})
 			It("is an append-optimized column-oriented table with a two-column composite distribution key", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distComposite, partDefEmpty, partTemplateDefEmpty, coOpts, noOwner}
+				tableDef := backup.TableDefinition{distComposite, partDefEmpty, partTemplateDefEmpty, coOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int,
@@ -257,7 +242,7 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 			})
 			It("is a heap table with a fill factor", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapFillOpts, noOwner}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapFillOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int,
@@ -266,7 +251,7 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 			})
 			It("is a heap table with a fill factor and a single-column distribution key", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distSingle, partDefEmpty, partTemplateDefEmpty, heapFillOpts, noOwner}
+				tableDef := backup.TableDefinition{distSingle, partDefEmpty, partTemplateDefEmpty, heapFillOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int,
@@ -275,7 +260,7 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 			})
 			It("is a heap table with a fill factor and a multiple-column composite distribution key", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distComposite, partDefEmpty, partTemplateDefEmpty, heapFillOpts, noOwner}
+				tableDef := backup.TableDefinition{distComposite, partDefEmpty, partTemplateDefEmpty, heapFillOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int,
@@ -284,7 +269,7 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 			})
 			It("is an append-optimized column-oriented table with complex storage options", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, coManyOpts, noOwner}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, coManyOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int,
@@ -293,7 +278,7 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 			})
 			It("is an append-optimized column-oriented table with complex storage options and a single-column distribution key", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distSingle, partDefEmpty, partTemplateDefEmpty, coManyOpts, noOwner}
+				tableDef := backup.TableDefinition{distSingle, partDefEmpty, partTemplateDefEmpty, coManyOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int,
@@ -302,7 +287,7 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 			})
 			It("is an append-optimized column-oriented table with complex storage options and a two-column composite distribution key", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distComposite, partDefEmpty, partTemplateDefEmpty, coManyOpts, noOwner}
+				tableDef := backup.TableDefinition{distComposite, partDefEmpty, partTemplateDefEmpty, coManyOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int,
@@ -313,7 +298,7 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 		Context("Table partitioning", func() {
 			It("is a partition table with table attributes", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distRandom, partDef, partTemplateDefEmpty, heapOpts, noOwner}
+				tableDef := backup.TableDefinition{distRandom, partDef, partTemplateDefEmpty, heapOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int,
@@ -327,7 +312,7 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 			})
 			It("is a partition table with no table attributes", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distRandom, partDef, partTemplateDefEmpty, coOpts, noOwner}
+				tableDef := backup.TableDefinition{distRandom, partDef, partTemplateDefEmpty, coOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int,
@@ -341,7 +326,7 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 			})
 			It("is a partition table with subpartitions and table attributes", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distRandom, partDef, partTemplateDef, heapOpts, noOwner}
+				tableDef := backup.TableDefinition{distRandom, partDef, partTemplateDef, heapOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int,
@@ -364,7 +349,7 @@ SET SUBPARTITION TEMPLATE
 			})
 			It("is a partition table with subpartitions and no table attributes", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distRandom, partDef, partTemplateDef, coOpts, noOwner}
+				tableDef := backup.TableDefinition{distRandom, partDef, partTemplateDef, coOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int,
@@ -386,14 +371,15 @@ SET SUBPARTITION TEMPLATE
 `)
 			})
 		})
-		Context("Comments", func() {
-			tableWithComment := utils.Relation{0, 0, "public", "tablename", sql.NullString{"This is a table comment.", true}}
+		Context("Comments and owners", func() {
+			tableWithComment := utils.Relation{0, 0, "public", "tablename", "This is a table comment.", ""}
+			tableWithOwner := utils.Relation{0, 0, "public", "tablename", "", "testrole"}
 			rowCommentOne := backup.ColumnDefinition{1, "i", false, false, false, "int", "", "This is a column comment.", ""}
 			rowCommentTwo := backup.ColumnDefinition{2, "j", false, false, false, "int", "", "This is another column comment.", ""}
 
 			It("prints a CREATE TABLE block with a table comment", func() {
 				col := []backup.ColumnDefinition{rowOne}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, noOwner}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts}
 				backup.PrintCreateTableStatement(buffer, tableWithComment, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int
@@ -404,7 +390,7 @@ COMMENT ON TABLE public.tablename IS 'This is a table comment.';`)
 			})
 			It("prints a CREATE TABLE block with a single column comment", func() {
 				col := []backup.ColumnDefinition{rowCommentOne}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, noOwner}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int
@@ -415,7 +401,7 @@ COMMENT ON COLUMN public.tablename.i IS 'This is a column comment.';`)
 			})
 			It("prints a CREATE TABLE block with multiple column comments", func() {
 				col := []backup.ColumnDefinition{rowCommentOne, rowCommentTwo}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, noOwner}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts}
 				backup.PrintCreateTableStatement(buffer, testTable, col, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i int,
@@ -428,17 +414,28 @@ COMMENT ON COLUMN public.tablename.i IS 'This is a column comment.';
 
 COMMENT ON COLUMN public.tablename.j IS 'This is another column comment.';`)
 			})
+			It("prints an ALTER TABLE ... OWNER TO statement to set the table owner", func() {
+				col := []backup.ColumnDefinition{rowOne, rowDropped}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts}
+				backup.PrintCreateTableStatement(buffer, tableWithOwner, col, tableDef)
+				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
+	i int
+) DISTRIBUTED RANDOMLY;
+
+
+ALTER TABLE public.tablename OWNER TO testrole;`)
+			})
 		})
 	})
 	Describe("ProcessConstraints", func() {
-		testTable := utils.Relation{0, 0, "public", "tablename", sql.NullString{"", false}}
-		uniqueOne := backup.QueryConstraint{"tablename_i_key", "u", "UNIQUE (i)", sql.NullString{"", false}}
-		uniqueTwo := backup.QueryConstraint{"tablename_j_key", "u", "UNIQUE (j)", sql.NullString{"", false}}
-		primarySingle := backup.QueryConstraint{"tablename_pkey", "p", "PRIMARY KEY (i)", sql.NullString{"", false}}
-		primaryComposite := backup.QueryConstraint{"tablename_pkey", "p", "PRIMARY KEY (i, j)", sql.NullString{"", false}}
-		foreignOne := backup.QueryConstraint{"tablename_i_fkey", "f", "FOREIGN KEY (i) REFERENCES other_tablename(a)", sql.NullString{"", false}}
-		foreignTwo := backup.QueryConstraint{"tablename_j_fkey", "f", "FOREIGN KEY (j) REFERENCES other_tablename(b)", sql.NullString{"", false}}
-		commentOne := backup.QueryConstraint{"tablename_i_key", "u", "UNIQUE (i)", sql.NullString{"This is a constraint comment.", true}}
+		testTable := utils.BasicRelation("public", "tablename")
+		uniqueOne := backup.QueryConstraint{"tablename_i_key", "u", "UNIQUE (i)", ""}
+		uniqueTwo := backup.QueryConstraint{"tablename_j_key", "u", "UNIQUE (j)", ""}
+		primarySingle := backup.QueryConstraint{"tablename_pkey", "p", "PRIMARY KEY (i)", ""}
+		primaryComposite := backup.QueryConstraint{"tablename_pkey", "p", "PRIMARY KEY (i, j)", ""}
+		foreignOne := backup.QueryConstraint{"tablename_i_fkey", "f", "FOREIGN KEY (i) REFERENCES other_tablename(a)", ""}
+		foreignTwo := backup.QueryConstraint{"tablename_j_fkey", "f", "FOREIGN KEY (j) REFERENCES other_tablename(b)", ""}
+		commentOne := backup.QueryConstraint{"tablename_i_key", "u", "UNIQUE (i)", "This is a constraint comment."}
 
 		Context("No ALTER TABLE statements", func() {
 			It("returns an empty slice", func() {
@@ -557,12 +554,12 @@ COMMENT ON CONSTRAINT tablename_i_key ON public.tablename IS 'This is a constrai
 		})
 	})
 	Describe("ConsolidateColumnInfo", func() {
-		attsOne := backup.QueryTableAtts{1, "i", false, false, false, "int", sql.NullString{String: "", Valid: false}, sql.NullString{String: "", Valid: false}}
-		attsTwo := backup.QueryTableAtts{2, "j", false, false, false, "int", sql.NullString{String: "", Valid: false}, sql.NullString{String: "", Valid: false}}
-		attsThree := backup.QueryTableAtts{3, "k", false, false, false, "int", sql.NullString{String: "", Valid: false}, sql.NullString{String: "", Valid: false}}
-		attsOneDef := backup.QueryTableAtts{1, "i", false, true, false, "int", sql.NullString{String: "", Valid: false}, sql.NullString{String: "", Valid: false}}
-		attsTwoDef := backup.QueryTableAtts{2, "j", false, true, false, "int", sql.NullString{String: "", Valid: false}, sql.NullString{String: "", Valid: false}}
-		attsThreeDef := backup.QueryTableAtts{3, "k", false, true, false, "int", sql.NullString{String: "", Valid: false}, sql.NullString{String: "", Valid: false}}
+		attsOne := backup.QueryTableAtts{1, "i", false, false, false, "int", "", ""}
+		attsTwo := backup.QueryTableAtts{2, "j", false, false, false, "int", "", ""}
+		attsThree := backup.QueryTableAtts{3, "k", false, false, false, "int", "", ""}
+		attsOneDef := backup.QueryTableAtts{1, "i", false, true, false, "int", "", ""}
+		attsTwoDef := backup.QueryTableAtts{2, "j", false, true, false, "int", "", ""}
+		attsThreeDef := backup.QueryTableAtts{3, "k", false, true, false, "int", "", ""}
 
 		defaultsOne := backup.QueryTableDefault{1, "1"}
 		defaultsTwo := backup.QueryTableDefault{2, "2"}
@@ -634,18 +631,22 @@ COMMENT ON CONSTRAINT tablename_i_key ON public.tablename IS 'This is a constrai
 	})
 	Describe("PrintCreateSequenceStatements", func() {
 		buffer := gbytes.NewBuffer()
-		seqDefault := backup.QuerySequence{"public.seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, true, ""}
-		seqNegIncr := backup.QuerySequence{"public.seq_name", 7, -1, -1, -9223372036854775807, 5, 42, false, true, ""}
-		seqMaxPos := backup.QuerySequence{"public.seq_name", 7, 1, 100, 1, 5, 42, false, true, ""}
-		seqMinPos := backup.QuerySequence{"public.seq_name", 7, 1, 9223372036854775807, 10, 5, 42, false, true, ""}
-		seqMaxNeg := backup.QuerySequence{"public.seq_name", 7, -1, -10, -9223372036854775807, 5, 42, false, true, ""}
-		seqMinNeg := backup.QuerySequence{"public.seq_name", 7, -1, -1, -100, 5, 42, false, true, ""}
-		seqCycle := backup.QuerySequence{"public.seq_name", 7, 1, 9223372036854775807, 1, 5, 42, true, true, ""}
-		seqStart := backup.QuerySequence{"public.seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, false, ""}
-		seqComment := backup.QuerySequence{"public.seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, true, "This is a sequence comment."}
+		baseSequence := utils.BasicRelation("public", "seq_name")
+		commentSequence := utils.Relation{0, 0, "public", "seq_name", "This is a sequence comment.", ""}
+		ownerSequence := utils.Relation{0, 0, "public", "seq_name", "", "testrole"}
+		seqDefault := backup.SequenceDefinition{baseSequence, backup.QuerySequence{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, true}}
+		seqNegIncr := backup.SequenceDefinition{baseSequence, backup.QuerySequence{"seq_name", 7, -1, -1, -9223372036854775807, 5, 42, false, true}}
+		seqMaxPos := backup.SequenceDefinition{baseSequence, backup.QuerySequence{"seq_name", 7, 1, 100, 1, 5, 42, false, true}}
+		seqMinPos := backup.SequenceDefinition{baseSequence, backup.QuerySequence{"seq_name", 7, 1, 9223372036854775807, 10, 5, 42, false, true}}
+		seqMaxNeg := backup.SequenceDefinition{baseSequence, backup.QuerySequence{"seq_name", 7, -1, -10, -9223372036854775807, 5, 42, false, true}}
+		seqMinNeg := backup.SequenceDefinition{baseSequence, backup.QuerySequence{"seq_name", 7, -1, -1, -100, 5, 42, false, true}}
+		seqCycle := backup.SequenceDefinition{baseSequence, backup.QuerySequence{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, true, true}}
+		seqStart := backup.SequenceDefinition{baseSequence, backup.QuerySequence{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, false}}
+		seqComment := backup.SequenceDefinition{commentSequence, backup.QuerySequence{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, true}}
+		seqOwner := backup.SequenceDefinition{ownerSequence, backup.QuerySequence{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, true}}
 
 		It("can print a sequence with all default options", func() {
-			sequences := []backup.QuerySequence{seqDefault}
+			sequences := []backup.SequenceDefinition{seqDefault}
 			backup.PrintCreateSequenceStatements(buffer, sequences)
 			testutils.ExpectRegexp(buffer, `CREATE SEQUENCE public.seq_name
 	INCREMENT BY 1
@@ -656,7 +657,7 @@ COMMENT ON CONSTRAINT tablename_i_key ON public.tablename IS 'This is a constrai
 SELECT pg_catalog.setval('public.seq_name', 7, true);`)
 		})
 		It("can print a decreasing sequence", func() {
-			sequences := []backup.QuerySequence{seqNegIncr}
+			sequences := []backup.SequenceDefinition{seqNegIncr}
 			backup.PrintCreateSequenceStatements(buffer, sequences)
 			testutils.ExpectRegexp(buffer, `CREATE SEQUENCE public.seq_name
 	INCREMENT BY -1
@@ -667,7 +668,7 @@ SELECT pg_catalog.setval('public.seq_name', 7, true);`)
 SELECT pg_catalog.setval('public.seq_name', 7, true);`)
 		})
 		It("can print an increasing sequence with a maximum value", func() {
-			sequences := []backup.QuerySequence{seqMaxPos}
+			sequences := []backup.SequenceDefinition{seqMaxPos}
 			backup.PrintCreateSequenceStatements(buffer, sequences)
 			testutils.ExpectRegexp(buffer, `CREATE SEQUENCE public.seq_name
 	INCREMENT BY 1
@@ -678,7 +679,7 @@ SELECT pg_catalog.setval('public.seq_name', 7, true);`)
 SELECT pg_catalog.setval('public.seq_name', 7, true);`)
 		})
 		It("can print an increasing sequence with a minimum value", func() {
-			sequences := []backup.QuerySequence{seqMinPos}
+			sequences := []backup.SequenceDefinition{seqMinPos}
 			backup.PrintCreateSequenceStatements(buffer, sequences)
 			testutils.ExpectRegexp(buffer, `CREATE SEQUENCE public.seq_name
 	INCREMENT BY 1
@@ -689,7 +690,7 @@ SELECT pg_catalog.setval('public.seq_name', 7, true);`)
 SELECT pg_catalog.setval('public.seq_name', 7, true);`)
 		})
 		It("can print a decreasing sequence with a maximum value", func() {
-			sequences := []backup.QuerySequence{seqMaxNeg}
+			sequences := []backup.SequenceDefinition{seqMaxNeg}
 			backup.PrintCreateSequenceStatements(buffer, sequences)
 			testutils.ExpectRegexp(buffer, `CREATE SEQUENCE public.seq_name
 	INCREMENT BY -1
@@ -700,7 +701,7 @@ SELECT pg_catalog.setval('public.seq_name', 7, true);`)
 SELECT pg_catalog.setval('public.seq_name', 7, true);`)
 		})
 		It("can print a decreasing sequence with a minimum value", func() {
-			sequences := []backup.QuerySequence{seqMinNeg}
+			sequences := []backup.SequenceDefinition{seqMinNeg}
 			backup.PrintCreateSequenceStatements(buffer, sequences)
 			testutils.ExpectRegexp(buffer, `CREATE SEQUENCE public.seq_name
 	INCREMENT BY -1
@@ -711,7 +712,7 @@ SELECT pg_catalog.setval('public.seq_name', 7, true);`)
 SELECT pg_catalog.setval('public.seq_name', 7, true);`)
 		})
 		It("can print a sequence that cycles", func() {
-			sequences := []backup.QuerySequence{seqCycle}
+			sequences := []backup.SequenceDefinition{seqCycle}
 			backup.PrintCreateSequenceStatements(buffer, sequences)
 			testutils.ExpectRegexp(buffer, `CREATE SEQUENCE public.seq_name
 	INCREMENT BY 1
@@ -723,7 +724,7 @@ SELECT pg_catalog.setval('public.seq_name', 7, true);`)
 SELECT pg_catalog.setval('public.seq_name', 7, true);`)
 		})
 		It("can print a sequence with a start value", func() {
-			sequences := []backup.QuerySequence{seqStart}
+			sequences := []backup.SequenceDefinition{seqStart}
 			backup.PrintCreateSequenceStatements(buffer, sequences)
 			testutils.ExpectRegexp(buffer, `CREATE SEQUENCE public.seq_name
 	START WITH 7
@@ -735,7 +736,7 @@ SELECT pg_catalog.setval('public.seq_name', 7, true);`)
 SELECT pg_catalog.setval('public.seq_name', 7, false);`)
 		})
 		It("can print a sequence with a comment", func() {
-			sequences := []backup.QuerySequence{seqComment}
+			sequences := []backup.SequenceDefinition{seqComment}
 			backup.PrintCreateSequenceStatements(buffer, sequences)
 			testutils.ExpectRegexp(buffer, `CREATE SEQUENCE public.seq_name
 	INCREMENT BY 1
@@ -748,19 +749,33 @@ SELECT pg_catalog.setval('public.seq_name', 7, true);
 
 COMMENT ON SEQUENCE public.seq_name IS 'This is a sequence comment.';`)
 		})
+		It("can print a sequence with an owner", func() {
+			sequences := []backup.SequenceDefinition{seqOwner}
+			backup.PrintCreateSequenceStatements(buffer, sequences)
+			testutils.ExpectRegexp(buffer, `CREATE SEQUENCE public.seq_name
+	INCREMENT BY 1
+	NO MAXVALUE
+	NO MINVALUE
+	CACHE 5;
+
+SELECT pg_catalog.setval('public.seq_name', 7, true);
+
+
+ALTER TABLE public.seq_name OWNER TO testrole;`)
+		})
 	})
 	Describe("PrintCreateSchemaStatements", func() {
 		buffer := gbytes.NewBuffer()
 
 		It("can print schema with comments", func() {
-			schemas := []utils.Schema{utils.Schema{0, "schema_with_comments", sql.NullString{"Comment, not comet", true}}}
+			schemas := []utils.Schema{utils.Schema{0, "schema_with_comments", "This is a comment.", ""}}
 
 			backup.PrintCreateSchemaStatements(buffer, schemas)
 			testutils.ExpectRegexp(buffer, `CREATE SCHEMA schema_with_comments;
-COMMENT ON SCHEMA schema_with_comments IS 'Comment, not comet';`)
+COMMENT ON SCHEMA schema_with_comments IS 'This is a comment.';`)
 		})
 		It("can print schema with no comments", func() {
-			schemas := []utils.Schema{utils.Schema{0, "schema_with_no_comments", sql.NullString{"", false}}}
+			schemas := []utils.Schema{utils.BasicSchema("schema_with_no_comments")}
 
 			backup.PrintCreateSchemaStatements(buffer, schemas)
 			testutils.ExpectRegexp(buffer, `CREATE SCHEMA schema_with_no_comments;`)

@@ -6,7 +6,6 @@ package utils
  */
 
 import (
-	"database/sql"
 	"fmt"
 	"regexp"
 	"sort"
@@ -35,7 +34,8 @@ var (
 type Schema struct {
 	SchemaOid  uint32
 	SchemaName string
-	Comment    sql.NullString
+	Comment    string
+	Owner      string
 }
 
 type Relation struct {
@@ -43,7 +43,8 @@ type Relation struct {
 	RelationOid  uint32
 	SchemaName   string
 	RelationName string
-	Comment      sql.NullString
+	Comment      string
+	Owner        string
 }
 
 /*
@@ -57,6 +58,31 @@ func QuoteIdent(ident string) string {
 		ident = fmt.Sprintf(`"%s"`, ident)
 	}
 	return ident
+}
+
+/*
+ * The following functions create Schemas and Relations with only the schema and
+ * relation names set, for use in SchemaFromString and RelationFromString and to
+ * make creating sample schemas and relations in tests easier.
+ */
+func BasicSchema(schema string) Schema {
+	return Schema {
+		SchemaOid: 0,
+		SchemaName: schema,
+		Comment: "",
+		Owner: "",
+	}
+}
+
+func BasicRelation(schema string, relation string) Relation {
+	return Relation {
+		SchemaOid: 0,
+		SchemaName: schema,
+		RelationOid: 0,
+		RelationName: relation,
+		Comment: "",
+		Owner: "",
+	}
 }
 
 /*
@@ -94,20 +120,20 @@ func RelationFromString(name string) Relation {
 	} else {
 		logger.Fatal(errors.Errorf("\"%s\" is not a valid fully-qualified table expression", name), "")
 	}
-	return Relation{0, 0, schema, table, sql.NullString{"", false}}
+	return BasicRelation(schema, table)
 }
 
 func SchemaFromString(name string) Schema {
-	var object string
+	var schema string
 	var matches []string
 	if matches = quotedIdentifier.FindStringSubmatch(name); len(matches) != 0 {
-		object = replacerFrom.Replace(matches[1])
+		schema = replacerFrom.Replace(matches[1])
 	} else if matches = unquotedIdentifier.FindStringSubmatch(name); len(matches) != 0 {
-		object = replacerFrom.Replace(matches[1])
+		schema = replacerFrom.Replace(matches[1])
 	} else {
 		logger.Fatal(errors.Errorf("\"%s\" is not a valid identifier", name), "")
 	}
-	return Schema{0, object, sql.NullString{"", false}}
+	return BasicSchema(schema)
 }
 
 /*

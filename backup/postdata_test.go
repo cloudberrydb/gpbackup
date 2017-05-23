@@ -1,7 +1,6 @@
 package backup_test
 
 import (
-	"database/sql"
 	"database/sql/driver"
 	"gpbackup/backup"
 	"gpbackup/testutils"
@@ -21,15 +20,15 @@ var _ = Describe("backup/postdata tests", func() {
 	})
 
 	Describe("GetIndexesForAllTables", func() {
-		tableOne := utils.Relation{0, 0, "public", "table_one", sql.NullString{"", false}}
-		tableTwo := utils.Relation{0, 0, "public", "table_two", sql.NullString{"", false}}
-		tableWithout := utils.Relation{0, 0, "public", "table_no_index", sql.NullString{"", false}}
+		tableOne := utils.BasicRelation("public", "table_one")
+		tableTwo := utils.BasicRelation("public", "table_two")
+		tableWithout := utils.BasicRelation("public", "table_no_index")
 
 		header := []string{"name", "def", "comment"}
 		resultEmpty := sqlmock.NewRows(header)
-		btreeOne := []driver.Value{"btree_idx1", "CREATE INDEX btree_idx1 ON table_one USING btree (i)", nil}
-		btreeTwo := []driver.Value{"btree_idx2", "CREATE INDEX btree_idx2 ON table_two USING btree (j)", nil}
-		bitmapOne := []driver.Value{"bitmap_idx1", "CREATE INDEX bitmap_idx1 ON table_one USING bitmap (i)", nil}
+		btreeOne := []driver.Value{"btree_idx1", "CREATE INDEX btree_idx1 ON table_one USING btree (i)", ""}
+		btreeTwo := []driver.Value{"btree_idx2", "CREATE INDEX btree_idx2 ON table_two USING btree (j)", ""}
+		bitmapOne := []driver.Value{"bitmap_idx1", "CREATE INDEX bitmap_idx1 ON table_one USING bitmap (i)", ""}
 		commentOne := []driver.Value{"btree_idx1", "CREATE INDEX btree_idx1 ON table_one USING btree (i)", "This is an index comment."}
 
 		Context("Indexes on a single column", func() {
