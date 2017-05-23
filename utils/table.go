@@ -11,6 +11,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 var (
@@ -90,7 +92,7 @@ func RelationFromString(name string) Relation {
 			table = replacerFrom.Replace(matches[4])
 		}
 	} else {
-		logger.Fatal("\"%s\" is not a valid fully-qualified table expression", name)
+		logger.Fatal(errors.Errorf("\"%s\" is not a valid fully-qualified table expression", name), "")
 	}
 	return Relation{0, 0, schema, table, sql.NullString{"", false}}
 }
@@ -103,7 +105,7 @@ func SchemaFromString(name string) Schema {
 	} else if matches = unquotedIdentifier.FindStringSubmatch(name); len(matches) != 0 {
 		object = replacerFrom.Replace(matches[1])
 	} else {
-		logger.Fatal("\"%s\" is not a valid identifier", name)
+		logger.Fatal(errors.Errorf("\"%s\" is not a valid identifier", name), "")
 	}
 	return Schema{0, object, sql.NullString{"", false}}
 }

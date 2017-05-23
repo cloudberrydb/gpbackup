@@ -7,9 +7,6 @@ package utils
 
 import (
 	"fmt"
-	"strings"
-
-	"github.com/go-errors/errors"
 )
 
 var (
@@ -38,7 +35,7 @@ func Abort(output ...interface{}) {
 	panic(errStr)
 }
 
-func AbortWithStackTrace(output ...interface{}) {
+/*func AbortWithStackTrace(output ...interface{}) {
 	errStr := ""
 	if len(output) > 0 {
 		errStr = fmt.Sprintf("%v\n", output[0])
@@ -52,11 +49,11 @@ func AbortWithStackTrace(output ...interface{}) {
 
 	errStr += trace
 	panic(errStr)
-}
+}*/
 
 func CheckError(err error) {
 	if err != nil {
-		logger.Fatal(err.Error())
+		logger.Fatal(err, "")
 	}
 }
 

@@ -27,7 +27,8 @@ var _ = Describe("utils/io tests", func() {
 
 	Describe("DirectoryMustExist", func() {
 		It("does nothing if the directory exists", func() {
-			utils.System.Stat = func(name string) (os.FileInfo, error) { return nil, nil }
+			fakeInfo, _ := os.Stat("/tmp/log_dir")
+			utils.System.Stat = func(name string) (os.FileInfo, error) { return fakeInfo, nil }
 			defer func() { utils.System.Stat = os.Stat }()
 			utils.DirectoryMustExist("dirname")
 		})
@@ -48,7 +49,7 @@ var _ = Describe("utils/io tests", func() {
 		It("panics on error", func() {
 			utils.System.Create = func(name string) (*os.File, error) { return nil, errors.New("Permission denied") }
 			defer func() { utils.System.Create = os.Create }()
-			defer testutils.ShouldPanicWithMessage("Unable to create or open file filename: Permission denied")
+			defer testutils.ShouldPanicWithMessage("Unable to create or open file: Permission denied")
 			utils.MustOpenFile("filename")
 		})
 	})

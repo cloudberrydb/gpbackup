@@ -7,6 +7,7 @@ package testutils
 import (
 	"errors"
 	"fmt"
+
 	"github.com/jmoiron/sqlx"
 )
 

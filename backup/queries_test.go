@@ -1,11 +1,11 @@
 package backup_test
 
 import (
+	"database/sql/driver"
+	"errors"
 	"gpbackup/backup"
 	"gpbackup/testutils"
 	"gpbackup/utils"
-	"database/sql/driver"
-	"errors"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

@@ -1,10 +1,10 @@
 package backup_test
 
 import (
+	"database/sql"
 	"gpbackup/backup"
 	"gpbackup/testutils"
 	"gpbackup/utils"
-	"database/sql"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

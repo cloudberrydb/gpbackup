@@ -10,13 +10,13 @@ DEST = .
 GOFLAGS := -o $(DEST)
 dependencies :
 		go get github.com/jmoiron/sqlx
+		go get github.com/lib/pq
 		go get github.com/maxbrunsfeld/counterfeiter
 		go get github.com/onsi/ginkgo/ginkgo
 		go get github.com/onsi/gomega
+		go get github.com/pkg/errors
 		go get golang.org/x/tools/cmd/goimports
 		go get gopkg.in/DATA-DOG/go-sqlmock.v1
-		go get github.com/go-errors/errors
-		go get github.com/lib/pq
 
 format :
 		goimports -w .

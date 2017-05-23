@@ -74,6 +74,10 @@ func ExpectRegexp(buffer *gbytes.Buffer, testStr string) {
 	Expect(buffer).Should(gbytes.Say(regexp.QuoteMeta(testStr)))
 }
 
+func NotExpectRegexp(buffer *gbytes.Buffer, testStr string) {
+	Expect(buffer).ShouldNot(gbytes.Say(regexp.QuoteMeta(testStr)))
+}
+
 func ExpectRegex(result string, testStr string) {
 	Expect(result).Should(MatchRegexp(regexp.QuoteMeta(testStr)))
 }

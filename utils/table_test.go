@@ -1,9 +1,9 @@
 package utils_test
 
 import (
-	"gpbackup/utils"
 	"database/sql"
 	"fmt"
+	"gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

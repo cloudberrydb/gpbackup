@@ -13,6 +13,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	"github.com/pkg/errors"
 )
 
 type DBConn struct {
@@ -36,7 +37,7 @@ func NewDBConn(dbname string) *DBConn {
 		dbname = TryEnv("PGDATABASE", "")
 	}
 	if dbname == "" {
-		logger.Fatal("No database provided and PGDATABASE not set")
+		logger.Fatal(errors.New("No database provided and PGDATABASE not set"), "")
 	}
 	host = TryEnv("PGHOST", currentHost)
 	port, _ = strconv.Atoi(TryEnv("PGPORT", "5432"))
@@ -61,7 +62,7 @@ func NewDBConn(dbname string) *DBConn {
 
 func (dbconn *DBConn) Begin() {
 	if dbconn.Tx != nil {
-		logger.Fatal("Cannot begin transaction; there is already a transaction in progress")
+		logger.Fatal(errors.New("Cannot begin transaction; there is already a transaction in progress"), "")
 	}
 	var err error
 	dbconn.Tx, err = dbconn.Conn.Beginx()
@@ -83,7 +84,7 @@ func (dbconn *DBConn) Close() {
 
 func (dbconn *DBConn) Commit() {
 	if dbconn.Tx == nil {
-		logger.Fatal("Cannot commit transaction; there is no transaction in progress")
+		logger.Fatal(errors.New("Cannot commit transaction; there is no transaction in progress"), "")
 	}
 	var err error
 	err = dbconn.Tx.Commit()
@@ -98,12 +99,12 @@ func (dbconn *DBConn) Connect() {
 	dbconn.Conn, err = dbconn.Driver.Connect("postgres", connStr)
 	if err != nil {
 		if strings.Contains(err.Error(), "does not exist") {
-			logger.Fatal("Database %s does not exist, exiting", dbconn.DBName)
+			logger.Fatal(errors.Errorf("Database %s does not exist, exiting", dbconn.DBName), "")
 		}
 		if strings.Contains(err.Error(), "connection refused") {
-			logger.Fatal(`could not connect to server: Connection refused
+			logger.Fatal(errors.Errorf(`could not connect to server: Connection refused
 	Is the server running on host "%s" and accepting
-	TCP/IP connections on port %d?`, dbconn.Host, dbconn.Port)
+	TCP/IP connections on port %d?`, dbconn.Host, dbconn.Port), "")
 		}
 	}
 	CheckError(err)

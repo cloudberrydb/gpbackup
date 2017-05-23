@@ -7,10 +7,12 @@ package backup
  */
 
 import (
-	"gpbackup/utils"
 	"database/sql"
 	"fmt"
+	"gpbackup/utils"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 /*
@@ -228,9 +230,9 @@ func GetSessionGUCs(connection *utils.DBConn) QuerySessionGUCs {
 }
 
 type QueryIndexMetadata struct {
-	Name string
-	Def  string
-	Comment   sql.NullString
+	Name    string
+	Def     string
+	Comment sql.NullString
 }
 
 func GetIndexMetadata(connection *utils.DBConn, oid uint32) []QueryIndexMetadata {
@@ -339,7 +341,7 @@ func SelectString(connection *utils.DBConn, query string) string {
 	if len(results) == 1 {
 		return results[0].String
 	} else if len(results) > 1 {
-		logger.Fatal("Too many rows returned from query: got %d rows, expected 1 row", len(results))
+		logger.Fatal(errors.Errorf("Too many rows returned from query: got %d rows, expected 1 row", len(results)), "")
 	}
 	return ""
 }

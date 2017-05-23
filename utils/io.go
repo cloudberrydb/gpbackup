@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 const DefaultSegmentDir = "<SEG_DATA_DIR>"
@@ -17,8 +19,8 @@ var (
 	BaseDumpDir = DefaultSegmentDir
 
 	contentList []int
-	segDirMap  map[int]string
-	segHostMap map[int]string
+	segDirMap   map[int]string
+	segHostMap  map[int]string
 )
 
 /*
@@ -26,16 +28,25 @@ var (
  */
 
 func DirectoryMustExist(dirname string) {
-	_, statErr := System.Stat(dirname)
-	if statErr != nil {
-		logger.Fatal("Cannot stat directory %s: %s", dirname, statErr)
+	info, err := System.Stat(dirname)
+	if err != nil {
+		if System.IsNotExist(err) {
+			err = System.MkdirAll(dirname, 0755)
+			if err != nil {
+				logger.Fatal(err, "Cannot create directory %s", dirname)
+			}
+		} else {
+			logger.Fatal(err, "Cannot stat directory %s", dirname)
+		}
+	} else if !(info.IsDir()) {
+		logger.Fatal(errors.Errorf("%s is a file, not a directory", dirname), "")
 	}
 }
 
 func MustOpenFile(filename string) io.Writer {
 	logFileHandle, err := System.Create(filename)
 	if err != nil {
-		logger.Fatal("Unable to create or open file %s: %s", filename, err)
+		logger.Fatal(err, "Unable to create or open file")
 	}
 	return logFileHandle
 }
@@ -58,7 +69,7 @@ func CreateDumpDirs() {
 		logger.Verbose("Creating directory %s", dumpPath)
 		err := System.MkdirAll(dumpPath, 0700)
 		if err != nil {
-			logger.Fatal("Cannot create directory %s on host %s: %s", dumpPath, segHostMap[segId], err.Error())
+			logger.Fatal(err, "Cannot create directory %s on host %s", dumpPath, segHostMap[segId])
 		}
 		CheckError(err)
 	}

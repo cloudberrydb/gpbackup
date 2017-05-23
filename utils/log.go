@@ -9,6 +9,8 @@ import (
 	"io"
 	"log"
 	"os"
+
+	"github.com/pkg/errors"
 )
 
 var (
@@ -96,6 +98,11 @@ func InitializeLogging(program string, logdir string) *Logger {
 	pid := System.Getpid()
 	header := fmt.Sprintf(headerFormatStr, program, user, host, pid, "%s")
 
+	// Create a temporary logger to start in case there are fatal errors during initialization
+	nullFile, _ := os.Open("/dev/null")
+	tempLogger := NewLogger(os.Stdout, os.Stderr, nullFile, LOGINFO, header)
+	SetLogger(tempLogger)
+
 	if logdir == "" {
 		logdir = fmt.Sprintf("%s/%s", homedir, defaultLogDir)
 	}
@@ -127,9 +134,9 @@ func (logger *Logger) SetVerbosity(verbosity int) {
  */
 
 func (logger *Logger) Info(s string, v ...interface{}) {
+	message := logger.GetLogPrefix("INFO") + fmt.Sprintf(s, v...)
+	logger.logFile.Output(1, message)
 	if logger.verbosity >= LOGINFO {
-		message := logger.GetLogPrefix("INFO") + fmt.Sprintf(s, v...)
-		logger.logFile.Output(1, message)
 		logger.logStdout.Output(1, message)
 	}
 }
@@ -141,17 +148,17 @@ func (logger *Logger) Warn(s string, v ...interface{}) {
 }
 
 func (logger *Logger) Verbose(s string, v ...interface{}) {
+	message := logger.GetLogPrefix("DEBUG") + fmt.Sprintf(s, v...)
+	logger.logFile.Output(1, message)
 	if logger.verbosity >= LOGVERBOSE {
-		message := logger.GetLogPrefix("DEBUG") + fmt.Sprintf(s, v...)
-		logger.logFile.Output(1, message)
 		logger.logStdout.Output(1, message)
 	}
 }
 
 func (logger *Logger) Debug(s string, v ...interface{}) {
+	message := logger.GetLogPrefix("DEBUG") + fmt.Sprintf(s, v...)
+	logger.logFile.Output(1, message)
 	if logger.verbosity >= LOGDEBUG {
-		message := logger.GetLogPrefix("DEBUG") + fmt.Sprintf(s, v...)
-		logger.logFile.Output(1, message)
 		logger.logStdout.Output(1, message)
 	}
 }
@@ -162,12 +169,30 @@ func (logger *Logger) Error(s string, v ...interface{}) {
 	logger.logStderr.Output(1, message)
 }
 
-func (logger *Logger) Fatal(s string, v ...interface{}) {
+func (logger *Logger) Fatal(err error, s string, v ...interface{}) {
 	message := logger.GetLogPrefix("CRITICAL") + fmt.Sprintf(s, v...)
-	logger.logFile.Output(1, message)
+	stackTraceStr := ""
+	if err != nil {
+		if s != "" {
+			message += ": "
+		}
+		message += fmt.Sprintf("%v", err)
+		stackTraceStr = formatStackTrace(errors.WithStack(err))
+	}
+	logger.logFile.Output(1, message+stackTraceStr)
 	if logger.verbosity >= LOGVERBOSE {
-		AbortWithStackTrace(message)
+		Abort(message + stackTraceStr)
 	} else {
 		Abort(message)
 	}
+}
+
+type stackTracer interface {
+	StackTrace() errors.StackTrace
+}
+
+func formatStackTrace(err error) string {
+	st := err.(stackTracer).StackTrace()
+	message := fmt.Sprintf("%+v", st[1:len(st)-2])
+	return message
 }

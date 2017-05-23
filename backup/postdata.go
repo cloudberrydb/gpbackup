@@ -7,8 +7,8 @@ package backup
  */
 
 import (
-	"gpbackup/utils"
 	"fmt"
+	"gpbackup/utils"
 	"io"
 	"sort"
 )
