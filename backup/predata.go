@@ -31,6 +31,7 @@ type TableDefinition struct {
 	PartDef         string
 	PartTemplateDef string
 	StorageOpts     string
+	Owner           string
 }
 
 /*
@@ -46,9 +47,10 @@ func ConstructDefinitionsForTable(connection *utils.DBConn, table utils.Relation
 	partitionDef := GetPartitionDefinition(connection, table.RelationOid)
 	partTemplateDef := GetPartitionTemplateDefinition(connection, table.RelationOid)
 	storageOptions := GetStorageOptions(connection, table.RelationOid)
+	owner := GetObjectOwner(connection, table.RelationOid)
 
 	columnDefs := ConsolidateColumnInfo(tableAttributes, tableDefaults)
-	tableDef := TableDefinition{distributionPolicy, partitionDef, partTemplateDef, storageOptions}
+	tableDef := TableDefinition{distributionPolicy, partitionDef, partTemplateDef, storageOptions, owner}
 	return columnDefs, tableDef
 }
 
@@ -183,6 +185,10 @@ func PrintCreateTableStatement(predataFile io.Writer, table utils.Relation, colu
 		if att.Comment != "" {
 			fmt.Fprintf(predataFile, "\n\nCOMMENT ON COLUMN %s.%s IS '%s';\n", table.ToString(), att.Name, att.Comment)
 		}
+	}
+
+	if tableDef.Owner != "" {
+		fmt.Fprintf(predataFile, "\n\nALTER TABLE %s OWNER TO %s;\n", table.ToString(), utils.QuoteIdent(tableDef.Owner))
 	}
 }
 

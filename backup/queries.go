@@ -321,6 +321,11 @@ WHERE datname = '%s';`, connection.DBName)
 	return SelectString(connection, query)
 }
 
+func GetObjectOwner(connection *utils.DBConn, oid uint32) string {
+	query := fmt.Sprintf("SELECT pg_get_userbyid(relowner) AS string FROM pg_class WHERE oid = '%d';", oid)
+	return SelectString(connection, query)
+}
+
 /*
  * Helper functions
  */
