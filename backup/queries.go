@@ -292,7 +292,7 @@ WHERE datname = '%s';`, connection.DBName)
 }
 
 func GetDatabaseOwner(connection *utils.DBConn) string {
-	query := fmt.Sprintf(`SELECT pg_catalog.pg_get_userbyid(d.datdba) AS string
+	query := fmt.Sprintf(`SELECT pg_catalog.pg_get_userbyid(datdba) AS string
 FROM pg_database
 WHERE datname = '%s';`, connection.DBName)
 	return SelectString(connection, query)
