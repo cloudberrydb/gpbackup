@@ -285,10 +285,17 @@ WHERE a.attrelid = %d;`, oid)
 }
 
 func GetDatabaseGUCs(connection *utils.DBConn) []string {
-	query := fmt.Sprintf(`SELECT unnest(datconfig) as string
-FROM  pg_database
+	query := fmt.Sprintf(`SELECT unnest(datconfig) AS string
+FROM pg_database
 WHERE datname = '%s';`, connection.DBName)
 	return SelectStringSlice(connection, query)
+}
+
+func GetDatabaseOwner(connection *utils.DBConn) string {
+	query := fmt.Sprintf(`SELECT pg_catalog.pg_get_userbyid(d.datdba) AS string
+FROM pg_database
+WHERE datname = '%s';`, connection.DBName)
+	return SelectString(connection, query)
 }
 
 func GetPartitionDefinition(connection *utils.DBConn, oid uint32) string {

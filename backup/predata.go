@@ -138,7 +138,10 @@ func ProcessConstraints(table utils.Relation, constraints []QueryConstraint) ([]
 }
 
 func PrintCreateDatabaseStatement(predataFile io.Writer) {
-	fmt.Fprintf(predataFile, "\n\nCREATE DATABASE %s;", utils.QuoteIdent(connection.DBName))
+	dbname := utils.QuoteIdent(connection.DBName)
+	owner := utils.QuoteIdent(GetDatabaseOwner(connection))
+	fmt.Fprintf(predataFile, "\n\nCREATE DATABASE %s;", dbname)
+	fmt.Fprintf(predataFile, "\nALTER DATABASE %s OWNER TO %s;", dbname, owner)
 }
 
 /*
