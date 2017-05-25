@@ -72,23 +72,24 @@ func DoBackup() {
 
 	connection.Begin()
 	tables := GetAllUserTables(connection)
+	extTableMap := GetExternalTablesMap(connection)
 
 	logger.Info("Writing pre-data metadata to %s", predataFilename)
-	backupPredata(predataFilename, tables)
+	backupPredata(predataFilename, tables, extTableMap)
 	logger.Info("Pre-data metadata dump complete")
 
 	logger.Info("Writing data to file")
-	backupData(tables)
+	backupData(tables, extTableMap)
 	logger.Info("Data dump complete")
 
 	logger.Info("Writing post-data metadata to %s", postdataFilename)
-	backupPostdata(postdataFilename, tables)
+	backupPostdata(postdataFilename, tables, extTableMap)
 	logger.Info("Post-data metadata dump complete")
 
 	connection.Commit()
 }
 
-func backupPredata(filename string, tables []utils.Relation) {
+func backupPredata(filename string, tables []utils.Relation, extTableMap map[string]bool) {
 	predataFile := utils.MustOpenFile(filename)
 
 	logger.Verbose("Writing session GUCs to predata file")
@@ -114,8 +115,9 @@ func backupPredata(filename string, tables []utils.Relation) {
 
 	logger.Verbose("Writing CREATE TABLE statements to predata file")
 	for _, table := range tables {
-		columnDefs, tableDef := ConstructDefinitionsForTable(connection, table)
-		PrintCreateTableStatement(predataFile, table, columnDefs, tableDef)
+		isExternal := extTableMap[table.ToString()]
+		tableDef := ConstructDefinitionsForTable(connection, table, isExternal)
+		PrintCreateTableStatement(predataFile, table, tableDef)
 	}
 
 	logger.Verbose("Writing ADD CONSTRAINT statements to predata file")
@@ -127,17 +129,22 @@ func backupPredata(filename string, tables []utils.Relation) {
 	PrintCreateSequenceStatements(predataFile, sequenceDefs)
 }
 
-func backupData(tables []utils.Relation) {
+func backupData(tables []utils.Relation, extTableMap map[string]bool) {
 	for _, table := range tables {
-		logger.Verbose("Writing data for table %s to file", table.ToString())
-		dumpFile := GetTableDumpFilePath(table)
-		CopyTableOut(connection, table, dumpFile)
+		isExternal := extTableMap[table.ToString()]
+		if !isExternal {
+			logger.Verbose("Writing data for table %s to file", table.ToString())
+			dumpFile := GetTableDumpFilePath(table)
+			CopyTableOut(connection, table, dumpFile)
+		} else {
+			logger.Warn("Skipping data dump of table %s because it is an external table.", table.ToString())
+		}
 	}
 	logger.Verbose("Writing table map file to %s", GetTableMapFilePath())
 	WriteTableMapFile(tables)
 }
 
-func backupPostdata(filename string, tables []utils.Relation) {
+func backupPostdata(filename string, tables []utils.Relation, extTableMap map[string]bool) {
 	postdataFile := utils.MustOpenFile(filename)
 
 	logger.Verbose("Writing session GUCs to predata file")

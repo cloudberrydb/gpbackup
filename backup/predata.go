@@ -26,11 +26,30 @@ type ColumnDefinition struct {
 	DefaultVal string
 }
 
+type ExternalTableDefinition struct {
+	Type            int
+	Protocol        int
+	Location        string
+	ExecLocation    string
+	FormatType      string
+	FormatOpts      string
+	Options         string
+	Command         string
+	RejectLimit     int
+	RejectLimitType string
+	ErrTable        string
+	Encoding        string
+	Writable        bool
+}
+
 type TableDefinition struct {
 	DistPolicy      string
 	PartDef         string
 	PartTemplateDef string
 	StorageOpts     string
+	ColumnDefs      []ColumnDefinition
+	IsExternal      bool
+	ExtTableDef     ExternalTableDefinition
 }
 
 type SequenceDefinition struct {
@@ -43,7 +62,7 @@ type SequenceDefinition struct {
  * single table and assembles the metadata into ColumnDef and TableDef structs
  * for more convenient handling in the PrintCreateTableStatement() function.
  */
-func ConstructDefinitionsForTable(connection *utils.DBConn, table utils.Relation) ([]ColumnDefinition, TableDefinition) {
+func ConstructDefinitionsForTable(connection *utils.DBConn, table utils.Relation, isExternal bool) TableDefinition {
 	tableAttributes := GetTableAttributes(connection, table.RelationOid)
 	tableDefaults := GetTableDefaults(connection, table.RelationOid)
 
@@ -53,8 +72,12 @@ func ConstructDefinitionsForTable(connection *utils.DBConn, table utils.Relation
 	storageOptions := GetStorageOptions(connection, table.RelationOid)
 
 	columnDefs := ConsolidateColumnInfo(tableAttributes, tableDefaults)
-	tableDef := TableDefinition{distributionPolicy, partitionDef, partTemplateDef, storageOptions}
-	return columnDefs, tableDef
+	var extTableDef ExternalTableDefinition
+	if isExternal {
+		extTableDef = GetExternalTableDefinition(connection, table.RelationOid)
+	}
+	tableDef := TableDefinition{distributionPolicy, partitionDef, partTemplateDef, storageOptions, columnDefs, isExternal, extTableDef}
+	return tableDef
 }
 
 /*
@@ -150,8 +173,99 @@ func PrintCreateDatabaseStatement(predataFile io.Writer) {
  * the search_path; this will aid in later filtering to include or exclude certain tables during the
  * backup process, and allows customers to copy just the CREATE TABLE block in order to use it directly.
  */
-func PrintCreateTableStatement(predataFile io.Writer, table utils.Relation, columnDefs []ColumnDefinition, tableDef TableDefinition) {
+func PrintCreateTableStatement(predataFile io.Writer, table utils.Relation, tableDef TableDefinition) {
+	if tableDef.IsExternal {
+		PrintExternalTableCreateStatement(predataFile, table, tableDef)
+	} else {
+		PrintRegularTableCreateStatement(predataFile, table, tableDef)
+	}
+	PrintPostCreateTableStatements(predataFile, table, tableDef)
+}
+
+func PrintRegularTableCreateStatement(predataFile io.Writer, table utils.Relation, tableDef TableDefinition) {
 	fmt.Fprintf(predataFile, "\n\nCREATE TABLE %s (\n", table.ToString())
+	printColumnStatements(predataFile, table, tableDef.ColumnDefs)
+	fmt.Fprintf(predataFile, ") ")
+	if tableDef.StorageOpts != "" {
+		fmt.Fprintf(predataFile, "WITH (%s) ", tableDef.StorageOpts)
+	}
+	fmt.Fprintf(predataFile, "%s", tableDef.DistPolicy)
+	if tableDef.PartDef != "" {
+		fmt.Fprintf(predataFile, " %s", strings.TrimSpace(tableDef.PartDef))
+	}
+	fmt.Fprintln(predataFile, ";")
+	if tableDef.PartTemplateDef != "" {
+		fmt.Fprintf(predataFile, "%s;\n", strings.TrimSpace(tableDef.PartTemplateDef))
+	}
+}
+
+func PrintExternalTableCreateStatement(predataFile io.Writer, table utils.Relation, tableDef TableDefinition) {
+	tableTypeStrMap := map[int]string{
+		READABLE: "READABLE EXTERNAL",
+		READABLE_WEB: "READABLE EXTERNAL WEB",
+		WRITABLE: "WRITABLE EXTERNAL",
+		WRITABLE_WEB: "WRITABLE EXTERNAL WEB",
+	}
+	extTableDef := tableDef.ExtTableDef
+	extTableDef.Type, extTableDef.Protocol = DetermineExternalTableCharacteristics(extTableDef)
+	fmt.Fprintf(predataFile, "\n\nCREATE %s TABLE %s (\n", tableTypeStrMap[extTableDef.Type], table.ToString())
+	printColumnStatements(predataFile, table, tableDef.ColumnDefs)
+	fmt.Fprintf(predataFile, ") ")
+	PrintExternalTableStatements(predataFile, table, extTableDef)
+	fmt.Fprintf(predataFile, "%s;", tableDef.DistPolicy)
+}
+
+const (
+	// Type of external table
+	READABLE = iota
+	READABLE_WEB
+	WRITABLE
+	WRITABLE_WEB
+	// Protocol external table is using
+	FILE
+	GPFDIST
+	GPHDFS
+	HTTP
+	S3
+)
+
+func DetermineExternalTableCharacteristics(extTableDef ExternalTableDefinition) (int, int) {
+	isWritable := extTableDef.Writable
+	tableType := -1
+	tableProtocol := -1
+	if extTableDef.Location == "" { // EXTERNAL WEB tables may have EXECUTE instead of LOCATION
+		tableProtocol = HTTP
+		if isWritable {
+			tableType = WRITABLE_WEB
+		} else {
+			tableType = READABLE_WEB
+		}
+	} else {
+		isWeb := strings.HasPrefix(extTableDef.Location, "http")
+		if isWeb && isWritable{
+			tableType = WRITABLE_WEB
+		} else if isWeb && !isWritable {
+			tableType = READABLE_WEB
+		} else if !isWeb && isWritable{
+			tableType = WRITABLE
+		} else {
+			tableType = READABLE
+		}
+		prefix := extTableDef.Location[0:strings.Index(extTableDef.Location, "://")]
+		switch prefix {
+			case "file": tableProtocol = FILE
+			case "gpfdist": tableProtocol = GPFDIST
+			case "gpfdists": tableProtocol = GPFDIST
+			case "gphdfs": tableProtocol = GPHDFS
+			case "http": tableProtocol = HTTP
+			case "https": tableProtocol = HTTP
+			case "s3": tableProtocol = S3
+		}
+	}
+	return tableType, tableProtocol
+}
+
+func printColumnStatements(predataFile io.Writer, table utils.Relation, columnDefs []ColumnDefinition) {
 	lines := make([]string, 0)
 	for _, column := range columnDefs {
 		if !column.IsDropped {
@@ -171,18 +285,84 @@ func PrintCreateTableStatement(predataFile io.Writer, table utils.Relation, colu
 	if len(lines) > 0 {
 		fmt.Fprintln(predataFile, strings.Join(lines, ",\n"))
 	}
-	fmt.Fprintf(predataFile, ") ")
-	if tableDef.StorageOpts != "" {
-		fmt.Fprintf(predataFile, "WITH (%s) ", tableDef.StorageOpts)
+}
+
+func PrintExternalTableStatements(predataFile io.Writer, table utils.Relation, extTableDef ExternalTableDefinition) {
+	if extTableDef.Type != WRITABLE_WEB {
+		if extTableDef.Location != "" {
+			locations := make([]string, 0)
+			for _, loc := range strings.Split(extTableDef.Location, ",") {
+				locations = append(locations, fmt.Sprintf("\t'%s'", loc))
+			}
+			fmt.Fprintf(predataFile, "LOCATION (\n%s\n)", strings.Join(locations, "\n"))
+		}
 	}
-	fmt.Fprintf(predataFile, "%s", tableDef.DistPolicy)
-	if tableDef.PartDef != "" {
-		fmt.Fprintf(predataFile, " %s", strings.TrimSpace(tableDef.PartDef))
+	if extTableDef.Type == READABLE || (extTableDef.Type == WRITABLE_WEB && extTableDef.Protocol == S3) {
+		if extTableDef.ExecLocation == "MASTER_ONLY" {
+			fmt.Fprintf(predataFile, " ON MASTER")
+		}
 	}
-	fmt.Fprintln(predataFile, ";")
-	if tableDef.PartTemplateDef != "" {
-		fmt.Fprintf(predataFile, "%s;\n", strings.TrimSpace(tableDef.PartTemplateDef))
+	if extTableDef.Type == READABLE_WEB || extTableDef.Type == WRITABLE_WEB {
+		if extTableDef.Command != "" {
+			fmt.Fprintf(predataFile, "EXECUTE '%s'", extTableDef.Command)
+			execType := strings.Split(extTableDef.ExecLocation, ":")
+			switch execType[0] {
+				case "ALL_SEGMENTS": // Default case, don't print anything else
+				case "HOST": fmt.Fprintf(predataFile, " ON HOST '%s'", execType[1])
+				case "MASTER_ONLY": fmt.Fprintf(predataFile, " ON MASTER")
+				case "PER_HOST": fmt.Fprintf(predataFile, " ON HOST")
+				case "SEGMENT_ID": fmt.Fprintf(predataFile, " ON SEGMENT %s", execType[1])
+				case "TOTAL_SEGS": fmt.Fprintf(predataFile, " ON %s", execType[1])
+			}
+		}
 	}
+	fmt.Fprintln(predataFile)
+	formatType := ""
+	switch extTableDef.FormatType {
+		case "a": formatType = "avro"
+		case "b": formatType = "custom"
+		case "c": formatType = "csv"
+		case "p": formatType = "parquet"
+		case "t": formatType = "text"
+	}
+	/*
+	 * The options for the custom formatter is stored as "formatter 'function_name'",
+	 * but FORMAT requires "formatter='function_name'".
+	 */
+	extTableDef.FormatOpts = strings.Replace(extTableDef.FormatOpts, "formatter ", "formatter=", 1)
+	fmt.Fprintf(predataFile, "FORMAT '%s'", formatType)
+	if extTableDef.FormatOpts != "" {
+		fmt.Fprintf(predataFile, " (%s)", strings.TrimSpace(extTableDef.FormatOpts))
+	}
+	fmt.Fprintln(predataFile)
+	if extTableDef.Options != "" {
+		fmt.Fprintf(predataFile, "OPTIONS (\n\t%s\n)\n", extTableDef.Options)
+	}
+	fmt.Fprintf(predataFile, "ENCODING '%s'\n", extTableDef.Encoding)
+	if extTableDef.Type == READABLE || extTableDef.Type == READABLE_WEB {
+		/*
+		 * In GPDB 5 and later, LOG ERRORS INTO [table] has been replaced by LOG ERRORS,
+		 * but it still uses the same catalog entries to store that information.  If the
+		 * value of pg_exttable.fmterrtbl matches the table's own name, LOG ERRORS is set.
+		 */
+		if extTableDef.ErrTable == table.RelationName {
+			fmt.Fprintln(predataFile, "LOG ERRORS")
+		}
+		if extTableDef.RejectLimit != 0 {
+			fmt.Fprintf(predataFile, "SEGMENT REJECT LIMIT %d ", extTableDef.RejectLimit)
+			switch extTableDef.RejectLimitType {
+				case "r": fmt.Fprintln(predataFile, "ROWS")
+				case "p": fmt.Fprintln(predataFile, "PERCENT")
+			}
+		}
+	}
+}
+
+/*
+ * This function prints additional statements that come after the CREATE TABLE
+ * statement for both regular and external tables.
+ */
+func PrintPostCreateTableStatements(predataFile io.Writer, table utils.Relation, tableDef TableDefinition) {
 	if table.Comment != ""{
 		fmt.Fprintf(predataFile, "\n\nCOMMENT ON TABLE %s IS '%s';\n", table.ToString(), table.Comment)
 	}
@@ -190,7 +370,7 @@ func PrintCreateTableStatement(predataFile io.Writer, table utils.Relation, colu
 		fmt.Fprintf(predataFile, "\n\nALTER TABLE %s OWNER TO %s;\n", table.ToString(), utils.QuoteIdent(table.Owner))
 	}
 
-	for _, att := range columnDefs {
+	for _, att := range tableDef.ColumnDefs {
 		if att.Comment != "" {
 			fmt.Fprintf(predataFile, "\n\nCOMMENT ON COLUMN %s.%s IS '%s';\n", table.ToString(), att.Name, att.Comment)
 		}

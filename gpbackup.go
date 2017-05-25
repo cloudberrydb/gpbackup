@@ -5,7 +5,7 @@ import (
 )
 
 func main() {
-	defer DoTeardown()
+	//defer DoTeardown()
 	DoInit()
 	DoValidation()
 	DoSetup()
