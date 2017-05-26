@@ -66,22 +66,22 @@ func QuoteIdent(ident string) string {
  * make creating sample schemas and relations in tests easier.
  */
 func BasicSchema(schema string) Schema {
-	return Schema {
-		SchemaOid: 0,
+	return Schema{
+		SchemaOid:  0,
 		SchemaName: schema,
-		Comment: "",
-		Owner: "",
+		Comment:    "",
+		Owner:      "",
 	}
 }
 
 func BasicRelation(schema string, relation string) Relation {
-	return Relation {
-		SchemaOid: 0,
-		SchemaName: schema,
-		RelationOid: 0,
+	return Relation{
+		SchemaOid:    0,
+		SchemaName:   schema,
+		RelationOid:  0,
 		RelationName: relation,
-		Comment: "",
-		Owner: "",
+		Comment:      "",
+		Owner:        "",
 	}
 }
 

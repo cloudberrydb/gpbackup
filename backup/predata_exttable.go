@@ -44,9 +44,9 @@ type ExternalTableDefinition struct {
 
 func PrintExternalTableCreateStatement(predataFile io.Writer, table utils.Relation, tableDef TableDefinition) {
 	tableTypeStrMap := map[int]string{
-		READABLE: "READABLE EXTERNAL",
+		READABLE:     "READABLE EXTERNAL",
 		READABLE_WEB: "READABLE EXTERNAL WEB",
-		WRITABLE: "WRITABLE EXTERNAL",
+		WRITABLE:     "WRITABLE EXTERNAL",
 		WRITABLE_WEB: "WRITABLE EXTERNAL WEB",
 	}
 	extTableDef := tableDef.ExtTableDef
@@ -71,24 +71,31 @@ func DetermineExternalTableCharacteristics(extTableDef ExternalTableDefinition) 
 		}
 	} else {
 		isWeb := strings.HasPrefix(extTableDef.Location, "http")
-		if isWeb && isWritable{
+		if isWeb && isWritable {
 			tableType = WRITABLE_WEB
 		} else if isWeb && !isWritable {
 			tableType = READABLE_WEB
-		} else if !isWeb && isWritable{
+		} else if !isWeb && isWritable {
 			tableType = WRITABLE
 		} else {
 			tableType = READABLE
 		}
 		prefix := extTableDef.Location[0:strings.Index(extTableDef.Location, "://")]
 		switch prefix {
-			case "file": tableProtocol = FILE
-			case "gpfdist": tableProtocol = GPFDIST
-			case "gpfdists": tableProtocol = GPFDIST
-			case "gphdfs": tableProtocol = GPHDFS
-			case "http": tableProtocol = HTTP
-			case "https": tableProtocol = HTTP
-			case "s3": tableProtocol = S3
+		case "file":
+			tableProtocol = FILE
+		case "gpfdist":
+			tableProtocol = GPFDIST
+		case "gpfdists":
+			tableProtocol = GPFDIST
+		case "gphdfs":
+			tableProtocol = GPHDFS
+		case "http":
+			tableProtocol = HTTP
+		case "https":
+			tableProtocol = HTTP
+		case "s3":
+			tableProtocol = S3
 		}
 	}
 	return tableType, tableProtocol
@@ -114,23 +121,33 @@ func PrintExternalTableStatements(predataFile io.Writer, table utils.Relation, e
 			fmt.Fprintf(predataFile, "EXECUTE '%s'", extTableDef.Command)
 			execType := strings.Split(extTableDef.ExecLocation, ":")
 			switch execType[0] {
-				case "ALL_SEGMENTS": // Default case, don't print anything else
-				case "HOST": fmt.Fprintf(predataFile, " ON HOST '%s'", execType[1])
-				case "MASTER_ONLY": fmt.Fprintf(predataFile, " ON MASTER")
-				case "PER_HOST": fmt.Fprintf(predataFile, " ON HOST")
-				case "SEGMENT_ID": fmt.Fprintf(predataFile, " ON SEGMENT %s", execType[1])
-				case "TOTAL_SEGS": fmt.Fprintf(predataFile, " ON %s", execType[1])
+			case "ALL_SEGMENTS": // Default case, don't print anything else
+			case "HOST":
+				fmt.Fprintf(predataFile, " ON HOST '%s'", execType[1])
+			case "MASTER_ONLY":
+				fmt.Fprintf(predataFile, " ON MASTER")
+			case "PER_HOST":
+				fmt.Fprintf(predataFile, " ON HOST")
+			case "SEGMENT_ID":
+				fmt.Fprintf(predataFile, " ON SEGMENT %s", execType[1])
+			case "TOTAL_SEGS":
+				fmt.Fprintf(predataFile, " ON %s", execType[1])
 			}
 		}
 	}
 	fmt.Fprintln(predataFile)
 	formatType := ""
 	switch extTableDef.FormatType {
-		case "a": formatType = "avro"
-		case "b": formatType = "custom"
-		case "c": formatType = "csv"
-		case "p": formatType = "parquet"
-		case "t": formatType = "text"
+	case "a":
+		formatType = "avro"
+	case "b":
+		formatType = "custom"
+	case "c":
+		formatType = "csv"
+	case "p":
+		formatType = "parquet"
+	case "t":
+		formatType = "text"
 	}
 	/*
 	 * The options for the custom formatter is stored as "formatter 'function_name'",
@@ -158,8 +175,10 @@ func PrintExternalTableStatements(predataFile io.Writer, table utils.Relation, e
 		if extTableDef.RejectLimit != 0 {
 			fmt.Fprintf(predataFile, "SEGMENT REJECT LIMIT %d ", extTableDef.RejectLimit)
 			switch extTableDef.RejectLimitType {
-				case "r": fmt.Fprintln(predataFile, "ROWS")
-				case "p": fmt.Fprintln(predataFile, "PERCENT")
+			case "r":
+				fmt.Fprintln(predataFile, "ROWS")
+			case "p":
+				fmt.Fprintln(predataFile, "PERCENT")
 			}
 		}
 	}

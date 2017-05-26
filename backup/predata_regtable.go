@@ -155,7 +155,7 @@ func printColumnStatements(predataFile io.Writer, table utils.Relation, columnDe
  * statement for both regular and external tables.
  */
 func PrintPostCreateTableStatements(predataFile io.Writer, table utils.Relation, tableDef TableDefinition) {
-	if table.Comment != ""{
+	if table.Comment != "" {
 		fmt.Fprintf(predataFile, "\n\nCOMMENT ON TABLE %s IS '%s';\n", table.ToString(), table.Comment)
 	}
 	if table.Owner != "" {

@@ -55,13 +55,13 @@ SET SUBPARTITION TEMPLATE
 		It("calls PrintRegularTableCreateStatement for a regular table", func() {
 			tableDef.IsExternal = false
 			backup.PrintCreateTableStatement(buffer, testTable, tableDef)
-				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
+			testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 ) DISTRIBUTED RANDOMLY;`)
 		})
 		It("calls PrintExternalTableCreateStatement for an external table", func() {
 			tableDef.IsExternal = true
 			backup.PrintCreateTableStatement(buffer, testTable, tableDef)
-				testutils.ExpectRegexp(buffer, `CREATE READABLE EXTERNAL WEB TABLE public.tablename (
+			testutils.ExpectRegexp(buffer, `CREATE READABLE EXTERNAL WEB TABLE public.tablename (
 ) 
 FORMAT 'text'
 ENCODING 'UTF-8'
