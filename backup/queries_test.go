@@ -433,7 +433,7 @@ var _ = Describe("backup/queries tests", func() {
 		header := []string{"sequence_name", "last_value", "increment_by", "max_value", "min_value", "cache_value", "log_cnt", "is_cycled", "is_called"}
 		sequenceOne := []driver.Value{"seq_name", "42", 1, 1000, 1, 41, 2, false, false}
 
-		It("returns a slice of tables with schemas and comments", func() {
+		It("returns a slice for a sequence", func() {
 			fakeResult := sqlmock.NewRows(header).AddRow(sequenceOne...)
 			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
 			result := backup.GetSequence(connection, "SELECT * FROM foo")
@@ -446,6 +446,25 @@ var _ = Describe("backup/queries tests", func() {
 			Expect(result.LogCnt).To(Equal(int64(2)))
 			Expect(result.IsCycled).To(BeFalse())
 			Expect(result.IsCalled).To(BeFalse())
+		})
+	})
+	Describe("GetProceduralLanguages", func() {
+		header := []string{"lanname", "owner", "lanispl", "lanpltrusted", "handler", "inline", "validator", "lanacl", "comment"}
+		procLangOne := []driver.Value{"plpythonu", "public", "t", "f", "handler_func", "inline_func", "validator_func", "", "comment"}
+
+		It("returns a slice of tables with schemas and comments", func() {
+			fakeResult := sqlmock.NewRows(header).AddRow(procLangOne...)
+			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
+			result := backup.GetProceduralLanguages(connection)
+			Expect(result[0].Name).To(Equal("plpythonu"))
+			Expect(result[0].Owner).To(Equal("public"))
+			Expect(result[0].IsPl).To(BeTrue())
+			Expect(result[0].PlTrusted).To(BeFalse())
+			Expect(result[0].Handler).To(Equal("handler_func"))
+			Expect(result[0].Inline).To(Equal("inline_func"))
+			Expect(result[0].Validator).To(Equal("validator_func"))
+			Expect(result[0].Access).To(Equal(""))
+			Expect(result[0].Comment).To(Equal("comment"))
 		})
 	})
 })

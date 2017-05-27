@@ -327,4 +327,54 @@ ALTER DATABASE testdb SET search_path=pg_catalog, public;
 ALTER DATABASE testdb SET gp_default_storage_options=appendonly=true,blocksize=32768;`)
 		})
 	})
+
+	Describe("PrintCreateLanguageStatements", func() {
+		buffer := gbytes.NewBuffer()
+		plUntrustedHandlerOnly := backup.QueryProceduralLanguage{"plpythonu", "public", true, false, "plpython_call_handler", "", "", "", ""}
+		plAllFields := backup.QueryProceduralLanguage{"plpgsql", "public", true, true, "plpgsql_call_handler", "plpgsql_inline_handler", "plpgsql_validator", "", ""}
+		plComment := backup.QueryProceduralLanguage{"plpythonu", "public", true, false, "plpython_call_handler", "", "", "", "language comment"}
+
+		It("prints untrusted language with a handler only", func() {
+			langs := []backup.QueryProceduralLanguage{plUntrustedHandlerOnly}
+
+			backup.PrintCreateLanguageStatements(buffer, langs)
+			testutils.ExpectRegexp(buffer, `CREATE PROCEDURAL LANGUAGE plpythonu;
+ALTER FUNCTION plpython_call_handler OWNER TO public;
+ALTER LANGUAGE plpythonu OWNER TO public;`)
+		})
+		It("prints trusted language with handler, inline, validator, and comments", func() {
+			langs := []backup.QueryProceduralLanguage{plAllFields}
+
+			backup.PrintCreateLanguageStatements(buffer, langs)
+			testutils.ExpectRegexp(buffer, `CREATE TRUSTED PROCEDURAL LANGUAGE plpgsql;
+ALTER FUNCTION plpgsql_call_handler OWNER TO public;
+ALTER FUNCTION plpgsql_inline_handler OWNER TO public;
+ALTER FUNCTION plpgsql_validator OWNER TO public;
+ALTER LANGUAGE plpgsql OWNER TO public;`)
+		})
+		It("prints multiple create language statements", func() {
+			langs := []backup.QueryProceduralLanguage{plUntrustedHandlerOnly, plAllFields}
+
+			backup.PrintCreateLanguageStatements(buffer, langs)
+			testutils.ExpectRegexp(buffer, `CREATE PROCEDURAL LANGUAGE plpythonu;
+ALTER FUNCTION plpython_call_handler OWNER TO public;
+ALTER LANGUAGE plpythonu OWNER TO public;
+
+CREATE TRUSTED PROCEDURAL LANGUAGE plpgsql;
+ALTER FUNCTION plpgsql_call_handler OWNER TO public;
+ALTER FUNCTION plpgsql_inline_handler OWNER TO public;
+ALTER FUNCTION plpgsql_validator OWNER TO public;
+ALTER LANGUAGE plpgsql OWNER TO public;`)
+		})
+		It("prints language with comment", func() {
+			langs := []backup.QueryProceduralLanguage{plComment}
+
+			backup.PrintCreateLanguageStatements(buffer, langs)
+			testutils.ExpectRegexp(buffer, `CREATE PROCEDURAL LANGUAGE plpythonu;
+ALTER FUNCTION plpython_call_handler OWNER TO public;
+ALTER LANGUAGE plpythonu OWNER TO public;
+
+COMMENT ON LANGUAGE plpythonu IS 'language comment'`)
+		})
+	})
 })

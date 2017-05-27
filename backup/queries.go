@@ -388,6 +388,40 @@ WHERE datname = '%s';`, connection.DBName)
 	return SelectString(connection, query)
 }
 
+type QueryProceduralLanguage struct {
+	Name      string `db:"lanname"`
+	Owner     string
+	IsPl      bool `db:"lanispl"`
+	PlTrusted bool `db:"lanpltrusted"`
+	Handler   string
+	Inline    string
+	Validator string
+	Access    string `db:"lanacl"`
+	Comment   string
+}
+
+func GetProceduralLanguages(connection *utils.DBConn) []QueryProceduralLanguage {
+	results := make([]QueryProceduralLanguage, 0)
+	query := `
+SELECT l.lanname,
+	pg_get_userbyid(l.lanowner) as owner,
+	l.lanispl,
+	l.lanpltrusted,
+	coalesce(p_hand.proname,'') AS handler,
+	coalesce(p_in.proname,'') AS inline,
+	coalesce(p_val.proname,'') AS validator,
+	coalesce(pg_catalog.array_to_string(l.lanacl, ','), '') as lanacl,
+	coalesce(obj_description(l.oid, 'pg_language'), '') AS comment
+FROM pg_language l
+LEFT JOIN pg_proc p_hand ON l.lanplcallfoid = p_hand.oid
+LEFT JOIN pg_proc p_in ON l.laninline = p_in.oid
+LEFT JOIN pg_proc p_val ON l.lanvalidator = p_val.oid
+WHERE l.lanispl='t'`
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
+}
+
 /*
  * Helper functions
  */

@@ -160,3 +160,38 @@ func PrintDatabaseGUCs(predataFile io.Writer, gucs []string, dbname string) {
 		fmt.Fprintf(predataFile, "\nALTER DATABASE %s SET %s;", dbname, guc)
 	}
 }
+
+func PrintCreateLanguageStatements(predataFile io.Writer, procLangs []QueryProceduralLanguage) {
+	for _, procLang := range procLangs {
+		quotedOwner := utils.QuoteIdent(procLang.Owner)
+		quotedLanguage := utils.QuoteIdent(procLang.Name)
+		fmt.Fprintf(predataFile, "\n\nCREATE ")
+		if procLang.PlTrusted {
+			fmt.Fprintf(predataFile, "TRUSTED ")
+		}
+		fmt.Fprintf(predataFile, "PROCEDURAL LANGUAGE %s;", quotedLanguage)
+		/*
+		 * If the handler, validator, and inline functions are in pg_pltemplate, we can
+		 * dump a CREATE LANGUAGE command without specifying them individually.
+		 *
+		 * The schema of the handler function should match the schema of the language itself, but
+		 * the inline and validator functions can be in a different schema and must be schema-qualified.
+		 */
+
+		if procLang.Handler != "" {
+			fmt.Fprintf(predataFile, "\nALTER FUNCTION %s OWNER TO %s;", procLang.Handler, quotedOwner)
+		}
+		if procLang.Inline != "" {
+			fmt.Fprintf(predataFile, "\nALTER FUNCTION %s OWNER TO %s;", procLang.Inline, quotedOwner)
+		}
+		if procLang.Validator != "" {
+			fmt.Fprintf(predataFile, "\nALTER FUNCTION %s OWNER TO %s;", procLang.Validator, quotedOwner)
+		}
+		if procLang.Owner != "" {
+			fmt.Fprintf(predataFile, "\nALTER LANGUAGE %s OWNER TO %s;", quotedLanguage, quotedOwner)
+		}
+		if procLang.Comment != "" {
+			fmt.Fprintf(predataFile, "\n\nCOMMENT ON LANGUAGE %s IS '%s';\n", quotedLanguage, procLang.Comment)
+		}
+	}
+}
