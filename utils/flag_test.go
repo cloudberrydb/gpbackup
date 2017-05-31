@@ -10,6 +10,10 @@ import (
 )
 
 var _ = Describe("utils/flag tests", func() {
+	BeforeEach(func() {
+		testutils.SetupTestLogger()
+	})
+
 	Context("IsValidTimestamp", func() {
 		It("allows a valid timestamp", func() {
 			timestamp := "20170101010101"

@@ -40,14 +40,16 @@ var _ = Describe("utils/io tests", func() {
 	})
 	Describe("MustOpenFile", func() {
 		It("creates or opens the file for writing", func() {
-			utils.System.Create = func(name string) (*os.File, error) { return os.Stdout, nil }
-			defer func() { utils.System.Create = os.Create }()
+			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) { return os.Stdout, nil }
+			defer func() { utils.System.OpenFile = os.OpenFile }()
 			fileHandle := utils.MustOpenFile("filename")
 			Expect(fileHandle).To(Equal(os.Stdout))
 		})
 		It("panics on error", func() {
-			utils.System.Create = func(name string) (*os.File, error) { return nil, errors.New("Permission denied") }
-			defer func() { utils.System.Create = os.Create }()
+			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) {
+				return nil, errors.New("Permission denied")
+			}
+			defer func() { utils.System.OpenFile = os.OpenFile }()
 			defer testutils.ShouldPanicWithMessage("Unable to create or open file: Permission denied")
 			utils.MustOpenFile("filename")
 		})
@@ -169,8 +171,8 @@ var _ = Describe("utils/io tests", func() {
 		It("writes a map file containing one table", func() {
 			filePath := ""
 			r, w, _ := os.Pipe()
-			utils.System.Create = func(name string) (*os.File, error) { filePath = name; return w, nil }
-			defer func() { utils.System.Create = os.Create }()
+			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) { filePath = name; return w, nil }
+			defer func() { utils.System.OpenFile = os.OpenFile }()
 			tables := []utils.Relation{tableOne}
 			backup.WriteTableMapFile(tables)
 			w.Close()
@@ -181,8 +183,8 @@ var _ = Describe("utils/io tests", func() {
 		It("writes a map file containing multiple tables", func() {
 			filePath := ""
 			r, w, _ := os.Pipe()
-			utils.System.Create = func(name string) (*os.File, error) { filePath = name; return w, nil }
-			defer func() { utils.System.Create = os.Create }()
+			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) { filePath = name; return w, nil }
+			defer func() { utils.System.OpenFile = os.OpenFile }()
 			tables := []utils.Relation{tableOne, tableTwo}
 			backup.WriteTableMapFile(tables)
 			w.Close()

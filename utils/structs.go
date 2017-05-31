@@ -41,7 +41,6 @@ func (driver GPDBDriver) Connect(driverName string, dataSourceName string) (*sql
  */
 
 type SystemFunctions struct {
-	Create      func(name string) (*os.File, error)
 	CurrentUser func() (*user.User, error)
 	Getenv      func(key string) string
 	Getpid      func() int
@@ -49,12 +48,12 @@ type SystemFunctions struct {
 	IsNotExist  func(err error) bool
 	MkdirAll    func(path string, perm os.FileMode) error
 	Now         func() time.Time
+	OpenFile    func(name string, flag int, perm os.FileMode) (*os.File, error)
 	Stat        func(name string) (os.FileInfo, error)
 }
 
 func InitializeSystemFunctions() *SystemFunctions {
 	return &SystemFunctions{
-		Create:      os.Create,
 		CurrentUser: user.Current,
 		Getenv:      os.Getenv,
 		Getpid:      os.Getpid,
@@ -62,6 +61,7 @@ func InitializeSystemFunctions() *SystemFunctions {
 		IsNotExist:  os.IsNotExist,
 		MkdirAll:    os.MkdirAll,
 		Now:         time.Now,
+		OpenFile:    os.OpenFile,
 		Stat:        os.Stat,
 	}
 }

@@ -8,6 +8,7 @@ package utils
 import (
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -37,7 +38,7 @@ func CheckDirectoryExists(dirname string) (bool, error) {
 			return false, err
 		}
 	} else if !(info.IsDir()) {
-			return false, errors.Errorf("%s is a file, not a directory", dirname)
+		return false, errors.Errorf("%s is a file, not a directory", dirname)
 	}
 	return true, nil
 }
@@ -59,11 +60,11 @@ func DirectoryMustExist(dirname string) {
 }
 
 func MustOpenFile(filename string) io.Writer {
-	logFileHandle, err := System.Create(filename)
+	fileHandle, err := System.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		logger.Fatal(err, "Unable to create or open file")
 	}
-	return logFileHandle
+	return fileHandle
 }
 
 func GetUserAndHostInfo() (string, string, string) {
@@ -76,7 +77,7 @@ func GetUserAndHostInfo() (string, string, string) {
 
 func ExecuteSQLFile(dbconn *DBConn, filename string) {
 	connStr := []string{
-		"-U",  dbconn.User,
+		"-U", dbconn.User,
 		"-d", fmt.Sprintf("%s", QuoteIdent(dbconn.DBName)),
 		"-h", dbconn.Host,
 		"-p", fmt.Sprintf("%d", dbconn.Port),

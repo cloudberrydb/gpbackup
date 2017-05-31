@@ -22,7 +22,7 @@ var _ = Describe("utils/log tests", func() {
 	var testLogDir string
 
 	BeforeEach(func() {
-		utils.System.Create = func(filename string) (*os.File, error) { return fakeFile, nil }
+		utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) { return fakeFile, nil }
 		utils.System.CurrentUser = func() (*user.User, error) { return &user.User{Username: "testUser", HomeDir: "testDir"}, nil }
 		utils.System.Getpid = func() int { return 0 }
 		utils.System.Hostname = func() (string, error) { return "testHost", nil }
@@ -78,7 +78,10 @@ var _ = Describe("utils/log tests", func() {
 			})
 			It("creates a log file if given a nonexistent log file", func() {
 				calledWith := ""
-				utils.System.Create = func(filename string) (*os.File, error) { calledWith = filename; return fakeFile, nil }
+				utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) {
+					calledWith = name
+					return fakeFile, nil
+				}
 				utils.System.IsNotExist = func(err error) bool { return true }
 				utils.System.Stat = func(name string) (os.FileInfo, error) { return fakeInfo, errors.New("file does not exist") }
 				utils.InitializeLogging("testProgram", "/tmp/log_dir")
@@ -90,7 +93,9 @@ var _ = Describe("utils/log tests", func() {
 				utils.InitializeLogging("testProgram", "/tmp/log_dir")
 			})
 			It("panics if given a non-writable log file", func() {
-				utils.System.Create = func(filename string) (*os.File, error) { return nil, errors.New("permission denied") }
+				utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) {
+					return nil, errors.New("permission denied")
+				}
 				defer testutils.ShouldPanicWithMessage("permission denied")
 				utils.InitializeLogging("testProgram", "/tmp/log_dir")
 			})
