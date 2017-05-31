@@ -298,7 +298,7 @@ COMMENT ON SCHEMA schema_with_comments IS 'This is a comment.';`)
 			backup.PrintSessionGUCs(buffer, gucs)
 			testutils.ExpectRegexp(buffer, `SET statement_timeout = 0;
 SET check_function_bodies = false;
-SET client_min_messages = warning;
+SET client_min_messages = error;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SET default_with_oids = false`)

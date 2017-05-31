@@ -189,7 +189,7 @@ func PrintConnectionString(metadataFile io.Writer, dbname string) {
 func PrintSessionGUCs(metadataFile io.Writer, gucs QuerySessionGUCs) {
 	fmt.Fprintf(metadataFile, `SET statement_timeout = 0;
 SET check_function_bodies = false;
-SET client_min_messages = warning;
+SET client_min_messages = error;
 SET client_encoding = '%s';
 SET standard_conforming_strings = %s;
 SET default_with_oids = %s;
