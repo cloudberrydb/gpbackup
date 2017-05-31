@@ -8,6 +8,7 @@ package utils
 import (
 	"fmt"
 	"io"
+	"os/exec"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -26,6 +27,20 @@ var (
 /*
  * Generic file/directory manipulation functions
  */
+
+func CheckDirectoryExists(dirname string) (bool, error) {
+	info, err := System.Stat(dirname)
+	if err != nil {
+		if System.IsNotExist(err) {
+			return false, nil
+		} else {
+			return false, err
+		}
+	} else if !(info.IsDir()) {
+			return false, errors.Errorf("%s is a file, not a directory", dirname)
+	}
+	return true, nil
+}
 
 func DirectoryMustExist(dirname string) {
 	info, err := System.Stat(dirname)
@@ -59,6 +74,27 @@ func GetUserAndHostInfo() (string, string, string) {
 	return userName, userDir, hostname
 }
 
+func ExecuteSQLFile(dbconn *DBConn, filename string) {
+	connStr := []string{
+		"-U",  dbconn.User,
+		"-d", fmt.Sprintf("%s", QuoteIdent(dbconn.DBName)),
+		"-h", dbconn.Host,
+		"-p", fmt.Sprintf("%d", dbconn.Port),
+		"-f", fmt.Sprintf("%s", filename),
+		"-v", "ON_ERROR_STOP=1",
+		"-q",
+	}
+	out, err := exec.Command("psql", connStr...).CombinedOutput()
+	if err != nil {
+		/*
+		 * Not using logger.Fatal, as this is a SQL error rather than a code error,
+		 * so we don't want a stack trace.
+		 */
+		logger.Error("Execution of SQL file encountered an error: %s", out)
+		Abort()
+	}
+}
+
 /*
  * Backup-specific file/directory manipulation functions
  */
@@ -72,6 +108,19 @@ func CreateDumpDirs() {
 			logger.Fatal(err, "Cannot create directory %s on host %s", dumpPath, segHostMap[segId])
 		}
 		CheckError(err)
+	}
+}
+
+// TODO: Handle multi-node clusters
+func AssertDumpDirsExist() {
+	for _, dumpPath := range segDirMap {
+		exists, err := CheckDirectoryExists(dumpPath)
+		if err != nil {
+			logger.Fatal(err, "Error statting dump directory %s", dumpPath)
+		}
+		if !exists {
+			logger.Fatal(errors.Errorf("Dump directory %s does not exist", dumpPath), "")
+		}
 	}
 }
 

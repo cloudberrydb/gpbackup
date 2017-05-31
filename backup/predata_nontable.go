@@ -19,6 +19,10 @@ type SequenceDefinition struct {
 }
 
 /*
+ * Functions to print to the predata file
+ */
+
+/*
  * This function calls per-table functions to get constraints related to each
  * table, then consolidates them in two slices holding all constraints for all
  * tables.  Two slices are needed because FOREIGN KEY constraints must be dumped
@@ -57,13 +61,6 @@ func ProcessConstraints(table utils.Relation, constraints []QueryConstraint) ([]
 		}
 	}
 	return cons, fkCons
-}
-
-func PrintCreateDatabaseStatement(predataFile io.Writer) {
-	dbname := utils.QuoteIdent(connection.DBName)
-	owner := utils.QuoteIdent(GetDatabaseOwner(connection))
-	fmt.Fprintf(predataFile, "\n\nCREATE DATABASE %s;", dbname)
-	fmt.Fprintf(predataFile, "\nALTER DATABASE %s OWNER TO %s;", dbname, owner)
 }
 
 func PrintConstraintStatements(predataFile io.Writer, constraints []string, fkConstraints []string) {
@@ -145,22 +142,6 @@ func PrintCreateSequenceStatements(predataFile io.Writer, sequences []SequenceDe
 	}
 }
 
-func PrintSessionGUCs(predataFile io.Writer, gucs QuerySessionGUCs) {
-	fmt.Fprintf(predataFile, `SET statement_timeout = 0;
-SET check_function_bodies = false;
-SET client_min_messages = warning;
-SET client_encoding = '%s';
-SET standard_conforming_strings = %s;
-SET default_with_oids = %s;
-`, gucs.ClientEncoding, gucs.StdConformingStrings, gucs.DefaultWithOids)
-}
-
-func PrintDatabaseGUCs(predataFile io.Writer, gucs []string, dbname string) {
-	for _, guc := range gucs {
-		fmt.Fprintf(predataFile, "\nALTER DATABASE %s SET %s;", dbname, guc)
-	}
-}
-
 func PrintCreateLanguageStatements(predataFile io.Writer, procLangs []QueryProceduralLanguage) {
 	for _, procLang := range procLangs {
 		quotedOwner := utils.QuoteIdent(procLang.Owner)
@@ -193,5 +174,37 @@ func PrintCreateLanguageStatements(predataFile io.Writer, procLangs []QueryProce
 		if procLang.Comment != "" {
 			fmt.Fprintf(predataFile, "\n\nCOMMENT ON LANGUAGE %s IS '%s';\n", quotedLanguage, procLang.Comment)
 		}
+	}
+}
+
+/*
+ * Functions to print to the global or postdata file instead of, or in addition
+ * to, the predata file.
+ */
+
+func PrintConnectionString(metadataFile io.Writer, dbname string) {
+	fmt.Fprintf(metadataFile, "\\c %s\n", dbname)
+}
+
+func PrintSessionGUCs(metadataFile io.Writer, gucs QuerySessionGUCs) {
+	fmt.Fprintf(metadataFile, `SET statement_timeout = 0;
+SET check_function_bodies = false;
+SET client_min_messages = warning;
+SET client_encoding = '%s';
+SET standard_conforming_strings = %s;
+SET default_with_oids = %s;
+`, gucs.ClientEncoding, gucs.StdConformingStrings, gucs.DefaultWithOids)
+}
+
+func PrintCreateDatabaseStatement(globalFile io.Writer) {
+	dbname := utils.QuoteIdent(connection.DBName)
+	owner := utils.QuoteIdent(GetDatabaseOwner(connection))
+	fmt.Fprintf(globalFile, "\n\nCREATE DATABASE %s;", dbname)
+	fmt.Fprintf(globalFile, "\nALTER DATABASE %s OWNER TO %s;", dbname, owner)
+}
+
+func PrintDatabaseGUCs(globalFile io.Writer, gucs []string, dbname string) {
+	for _, guc := range gucs {
+		fmt.Fprintf(globalFile, "\nALTER DATABASE %s SET %s;", dbname, guc)
 	}
 }

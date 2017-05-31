@@ -73,7 +73,11 @@ func TryEnv(varname string, defval string) string {
 	return val
 }
 
-func SetDumpTimestamp() string {
-	DumpTimestamp = CurrentTimestamp()
+func SetDumpTimestamp(timestamp string) string {
+	if timestamp != "" {
+		DumpTimestamp = timestamp
+	} else {
+		DumpTimestamp = CurrentTimestamp()
+	}
 	return DumpTimestamp
 }

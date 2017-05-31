@@ -34,6 +34,7 @@ func SetLogger(log *utils.Logger) {
  */
 func DoValidation() {
 	flag.Parse()
+	utils.CheckExclusiveFlags("debug", "quiet", "verbose")
 }
 
 // This function handles setup that must be done after parsing flags.
@@ -49,7 +50,7 @@ func DoSetup() {
 	connection.Connect()
 	connection.Exec("SET application_name TO 'gpbackup'")
 
-	utils.SetDumpTimestamp()
+	utils.SetDumpTimestamp("")
 
 	if *dumpDir != "" {
 		utils.BaseDumpDir = *dumpDir
@@ -61,18 +62,23 @@ func DoSetup() {
 }
 
 func DoBackup() {
-	logger.Info("Dump Key = %s", utils.CurrentTimestamp())
+	logger.Info("Dump Key = %s", utils.DumpTimestamp)
 	logger.Info("Dump Database = %s", utils.QuoteIdent(connection.DBName))
 	logger.Info("Database Size = %s", connection.GetDBSize())
 
 	masterDumpDir := utils.GetDirForContent(-1)
 
+	globalFilename := fmt.Sprintf("%s/global.sql", masterDumpDir)
 	predataFilename := fmt.Sprintf("%s/predata.sql", masterDumpDir)
 	postdataFilename := fmt.Sprintf("%s/postdata.sql", masterDumpDir)
 
 	connection.Begin()
 	tables := GetAllUserTables(connection)
 	extTableMap := GetExternalTablesMap(connection)
+
+	logger.Info("Writing global database metadata to %s", globalFilename)
+	backupGlobal(globalFilename)
+	logger.Info("Global database metadata dump complete")
 
 	logger.Info("Writing pre-data metadata to %s", predataFilename)
 	backupPredata(predataFilename, tables, extTableMap)
@@ -89,25 +95,34 @@ func DoBackup() {
 	connection.Commit()
 }
 
+func backupGlobal(filename string) {
+	globalFile := utils.MustOpenFile(filename)
+
+	logger.Verbose("Writing session GUCs to global file")
+	gucs := GetSessionGUCs(connection)
+	PrintSessionGUCs(globalFile, gucs)
+
+	logger.Verbose("Writing CREATE DATABASE statement to global file")
+	PrintCreateDatabaseStatement(globalFile)
+
+	logger.Verbose("Writing database GUCs to global file")
+	databaseGucs := GetDatabaseGUCs(connection)
+	PrintDatabaseGUCs(globalFile, databaseGucs, connection.DBName)
+
+	logger.Verbose("Writing database comment to global file")
+	databaseComment := GetDatabaseComment(connection)
+	if databaseComment != "" {
+		fmt.Fprintf(globalFile, "\nCOMMENT ON DATABASE %s IS '%s';\n", connection.DBName, databaseComment)
+	}
+}
+
 func backupPredata(filename string, tables []utils.Relation, extTableMap map[string]bool) {
 	predataFile := utils.MustOpenFile(filename)
+	PrintConnectionString(predataFile, connection.DBName)
 
 	logger.Verbose("Writing session GUCs to predata file")
 	gucs := GetSessionGUCs(connection)
 	PrintSessionGUCs(predataFile, gucs)
-
-	logger.Verbose("Writing CREATE DATABASE statement to predata file")
-	PrintCreateDatabaseStatement(predataFile)
-
-	logger.Verbose("Writing database GUCs to predata file")
-	databaseGucs := GetDatabaseGUCs(connection)
-	PrintDatabaseGUCs(predataFile, databaseGucs, connection.DBName)
-
-	logger.Verbose("Writing database comment to predata file")
-	databaseComment := GetDatabaseComment(connection)
-	if databaseComment != "" {
-		fmt.Fprintf(predataFile, "\nCOMMENT ON DATABASE %s IS '%s';\n", connection.DBName, databaseComment)
-	}
 
 	logger.Verbose("Writing CREATE SCHEMA statements to predata file")
 	schemas := GetAllUserSchemas(connection)
@@ -150,6 +165,7 @@ func backupData(tables []utils.Relation, extTableMap map[string]bool) {
 
 func backupPostdata(filename string, tables []utils.Relation, extTableMap map[string]bool) {
 	postdataFile := utils.MustOpenFile(filename)
+	PrintConnectionString(postdataFile, connection.DBName)
 
 	logger.Verbose("Writing session GUCs to predata file")
 	gucs := GetSessionGUCs(connection)

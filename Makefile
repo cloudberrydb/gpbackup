@@ -2,12 +2,13 @@ all: depend build test
 
 SHELL := /bin/bash
 .DEFAULT_GOAL := all
-MODULE_NAME=gpbackup
+BACKUP=gpbackup
+RESTORE=gprestore
 DIR_PATH=$(shell dirname `pwd`)
 
 DEST = .
 
-GOFLAGS := -o $(DEST)
+GOFLAGS :=
 dependencies :
 		go get github.com/jmoiron/sqlx
 		go get github.com/lib/pq
@@ -20,7 +21,7 @@ dependencies :
 
 format :
 		goimports -w .
-		go fmt .
+		go fmt ./...
 
 ginkgo :
 		ginkgo -r -randomizeSuites -randomizeAllSpecs 2>&1
@@ -32,13 +33,16 @@ ci : ginkgo
 depend : dependencies
 
 build :
-		go build $(GOFLAGS) -o ../../bin/$(MODULE_NAME)
+		go build -tags '$(BACKUP)' $(GOFLAGS) -o ../../bin/$(BACKUP)
+		go build -tags '$(RESTORE)' $(GOFLAGS) -o ../../bin/$(RESTORE)
 
 build_rhel:
-		env GOOS=linux GOARCH=amd64 go build $(GOFLAGS) -o $(MODULE_NAME)
+		env GOOS=linux GOARCH=amd64 go build -tags '$(BACKUP)' $(GOFLAGS) -o ../../bin/$(BACKUP)
+		env GOOS=linux GOARCH=amd64 go build -tags '$(RESTORE)' $(GOFLAGS) -o ../../bin/$(RESTORE)
 
 build_osx:
-		env GOOS=darwin GOARCH=amd64 go build $(GOFLAGS) -o $(MODULE_NAME)
+		env GOOS=darwin GOARCH=amd64 go build -tags '$(BACKUP)' $(GOFLAGS) -o ../../bin/$(BACKUP)
+		env GOOS=darwin GOARCH=amd64 go build -tags '$(RESTORE)' $(GOFLAGS) -o ../../bin/$(RESTORE)
 
 install: all installdirs
 		$(INSTALL_PROGRAM) gpbackup$(X) '$(DESTDIR)$(bindir)/gpbackup$(X)'
@@ -47,6 +51,6 @@ installdirs:
 		$(MKDIR_P) '$(DESTDIR)$(bindir)'
 
 clean :
-		rm -f $(MODULE_NAME)
+		rm -f $(BACKUP)
 		rm -rf /tmp/go-build*
 		rm -rf /tmp/ginkgo*

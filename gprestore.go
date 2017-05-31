@@ -1,9 +1,9 @@
-// +build gpbackup
+// +build gprestore
 
 package main
 
 import (
-	. "gpbackup/backup"
+	. "gpbackup/restore"
 )
 
 func main() {
@@ -11,5 +11,5 @@ func main() {
 	DoInit()
 	DoValidation()
 	DoSetup()
-	DoBackup()
+	DoRestore()
 }
