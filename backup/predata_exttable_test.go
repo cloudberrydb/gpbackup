@@ -124,8 +124,7 @@ var _ = Describe("backup/predata tests", func() {
 	'file://host:port/path/file'
 )
 FORMAT 'text'
-ENCODING 'UTF-8'
-DISTRIBUTED RANDOMLY;`)
+ENCODING 'UTF-8';`)
 		})
 		It("prints a CREATE block for a WRITABLE EXTERNAL table", func() {
 			extTableDef.Location = "file://host:port/path/file"
@@ -149,8 +148,7 @@ DISTRIBUTED RANDOMLY;`)
 	'http://webhost:port/path/file'
 )
 FORMAT 'text'
-ENCODING 'UTF-8'
-DISTRIBUTED RANDOMLY;`)
+ENCODING 'UTF-8';`)
 		})
 		It("prints a CREATE block for a READABLE EXTERNAL WEB table with an EXECUTE", func() {
 			extTableDef.Command = "hostname"
@@ -159,8 +157,7 @@ DISTRIBUTED RANDOMLY;`)
 			testutils.ExpectRegexp(buffer, `CREATE READABLE EXTERNAL WEB TABLE public.tablename (
 ) EXECUTE 'hostname'
 FORMAT 'text'
-ENCODING 'UTF-8'
-DISTRIBUTED RANDOMLY;`)
+ENCODING 'UTF-8';`)
 		})
 		It("prints a CREATE block for a WRITABLE EXTERNAL WEB table", func() {
 			extTableDef.Command = "hostname"

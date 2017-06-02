@@ -55,7 +55,10 @@ func PrintExternalTableCreateStatement(predataFile io.Writer, table utils.Relati
 	printColumnStatements(predataFile, table, tableDef.ColumnDefs)
 	fmt.Fprintf(predataFile, ") ")
 	PrintExternalTableStatements(predataFile, table, extTableDef)
-	fmt.Fprintf(predataFile, "%s;", tableDef.DistPolicy)
+	if extTableDef.Writable {
+		fmt.Fprintf(predataFile, "\n%s", tableDef.DistPolicy)
+	}
+	fmt.Fprint(predataFile, ";")
 }
 
 func DetermineExternalTableCharacteristics(extTableDef ExternalTableDefinition) (int, int) {
@@ -162,7 +165,7 @@ func PrintExternalTableStatements(predataFile io.Writer, table utils.Relation, e
 	if extTableDef.Options != "" {
 		fmt.Fprintf(predataFile, "OPTIONS (\n\t%s\n)\n", extTableDef.Options)
 	}
-	fmt.Fprintf(predataFile, "ENCODING '%s'\n", extTableDef.Encoding)
+	fmt.Fprintf(predataFile, "ENCODING '%s'", extTableDef.Encoding)
 	if extTableDef.Type == READABLE || extTableDef.Type == READABLE_WEB {
 		/*
 		 * In GPDB 5 and later, LOG ERRORS INTO [table] has been replaced by LOG ERRORS,
@@ -170,15 +173,15 @@ func PrintExternalTableStatements(predataFile io.Writer, table utils.Relation, e
 		 * value of pg_exttable.fmterrtbl matches the table's own name, LOG ERRORS is set.
 		 */
 		if extTableDef.ErrTable == table.RelationName {
-			fmt.Fprintln(predataFile, "LOG ERRORS")
+			fmt.Fprint(predataFile, "\nLOG ERRORS")
 		}
 		if extTableDef.RejectLimit != 0 {
-			fmt.Fprintf(predataFile, "SEGMENT REJECT LIMIT %d ", extTableDef.RejectLimit)
+			fmt.Fprintf(predataFile, "\nSEGMENT REJECT LIMIT %d ", extTableDef.RejectLimit)
 			switch extTableDef.RejectLimitType {
 			case "r":
-				fmt.Fprintln(predataFile, "ROWS")
+				fmt.Fprint(predataFile, "ROWS")
 			case "p":
-				fmt.Fprintln(predataFile, "PERCENT")
+				fmt.Fprint(predataFile, "PERCENT")
 			}
 		}
 	}

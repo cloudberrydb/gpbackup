@@ -64,8 +64,7 @@ SET SUBPARTITION TEMPLATE
 			testutils.ExpectRegexp(buffer, `CREATE READABLE EXTERNAL WEB TABLE public.tablename (
 ) 
 FORMAT 'text'
-ENCODING 'UTF-8'
-DISTRIBUTED RANDOMLY;`)
+ENCODING 'UTF-8';`)
 		})
 	})
 	Describe("PrintRegularTableCreateStatement", func() {
