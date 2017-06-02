@@ -266,6 +266,41 @@ func PrintFunctionModifiers(predataFile io.Writer, funcDef QueryFunctionDefiniti
 	}
 }
 
+func PrintCreateAggregateStatements(predataFile io.Writer, aggDefs []QueryAggregateDefinition, funcNameMap map[uint32]string) {
+	for _, aggDef := range aggDefs {
+		aggFQN := fmt.Sprintf("%s.%s", utils.QuoteIdent(aggDef.SchemaName), utils.QuoteIdent(aggDef.AggregateName))
+		orderedStr := ""
+		if aggDef.IsOrdered {
+			orderedStr = "ORDERED "
+		}
+		fmt.Fprintf(predataFile, "\n\nCREATE %sAGGREGATE %s(%s) (\n", orderedStr, aggFQN, aggDef.Arguments)
+		fmt.Fprintf(predataFile, "\tSFUNC = %s,\n", funcNameMap[aggDef.TransitionFunction])
+		fmt.Fprintf(predataFile, "\tSTYPE = %s", aggDef.TransitionDataType)
+
+		if aggDef.PreliminaryFunction != 0 {
+			fmt.Fprintf(predataFile, ",\n\tPREFUNC = %s", funcNameMap[aggDef.PreliminaryFunction])
+		}
+		if aggDef.FinalFunction != 0 {
+			fmt.Fprintf(predataFile, ",\n\tFINALFUNC = %s", funcNameMap[aggDef.FinalFunction])
+		}
+		if aggDef.InitialValue != "" {
+			fmt.Fprintf(predataFile, ",\n\tINITCOND = '%s'", aggDef.InitialValue)
+		}
+		if aggDef.SortOperator != 0 {
+			fmt.Fprintf(predataFile, ",\n\tSORTOP = %s", funcNameMap[aggDef.SortOperator])
+		}
+
+		fmt.Fprintln(predataFile, "\n);")
+
+		if aggDef.Owner != "" {
+			fmt.Fprintf(predataFile, "\nALTER AGGREGATE %s(%s) OWNER TO %s;\n", aggFQN, aggDef.IdentArgs, utils.QuoteIdent(aggDef.Owner))
+		}
+		if aggDef.Comment != "" {
+			fmt.Fprintf(predataFile, "\nCOMMENT ON AGGREGATE %s(%s) IS '%s';\n", aggFQN, aggDef.IdentArgs, aggDef.Comment)
+		}
+	}
+}
+
 /*
  * Functions to print to the global or postdata file instead of, or in addition
  * to, the predata file.

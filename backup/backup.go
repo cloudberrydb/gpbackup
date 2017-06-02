@@ -150,6 +150,11 @@ func backupPredata(filename string, tables []utils.Relation, extTableMap map[str
 	logger.Verbose("Writing CREATE FUNCTION statements to predata file")
 	funcDefs := GetFunctionDefinitions(connection)
 	PrintCreateFunctionStatements(predataFile, funcDefs)
+
+	logger.Verbose("Writing CREATE AGGREGATE statements to predata file")
+	aggDefs := GetAggregateDefinitions(connection)
+	funcNameMap := GetFunctionOidToNameMap(connection)
+	PrintCreateAggregateStatements(predataFile, aggDefs, funcNameMap)
 }
 
 func backupData(tables []utils.Relation, extTableMap map[string]bool) {

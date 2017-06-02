@@ -310,13 +310,85 @@ SELECT
 	pg_get_userbyid(proowner) AS owner
 FROM pg_proc p
 LEFT JOIN pg_namespace n
-ON p.pronamespace = n.oid
-WHERE %s;`, nonUserSchemaFilterClause)
+	ON p.pronamespace = n.oid
+WHERE %s
+AND proisagg = 'f';`, nonUserSchemaFilterClause)
 
 	results := make([]QueryFunctionDefinition, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results
+}
+
+type QueryAggregateDefinition struct {
+	SchemaName          string `db:"nspname"`
+	AggregateName       string `db:"proname"`
+	Arguments           string
+	IdentArgs           string
+	TransitionFunction  uint32 `db:"aggtransfn"`
+	PreliminaryFunction uint32 `db:"aggprelimfn"`
+	FinalFunction       uint32 `db:"aggfinalfn"`
+	SortOperator        uint32 `db:"aggsortop"`
+	TransitionDataType  string
+	InitialValue        string
+	IsOrdered           bool `db:"aggordered"`
+	Comment             string
+	Owner               string
+}
+
+func GetAggregateDefinitions(connection *utils.DBConn) []QueryAggregateDefinition {
+	query := fmt.Sprintf(`
+SELECT
+	n.nspname,
+	p.proname,
+	pg_catalog.pg_get_function_arguments(p.oid) AS arguments,
+	pg_catalog.pg_get_function_identity_arguments(p.oid) AS identargs,
+	a.aggtransfn::regproc::oid,
+	a.aggprelimfn::regproc::oid,
+	a.aggfinalfn::regproc::oid,
+	a.aggsortop::regproc::oid,
+	t.typname as transitiondatatype,
+	coalesce(a.agginitval, '') AS initialvalue,
+	a.aggordered,
+	coalesce(obj_description(a.aggfnoid), '') AS comment,
+	pg_get_userbyid(p.proowner) AS owner
+FROM pg_aggregate a
+LEFT JOIN pg_proc p ON a.aggfnoid = p.oid
+LEFT JOIN pg_type t ON a.aggtranstype = t.oid
+LEFT JOIN pg_namespace n ON p.pronamespace = n.oid
+WHERE %s;`, nonUserSchemaFilterClause)
+
+	results := make([]QueryAggregateDefinition, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
+}
+
+type QueryFunction struct {
+	FunctionOid    uint32 `db:"oid"`
+	FunctionSchema string `db:"nspname"`
+	FunctionName   string `db:"proname"`
+}
+
+func GetFunctionOidToNameMap(connection *utils.DBConn) map[uint32]string {
+	query := `
+SELECT
+	p.oid,
+	n.nspname,
+	p.proname
+FROM pg_proc p
+LEFT JOIN pg_namespace n ON p.pronamespace = n.oid;
+`
+
+	results := make([]QueryFunction, 0)
+	funcMap := make(map[uint32]string, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	for _, function := range results {
+		fqn := fmt.Sprintf("%s.%s", utils.QuoteIdent(function.FunctionSchema), utils.QuoteIdent(function.FunctionName))
+		funcMap[function.FunctionOid] = fqn
+	}
+	return funcMap
 }
 
 /*

@@ -433,10 +433,6 @@ COMMENT ON FUNCTION public.func_name(integer, integer) IS 'This is a function co
 			})
 		})
 		Describe("PrintFunctionBodyOrPath", func() {
-		BeforeEach(func() {
-				funcDef = funcDefault
-			})
-
 			It("prints a function definition for an internal function with 'NULL' binary path using '-'", func() {
 				funcDef.BinaryPath = "-"
 				backup.PrintFunctionBodyOrPath(buffer, funcDef)
@@ -523,11 +519,11 @@ $_$`)
 				testutils.ExpectRegexp(buffer, "SECURITY DEFINER")
 			})
 			Context("Cost cases", func() {
-			/*
-			 * The default COST values are 1 for C and internal functions and
-			 * 100 for any other language, so it should not print COST clauses
-			 * for those values but print any other COST.
-			 */
+				/*
+				 * The default COST values are 1 for C and internal functions and
+				 * 100 for any other language, so it should not print COST clauses
+				 * for those values but print any other COST.
+				 */
 				It("prints 'COST 5' if Cost is set to 5", func() {
 					funcDef.Cost = 5
 					backup.PrintFunctionModifiers(buffer, funcDef)
@@ -571,32 +567,32 @@ $_$`)
 				})
 			})
 			Context("NumRows cases", func() {
-			/*
-			 * A ROWS value of 0 means "no estimate" and 1000 means "too high
-			 * to estimate", so those should not be printed but any other ROWS
-			 * value should be.
-			 */
+				/*
+				 * A ROWS value of 0 means "no estimate" and 1000 means "too high
+				 * to estimate", so those should not be printed but any other ROWS
+				 * value should be.
+				 */
 				It("prints 'ROWS 5' if Rows is set to 5", func() {
 					funcDef.NumRows = 5
-					funcDef.ReturnsSet= true
+					funcDef.ReturnsSet = true
 					backup.PrintFunctionModifiers(buffer, funcDef)
 					testutils.ExpectRegexp(buffer, "ROWS 5")
 				})
 				It("does not print 'ROWS' if Rows is set but ReturnsSet is false", func() {
 					funcDef.NumRows = 100
-					funcDef.ReturnsSet= false
+					funcDef.ReturnsSet = false
 					backup.PrintFunctionModifiers(buffer, funcDef)
 					Expect(buffer.Contents()).To(Equal([]byte{}))
 				})
 				It("does not print 'ROWS' if Rows is set to 0", func() {
 					funcDef.NumRows = 0
-					funcDef.ReturnsSet= true
+					funcDef.ReturnsSet = true
 					backup.PrintFunctionModifiers(buffer, funcDef)
 					Expect(buffer.Contents()).To(Equal([]byte{}))
 				})
 				It("does not print 'ROWS' if Rows is set to 1000", func() {
 					funcDef.NumRows = 1000
-					funcDef.ReturnsSet= true
+					funcDef.ReturnsSet = true
 					backup.PrintFunctionModifiers(buffer, funcDef)
 					Expect(buffer.Contents()).To(Equal([]byte{}))
 				})
@@ -606,6 +602,79 @@ $_$`)
 				backup.PrintFunctionModifiers(buffer, funcDef)
 				testutils.ExpectRegexp(buffer, "SET client_min_messages TO error")
 			})
+		})
+	})
+	Describe("PrintCreateAggregateStatements", func() {
+		aggDefs := make([]backup.QueryAggregateDefinition, 1)
+		buffer := gbytes.NewBuffer()
+		aggDefault := backup.QueryAggregateDefinition{"public", "agg_name", "integer, integer", "integer, integer", 1, 0, 0, 0, "integer", "", false, "", ""}
+		funcNameMap := map[uint32]string{1: "public.mysfunc", 2: "public.mypfunc", 3: "public.myffunc", 4: "public.mysortop"}
+		BeforeEach(func() {
+			buffer = gbytes.BufferWithBytes([]byte(""))
+			aggDefs[0] = aggDefault
+		})
+
+		It("prints an aggregate definition for an unordered aggregate with no optional specifications", func() {
+			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcNameMap)
+			testutils.ExpectRegexp(buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
+	SFUNC = public.mysfunc,
+	STYPE = integer
+);`)
+		})
+		It("prints an aggregate definition for an ordered aggregate with no optional specifications", func() {
+			aggDefs[0].IsOrdered = true
+			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcNameMap)
+			testutils.ExpectRegexp(buffer, `CREATE ORDERED AGGREGATE public.agg_name(integer, integer) (
+	SFUNC = public.mysfunc,
+	STYPE = integer
+);`)
+		})
+		It("prints an aggregate with a preliminary function", func() {
+			aggDefs[0].PreliminaryFunction = 2
+			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcNameMap)
+			testutils.ExpectRegexp(buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
+	SFUNC = public.mysfunc,
+	STYPE = integer,
+	PREFUNC = public.mypfunc
+);`)
+		})
+		It("prints an aggregate with a final function", func() {
+			aggDefs[0].FinalFunction = 3
+			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcNameMap)
+			testutils.ExpectRegexp(buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
+	SFUNC = public.mysfunc,
+	STYPE = integer,
+	FINALFUNC = public.myffunc
+);`)
+		})
+		It("prints an aggregate with an initial condition", func() {
+			aggDefs[0].InitialValue = "0"
+			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcNameMap)
+			testutils.ExpectRegexp(buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
+	SFUNC = public.mysfunc,
+	STYPE = integer,
+	INITCOND = '0'
+);`)
+		})
+		It("prints an aggregate with a sort operator", func() {
+			aggDefs[0].SortOperator = 4
+			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcNameMap)
+			testutils.ExpectRegexp(buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
+	SFUNC = public.mysfunc,
+	STYPE = integer,
+	SORTOP = public.mysortop
+);`)
+		})
+		It("prints an aggregate with multiple specifications", func() {
+			aggDefs[0].FinalFunction = 3
+			aggDefs[0].SortOperator = 4
+			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcNameMap)
+			testutils.ExpectRegexp(buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
+	SFUNC = public.mysfunc,
+	STYPE = integer,
+	FINALFUNC = public.myffunc,
+	SORTOP = public.mysortop
+);`)
 		})
 	})
 })

@@ -470,11 +470,11 @@ var _ = Describe("backup/queries tests", func() {
 	Describe("GetFunctionDefinitions", func() {
 		header := []string{"nspname", "proname", "proretset", "functionbody", "binarypath", "arguments", "identargs", "resulttype",
 			"provolatile", "proisstrict", "prosecdef", "proconfig", "procost", "prorows", "prodataaccess", "language", "comment", "owner"}
-		funcDefRow := []driver.Value{"public", "func_name", "f", "SELECT $1+$2", "", "integer, integer", "integer, integer", "integer",
+		funcDefaultRow := []driver.Value{"public", "func_name", "f", "SELECT $1+$2", "", "integer, integer", "integer, integer", "integer",
 			"v", "f", "f", "", "100", "0", "", "sql", "comment", "owner"}
 
 		It("returns a slice of function definitions", func() {
-			fakeResult := sqlmock.NewRows(header).AddRow(funcDefRow...)
+			fakeResult := sqlmock.NewRows(header).AddRow(funcDefaultRow...)
 			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
 			result := backup.GetFunctionDefinitions(connection)
 			Expect(result[0].SchemaName).To(Equal("public"))
@@ -493,6 +493,31 @@ var _ = Describe("backup/queries tests", func() {
 			Expect(result[0].NumRows).To(Equal(float32(0)))
 			Expect(result[0].SqlUsage).To(Equal(""))
 			Expect(result[0].Language).To(Equal("sql"))
+			Expect(result[0].Comment).To(Equal("comment"))
+			Expect(result[0].Owner).To(Equal("owner"))
+		})
+	})
+	Describe("GetAggregateDefinitions", func() {
+		header := []string{"nspname", "proname", "arguments", "identargs", "aggtransfn", "aggprelimfn", "aggfinalfn", "aggsortop",
+			"transitiondatatype", "initialvalue", "aggordered", "comment", "owner"}
+		aggDefaultRow := []driver.Value{"public", "agg_name", "integer, integer", "integer, integer", 1, 2, 3, 4,
+			"integer", "0", "f", "comment", "owner"}
+
+		It("returns a slice of aggregate definitions", func() {
+			fakeResult := sqlmock.NewRows(header).AddRow(aggDefaultRow...)
+			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
+			result := backup.GetAggregateDefinitions(connection)
+			Expect(result[0].SchemaName).To(Equal("public"))
+			Expect(result[0].AggregateName).To(Equal("agg_name"))
+			Expect(result[0].Arguments).To(Equal("integer, integer"))
+			Expect(result[0].IdentArgs).To(Equal("integer, integer"))
+			Expect(result[0].TransitionFunction).To(Equal(uint32(1)))
+			Expect(result[0].PreliminaryFunction).To(Equal(uint32(2)))
+			Expect(result[0].FinalFunction).To(Equal(uint32(3)))
+			Expect(result[0].SortOperator).To(Equal(uint32(4)))
+			Expect(result[0].TransitionDataType).To(Equal("integer"))
+			Expect(result[0].InitialValue).To(Equal("0"))
+			Expect(result[0].IsOrdered).To(BeFalse())
 			Expect(result[0].Comment).To(Equal("comment"))
 			Expect(result[0].Owner).To(Equal("owner"))
 		})
