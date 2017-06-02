@@ -27,6 +27,13 @@ import (
  * package (especially Table and Schema) are intended for more general use.
  */
 
+var (
+	// A list of schemas we don't ever want to dump, formatted for use in a WHERE clause
+	nonUserSchemaFilterClause = `nspname NOT LIKE 'pg_temp_%'
+AND nspname NOT LIKE 'pg_toast%'
+AND nspname NOT IN ('gp_toolkit', 'information_schema', 'pg_aoseg', 'pg_bitmapindex', 'pg_catalog')`
+)
+
 /*
  * Queries requiring their own structs
  */
@@ -36,17 +43,15 @@ func GetAllUserSchemas(connection *utils.DBConn) []utils.Schema {
 	 * is copied from gpcrondump so that gpbackup exhibits similar behavior regarding
 	 * which schemas are dumped.
 	 */
-	query := `
+	query := fmt.Sprintf(`
 SELECT
 	oid AS schemaoid,
 	nspname AS schemaname,
 	coalesce(obj_description(oid, 'pg_namespace'), '') AS comment,
 	pg_get_userbyid(nspowner) AS owner
 FROM pg_namespace
-WHERE nspname NOT LIKE 'pg_temp_%'
-AND nspname NOT LIKE 'pg_toast%'
-AND nspname NOT IN ('gp_toolkit', 'information_schema', 'pg_aoseg', 'pg_bitmapindex', 'pg_catalog')
-ORDER BY schemaname;`
+WHERE %s
+ORDER BY schemaname;`, nonUserSchemaFilterClause)
 	results := make([]utils.Schema, 0)
 
 	err := connection.Select(&results, query)
@@ -60,7 +65,7 @@ func GetAllUserTables(connection *utils.DBConn) []utils.Relation {
 SELECT
 	n.oid AS schemaoid,
 	c.oid AS relationoid,
-	n.nspname AS schemaname,
+n.nspname AS schemaname,
 	c.relname AS relationname,
 	coalesce(obj_description(c.oid, 'pg_class'), '') AS comment,
 	pg_get_userbyid(c.relowner) AS owner
@@ -249,6 +254,66 @@ WHERE i.indrelid = %d
 ORDER BY name;`, oid)
 
 	results := make([]QueryIndexMetadata, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
+}
+
+type QueryFunctionDefinition struct {
+	SchemaName        string `db:"nspname"`
+	FunctionName      string `db:"proname"`
+	ReturnsSet        bool   `db:"proretset"`
+	FunctionBody      string
+	BinaryPath        string
+	Arguments         string
+	IdentArgs         string
+	ResultType        string
+	Volatility        string  `db:"provolatile"`
+	IsStrict          bool    `db:"proisstrict"`
+	IsSecurityDefiner bool    `db:"prosecdef"`
+	Config            string  `db:"proconfig"`
+	Cost              float32 `db:"procost"`
+	NumRows           float32 `db:"prorows"`
+	SqlUsage          string  `db:"prodataaccess"`
+	Language          string
+	Comment           string
+	Owner             string
+}
+
+func GetFunctionDefinitions(connection *utils.DBConn) []QueryFunctionDefinition {
+	/*
+	 * This query is copied from the dumpFunc() function in pg_dump.c, modified
+	 * slightly to also retrieve the function's schema, name, and comment.
+	 */
+	query := fmt.Sprintf(`
+SELECT
+	nspname,
+	proname,
+	proretset,
+	coalesce(prosrc, '') AS functionbody,
+	coalesce(probin, '') AS binarypath,
+	pg_catalog.pg_get_function_arguments(p.oid) AS arguments,
+	pg_catalog.pg_get_function_identity_arguments(p.oid) AS identargs,
+	pg_catalog.pg_get_function_result(p.oid) AS resulttype,
+	provolatile,
+	proisstrict,
+	prosecdef,
+	(
+		coalesce(array_to_string(ARRAY(SELECT 'SET ' || option_name || ' TO ' || option_value
+		FROM pg_options_to_table(proconfig)), ' '), '')
+	) AS proconfig,
+	procost,
+	prorows,
+	prodataaccess,
+	(SELECT lanname FROM pg_catalog.pg_language WHERE oid = prolang) AS language,
+	coalesce(obj_description(p.oid, 'pg_proc'), '') AS comment,
+	pg_get_userbyid(proowner) AS owner
+FROM pg_proc p
+LEFT JOIN pg_namespace n
+ON p.pronamespace = n.oid
+WHERE %s;`, nonUserSchemaFilterClause)
+
+	results := make([]QueryFunctionDefinition, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results

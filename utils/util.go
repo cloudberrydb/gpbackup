@@ -7,6 +7,7 @@ package utils
 
 import (
 	"fmt"
+	"strings"
 )
 
 var (
@@ -80,4 +81,18 @@ func SetDumpTimestamp(timestamp string) string {
 		DumpTimestamp = CurrentTimestamp()
 	}
 	return DumpTimestamp
+}
+
+// Dollar-quoting logic is based on appendStringLiteralDQ() in pg_dump.
+func DollarQuoteString(literal string) string {
+	delimStr := "_XXXXXXX"
+	quoteStr := ""
+	for i := range delimStr {
+		testStr := "$" + delimStr[0:i]
+		if !strings.Contains(literal, testStr) {
+			quoteStr = testStr + "$"
+			break
+		}
+	}
+	return quoteStr + literal + quoteStr
 }

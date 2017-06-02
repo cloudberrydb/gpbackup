@@ -452,7 +452,7 @@ var _ = Describe("backup/queries tests", func() {
 		header := []string{"lanname", "owner", "lanispl", "lanpltrusted", "handler", "inline", "validator", "lanacl", "comment"}
 		procLangOne := []driver.Value{"plpythonu", "public", "t", "f", "handler_func", "inline_func", "validator_func", "", "comment"}
 
-		It("returns a slice of tables with schemas and comments", func() {
+		It("returns a slice of procedural languages", func() {
 			fakeResult := sqlmock.NewRows(header).AddRow(procLangOne...)
 			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
 			result := backup.GetProceduralLanguages(connection)
@@ -465,6 +465,36 @@ var _ = Describe("backup/queries tests", func() {
 			Expect(result[0].Validator).To(Equal("validator_func"))
 			Expect(result[0].Access).To(Equal(""))
 			Expect(result[0].Comment).To(Equal("comment"))
+		})
+	})
+	Describe("GetFunctionDefinitions", func() {
+		header := []string{"nspname", "proname", "proretset", "functionbody", "binarypath", "arguments", "identargs", "resulttype",
+			"provolatile", "proisstrict", "prosecdef", "proconfig", "procost", "prorows", "prodataaccess", "language", "comment", "owner"}
+		funcDefRow := []driver.Value{"public", "func_name", "f", "SELECT $1+$2", "", "integer, integer", "integer, integer", "integer",
+			"v", "f", "f", "", "100", "0", "", "sql", "comment", "owner"}
+
+		It("returns a slice of function definitions", func() {
+			fakeResult := sqlmock.NewRows(header).AddRow(funcDefRow...)
+			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
+			result := backup.GetFunctionDefinitions(connection)
+			Expect(result[0].SchemaName).To(Equal("public"))
+			Expect(result[0].FunctionName).To(Equal("func_name"))
+			Expect(result[0].ReturnsSet).To(BeFalse())
+			Expect(result[0].FunctionBody).To(Equal("SELECT $1+$2"))
+			Expect(result[0].BinaryPath).To(Equal(""))
+			Expect(result[0].Arguments).To(Equal("integer, integer"))
+			Expect(result[0].IdentArgs).To(Equal("integer, integer"))
+			Expect(result[0].ResultType).To(Equal("integer"))
+			Expect(result[0].Volatility).To(Equal("v"))
+			Expect(result[0].IsStrict).To(BeFalse())
+			Expect(result[0].IsSecurityDefiner).To(BeFalse())
+			Expect(result[0].Config).To(Equal(""))
+			Expect(result[0].Cost).To(Equal(float32(100)))
+			Expect(result[0].NumRows).To(Equal(float32(0)))
+			Expect(result[0].SqlUsage).To(Equal(""))
+			Expect(result[0].Language).To(Equal("sql"))
+			Expect(result[0].Comment).To(Equal("comment"))
+			Expect(result[0].Owner).To(Equal("owner"))
 		})
 	})
 })

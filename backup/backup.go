@@ -146,6 +146,10 @@ func backupPredata(filename string, tables []utils.Relation, extTableMap map[str
 	logger.Verbose("Writing CREATE PROCEDURAL LANGUAGE statements to predata file")
 	procLangs := GetProceduralLanguages(connection)
 	PrintCreateLanguageStatements(predataFile, procLangs)
+
+	logger.Verbose("Writing CREATE FUNCTION statements to predata file")
+	funcDefs := GetFunctionDefinitions(connection)
+	PrintCreateFunctionStatements(predataFile, funcDefs)
 }
 
 func backupData(tables []utils.Relation, extTableMap map[string]bool) {

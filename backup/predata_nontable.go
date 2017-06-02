@@ -11,6 +11,7 @@ import (
 	"gpbackup/utils"
 	"io"
 	"sort"
+	"strings"
 )
 
 type SequenceDefinition struct {
@@ -172,8 +173,96 @@ func PrintCreateLanguageStatements(predataFile io.Writer, procLangs []QueryProce
 			fmt.Fprintf(predataFile, "\nALTER LANGUAGE %s OWNER TO %s;", quotedLanguage, quotedOwner)
 		}
 		if procLang.Comment != "" {
-			fmt.Fprintf(predataFile, "\n\nCOMMENT ON LANGUAGE %s IS '%s';\n", quotedLanguage, procLang.Comment)
+			fmt.Fprintf(predataFile, "\n\nCOMMENT ON LANGUAGE %s IS '%s';", quotedLanguage, procLang.Comment)
 		}
+		fmt.Fprintln(predataFile)
+	}
+}
+
+func PrintCreateFunctionStatements(predataFile io.Writer, funcDefs []QueryFunctionDefinition) {
+	for _, funcDef := range funcDefs {
+		funcFQN := fmt.Sprintf("%s.%s", utils.QuoteIdent(funcDef.SchemaName), utils.QuoteIdent(funcDef.FunctionName))
+		fmt.Fprintf(predataFile, "\n\nCREATE FUNCTION %s(%s) RETURNS ", funcFQN, funcDef.Arguments)
+		if funcDef.ReturnsSet && !strings.HasPrefix(funcDef.ResultType, "TABLE") {
+			fmt.Fprintf(predataFile, "SETOF ")
+		}
+		fmt.Fprintf(predataFile, "%s AS ", funcDef.ResultType)
+		PrintFunctionBodyOrPath(predataFile, funcDef)
+		fmt.Fprintf(predataFile, "LANGUAGE %s", funcDef.Language)
+		PrintFunctionModifiers(predataFile, funcDef)
+		fmt.Fprintln(predataFile, ";")
+
+		if funcDef.Owner != "" {
+			fmt.Fprintf(predataFile, "\nALTER FUNCTION %s(%s) OWNER TO %s;\n", funcFQN, funcDef.IdentArgs, utils.QuoteIdent(funcDef.Owner))
+		}
+		if funcDef.Comment != "" {
+			fmt.Fprintf(predataFile, "\nCOMMENT ON FUNCTION %s(%s) IS '%s';\n", funcFQN, funcDef.IdentArgs, funcDef.Comment)
+		}
+	}
+}
+
+/*
+ * This function either prints a path to an executable function (for C and
+ * internal functions) or a function definition (for functions in other languages).
+ */
+func PrintFunctionBodyOrPath(predataFile io.Writer, funcDef QueryFunctionDefinition) {
+	/*
+	 * pg_proc.probin uses either NULL (in this case an empty string) or "-"
+	 * to signify an unused path, for historical reasons.  See dumpFunc in
+	 * pg_dump.c for details.
+	 */
+	if funcDef.BinaryPath != "" && funcDef.BinaryPath != "-" {
+		fmt.Fprintf(predataFile, "\n%s, %s\n", funcDef.BinaryPath, funcDef.FunctionBody)
+	} else {
+		formattedStr := fmt.Sprintf("\n%s\n", strings.TrimSpace(funcDef.FunctionBody))
+		if funcDef.Language == "internal" {
+			/*
+			 * We assume here that if funcDef.Language is 'internal' then
+			 * funcDef.functionBody holds the name of a function to call rather
+			 * than a function definition.  For any other language, it is a function
+			 * definition and must be quoted appropriately.
+			 */
+			fmt.Fprintf(predataFile, formattedStr)
+		} else {
+			fmt.Fprintf(predataFile, "%s ", utils.DollarQuoteString(formattedStr))
+		}
+	}
+}
+
+func PrintFunctionModifiers(predataFile io.Writer, funcDef QueryFunctionDefinition) {
+	switch funcDef.SqlUsage {
+	case "c":
+		fmt.Fprint(predataFile, " CONTAINS SQL")
+	case "m":
+		fmt.Fprint(predataFile, " MODIFIES SQL DATA")
+	case "n":
+		fmt.Fprint(predataFile, " NO SQL")
+	case "r":
+		fmt.Fprint(predataFile, " READS SQL DATA")
+	}
+	switch funcDef.Volatility {
+	case "i":
+		fmt.Fprintf(predataFile, " IMMUTABLE")
+	case "s":
+		fmt.Fprintf(predataFile, " STABLE")
+	case "v": // Default case, don't print anything else
+	}
+	if funcDef.IsStrict {
+		fmt.Fprintf(predataFile, " STRICT")
+	}
+	if funcDef.IsSecurityDefiner {
+		fmt.Fprintf(predataFile, " SECURITY DEFINER")
+	}
+	// Default cost is 1 for C and internal functions or 100 for functions in other languages
+	isInternalOrC := funcDef.Language == "c" || funcDef.Language == "internal"
+	if !((!isInternalOrC && funcDef.Cost == 100) || (isInternalOrC && funcDef.Cost == 1)) {
+		fmt.Fprintf(predataFile, "\nCOST %v", funcDef.Cost)
+	}
+	if funcDef.ReturnsSet && funcDef.NumRows != 0 && funcDef.NumRows != 1000 {
+		fmt.Fprintf(predataFile, "\nROWS %v", funcDef.NumRows)
+	}
+	if funcDef.Config != "" {
+		fmt.Fprintf(predataFile, "\n%s", funcDef.Config)
 	}
 }
 
