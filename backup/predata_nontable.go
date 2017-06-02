@@ -329,6 +329,6 @@ func PrintCreateDatabaseStatement(globalFile io.Writer) {
 
 func PrintDatabaseGUCs(globalFile io.Writer, gucs []string, dbname string) {
 	for _, guc := range gucs {
-		fmt.Fprintf(globalFile, "\nALTER DATABASE %s SET %s;", dbname, guc)
+		fmt.Fprintf(globalFile, "\nALTER DATABASE %s %s;", dbname, guc)
 	}
 }

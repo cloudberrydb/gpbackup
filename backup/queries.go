@@ -481,9 +481,11 @@ WHERE a.attrelid = %d;`, oid)
 }
 
 func GetDatabaseGUCs(connection *utils.DBConn) []string {
-	query := fmt.Sprintf(`SELECT unnest(datconfig) AS string
-FROM pg_database
-WHERE datname = '%s';`, connection.DBName)
+	query := fmt.Sprintf(`
+SELECT (
+	coalesce(array_to_string(ARRAY(SELECT 'SET ' || option_name || ' TO ''' || option_value || ''''
+	FROM pg_options_to_table(datconfig)), ' '), '')
+) AS string FROM pg_database WHERE datname = '%s';`, connection.DBName)
 	return SelectStringSlice(connection, query)
 }
 
