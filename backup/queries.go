@@ -391,6 +391,39 @@ LEFT JOIN pg_namespace n ON p.pronamespace = n.oid;
 	return funcMap
 }
 
+type QueryCastDefinition struct {
+	SourceType     string
+	TargetType     string
+	FunctionSchema string
+	FunctionName   string
+	FunctionArgs   string
+	CastContext    string
+	Comment        string
+}
+
+func GetCastDefinitions(connection *utils.DBConn) []QueryCastDefinition {
+	query := fmt.Sprintf(`
+SELECT
+	pg_catalog.format_type(c.castsource, NULL) AS sourcetype,
+	pg_catalog.format_type(c.casttarget, NULL) AS targettype,
+	coalesce(n.nspname, '') AS functionschema,
+	coalesce(p.proname, '') AS functionname,
+	pg_get_function_arguments(p.oid) AS functionargs,
+	c.castcontext,
+	d.description AS comment
+FROM pg_cast c
+LEFT JOIN pg_proc p ON c.castfunc = p.oid
+LEFT JOIN pg_description d ON c.oid = d.objoid
+JOIN pg_namespace n ON p.pronamespace = n.oid
+WHERE %s
+ORDER BY 1, 2;`, nonUserSchemaFilterClause)
+
+	results := make([]QueryCastDefinition, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
+}
+
 /*
  * Queries using generic structs defined below or structs defined elsewhere
  */

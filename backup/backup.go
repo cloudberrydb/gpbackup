@@ -155,6 +155,10 @@ func backupPredata(filename string, tables []utils.Relation, extTableMap map[str
 	aggDefs := GetAggregateDefinitions(connection)
 	funcNameMap := GetFunctionOidToNameMap(connection)
 	PrintCreateAggregateStatements(predataFile, aggDefs, funcNameMap)
+
+	logger.Verbose("Writing CREATE CAST statements to predata file")
+	castDefs := GetCastDefinitions(connection)
+	PrintCreateCastStatements(predataFile, castDefs)
 }
 
 func backupData(tables []utils.Relation, extTableMap map[string]bool) {

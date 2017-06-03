@@ -301,6 +301,30 @@ func PrintCreateAggregateStatements(predataFile io.Writer, aggDefs []QueryAggreg
 	}
 }
 
+func PrintCreateCastStatements(predataFile io.Writer, castDefs []QueryCastDefinition) {
+	for _, castDef := range castDefs {
+		castStr := fmt.Sprintf("CAST (%s AS %s)", castDef.SourceType, castDef.TargetType)
+		fmt.Fprintf(predataFile, "\n\nCREATE %s\n", castStr)
+		if castDef.FunctionSchema != "" {
+			funcFQN := fmt.Sprintf("%s.%s", utils.QuoteIdent(castDef.FunctionSchema), utils.QuoteIdent(castDef.FunctionName))
+			fmt.Fprintf(predataFile, "\tWITH FUNCTION %s(%s)", funcFQN, castDef.FunctionArgs)
+		} else {
+			fmt.Fprintf(predataFile, "\tWITHOUT FUNCTION")
+		}
+		switch castDef.CastContext {
+		case "a":
+			fmt.Fprintf(predataFile, "\nAS ASSIGNMENT")
+		case "i":
+			fmt.Fprintf(predataFile, "\nAS IMPLICIT")
+		case "e": // Default case, don't print anything else
+		}
+		fmt.Fprintln(predataFile, ";")
+		if castDef.Comment != "" {
+			fmt.Fprintf(predataFile, "\nCOMMENT ON %s IS '%s';\n", castStr, castDef.Comment)
+		}
+	}
+}
+
 /*
  * Functions to print to the global or postdata file instead of, or in addition
  * to, the predata file.
