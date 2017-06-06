@@ -6,6 +6,7 @@ import (
 	"gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 )
@@ -62,50 +63,21 @@ var _ = Describe("backup/predata tests", func() {
 				Expect(proto).To(Equal(backup.HTTP))
 			})
 		})
-		Context("Protocol classification", func() {
-			It("classifies file:// locations correctly", func() {
-				extTableDef.Location = "file://host:port/path/file"
-				typ, proto := backup.DetermineExternalTableCharacteristics(extTableDef)
-				Expect(typ).To(Equal(backup.READABLE))
-				Expect(proto).To(Equal(backup.FILE))
-			})
-			It("classifies gpfdist:// locations correctly", func() {
-				extTableDef.Location = "gpfdist://host:port/file_pattern"
-				typ, proto := backup.DetermineExternalTableCharacteristics(extTableDef)
-				Expect(typ).To(Equal(backup.READABLE))
-				Expect(proto).To(Equal(backup.GPFDIST))
-			})
-			It("classifies gpfdists:// locations correctly", func() {
-				extTableDef.Location = "gpfdists://host:port/file_pattern"
-				typ, proto := backup.DetermineExternalTableCharacteristics(extTableDef)
-				Expect(typ).To(Equal(backup.READABLE))
-				Expect(proto).To(Equal(backup.GPFDIST))
-			})
-			It("classifies gphdfs:// locations correctly", func() {
-				extTableDef.Location = "gphdfs://host:port/path/file"
-				typ, proto := backup.DetermineExternalTableCharacteristics(extTableDef)
-				Expect(typ).To(Equal(backup.READABLE))
-				Expect(proto).To(Equal(backup.GPHDFS))
-			})
-			It("classifies http:// locations correctly", func() {
-				extTableDef.Location = "http://webhost:port/path/file"
-				typ, proto := backup.DetermineExternalTableCharacteristics(extTableDef)
-				Expect(typ).To(Equal(backup.READABLE_WEB))
-				Expect(proto).To(Equal(backup.HTTP))
-			})
-			It("classifies https:// locations correctly", func() {
-				extTableDef.Location = "https://webhost:port/path/file"
-				typ, proto := backup.DetermineExternalTableCharacteristics(extTableDef)
-				Expect(typ).To(Equal(backup.READABLE_WEB))
-				Expect(proto).To(Equal(backup.HTTP))
-			})
-			It("classifies s3:// locations correctly", func() {
-				extTableDef.Location = "s3://s3_endpoint:port/bucket_name/s3_prefix"
-				typ, proto := backup.DetermineExternalTableCharacteristics(extTableDef)
-				Expect(typ).To(Equal(backup.READABLE))
-				Expect(proto).To(Equal(backup.S3))
-			})
-		})
+		DescribeTable("Protocol classification", func(location string, expectedType int, expectedProto int) {
+			extTableDef := backup.ExternalTableDefinition{-2, -2, "", "ALL_SEGMENTS", "t", "", "", "", 0, "", "", "UTF-8", false}
+			extTableDef.Location = location
+			typ, proto := backup.DetermineExternalTableCharacteristics(extTableDef)
+			Expect(typ).To(Equal(expectedType))
+			Expect(proto).To(Equal(expectedProto))
+		},
+			Entry("classifies file:// locations correctly", "file://host:port/path/file", backup.READABLE, backup.FILE),
+			Entry("classifies gpfdist:// locations correctly", "gpfdist://host:port/file_pattern", backup.READABLE, backup.GPFDIST),
+			Entry("classifies gpfdists:// locations correctly", "gpfdists://host:port/file_pattern", backup.READABLE, backup.GPFDIST),
+			Entry("classifies gphdfs:// locations correctly", "gphdfs://host:port/path/file", backup.READABLE, backup.GPHDFS),
+			Entry("classifies http:// locations correctly", "http://webhost:port/path/file", backup.READABLE_WEB, backup.HTTP),
+			Entry("classifies https:// locations correctly", "https://webhost:port/path/file", backup.READABLE_WEB, backup.HTTP),
+			Entry("classifies s3:// locations correctly", "s3://s3_endpoint:port/bucket_name/s3_prefix", backup.READABLE, backup.S3),
+		)
 	})
 	Describe("PrintExternalTableCreateStatement", func() {
 		var tableDef backup.TableDefinition
