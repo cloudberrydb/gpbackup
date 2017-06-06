@@ -419,7 +419,7 @@ SELECT
 	coalesce(p.proname, '') AS functionname,
 	pg_get_function_arguments(p.oid) AS functionargs,
 	c.castcontext,
-	d.description AS comment
+	coalesce(d.description, '') AS comment
 FROM pg_cast c
 LEFT JOIN pg_proc p ON c.castfunc = p.oid
 LEFT JOIN pg_description d ON c.oid = d.objoid
