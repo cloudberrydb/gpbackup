@@ -60,6 +60,12 @@ func QuoteIdent(ident string) string {
 	return ident
 }
 
+func MakeFQN(schema string, object string) string {
+	schema = QuoteIdent(schema)
+	object = QuoteIdent(object)
+	return fmt.Sprintf("%s.%s", schema, object)
+}
+
 /*
  * The following functions create Schemas and Relations with only the schema and
  * relation names set, for use in SchemaFromString and RelationFromString and to
@@ -90,9 +96,7 @@ func BasicRelation(schema string, relation string) Relation {
  * everything quoted and escaped appropriately.
  */
 func (t Relation) ToString() string {
-	schema := QuoteIdent(t.SchemaName)
-	table := QuoteIdent(t.RelationName)
-	return fmt.Sprintf("%s.%s", schema, table)
+	return MakeFQN(t.SchemaName, t.RelationName)
 }
 
 func (s Schema) ToString() string {

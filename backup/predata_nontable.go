@@ -184,12 +184,12 @@ func PrintCreateLanguageStatements(predataFile io.Writer, procLangs []QueryProce
 
 func PrintCreateFunctionStatements(predataFile io.Writer, funcDefs []QueryFunctionDefinition) {
 	for _, funcDef := range funcDefs {
-		funcFQN := fmt.Sprintf("%s.%s", utils.QuoteIdent(funcDef.SchemaName), utils.QuoteIdent(funcDef.FunctionName))
+		funcFQN := utils.MakeFQN(funcDef.SchemaName, funcDef.FunctionName)
 		fmt.Fprintf(predataFile, "\n\nCREATE FUNCTION %s(%s) RETURNS ", funcFQN, funcDef.Arguments)
 		if funcDef.ReturnsSet && !strings.HasPrefix(funcDef.ResultType, "TABLE") {
 			fmt.Fprintf(predataFile, "SETOF ")
 		}
-		fmt.Fprintf(predataFile, "%s AS ", funcDef.ResultType)
+		fmt.Fprintf(predataFile, "%s AS", funcDef.ResultType)
 		PrintFunctionBodyOrPath(predataFile, funcDef)
 		fmt.Fprintf(predataFile, "LANGUAGE %s", funcDef.Language)
 		PrintFunctionModifiers(predataFile, funcDef)
@@ -215,20 +215,9 @@ func PrintFunctionBodyOrPath(predataFile io.Writer, funcDef QueryFunctionDefinit
 	 * pg_dump.c for details.
 	 */
 	if funcDef.BinaryPath != "" && funcDef.BinaryPath != "-" {
-		fmt.Fprintf(predataFile, "\n%s, %s\n", funcDef.BinaryPath, funcDef.FunctionBody)
+		fmt.Fprintf(predataFile, "\n'%s', '%s'\n", funcDef.BinaryPath, funcDef.FunctionBody)
 	} else {
-		formattedStr := fmt.Sprintf("\n%s\n", strings.TrimSpace(funcDef.FunctionBody))
-		if funcDef.Language == "internal" {
-			/*
-			 * We assume here that if funcDef.Language is 'internal' then
-			 * funcDef.functionBody holds the name of a function to call rather
-			 * than a function definition.  For any other language, it is a function
-			 * definition and must be quoted appropriately.
-			 */
-			fmt.Fprintf(predataFile, formattedStr)
-		} else {
-			fmt.Fprintf(predataFile, "%s ", utils.DollarQuoteString(formattedStr))
-		}
+		fmt.Fprintf(predataFile, "\n%s\n", utils.DollarQuoteString(funcDef.FunctionBody))
 	}
 }
 
@@ -271,7 +260,7 @@ func PrintFunctionModifiers(predataFile io.Writer, funcDef QueryFunctionDefiniti
 
 func PrintCreateAggregateStatements(predataFile io.Writer, aggDefs []QueryAggregateDefinition, funcInfoMap map[uint32]FunctionInfo) {
 	for _, aggDef := range aggDefs {
-		aggFQN := fmt.Sprintf("%s.%s", utils.QuoteIdent(aggDef.SchemaName), utils.QuoteIdent(aggDef.AggregateName))
+		aggFQN := utils.MakeFQN(aggDef.SchemaName, aggDef.AggregateName)
 		orderedStr := ""
 		if aggDef.IsOrdered {
 			orderedStr = "ORDERED "
@@ -324,6 +313,145 @@ func PrintCreateCastStatements(predataFile io.Writer, castDefs []QueryCastDefini
 		fmt.Fprintln(predataFile, ";")
 		if castDef.Comment != "" {
 			fmt.Fprintf(predataFile, "\nCOMMENT ON %s IS '%s';\n", castStr, castDef.Comment)
+		}
+	}
+}
+
+/*
+ * Because only base types are dependent on functions, we only need to print
+ * shell type statements for base types.
+ */
+func PrintShellTypeStatements(predataFile io.Writer, types []TypeDefinition) {
+	fmt.Fprintln(predataFile, "\n")
+	for _, typ := range types {
+		if typ.Type == "b" {
+			typeFQN := utils.MakeFQN(typ.TypeSchema, typ.TypeName)
+			fmt.Fprintf(predataFile, "CREATE TYPE %s;\n", typeFQN)
+		}
+	}
+}
+
+func PrintCreateBaseTypeStatements(predataFile io.Writer, types []TypeDefinition) {
+	i := 0
+	for i < len(types) {
+		typ := types[i]
+		if typ.Type == "b" {
+			typeFQN := utils.MakeFQN(typ.TypeSchema, typ.TypeName)
+			fmt.Fprintf(predataFile, "\n\nCREATE TYPE %s (\n", typeFQN)
+
+			fmt.Fprintf(predataFile, "\tINPUT = %s,\n\tOUTPUT = %s", typ.Input, typ.Output)
+			if typ.Receive != "-" {
+				fmt.Fprintf(predataFile, ",\n\tRECEIVE = %s", typ.Receive)
+			}
+			if typ.Send != "-" {
+				fmt.Fprintf(predataFile, ",\n\tSEND = %s", typ.Send)
+			}
+			if typ.ModIn != "-" {
+				fmt.Fprintf(predataFile, ",\n\tTYPMOD_IN = %s", typ.ModIn)
+			}
+			if typ.ModOut != "-" {
+				fmt.Fprintf(predataFile, ",\n\tTYPMOD_OUT = %s", typ.ModOut)
+			}
+			if typ.InternalLength > 0 {
+				fmt.Fprintf(predataFile, ",\n\tINTERNALLENGTH = %d", typ.InternalLength)
+			}
+			if typ.IsPassedByValue {
+				fmt.Fprintf(predataFile, ",\n\tPASSEDBYVALUE")
+			}
+			if typ.Alignment != "-" {
+				switch typ.Alignment {
+				case "d":
+					fmt.Fprintf(predataFile, ",\n\tALIGNMENT = double")
+				case "i":
+					fmt.Fprintf(predataFile, ",\n\tALIGNMENT = int4")
+				case "s":
+					fmt.Fprintf(predataFile, ",\n\tALIGNMENT = int2")
+				case "c": // Default case, don't print anything else
+				}
+			}
+			if typ.Storage != "" {
+				switch typ.Storage {
+				case "e":
+					fmt.Fprintf(predataFile, ",\n\tSTORAGE = extended")
+				case "m":
+					fmt.Fprintf(predataFile, ",\n\tSTORAGE = main")
+				case "x":
+					fmt.Fprintf(predataFile, ",\n\tSTORAGE = external")
+				case "p": // Default case, don't print anything else
+				}
+			}
+			if typ.DefaultVal != "" {
+				fmt.Fprintf(predataFile, ",\n\tDEFAULT = %s", typ.DefaultVal)
+			}
+			if typ.Element != "-" {
+				fmt.Fprintf(predataFile, ",\n\tELEMENT = %s", typ.Element)
+			}
+			if typ.Delimiter != "" {
+				fmt.Fprintf(predataFile, ",\n\tDELIMITER = '%s'", typ.Delimiter)
+			}
+			fmt.Fprintln(predataFile, "\n);")
+			if typ.Comment != "" {
+				fmt.Fprintf(predataFile, "\nCOMMENT ON TYPE %s IS '%s';\n", typeFQN, typ.Comment)
+			}
+			if typ.Owner != "" {
+				fmt.Fprintf(predataFile, "\nALTER TYPE %s OWNER TO %s;\n", typeFQN, typ.Owner)
+			}
+		}
+		i++
+	}
+}
+
+func PrintCreateCompositeAndEnumTypeStatements(predataFile io.Writer, types []TypeDefinition) {
+	i := 0
+	for i < len(types) {
+		typ := types[i]
+		if typ.Type == "c" {
+			compositeTypes := make([]TypeDefinition, 0)
+			/*
+			 * Since types is sorted by schema then by type, all TypeDefinitions
+			 * for the same composite type are grouped together.  Collect them in
+			 * one list to use for printing
+			 */
+			for {
+				if i < len(types) && typ.TypeSchema == types[i].TypeSchema && typ.TypeName == types[i].TypeName {
+					compositeTypes = append(compositeTypes, types[i])
+					i++
+				} else {
+					break
+				}
+			}
+			/*
+			 * All values except AttName and AttValue will be the same for each TypeDefinition,
+			 * so we can grab all other values from the first TypeDefinition in the list.
+			 */
+			composite := compositeTypes[0]
+			typeFQN := utils.MakeFQN(composite.TypeSchema, composite.TypeName)
+			fmt.Fprintf(predataFile, "\n\nCREATE TYPE %s AS (\n", typeFQN)
+			atts := make([]string, 0)
+			for _, composite := range compositeTypes {
+				atts = append(atts, fmt.Sprintf("\t%s %s", composite.AttName, composite.AttValue))
+			}
+			fmt.Fprintf(predataFile, strings.Join(atts, ",\n"))
+			fmt.Fprintln(predataFile, "\n);")
+			if composite.Comment != "" {
+				fmt.Fprintf(predataFile, "\nCOMMENT ON TYPE %s IS '%s';\n", typeFQN, composite.Comment)
+			}
+			if composite.Owner != "" {
+				fmt.Fprintf(predataFile, "\nALTER TYPE %s OWNER TO %s;\n", typeFQN, composite.Owner)
+			}
+		} else if typ.Type == "e" {
+			typeFQN := utils.MakeFQN(typ.TypeSchema, typ.TypeName)
+			fmt.Fprintf(predataFile, "\n\nCREATE TYPE %s AS ENUM (\n\t%s\n);\n", typeFQN, typ.EnumLabels)
+			if typ.Comment != "" {
+				fmt.Fprintf(predataFile, "\nCOMMENT ON TYPE %s IS '%s';\n", typeFQN, typ.Comment)
+			}
+			if typ.Owner != "" {
+				fmt.Fprintf(predataFile, "\nALTER TYPE %s OWNER TO %s;\n", typeFQN, typ.Owner)
+			}
+			i++
+
+		} else {
+			i++
 		}
 	}
 }

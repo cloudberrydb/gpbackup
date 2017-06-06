@@ -11,6 +11,11 @@ import (
 )
 
 var _ = Describe("backup/predata tests", func() {
+	buffer := gbytes.NewBuffer()
+
+	BeforeEach(func() {
+		buffer = gbytes.BufferWithBytes([]byte(""))
+	})
 	Describe("ProcessConstraints", func() {
 		testTable := utils.BasicRelation("public", "tablename")
 		uniqueOne := backup.QueryConstraint{"tablename_i_key", "u", "UNIQUE (i)", ""}
@@ -138,7 +143,6 @@ COMMENT ON CONSTRAINT tablename_i_key ON public.tablename IS 'This is a constrai
 		})
 	})
 	Describe("PrintCreateSequenceStatements", func() {
-		buffer := gbytes.NewBuffer()
 		baseSequence := utils.BasicRelation("public", "seq_name")
 		commentSequence := utils.Relation{0, 0, "public", "seq_name", "This is a sequence comment.", ""}
 		ownerSequence := utils.Relation{0, 0, "public", "seq_name", "", "testrole"}
@@ -273,8 +277,6 @@ ALTER TABLE public.seq_name OWNER TO testrole;`)
 		})
 	})
 	Describe("PrintCreateSchemaStatements", func() {
-		buffer := gbytes.NewBuffer()
-
 		It("can print schema with comments", func() {
 			schemas := []utils.Schema{utils.Schema{0, "schema_with_comments", "This is a comment.", ""}}
 
@@ -290,8 +292,6 @@ COMMENT ON SCHEMA schema_with_comments IS 'This is a comment.';`)
 		})
 	})
 	Describe("PrintSessionGUCs", func() {
-		buffer := gbytes.NewBuffer()
-
 		It("prints session GUCs", func() {
 			gucs := backup.QuerySessionGUCs{"UTF8", "on", "false"}
 
@@ -306,7 +306,6 @@ SET default_with_oids = false`)
 	})
 
 	Describe("PrintDatabaseGUCs", func() {
-		buffer := gbytes.NewBuffer()
 		dbname := "testdb"
 		defaultOidGUC := "SET default_with_oids TO 'true'"
 		searchPathGUC := "SET search_path TO 'pg_catalog, public'"
@@ -328,7 +327,6 @@ ALTER DATABASE testdb SET gp_default_storage_options TO 'appendonly=true,blocksi
 		})
 	})
 	Describe("PrintCreateLanguageStatements", func() {
-		buffer := gbytes.NewBuffer()
 		plUntrustedHandlerOnly := backup.QueryProceduralLanguage{"plpythonu", "testrole", true, false, 4, 0, 0, "", ""}
 		plAllFields := backup.QueryProceduralLanguage{"plpgsql", "testrole", true, true, 1, 2, 3, "", ""}
 		plComment := backup.QueryProceduralLanguage{"plpythonu", "testrole", true, false, 4, 0, 0, "", "language comment"}
@@ -386,11 +384,9 @@ COMMENT ON LANGUAGE plpythonu IS 'language comment'`)
 	Describe("Functions involved in printing CREATE FUNCTION statements", func() {
 		var funcDef backup.QueryFunctionDefinition
 		funcDefs := make([]backup.QueryFunctionDefinition, 1)
-		buffer := gbytes.NewBuffer()
 		funcDefault := backup.QueryFunctionDefinition{"public", "func_name", false, "add_two_ints", "", "integer, integer", "integer, integer", "integer",
 			"v", false, false, "", float32(1), float32(0), "", "internal", "", ""}
 		BeforeEach(func() {
-			buffer = gbytes.BufferWithBytes([]byte(""))
 			funcDef = funcDefault
 			funcDefs[0] = funcDef
 		})
@@ -398,16 +394,16 @@ COMMENT ON LANGUAGE plpythonu IS 'language comment'`)
 		Describe("PrintCreateFunctionStatements", func() {
 			It("prints a function definition for an internal function without a binary path", func() {
 				backup.PrintCreateFunctionStatements(buffer, funcDefs)
-				testutils.ExpectRegexp(buffer, `CREATE FUNCTION public.func_name(integer, integer) RETURNS integer AS 
-add_two_ints
+				testutils.ExpectRegexp(buffer, `CREATE FUNCTION public.func_name(integer, integer) RETURNS integer AS
+$$add_two_ints$$
 LANGUAGE internal;
 `)
 			})
 			It("prints a function definition for a function with an owner", func() {
 				funcDefs[0].Owner = "testrole"
 				backup.PrintCreateFunctionStatements(buffer, funcDefs)
-				testutils.ExpectRegexp(buffer, `CREATE FUNCTION public.func_name(integer, integer) RETURNS integer AS 
-add_two_ints
+				testutils.ExpectRegexp(buffer, `CREATE FUNCTION public.func_name(integer, integer) RETURNS integer AS
+$$add_two_ints$$
 LANGUAGE internal;
 
 ALTER FUNCTION public.func_name(integer, integer) OWNER TO testrole;
@@ -416,8 +412,8 @@ ALTER FUNCTION public.func_name(integer, integer) OWNER TO testrole;
 			It("prints a function definition for a function with a comment", func() {
 				funcDefs[0].Comment = "This is a function comment."
 				backup.PrintCreateFunctionStatements(buffer, funcDefs)
-				testutils.ExpectRegexp(buffer, `CREATE FUNCTION public.func_name(integer, integer) RETURNS integer AS 
-add_two_ints
+				testutils.ExpectRegexp(buffer, `CREATE FUNCTION public.func_name(integer, integer) RETURNS integer AS
+$$add_two_ints$$
 LANGUAGE internal;
 
 COMMENT ON FUNCTION public.func_name(integer, integer) IS 'This is a function comment.';
@@ -427,8 +423,8 @@ COMMENT ON FUNCTION public.func_name(integer, integer) IS 'This is a function co
 				funcDefs[0].Owner = "testrole"
 				funcDefs[0].Comment = "This is a function comment."
 				backup.PrintCreateFunctionStatements(buffer, funcDefs)
-				testutils.ExpectRegexp(buffer, `CREATE FUNCTION public.func_name(integer, integer) RETURNS integer AS 
-add_two_ints
+				testutils.ExpectRegexp(buffer, `CREATE FUNCTION public.func_name(integer, integer) RETURNS integer AS
+$$add_two_ints$$
 LANGUAGE internal;
 
 ALTER FUNCTION public.func_name(integer, integer) OWNER TO testrole;
@@ -442,28 +438,28 @@ COMMENT ON FUNCTION public.func_name(integer, integer) IS 'This is a function co
 				funcDef.BinaryPath = "-"
 				backup.PrintFunctionBodyOrPath(buffer, funcDef)
 				testutils.ExpectRegexp(buffer, `
-add_two_ints
+$$add_two_ints$$
 `)
 			})
 			It("prints a function definition for an internal function with a binary path", func() {
 				funcDef.BinaryPath = "$libdir/binary"
 				backup.PrintFunctionBodyOrPath(buffer, funcDef)
 				testutils.ExpectRegexp(buffer, `
-$libdir/binary, add_two_ints
+'$libdir/binary', 'add_two_ints'
 `)
 			})
 			It("prints a function definition for a function with a one-line function definition", func() {
 				funcDef.FunctionBody = "SELECT $1+$2"
 				funcDef.Language = "sql"
 				backup.PrintFunctionBodyOrPath(buffer, funcDef)
-				testutils.ExpectRegexp(buffer, `$_$
-SELECT $1+$2
-$_$`)
+				testutils.ExpectRegexp(buffer, `$_$SELECT $1+$2$_$`)
 			})
 			It("prints a function definition for a function with a multi-line function definition", func() {
-				funcDef.FunctionBody = `BEGIN
+				funcDef.FunctionBody = `
+BEGIN
 	SELECT $1 + $2
-END`
+END
+`
 				funcDef.Language = "sql"
 				backup.PrintFunctionBodyOrPath(buffer, funcDef)
 				testutils.ExpectRegexp(buffer, `$_$
@@ -611,7 +607,6 @@ $_$`)
 	})
 	Describe("PrintCreateAggregateStatements", func() {
 		aggDefs := make([]backup.QueryAggregateDefinition, 1)
-		buffer := gbytes.NewBuffer()
 		aggDefault := backup.QueryAggregateDefinition{"public", "agg_name", "integer, integer", "integer, integer", 1, 0, 0, 0, "integer", "", false, "", ""}
 		funcInfoMap := map[uint32]backup.FunctionInfo{
 			1: backup.FunctionInfo{QualifiedName: "public.mysfunc", Arguments: "integer"},
@@ -620,7 +615,6 @@ $_$`)
 			4: backup.FunctionInfo{QualifiedName: "public.mysortop", Arguments: "bigint"},
 		}
 		BeforeEach(func() {
-			buffer = gbytes.BufferWithBytes([]byte(""))
 			aggDefs[0] = aggDefault
 		})
 
@@ -688,8 +682,6 @@ $_$`)
 		})
 	})
 	Describe("PrintCreateCastStatements", func() {
-		buffer := gbytes.NewBuffer()
-
 		It("prints an explicit cast with a function", func() {
 			castDef := backup.QueryCastDefinition{"src", "dst", "public", "cast_func", "integer, integer", "e", ""}
 			backup.PrintCreateCastStatements(buffer, []backup.QueryCastDefinition{castDef})
@@ -737,6 +729,160 @@ AS ASSIGNMENT;`)
 	WITHOUT FUNCTION;
 
 COMMENT ON CAST (src AS dst) IS 'This is a cast comment.';`)
+		})
+	})
+	Describe("PrintCreateCompositeAndEnumTypeStatements", func() {
+		compOne := backup.TypeDefinition{TypeSchema: "public", TypeName: "composite_type", Type: "c", AttName: "bar", AttValue: "integer"}
+		compTwo := backup.TypeDefinition{TypeSchema: "public", TypeName: "composite_type", Type: "c", AttName: "baz", AttValue: "text"}
+		compThree := backup.TypeDefinition{TypeSchema: "public", TypeName: "composite_type", Type: "c", AttName: "foo", AttValue: "float"}
+		compCommentOwnerOne := backup.TypeDefinition{TypeSchema: "public", TypeName: "composite_type", Type: "c", AttName: "bar",
+			AttValue: "integer", Comment: "This is a type comment.", Owner: "test_role"}
+		compCommentOwnerTwo := backup.TypeDefinition{TypeSchema: "public", TypeName: "composite_type", Type: "c", AttName: "foo",
+			AttValue: "float", Comment: "This is a type comment.", Owner: "test_role"}
+		enumOne := backup.TypeDefinition{TypeSchema: "public", TypeName: "enum_type", Type: "e", EnumLabels: "'bar',\n\t'baz',\n\t'foo'"}
+
+		It("prints a composite type with one attribute", func() {
+			backup.PrintCreateCompositeAndEnumTypeStatements(buffer, []backup.TypeDefinition{compOne})
+			testutils.ExpectRegexp(buffer, `CREATE TYPE public.composite_type AS (
+	bar integer
+);`)
+		})
+		It("prints a composite type with multiple attributes", func() {
+			backup.PrintCreateCompositeAndEnumTypeStatements(buffer, []backup.TypeDefinition{compOne, compTwo, compThree})
+			testutils.ExpectRegexp(buffer, `CREATE TYPE public.composite_type AS (
+	bar integer,
+	baz text,
+	foo float
+);`)
+		})
+		It("prints a composite type with comment and owner", func() {
+			backup.PrintCreateCompositeAndEnumTypeStatements(buffer, []backup.TypeDefinition{compCommentOwnerOne, compCommentOwnerTwo})
+			testutils.ExpectRegexp(buffer, `CREATE TYPE public.composite_type AS (
+	bar integer,
+	foo float
+);
+
+COMMENT ON TYPE public.composite_type IS 'This is a type comment.';
+
+ALTER TYPE public.composite_type OWNER TO test_role;`)
+		})
+		It("prints an enum type with multiple attributes", func() {
+			backup.PrintCreateCompositeAndEnumTypeStatements(buffer, []backup.TypeDefinition{enumOne})
+			testutils.ExpectRegexp(buffer, `CREATE TYPE public.enum_type AS ENUM (
+	'bar',
+	'baz',
+	'foo'
+);`)
+		})
+		It("prints both an enum type and a composite type", func() {
+			backup.PrintCreateCompositeAndEnumTypeStatements(buffer, []backup.TypeDefinition{compOne, enumOne})
+			testutils.ExpectRegexp(buffer, `CREATE TYPE public.composite_type AS (
+	bar integer
+);
+
+
+CREATE TYPE public.enum_type AS ENUM (
+	'bar',
+	'baz',
+	'foo'
+);`)
+		})
+	})
+	Describe("PrintCreateBaseTypeStatements", func() {
+		baseSimple := backup.TypeDefinition{"public", "base_type", "b", "", "", "input_fn", "output_fn",
+			"-", "-", "-", "-", -1, false, "c", "p", "", "-", "", "", "", ""}
+		basePartial := backup.TypeDefinition{"public", "base_type", "b", "", "", "input_fn", "output_fn",
+			"receive_fn", "send_fn", "modin_fn", "modout_fn", -1, false, "c", "p", "42", "int4", ",", "", "", ""}
+		baseFull := backup.TypeDefinition{"public", "base_type", "b", "", "", "input_fn", "output_fn",
+			"receive_fn", "send_fn", "modin_fn", "modout_fn", 16, true, "s", "e", "42", "int4", ",", "", "", ""}
+		basePermOne := backup.TypeDefinition{"public", "base_type", "b", "", "", "input_fn", "output_fn",
+			"-", "-", "-", "-", -1, false, "d", "m", "", "-", "", "", "", ""}
+		basePermTwo := backup.TypeDefinition{"public", "base_type", "b", "", "", "input_fn", "output_fn",
+			"-", "-", "-", "-", -1, false, "i", "x", "", "-", "", "", "", ""}
+		baseCommentOwner := backup.TypeDefinition{"public", "base_type", "b", "", "", "input_fn", "output_fn",
+			"-", "-", "-", "-", -1, false, "c", "p", "", "-", "", "", "This is a type comment.", "test_role"}
+
+		It("prints a base type with no optional arguments", func() {
+			backup.PrintCreateBaseTypeStatements(buffer, []backup.TypeDefinition{baseSimple})
+			testutils.ExpectRegexp(buffer, `CREATE TYPE public.base_type (
+	INPUT = input_fn,
+	OUTPUT = output_fn
+);`)
+		})
+		It("prints a base type where all optional arguments have default values where possible", func() {
+			backup.PrintCreateBaseTypeStatements(buffer, []backup.TypeDefinition{basePartial})
+			testutils.ExpectRegexp(buffer, `CREATE TYPE public.base_type (
+	INPUT = input_fn,
+	OUTPUT = output_fn,
+	RECEIVE = receive_fn,
+	SEND = send_fn,
+	TYPMOD_IN = modin_fn,
+	TYPMOD_OUT = modout_fn,
+	DEFAULT = 42,
+	ELEMENT = int4,
+	DELIMITER = ','
+);`)
+		})
+		It("prints a base type with all optional arguments provided", func() {
+			backup.PrintCreateBaseTypeStatements(buffer, []backup.TypeDefinition{baseFull})
+			testutils.ExpectRegexp(buffer, `CREATE TYPE public.base_type (
+	INPUT = input_fn,
+	OUTPUT = output_fn,
+	RECEIVE = receive_fn,
+	SEND = send_fn,
+	TYPMOD_IN = modin_fn,
+	TYPMOD_OUT = modout_fn,
+	INTERNALLENGTH = 16,
+	PASSEDBYVALUE,
+	ALIGNMENT = int2,
+	STORAGE = extended,
+	DEFAULT = 42,
+	ELEMENT = int4,
+	DELIMITER = ','
+);`)
+		})
+		It("prints a base type with double alignment and main storage", func() {
+			backup.PrintCreateBaseTypeStatements(buffer, []backup.TypeDefinition{basePermOne})
+			testutils.ExpectRegexp(buffer, `CREATE TYPE public.base_type (
+	INPUT = input_fn,
+	OUTPUT = output_fn,
+	ALIGNMENT = double,
+	STORAGE = main
+);`)
+		})
+		It("prints a base type with int4 alignment and external storage", func() {
+			backup.PrintCreateBaseTypeStatements(buffer, []backup.TypeDefinition{basePermTwo})
+			testutils.ExpectRegexp(buffer, `CREATE TYPE public.base_type (
+	INPUT = input_fn,
+	OUTPUT = output_fn,
+	ALIGNMENT = int4,
+	STORAGE = external
+);`)
+		})
+		It("prints a base type with comment and owner", func() {
+			backup.PrintCreateBaseTypeStatements(buffer, []backup.TypeDefinition{baseCommentOwner})
+			testutils.ExpectRegexp(buffer, `CREATE TYPE public.base_type (
+	INPUT = input_fn,
+	OUTPUT = output_fn
+);
+
+COMMENT ON TYPE public.base_type IS 'This is a type comment.';
+
+ALTER TYPE public.base_type OWNER TO test_role;`)
+		})
+	})
+	Describe("PrintShellTypeStatements", func() {
+		baseOne := backup.TypeDefinition{"public", "base_type1", "b", "", "", "input_fn", "output_fn",
+			"-", "-", "-", "-", -1, false, "c", "p", "", "-", "", "", "", ""}
+		baseTwo := backup.TypeDefinition{"public", "base_type2", "b", "", "", "input_fn", "output_fn",
+			"-", "-", "-", "-", -1, false, "c", "p", "", "-", "", "", "", ""}
+		compOne := backup.TypeDefinition{TypeSchema: "public", TypeName: "composite_type1", Type: "c", AttName: "bar", AttValue: "integer"}
+		compTwo := backup.TypeDefinition{TypeSchema: "public", TypeName: "composite_type2", Type: "c", AttName: "bar", AttValue: "integer"}
+		enumOne := backup.TypeDefinition{TypeSchema: "public", TypeName: "enum_type", Type: "e", EnumLabels: "'bar',\n\t'baz',\n\t'foo'"}
+		It("prints shell type for only a base type", func() {
+			backup.PrintShellTypeStatements(buffer, []backup.TypeDefinition{baseOne, baseTwo, compOne, compTwo, enumOne})
+			testutils.ExpectRegexp(buffer, `CREATE TYPE public.base_type1;
+CREATE TYPE public.base_type2;`)
 		})
 	})
 })
