@@ -17,6 +17,7 @@ run:
   - |
     set -ex
 
+    export GOPATH=$PWD/go
     export PATH=$GOPATH/bin:$PATH
 
     cd $GOPATH/src/gpbackup
