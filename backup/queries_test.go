@@ -449,8 +449,8 @@ var _ = Describe("backup/queries tests", func() {
 		})
 	})
 	Describe("GetProceduralLanguages", func() {
-		header := []string{"lanname", "owner", "lanispl", "lanpltrusted", "handler", "inline", "validator", "lanacl", "comment"}
-		procLangOne := []driver.Value{"plpythonu", "public", "t", "f", "handler_func", "inline_func", "validator_func", "", "comment"}
+		header := []string{"lanname", "owner", "lanispl", "lanpltrusted", "lanplcallfoid", "laninline", "lanvalidator", "lanacl", "comment"}
+		procLangOne := []driver.Value{"plpythonu", "public", "t", "f", 1, 2, 3, "", "comment"}
 
 		It("returns a slice of procedural languages", func() {
 			fakeResult := sqlmock.NewRows(header).AddRow(procLangOne...)
@@ -460,9 +460,9 @@ var _ = Describe("backup/queries tests", func() {
 			Expect(result[0].Owner).To(Equal("public"))
 			Expect(result[0].IsPl).To(BeTrue())
 			Expect(result[0].PlTrusted).To(BeFalse())
-			Expect(result[0].Handler).To(Equal("handler_func"))
-			Expect(result[0].Inline).To(Equal("inline_func"))
-			Expect(result[0].Validator).To(Equal("validator_func"))
+			Expect(result[0].Handler).To(Equal(uint32(1)))
+			Expect(result[0].Inline).To(Equal(uint32(2)))
+			Expect(result[0].Validator).To(Equal(uint32(3)))
 			Expect(result[0].Access).To(Equal(""))
 			Expect(result[0].Comment).To(Equal("comment"))
 		})

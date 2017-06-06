@@ -73,6 +73,8 @@ func DoBackup() {
 	postdataFilename := fmt.Sprintf("%s/postdata.sql", masterDumpDir)
 
 	connection.Begin()
+	connection.Exec("SET search_path TO pg_catalog")
+
 	tables := GetAllUserTables(connection)
 	extTableMap := GetExternalTablesMap(connection)
 
@@ -143,9 +145,10 @@ func backupPredata(filename string, tables []utils.Relation, extTableMap map[str
 	sequenceDefs := GetAllSequenceDefinitions(connection)
 	PrintCreateSequenceStatements(predataFile, sequenceDefs)
 
+	funcInfoMap := GetFunctionOidToInfoMap(connection)
 	logger.Verbose("Writing CREATE PROCEDURAL LANGUAGE statements to predata file")
 	procLangs := GetProceduralLanguages(connection)
-	PrintCreateLanguageStatements(predataFile, procLangs)
+	PrintCreateLanguageStatements(predataFile, procLangs, funcInfoMap)
 
 	logger.Verbose("Writing CREATE FUNCTION statements to predata file")
 	funcDefs := GetFunctionDefinitions(connection)
@@ -153,8 +156,7 @@ func backupPredata(filename string, tables []utils.Relation, extTableMap map[str
 
 	logger.Verbose("Writing CREATE AGGREGATE statements to predata file")
 	aggDefs := GetAggregateDefinitions(connection)
-	funcNameMap := GetFunctionOidToNameMap(connection)
-	PrintCreateAggregateStatements(predataFile, aggDefs, funcNameMap)
+	PrintCreateAggregateStatements(predataFile, aggDefs, funcInfoMap)
 
 	logger.Verbose("Writing CREATE CAST statements to predata file")
 	castDefs := GetCastDefinitions(connection)

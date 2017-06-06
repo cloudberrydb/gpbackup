@@ -368,25 +368,34 @@ type QueryFunction struct {
 	FunctionOid    uint32 `db:"oid"`
 	FunctionSchema string `db:"nspname"`
 	FunctionName   string `db:"proname"`
+	Arguments      string
 }
 
-func GetFunctionOidToNameMap(connection *utils.DBConn) map[uint32]string {
+type FunctionInfo struct {
+	QualifiedName string
+	Arguments     string
+}
+
+func GetFunctionOidToInfoMap(connection *utils.DBConn) map[uint32]FunctionInfo {
 	query := `
 SELECT
 	p.oid,
 	n.nspname,
-	p.proname
+	p.proname,
+	pg_catalog.pg_get_function_arguments(p.oid) AS arguments
 FROM pg_proc p
 LEFT JOIN pg_namespace n ON p.pronamespace = n.oid;
 `
 
 	results := make([]QueryFunction, 0)
-	funcMap := make(map[uint32]string, 0)
+	funcMap := make(map[uint32]FunctionInfo, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	for _, function := range results {
 		fqn := fmt.Sprintf("%s.%s", utils.QuoteIdent(function.FunctionSchema), utils.QuoteIdent(function.FunctionName))
-		funcMap[function.FunctionOid] = fqn
+
+		funcInfo := FunctionInfo{QualifiedName: fqn, Arguments: function.Arguments}
+		funcMap[function.FunctionOid] = funcInfo
 	}
 	return funcMap
 }
@@ -563,11 +572,11 @@ WHERE datname = '%s';`, connection.DBName)
 type QueryProceduralLanguage struct {
 	Name      string `db:"lanname"`
 	Owner     string
-	IsPl      bool `db:"lanispl"`
-	PlTrusted bool `db:"lanpltrusted"`
-	Handler   string
-	Inline    string
-	Validator string
+	IsPl      bool   `db:"lanispl"`
+	PlTrusted bool   `db:"lanpltrusted"`
+	Handler   uint32 `db:"lanplcallfoid"`
+	Inline    uint32 `db:"laninline"`
+	Validator uint32 `db:"lanvalidator"`
 	Access    string `db:"lanacl"`
 	Comment   string
 }
@@ -579,16 +588,14 @@ SELECT l.lanname,
 	pg_get_userbyid(l.lanowner) as owner,
 	l.lanispl,
 	l.lanpltrusted,
-	coalesce(p_hand.oid::pg_catalog.regprocedure::text, '') AS handler,
-	coalesce(p_in.oid::pg_catalog.regprocedure::text, '') AS inline,
-	coalesce(p_val.oid::pg_catalog.regprocedure::text, '') AS validator,
+	l.lanplcallfoid::regprocedure::oid,
+	l.laninline::regprocedure::oid,
+	l.lanvalidator::regprocedure::oid,
 	coalesce(pg_catalog.array_to_string(l.lanacl, ','), '') as lanacl,
 	coalesce(obj_description(l.oid, 'pg_language'), '') AS comment
 FROM pg_language l
-LEFT JOIN pg_proc p_hand ON l.lanplcallfoid = p_hand.oid
-LEFT JOIN pg_proc p_in ON l.laninline = p_in.oid
-LEFT JOIN pg_proc p_val ON l.lanvalidator = p_val.oid
-WHERE l.lanispl='t';`
+WHERE l.lanispl='t';
+`
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results

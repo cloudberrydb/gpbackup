@@ -143,7 +143,7 @@ func PrintCreateSequenceStatements(predataFile io.Writer, sequences []SequenceDe
 	}
 }
 
-func PrintCreateLanguageStatements(predataFile io.Writer, procLangs []QueryProceduralLanguage) {
+func PrintCreateLanguageStatements(predataFile io.Writer, procLangs []QueryProceduralLanguage, funcInfoMap map[uint32]FunctionInfo) {
 	for _, procLang := range procLangs {
 		quotedOwner := utils.QuoteIdent(procLang.Owner)
 		quotedLanguage := utils.QuoteIdent(procLang.Name)
@@ -160,14 +160,17 @@ func PrintCreateLanguageStatements(predataFile io.Writer, procLangs []QueryProce
 		 * the inline and validator functions can be in a different schema and must be schema-qualified.
 		 */
 
-		if procLang.Handler != "" {
-			fmt.Fprintf(predataFile, "\nALTER FUNCTION %s OWNER TO %s;", procLang.Handler, quotedOwner)
+		if procLang.Handler != 0 {
+			handlerInfo := funcInfoMap[procLang.Handler]
+			fmt.Fprintf(predataFile, "\nALTER FUNCTION %s(%s) OWNER TO %s;", handlerInfo.QualifiedName, handlerInfo.Arguments, quotedOwner)
 		}
-		if procLang.Inline != "" {
-			fmt.Fprintf(predataFile, "\nALTER FUNCTION %s OWNER TO %s;", procLang.Inline, quotedOwner)
+		if procLang.Inline != 0 {
+			inlineInfo := funcInfoMap[procLang.Inline]
+			fmt.Fprintf(predataFile, "\nALTER FUNCTION %s(%s) OWNER TO %s;", inlineInfo.QualifiedName, inlineInfo.Arguments, quotedOwner)
 		}
-		if procLang.Validator != "" {
-			fmt.Fprintf(predataFile, "\nALTER FUNCTION %s OWNER TO %s;", procLang.Validator, quotedOwner)
+		if procLang.Validator != 0 {
+			validatorInfo := funcInfoMap[procLang.Validator]
+			fmt.Fprintf(predataFile, "\nALTER FUNCTION %s(%s) OWNER TO %s;", validatorInfo.QualifiedName, validatorInfo.Arguments, quotedOwner)
 		}
 		if procLang.Owner != "" {
 			fmt.Fprintf(predataFile, "\nALTER LANGUAGE %s OWNER TO %s;", quotedLanguage, quotedOwner)
@@ -266,7 +269,7 @@ func PrintFunctionModifiers(predataFile io.Writer, funcDef QueryFunctionDefiniti
 	}
 }
 
-func PrintCreateAggregateStatements(predataFile io.Writer, aggDefs []QueryAggregateDefinition, funcNameMap map[uint32]string) {
+func PrintCreateAggregateStatements(predataFile io.Writer, aggDefs []QueryAggregateDefinition, funcInfoMap map[uint32]FunctionInfo) {
 	for _, aggDef := range aggDefs {
 		aggFQN := fmt.Sprintf("%s.%s", utils.QuoteIdent(aggDef.SchemaName), utils.QuoteIdent(aggDef.AggregateName))
 		orderedStr := ""
@@ -274,20 +277,20 @@ func PrintCreateAggregateStatements(predataFile io.Writer, aggDefs []QueryAggreg
 			orderedStr = "ORDERED "
 		}
 		fmt.Fprintf(predataFile, "\n\nCREATE %sAGGREGATE %s(%s) (\n", orderedStr, aggFQN, aggDef.Arguments)
-		fmt.Fprintf(predataFile, "\tSFUNC = %s,\n", funcNameMap[aggDef.TransitionFunction])
+		fmt.Fprintf(predataFile, "\tSFUNC = %s,\n", funcInfoMap[aggDef.TransitionFunction].QualifiedName)
 		fmt.Fprintf(predataFile, "\tSTYPE = %s", aggDef.TransitionDataType)
 
 		if aggDef.PreliminaryFunction != 0 {
-			fmt.Fprintf(predataFile, ",\n\tPREFUNC = %s", funcNameMap[aggDef.PreliminaryFunction])
+			fmt.Fprintf(predataFile, ",\n\tPREFUNC = %s", funcInfoMap[aggDef.PreliminaryFunction].QualifiedName)
 		}
 		if aggDef.FinalFunction != 0 {
-			fmt.Fprintf(predataFile, ",\n\tFINALFUNC = %s", funcNameMap[aggDef.FinalFunction])
+			fmt.Fprintf(predataFile, ",\n\tFINALFUNC = %s", funcInfoMap[aggDef.FinalFunction].QualifiedName)
 		}
 		if aggDef.InitialValue != "" {
 			fmt.Fprintf(predataFile, ",\n\tINITCOND = '%s'", aggDef.InitialValue)
 		}
 		if aggDef.SortOperator != 0 {
-			fmt.Fprintf(predataFile, ",\n\tSORTOP = %s", funcNameMap[aggDef.SortOperator])
+			fmt.Fprintf(predataFile, ",\n\tSORTOP = %s", funcInfoMap[aggDef.SortOperator].QualifiedName)
 		}
 
 		fmt.Fprintln(predataFile, "\n);")

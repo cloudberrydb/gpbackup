@@ -327,52 +327,57 @@ ALTER DATABASE testdb SET search_path TO 'pg_catalog, public';
 ALTER DATABASE testdb SET gp_default_storage_options TO 'appendonly=true,blocksize=32768';`)
 		})
 	})
-
 	Describe("PrintCreateLanguageStatements", func() {
 		buffer := gbytes.NewBuffer()
-		plUntrustedHandlerOnly := backup.QueryProceduralLanguage{"plpythonu", "testrole", true, false, "plpython_call_handler()", "", "", "", ""}
-		plAllFields := backup.QueryProceduralLanguage{"plpgsql", "testrole", true, true, "plpgsql_call_handler()", "plpgsql_inline_handler(internal)", "plpgsql_validator(oid)", "", ""}
-		plComment := backup.QueryProceduralLanguage{"plpythonu", "testrole", true, false, "plpython_call_handler()", "", "", "", "language comment"}
+		plUntrustedHandlerOnly := backup.QueryProceduralLanguage{"plpythonu", "testrole", true, false, 4, 0, 0, "", ""}
+		plAllFields := backup.QueryProceduralLanguage{"plpgsql", "testrole", true, true, 1, 2, 3, "", ""}
+		plComment := backup.QueryProceduralLanguage{"plpythonu", "testrole", true, false, 4, 0, 0, "", "language comment"}
+		funcInfoMap := map[uint32]backup.FunctionInfo{
+			1: backup.FunctionInfo{QualifiedName: "pg_catalog.plpgsql_call_handler", Arguments: ""},
+			2: backup.FunctionInfo{QualifiedName: "pg_catalog.plpgsql_inline_handler", Arguments: "internal"},
+			3: backup.FunctionInfo{QualifiedName: "pg_catalog.plpgsql_validator", Arguments: "oid"},
+			4: backup.FunctionInfo{QualifiedName: "pg_catalog.plpython_call_handler", Arguments: ""},
+		}
 
 		It("prints untrusted language with a handler only", func() {
 			langs := []backup.QueryProceduralLanguage{plUntrustedHandlerOnly}
 
-			backup.PrintCreateLanguageStatements(buffer, langs)
+			backup.PrintCreateLanguageStatements(buffer, langs, funcInfoMap)
 			testutils.ExpectRegexp(buffer, `CREATE PROCEDURAL LANGUAGE plpythonu;
-ALTER FUNCTION plpython_call_handler() OWNER TO testrole;
+ALTER FUNCTION pg_catalog.plpython_call_handler() OWNER TO testrole;
 ALTER LANGUAGE plpythonu OWNER TO testrole;`)
 		})
 		It("prints trusted language with handler, inline, validator, and comments", func() {
 			langs := []backup.QueryProceduralLanguage{plAllFields}
 
-			backup.PrintCreateLanguageStatements(buffer, langs)
+			backup.PrintCreateLanguageStatements(buffer, langs, funcInfoMap)
 			testutils.ExpectRegexp(buffer, `CREATE TRUSTED PROCEDURAL LANGUAGE plpgsql;
-ALTER FUNCTION plpgsql_call_handler() OWNER TO testrole;
-ALTER FUNCTION plpgsql_inline_handler(internal) OWNER TO testrole;
-ALTER FUNCTION plpgsql_validator(oid) OWNER TO testrole;
+ALTER FUNCTION pg_catalog.plpgsql_call_handler() OWNER TO testrole;
+ALTER FUNCTION pg_catalog.plpgsql_inline_handler(internal) OWNER TO testrole;
+ALTER FUNCTION pg_catalog.plpgsql_validator(oid) OWNER TO testrole;
 ALTER LANGUAGE plpgsql OWNER TO testrole;`)
 		})
 		It("prints multiple create language statements", func() {
 			langs := []backup.QueryProceduralLanguage{plUntrustedHandlerOnly, plAllFields}
 
-			backup.PrintCreateLanguageStatements(buffer, langs)
+			backup.PrintCreateLanguageStatements(buffer, langs, funcInfoMap)
 			testutils.ExpectRegexp(buffer, `CREATE PROCEDURAL LANGUAGE plpythonu;
-ALTER FUNCTION plpython_call_handler() OWNER TO testrole;
+ALTER FUNCTION pg_catalog.plpython_call_handler() OWNER TO testrole;
 ALTER LANGUAGE plpythonu OWNER TO testrole;
 
 
 CREATE TRUSTED PROCEDURAL LANGUAGE plpgsql;
-ALTER FUNCTION plpgsql_call_handler() OWNER TO testrole;
-ALTER FUNCTION plpgsql_inline_handler(internal) OWNER TO testrole;
-ALTER FUNCTION plpgsql_validator(oid) OWNER TO testrole;
+ALTER FUNCTION pg_catalog.plpgsql_call_handler() OWNER TO testrole;
+ALTER FUNCTION pg_catalog.plpgsql_inline_handler(internal) OWNER TO testrole;
+ALTER FUNCTION pg_catalog.plpgsql_validator(oid) OWNER TO testrole;
 ALTER LANGUAGE plpgsql OWNER TO testrole;`)
 		})
 		It("prints language with comment", func() {
 			langs := []backup.QueryProceduralLanguage{plComment}
 
-			backup.PrintCreateLanguageStatements(buffer, langs)
+			backup.PrintCreateLanguageStatements(buffer, langs, funcInfoMap)
 			testutils.ExpectRegexp(buffer, `CREATE PROCEDURAL LANGUAGE plpythonu;
-ALTER FUNCTION plpython_call_handler() OWNER TO testrole;
+ALTER FUNCTION pg_catalog.plpython_call_handler() OWNER TO testrole;
 ALTER LANGUAGE plpythonu OWNER TO testrole;
 
 COMMENT ON LANGUAGE plpythonu IS 'language comment'`)
@@ -608,14 +613,19 @@ $_$`)
 		aggDefs := make([]backup.QueryAggregateDefinition, 1)
 		buffer := gbytes.NewBuffer()
 		aggDefault := backup.QueryAggregateDefinition{"public", "agg_name", "integer, integer", "integer, integer", 1, 0, 0, 0, "integer", "", false, "", ""}
-		funcNameMap := map[uint32]string{1: "public.mysfunc", 2: "public.mypfunc", 3: "public.myffunc", 4: "public.mysortop"}
+		funcInfoMap := map[uint32]backup.FunctionInfo{
+			1: backup.FunctionInfo{QualifiedName: "public.mysfunc", Arguments: "integer"},
+			2: backup.FunctionInfo{QualifiedName: "public.mypfunc", Arguments: "numeric, numeric"},
+			3: backup.FunctionInfo{QualifiedName: "public.myffunc", Arguments: "text"},
+			4: backup.FunctionInfo{QualifiedName: "public.mysortop", Arguments: "bigint"},
+		}
 		BeforeEach(func() {
 			buffer = gbytes.BufferWithBytes([]byte(""))
 			aggDefs[0] = aggDefault
 		})
 
 		It("prints an aggregate definition for an unordered aggregate with no optional specifications", func() {
-			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcNameMap)
+			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcInfoMap)
 			testutils.ExpectRegexp(buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
 	STYPE = integer
@@ -623,7 +633,7 @@ $_$`)
 		})
 		It("prints an aggregate definition for an ordered aggregate with no optional specifications", func() {
 			aggDefs[0].IsOrdered = true
-			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcNameMap)
+			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcInfoMap)
 			testutils.ExpectRegexp(buffer, `CREATE ORDERED AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
 	STYPE = integer
@@ -631,7 +641,7 @@ $_$`)
 		})
 		It("prints an aggregate with a preliminary function", func() {
 			aggDefs[0].PreliminaryFunction = 2
-			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcNameMap)
+			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcInfoMap)
 			testutils.ExpectRegexp(buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
 	STYPE = integer,
@@ -640,7 +650,7 @@ $_$`)
 		})
 		It("prints an aggregate with a final function", func() {
 			aggDefs[0].FinalFunction = 3
-			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcNameMap)
+			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcInfoMap)
 			testutils.ExpectRegexp(buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
 	STYPE = integer,
@@ -649,7 +659,7 @@ $_$`)
 		})
 		It("prints an aggregate with an initial condition", func() {
 			aggDefs[0].InitialValue = "0"
-			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcNameMap)
+			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcInfoMap)
 			testutils.ExpectRegexp(buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
 	STYPE = integer,
@@ -658,7 +668,7 @@ $_$`)
 		})
 		It("prints an aggregate with a sort operator", func() {
 			aggDefs[0].SortOperator = 4
-			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcNameMap)
+			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcInfoMap)
 			testutils.ExpectRegexp(buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
 	STYPE = integer,
@@ -668,7 +678,7 @@ $_$`)
 		It("prints an aggregate with multiple specifications", func() {
 			aggDefs[0].FinalFunction = 3
 			aggDefs[0].SortOperator = 4
-			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcNameMap)
+			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcInfoMap)
 			testutils.ExpectRegexp(buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
 	STYPE = integer,
