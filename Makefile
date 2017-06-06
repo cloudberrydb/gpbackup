@@ -36,21 +36,26 @@ build :
 		go build -tags '$(BACKUP)' $(GOFLAGS) -o ../../bin/$(BACKUP)
 		go build -tags '$(RESTORE)' $(GOFLAGS) -o ../../bin/$(RESTORE)
 
-build_rhel:
+build_rhel :
 		env GOOS=linux GOARCH=amd64 go build -tags '$(BACKUP)' $(GOFLAGS) -o ../../bin/$(BACKUP)
 		env GOOS=linux GOARCH=amd64 go build -tags '$(RESTORE)' $(GOFLAGS) -o ../../bin/$(RESTORE)
 
-build_osx:
+build_osx :
 		env GOOS=darwin GOARCH=amd64 go build -tags '$(BACKUP)' $(GOFLAGS) -o ../../bin/$(BACKUP)
 		env GOOS=darwin GOARCH=amd64 go build -tags '$(RESTORE)' $(GOFLAGS) -o ../../bin/$(RESTORE)
 
-install: all installdirs
+install : all installdirs
 		$(INSTALL_PROGRAM) gpbackup$(X) '$(DESTDIR)$(bindir)/gpbackup$(X)'
 
-installdirs:
+installdirs :
 		$(MKDIR_P) '$(DESTDIR)$(bindir)'
 
 clean :
 		rm -f $(BACKUP)
 		rm -rf /tmp/go-build*
 		rm -rf /tmp/ginkgo*
+
+update_pipeline :
+	fly -t gpdb set-pipeline -p gpbackup -c ci/pipeline.yml -l <(lpass show "Concourse Credentials" --notes)
+
+.PHONY : update_pipeline

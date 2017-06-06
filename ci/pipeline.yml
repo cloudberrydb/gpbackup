@@ -1,0 +1,46 @@
+---
+resource_types:
+- name: slack-notification
+  type: docker-image
+  source:
+    repository: cfcommunity/slack-notification-resource
+    tag: latest
+
+resources:
+- name: gpbackup
+  type: git
+  source:
+    uri: https://github.com/greenplum-db/gpbackup
+    branch: master
+    ignore_paths:
+    - ci
+    # - integration
+
+- name: gpbackup-ci
+  type: git
+  source:
+    uri: https://github.com/greenplum-db/gpbackup
+    branch: master
+    paths:
+    - ci
+
+# - name: gpbackup-integration
+#   type: git
+#   source:
+#     uri: https://github.com/greenplum-db/gpbackup
+#     branch: master
+#     paths:
+#     - integration
+
+jobs:
+- name: units
+  serial: true
+  plan:
+  - aggregate:
+    - get: gpbackup
+      trigger: true
+    - get: gpbackup-ci
+  - task: unit-tests
+    file: gpbackup-ci/ci/tasks/unit-tests.yml
+
+

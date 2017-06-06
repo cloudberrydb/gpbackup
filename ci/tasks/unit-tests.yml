@@ -1,0 +1,24 @@
+---
+platform: linux
+
+image_resource:
+  type: docker-image
+  source:
+    repository: golang
+
+inputs:
+- name: gpbackup
+  path: go/src/gpbackup
+
+run:
+  path: bash
+  args:
+  - -c
+  - |
+    set -ex
+
+    export PATH=$GOPATH/bin:$PATH
+
+    cd $GOPATH/src/gpbackup
+    make depend
+    make test
