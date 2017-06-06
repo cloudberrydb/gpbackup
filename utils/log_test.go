@@ -11,17 +11,32 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gbytes"
 	"github.com/pkg/errors"
 )
 
 var _ = Describe("utils/log tests", func() {
-	logger, stdout, stderr, logfile := testutils.SetupTestLogger()
-	fakeFile := &os.File{}
-	fakeInfo, _ := os.Stat("/tmp/log_dir")
-	var testLogger, sampleLogger *utils.Logger
-	var testLogDir string
+	var (
+		testLogger   *utils.Logger
+		sampleLogger *utils.Logger
+		testLogDir   string
+		fakeFile     *os.File
+		fakeInfo     os.FileInfo
+
+		logger  *utils.Logger
+		stdout  *Buffer
+		stderr  *Buffer
+		logfile *Buffer
+	)
 
 	BeforeEach(func() {
+		logger, stdout, stderr, logfile = testutils.SetupTestLogger()
+		err := utils.System.MkdirAll("/tmp/log_dir", 0755)
+		Expect(err).ToNot(HaveOccurred())
+		fakeInfo, err = os.Stat("/tmp/log_dir")
+		Expect(err).ToNot(HaveOccurred())
+		fakeFile = &os.File{}
+
 		utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) { return fakeFile, nil }
 		utils.System.CurrentUser = func() (*user.User, error) { return &user.User{Username: "testUser", HomeDir: "testDir"}, nil }
 		utils.System.Getpid = func() int { return 0 }
