@@ -633,7 +633,9 @@ func SelectStringSlice(connection *utils.DBConn, query string) []string {
 	utils.CheckError(err)
 	retval := make([]string, 0)
 	for _, str := range results {
-		retval = append(retval, str.String)
+		if str.String != "" {
+			retval = append(retval, str.String)
+		}
 	}
 	return retval
 }
