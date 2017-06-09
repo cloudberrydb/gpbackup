@@ -59,4 +59,7 @@ clean :
 update_pipeline :
 	fly -t gpdb set-pipeline -p gpbackup -c ci/pipeline.yml -l <(lpass show "Concourse Credentials" --notes)
 
+push : format
+	git pull -r && make test && git push
+
 .PHONY : update_pipeline integration
