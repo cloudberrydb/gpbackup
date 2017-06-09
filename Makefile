@@ -23,12 +23,13 @@ format :
 		goimports -w .
 		go fmt ./...
 
-ginkgo :
-		ginkgo -r -randomizeSuites -randomizeAllSpecs 2>&1
+unit :
+		ginkgo backup restore utils -r -randomizeSuites -randomizeAllSpecs 2>&1
 
-test : ginkgo
+integration :
+		ginkgo integration -r -randomizeSuites -randomizeAllSpecs 2>&1
 
-ci : ginkgo
+test : unit integration
 
 depend : dependencies
 
@@ -58,4 +59,4 @@ clean :
 update_pipeline :
 	fly -t gpdb set-pipeline -p gpbackup -c ci/pipeline.yml -l <(lpass show "Concourse Credentials" --notes)
 
-.PHONY : update_pipeline
+.PHONY : update_pipeline integration

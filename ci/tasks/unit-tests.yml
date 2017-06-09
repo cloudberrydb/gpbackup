@@ -22,4 +22,4 @@ run:
 
     cd $GOPATH/src/gpbackup
     make depend
-    make test
+    make unit

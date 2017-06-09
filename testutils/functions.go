@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strings"
 
+	"strconv"
+
 	"github.com/jmoiron/sqlx"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -91,4 +93,25 @@ func ShouldPanicWithMessage(message string) {
 	} else {
 		Fail("Function did not panic as expected")
 	}
+}
+
+func AssertQueryRuns(dbconn *utils.DBConn, query string) {
+	_, err := dbconn.Exec(query)
+	Expect(err).To(BeNil())
+}
+
+func OidFromRelationName(dbconn *utils.DBConn, relname string) uint32 {
+	oidQuery := fmt.Sprintf("SELECT '%s'::regclass::oid as string", relname)
+	oidString := backup.SelectString(dbconn, oidQuery)
+	oid, err := strconv.ParseUint(oidString, 10, 32)
+	Expect(err).To(BeNil())
+	return uint32(oid)
+}
+
+func OidFromFunctionName(dbconn *utils.DBConn, relname string) uint32 {
+	oidQuery := fmt.Sprintf("SELECT '%s'::regproc::oid as string", relname)
+	oidString := backup.SelectString(dbconn, oidQuery)
+	oid, err := strconv.ParseUint(oidString, 10, 32)
+	Expect(err).To(BeNil())
+	return uint32(oid)
 }

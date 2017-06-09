@@ -123,6 +123,7 @@ FROM pg_catalog.pg_attribute a
 	AND e.attnum = a.attnum
 WHERE a.attrelid = %d
 	AND a.attnum > 0::pg_catalog.int2
+	AND a.attisdropped = 'f'
 ORDER BY a.attrelid,
 	a.attnum;`, oid)
 
@@ -176,6 +177,32 @@ WHERE conrelid = %d;
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results
+}
+
+func GetDistributionPolicy(connection *utils.DBConn, oid uint32) string {
+	// This query is adapted from the addDistributedBy() function in pg_dump.c.
+	query := fmt.Sprintf(`
+SELECT a.attname as string
+FROM pg_attribute a
+JOIN (
+	SELECT
+		unnest(attrnums) AS attnum,
+		localoid
+	FROM gp_distribution_policy
+) p
+ON (p.localoid,p.attnum) = (a.attrelid,a.attnum)
+WHERE a.attrelid = %d;`, oid)
+
+	results := SelectStringSlice(connection, query)
+	if len(results) == 0 {
+		return "DISTRIBUTED RANDOMLY"
+	} else {
+		distCols := make([]string, 0)
+		for _, dist := range results {
+			distCols = append(distCols, utils.QuoteIdent(dist))
+		}
+		return fmt.Sprintf("DISTRIBUTED BY (%s)", strings.Join(distCols, ", "))
+	}
 }
 
 func GetAllSequences(connection *utils.DBConn) []utils.Relation {
@@ -494,32 +521,6 @@ WHERE reloid = '%d';`, oid)
 		logger.Fatal(errors.Errorf("Too many rows returned from query: got %d rows, expected 1 row", len(results)), "")
 	}
 	return ExternalTableDefinition{}
-}
-
-func GetDistributionPolicy(connection *utils.DBConn, oid uint32) string {
-	// This query is adapted from the addDistributedBy() function in pg_dump.c.
-	query := fmt.Sprintf(`
-SELECT a.attname as string
-FROM pg_attribute a
-JOIN (
-	SELECT
-		unnest(attrnums) AS attnum,
-		localoid
-	FROM gp_distribution_policy
-) p
-ON (p.localoid,p.attnum) = (a.attrelid,a.attnum)
-WHERE a.attrelid = %d;`, oid)
-
-	results := SelectStringSlice(connection, query)
-	if len(results) == 0 {
-		return "DISTRIBUTED RANDOMLY"
-	} else {
-		distCols := make([]string, 0)
-		for _, dist := range results {
-			distCols = append(distCols, utils.QuoteIdent(dist))
-		}
-		return fmt.Sprintf("DISTRIBUTED BY (%s)", strings.Join(distCols, ", "))
-	}
 }
 
 func GetDatabaseGUCs(connection *utils.DBConn) []string {
