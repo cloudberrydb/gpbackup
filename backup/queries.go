@@ -197,7 +197,7 @@ ORDER BY schemaname, relationname;`
 	return results
 }
 
-type QuerySequence struct {
+type QuerySequenceDefinition struct {
 	Name      string `db:"sequence_name"`
 	LastVal   int64  `db:"last_value"`
 	Increment int64  `db:"increment_by"`
@@ -209,9 +209,9 @@ type QuerySequence struct {
 	IsCalled  bool   `db:"is_called"`
 }
 
-func GetSequence(connection *utils.DBConn, seqName string) QuerySequence {
+func GetSequenceDefinition(connection *utils.DBConn, seqName string) QuerySequenceDefinition {
 	query := fmt.Sprintf("SELECT * FROM %s", seqName)
-	result := QuerySequence{}
+	result := QuerySequenceDefinition{}
 	err := connection.Get(&result, query)
 	utils.CheckError(err)
 	return result

@@ -16,7 +16,7 @@ import (
 
 type SequenceDefinition struct {
 	utils.Relation
-	QuerySequence
+	QuerySequenceDefinition
 }
 
 /*
@@ -94,7 +94,7 @@ func GetAllSequenceDefinitions(connection *utils.DBConn) []SequenceDefinition {
 	allSequences := GetAllSequences(connection)
 	sequenceDefs := make([]SequenceDefinition, 0)
 	for _, seq := range allSequences {
-		sequence := GetSequence(connection, seq.ToString())
+		sequence := GetSequenceDefinition(connection, seq.ToString())
 		sequenceDef := SequenceDefinition{seq, sequence}
 		sequenceDefs = append(sequenceDefs, sequenceDef)
 	}

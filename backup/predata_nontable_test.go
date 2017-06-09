@@ -142,16 +142,16 @@ COMMENT ON CONSTRAINT tablename_i_key ON public.tablename IS 'This is a constrai
 		baseSequence := utils.BasicRelation("public", "seq_name")
 		commentSequence := utils.Relation{0, 0, "public", "seq_name", "This is a sequence comment.", ""}
 		ownerSequence := utils.Relation{0, 0, "public", "seq_name", "", "testrole"}
-		seqDefault := backup.SequenceDefinition{baseSequence, backup.QuerySequence{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, true}}
-		seqNegIncr := backup.SequenceDefinition{baseSequence, backup.QuerySequence{"seq_name", 7, -1, -1, -9223372036854775807, 5, 42, false, true}}
-		seqMaxPos := backup.SequenceDefinition{baseSequence, backup.QuerySequence{"seq_name", 7, 1, 100, 1, 5, 42, false, true}}
-		seqMinPos := backup.SequenceDefinition{baseSequence, backup.QuerySequence{"seq_name", 7, 1, 9223372036854775807, 10, 5, 42, false, true}}
-		seqMaxNeg := backup.SequenceDefinition{baseSequence, backup.QuerySequence{"seq_name", 7, -1, -10, -9223372036854775807, 5, 42, false, true}}
-		seqMinNeg := backup.SequenceDefinition{baseSequence, backup.QuerySequence{"seq_name", 7, -1, -1, -100, 5, 42, false, true}}
-		seqCycle := backup.SequenceDefinition{baseSequence, backup.QuerySequence{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, true, true}}
-		seqStart := backup.SequenceDefinition{baseSequence, backup.QuerySequence{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, false}}
-		seqComment := backup.SequenceDefinition{commentSequence, backup.QuerySequence{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, true}}
-		seqOwner := backup.SequenceDefinition{ownerSequence, backup.QuerySequence{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, true}}
+		seqDefault := backup.SequenceDefinition{baseSequence, backup.QuerySequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, true}}
+		seqNegIncr := backup.SequenceDefinition{baseSequence, backup.QuerySequenceDefinition{"seq_name", 7, -1, -1, -9223372036854775807, 5, 42, false, true}}
+		seqMaxPos := backup.SequenceDefinition{baseSequence, backup.QuerySequenceDefinition{"seq_name", 7, 1, 100, 1, 5, 42, false, true}}
+		seqMinPos := backup.SequenceDefinition{baseSequence, backup.QuerySequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 10, 5, 42, false, true}}
+		seqMaxNeg := backup.SequenceDefinition{baseSequence, backup.QuerySequenceDefinition{"seq_name", 7, -1, -10, -9223372036854775807, 5, 42, false, true}}
+		seqMinNeg := backup.SequenceDefinition{baseSequence, backup.QuerySequenceDefinition{"seq_name", 7, -1, -1, -100, 5, 42, false, true}}
+		seqCycle := backup.SequenceDefinition{baseSequence, backup.QuerySequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, true, true}}
+		seqStart := backup.SequenceDefinition{baseSequence, backup.QuerySequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, false}}
+		seqComment := backup.SequenceDefinition{commentSequence, backup.QuerySequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, true}}
+		seqOwner := backup.SequenceDefinition{ownerSequence, backup.QuerySequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, true}}
 
 		It("can print a sequence with all default options", func() {
 			sequences := []backup.SequenceDefinition{seqDefault}

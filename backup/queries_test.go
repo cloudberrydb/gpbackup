@@ -429,14 +429,14 @@ var _ = Describe("backup/queries tests", func() {
 			Expect(results.DefaultWithOids).To(Equal("false"))
 		})
 	})
-	Describe("GetSequence", func() {
+	Describe("GetSequenceDefinition", func() {
 		header := []string{"sequence_name", "last_value", "increment_by", "max_value", "min_value", "cache_value", "log_cnt", "is_cycled", "is_called"}
 		sequenceOne := []driver.Value{"seq_name", "42", 1, 1000, 1, 41, 2, false, false}
 
 		It("returns a slice for a sequence", func() {
 			fakeResult := sqlmock.NewRows(header).AddRow(sequenceOne...)
 			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
-			result := backup.GetSequence(connection, "SELECT * FROM foo")
+			result := backup.GetSequenceDefinition(connection, "SELECT * FROM foo")
 			Expect(result.Name).To(Equal("seq_name"))
 			Expect(result.LastVal).To(Equal(int64(42)))
 			Expect(result.Increment).To(Equal(int64(1)))
