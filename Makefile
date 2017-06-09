@@ -24,10 +24,10 @@ format :
 		go fmt ./...
 
 unit :
-		ginkgo backup restore utils -r -randomizeSuites -randomizeAllSpecs 2>&1
+		ginkgo -r -randomizeSuites -randomizeAllSpecs backup restore utils 2>&1
 
 integration :
-		ginkgo integration -r -randomizeSuites -randomizeAllSpecs 2>&1
+		ginkgo -r -randomizeSuites -randomizeAllSpecs integration 2>&1
 
 test : unit integration
 
