@@ -421,7 +421,7 @@ LEFT JOIN pg_namespace n ON p.pronamespace = n.oid;
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	for _, function := range results {
-		fqn := fmt.Sprintf("%s.%s", utils.QuoteIdent(function.FunctionSchema), utils.QuoteIdent(function.FunctionName))
+		fqn := utils.MakeFQN(function.FunctionSchema, function.FunctionName)
 
 		funcInfo := FunctionInfo{QualifiedName: fqn, Arguments: function.Arguments}
 		funcMap[function.FunctionOid] = funcInfo
@@ -603,10 +603,10 @@ WHERE reloid = '%d';`, oid)
 
 func GetDatabaseGUCs(connection *utils.DBConn) []string {
 	query := fmt.Sprintf(`
-SELECT (
-	coalesce(array_to_string(ARRAY(SELECT 'SET ' || option_name || ' TO ''' || option_value || ''''
-	FROM pg_options_to_table(datconfig)), ' '), '')
-) AS string FROM pg_database WHERE datname = '%s';`, connection.DBName)
+SELECT ('SET ' || option_name || ' TO ' || option_value) AS string
+FROM pg_options_to_table(
+	(SELECT datconfig FROM pg_database WHERE datname = '%s')
+);`, connection.DBName)
 	return SelectStringSlice(connection, query)
 }
 

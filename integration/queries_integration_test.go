@@ -21,9 +21,11 @@ var _ = Describe("backup integration tests", func() {
 		Expect(err).To(BeNil())
 		connection = utils.NewDBConn("testdb")
 		connection.Connect()
+		// We can't use AssertQueryRuns since if a role already exists it will error
 		connection.Exec("CREATE ROLE testrole SUPERUSER")
-		connection.Exec("SET ROLE testrole")
-
+		connection.Exec("CREATE ROLE gpadmin SUPERUSER")
+		testutils.AssertQueryRuns(connection, "SET ROLE testrole")
+		testutils.AssertQueryRuns(connection, "ALTER DATABASE testdb OWNER TO gpadmin")
 	})
 	AfterSuite(func() {
 		gexec.CleanupBuildArtifacts()
@@ -32,7 +34,6 @@ var _ = Describe("backup integration tests", func() {
 		err := exec.Command("dropdb", "testdb").Run()
 		Expect(err).To(BeNil())
 	})
-
 	Describe("GetAllUserSchemas", func() {
 		It("returns user schema information", func() {
 			testutils.AssertQueryRuns(connection, "CREATE SCHEMA bar")
@@ -100,7 +101,6 @@ PARTITION BY LIST (gender)
 			Expect(tables[0].RelationName).To(Equal("rank"))
 			Expect(tables[0].Comment).To(Equal(""))
 			Expect(tables[0].Owner).To(Equal("testrole"))
-
 		})
 	})
 	Describe("GetTableAttributes", func() {
@@ -207,26 +207,10 @@ PARTITION BY LIST (gender)
 	})
 	Describe("GetConstraints", func() {
 		var (
-			uniqueConstraint = backup.QueryConstraint{
-				"uniq2",
-				"u",
-				"UNIQUE (a, b)",
-				"this is a constraint comment"}
-			fkConstraint = backup.QueryConstraint{
-				"fk1",
-				"f",
-				"FOREIGN KEY (b) REFERENCES constraints_other_table(b)",
-				""}
-			pkConstraint = backup.QueryConstraint{
-				"pk1",
-				"p",
-				"PRIMARY KEY (a, b)",
-				"this is a constraint comment"}
-			checkConstraint = backup.QueryConstraint{
-				"check1",
-				"c",
-				"CHECK (a <> 42)",
-				""}
+			uniqueConstraint = backup.QueryConstraint{"uniq2", "u", "UNIQUE (a, b)", "this is a constraint comment"}
+			fkConstraint     = backup.QueryConstraint{"fk1", "f", "FOREIGN KEY (b) REFERENCES constraints_other_table(b)", ""}
+			pkConstraint     = backup.QueryConstraint{"pk1", "p", "PRIMARY KEY (a, b)", "this is a constraint comment"}
+			checkConstraint  = backup.QueryConstraint{"check1", "c", "CHECK (a <> 42)", ""}
 		)
 		Context("No constraints", func() {
 			It("returns an empty constraint array for a table with no constraints", func() {
@@ -502,7 +486,49 @@ CYCLE`)
 			Expect(results.DefaultWithOids).To(Equal("off"))
 		})
 	})
+	Describe("GetIndexMetadata", func() {
+		It("returns no slice when no index exists", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
+			oid := testutils.OidFromRelationName(connection, "simple_table")
 
+			results := backup.GetIndexMetadata(connection, oid)
+
+			Expect(len(results)).To(Equal(0))
+		})
+		It("returns a slice of multiple indexes", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int, j int, k int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
+			testutils.AssertQueryRuns(connection, "CREATE INDEX simple_table_idx1 ON simple_table(i)")
+			defer testutils.AssertQueryRuns(connection, "DROP INDEX simple_table_idx1")
+			testutils.AssertQueryRuns(connection, "CREATE INDEX simple_table_idx2 ON simple_table(j)")
+			defer testutils.AssertQueryRuns(connection, "DROP INDEX simple_table_idx2")
+			testutils.AssertQueryRuns(connection, "COMMENT ON INDEX simple_table_idx2 IS 'this is a index comment'")
+			oid := testutils.OidFromRelationName(connection, "simple_table")
+
+			results := backup.GetIndexMetadata(connection, oid)
+
+			Expect(len(results)).To(Equal(2))
+			Expect(results[0].Name).To(Equal("simple_table_idx1"))
+			Expect(results[0].Def).To(Equal("CREATE INDEX simple_table_idx1 ON simple_table USING btree (i)"))
+			Expect(results[0].Comment).To(Equal(""))
+			Expect(results[1].Name).To(Equal("simple_table_idx2"))
+			Expect(results[1].Def).To(Equal("CREATE INDEX simple_table_idx2 ON simple_table USING btree (j)"))
+			Expect(results[1].Comment).To(Equal("this is a index comment"))
+		})
+	})
+	Describe("GetDatabaseComment", func() {
+		It("returns empty string for a database comment", func() {
+			result := backup.GetDatabaseComment(connection)
+			Expect(result).To(Equal(""))
+		})
+		It("returns a value for a database comment", func() {
+			testutils.AssertQueryRuns(connection, "COMMENT ON DATABASE testdb IS 'this is a database comment'")
+			defer testutils.AssertQueryRuns(connection, "COMMENT ON DATABASE testdb IS NULL")
+			result := backup.GetDatabaseComment(connection)
+			Expect(result).To(Equal("this is a database comment"))
+		})
+	})
 	Describe("GetProceduralLanguages", func() {
 		It("returns a slice of procedural languages", func() {
 			testutils.AssertQueryRuns(connection, "CREATE LANGUAGE plpythonu")
@@ -512,6 +538,7 @@ CYCLE`)
 
 			results := backup.GetProceduralLanguages(connection)
 
+			Expect(len(results)).To(Equal(2))
 			Expect(results[0].Name).To(Equal("plpgsql"))
 			Expect(results[0].PlTrusted).To(BeTrue())
 			Expect(results[1].Name).To(Equal("plpythonu"))
@@ -567,15 +594,11 @@ CYCLE`)
 			Expect(results[2].AttName).To(Equal("name2"))
 			Expect(results[2].AttValue).To(Equal("text"))
 		})
-		/*
-		 * This test is set to not run as the cleanup step (DROP FUNCTION/TYPE) does not properly
-		 * drop due to issues in the catalog/executor.
-		 *
-		 * TODO: Enable these tests once the issue is fixed.
-		 */
-		PIt("returns a slice for a base type with default values", func() {
+		It("returns a slice for a base type with default values", func() {
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION base_fn_in(cstring) RETURNS opaque AS 'boolin' LANGUAGE internal")
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION base_fn_in(cstring)")
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION base_fn_out(opaque) RETURNS opaque AS 'boolout' LANGUAGE internal")
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION base_fn_out(base_type) CASCADE")
 			testutils.AssertQueryRuns(connection, "CREATE TYPE base_type(INPUT=base_fn_in, OUTPUT=base_fn_out)")
 
 			results := backup.GetTypeDefinitions(connection)
@@ -603,15 +626,11 @@ CYCLE`)
 			Expect(results[0].Comment).To(Equal(""))
 			Expect(results[0].Owner).To(Equal("testrole"))
 		})
-		/*
-		 * This test is set to not run as the cleanup step (DROP FUNCTION/TYPE) does not properly
-		 * drop due to issues in the catalog/executor.
-		 *
-		 * TODO: Enable these tests once the issue is fixed.
-		 */
-		PIt("returns a slice for a base type with custom configuration", func() {
+		It("returns a slice for a base type with custom configuration", func() {
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION base_fn_in(cstring) RETURNS opaque AS 'boolin' LANGUAGE internal")
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION base_fn_in(cstring)")
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION base_fn_out(opaque) RETURNS opaque AS 'boolout' LANGUAGE internal")
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION base_fn_out(base_type) CASCADE")
 			testutils.AssertQueryRuns(connection, "CREATE TYPE base_type(INPUT=base_fn_in, OUTPUT=base_fn_out, INTERNALLENGTH=8, PASSEDBYVALUE, ALIGNMENT=char, STORAGE=plain, DEFAULT=0, ELEMENT=integer, DELIMITER=';')")
 			testutils.AssertQueryRuns(connection, "COMMENT ON TYPE base_type IS 'this is a type comment'")
 
@@ -670,5 +689,379 @@ CYCLE`)
 			Expect(results[0].Owner).To(Equal("testrole"))
 		})
 		// TODO: Add integration test combining all types once catalog issue is fixed
+	})
+	Describe("GetExternalTablesMap", func() {
+		It("returns empty map", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
+
+			result := backup.GetExternalTablesMap(connection)
+
+			Expect(len(result)).To(Equal(0))
+		})
+		It("returns map with external tables", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
+			testutils.AssertQueryRuns(connection, `CREATE READABLE EXTERNAL TABLE ext_table(i int)
+LOCATION ('file://tmp/myfile.txt')
+FORMAT 'TEXT' ( DELIMITER '|' NULL ' ')`)
+			defer testutils.AssertQueryRuns(connection, "DROP EXTERNAL TABLE ext_table")
+
+			result := backup.GetExternalTablesMap(connection)
+
+			Expect(len(result)).To(Equal(1))
+			Expect(result["public.ext_table"]).To(BeTrue())
+		})
+		// TODO: Add tests for external partitions
+	})
+	Describe("GetExternalTableDefinition", func() {
+		It("returns a slice for a basic external table definition", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
+			testutils.AssertQueryRuns(connection, `CREATE READABLE EXTERNAL TABLE ext_table(i int)
+LOCATION ('file://tmp/myfile.txt')
+FORMAT 'TEXT'`)
+			defer testutils.AssertQueryRuns(connection, "DROP EXTERNAL TABLE ext_table")
+			oid := testutils.OidFromRelationName(connection, "ext_table")
+
+			result := backup.GetExternalTableDefinition(connection, oid)
+
+			Expect(result.Type).To(Equal(0))
+			Expect(result.Protocol).To(Equal(0))
+			Expect(result.Location).To(Equal("file://tmp/myfile.txt"))
+			Expect(result.ExecLocation).To(Equal("ALL_SEGMENTS"))
+			Expect(result.FormatType).To(Equal("t"))
+			Expect(result.FormatOpts).To(Equal("delimiter '	' null '\\N' escape '\\'"))
+			Expect(result.Options).To(Equal(""))
+			Expect(result.Command).To(Equal(""))
+			Expect(result.RejectLimit).To(Equal(0))
+			Expect(result.RejectLimitType).To(Equal(""))
+			Expect(result.ErrTable).To(Equal(""))
+			Expect(result.Encoding).To(Equal("UTF8"))
+			Expect(result.Writable).To(BeFalse())
+		})
+		It("returns a slice for a complex external table definition", func() {
+			testutils.AssertQueryRuns(connection, `CREATE READABLE EXTERNAL TABLE ext_table(i int)
+LOCATION ('file://tmp/myfile.txt')
+FORMAT 'TEXT'
+OPTIONS (foo 'bar')
+LOG ERRORS
+SEGMENT REJECT LIMIT 10 PERCENT
+`)
+			defer testutils.AssertQueryRuns(connection, "DROP EXTERNAL TABLE ext_table")
+			oid := testutils.OidFromRelationName(connection, "ext_table")
+
+			result := backup.GetExternalTableDefinition(connection, oid)
+
+			Expect(result.Type).To(Equal(0))
+			Expect(result.Protocol).To(Equal(0))
+			Expect(result.Location).To(Equal("file://tmp/myfile.txt"))
+			Expect(result.ExecLocation).To(Equal("ALL_SEGMENTS"))
+			Expect(result.FormatType).To(Equal("t"))
+			Expect(result.FormatOpts).To(Equal("delimiter '	' null '\\N' escape '\\'"))
+			Expect(result.Options).To(Equal("foo 'bar'"))
+			Expect(result.Command).To(Equal(""))
+			Expect(result.RejectLimit).To(Equal(10))
+			Expect(result.RejectLimitType).To(Equal("p"))
+			Expect(result.ErrTable).To(Equal("ext_table"))
+			Expect(result.Encoding).To(Equal("UTF8"))
+			Expect(result.Writable).To(BeFalse())
+		})
+		// TODO: Add tests for external partitions
+	})
+	Describe("GetDatabaseGUCs", func() {
+		It("returns a slice of values for database level GUCs", func() {
+			testutils.AssertQueryRuns(connection, "ALTER DATABASE testdb SET default_with_oids TO true")
+			defer testutils.AssertQueryRuns(connection, "ALTER DATABASE testdb SET default_with_oids TO false")
+			testutils.AssertQueryRuns(connection, "ALTER DATABASE testdb SET search_path TO public,pg_catalog")
+			defer testutils.AssertQueryRuns(connection, "ALTER DATABASE testdb SET search_path TO pg_catalog,public")
+			results := backup.GetDatabaseGUCs(connection)
+			Expect(len(results)).To(Equal(2))
+			Expect(results[0]).To(Equal("SET default_with_oids TO true"))
+			Expect(results[1]).To(Equal("SET search_path TO public, pg_catalog"))
+		})
+	})
+	Describe("GetDatabaseOwner", func() {
+		It("returns a value for database owner", func() {
+			result := backup.GetDatabaseOwner(connection)
+			Expect(result).To(Equal("gpadmin"))
+		})
+	})
+	Describe("GetPartitionDefinition", func() {
+		It("returns empty string when no partition exists", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
+			oid := testutils.OidFromRelationName(connection, "simple_table")
+
+			result := backup.GetPartitionDefinition(connection, oid)
+
+			Expect(result).To(Equal(""))
+		})
+		It("returns a value for a partition defintiion", func() {
+			testutils.AssertQueryRuns(connection, `CREATE TABLE part_table (id int, rank int, year int, gender 
+char(1), count int ) 
+DISTRIBUTED BY (id)
+PARTITION BY LIST (gender)
+( PARTITION girls VALUES ('F'), 
+  PARTITION boys VALUES ('M'), 
+  DEFAULT PARTITION other );
+			`)
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE part_table")
+			oid := testutils.OidFromRelationName(connection, "part_table")
+
+			result := backup.GetPartitionDefinition(connection, oid)
+
+			// The spacing is very specific here and is output from the postgres function
+			expectedResult := `PARTITION BY LIST(gender) 
+          (
+          PARTITION girls VALUES('F') WITH (tablename='part_table_1_prt_girls', appendonly=false ), 
+          PARTITION boys VALUES('M') WITH (tablename='part_table_1_prt_boys', appendonly=false ), 
+          DEFAULT PARTITION other  WITH (tablename='part_table_1_prt_other', appendonly=false )
+          )`
+			Expect(result).To(Equal(expectedResult))
+		})
+	})
+	Describe("GetPartitionDefinitionTemplate", func() {
+		It("returns empty string when no partition definition template exists", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
+			oid := testutils.OidFromRelationName(connection, "simple_table")
+
+			result := backup.GetPartitionTemplateDefinition(connection, oid)
+
+			Expect(result).To(Equal(""))
+		})
+		It("returns a value for a subpartition template", func() {
+			testutils.AssertQueryRuns(connection, `CREATE TABLE part_table (trans_id int, date date, amount decimal(9,2), region text)
+  DISTRIBUTED BY (trans_id)
+  PARTITION BY RANGE (date)
+  SUBPARTITION BY LIST (region)
+  SUBPARTITION TEMPLATE
+    ( SUBPARTITION usa VALUES ('usa'),
+      SUBPARTITION asia VALUES ('asia'),
+      SUBPARTITION europe VALUES ('europe'),
+      DEFAULT SUBPARTITION other_regions )
+  ( START (date '2014-01-01') INCLUSIVE
+    END (date '2014-04-01') EXCLUSIVE
+    EVERY (INTERVAL '1 month') ) `)
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE part_table")
+			oid := testutils.OidFromRelationName(connection, "part_table")
+
+			result := backup.GetPartitionTemplateDefinition(connection, oid)
+
+			// The spacing is very specific here and is output from the postgres function
+			expectedResult := `ALTER TABLE part_table 
+SET SUBPARTITION TEMPLATE  
+          (
+          SUBPARTITION usa VALUES('usa') WITH (tablename='part_table'), 
+          SUBPARTITION asia VALUES('asia') WITH (tablename='part_table'), 
+          SUBPARTITION europe VALUES('europe') WITH (tablename='part_table'), 
+          DEFAULT SUBPARTITION other_regions  WITH (tablename='part_table')
+          )
+`
+
+			Expect(result).To(Equal(expectedResult))
+		})
+	})
+	Describe("GetStorageOptions", func() {
+		It("returns an empty string when no table storage options exist ", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
+			oid := testutils.OidFromRelationName(connection, "simple_table")
+
+			result := backup.GetStorageOptions(connection, oid)
+
+			Expect(result).To(Equal(""))
+		})
+		It("returns a value for storage options of a table ", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLE ao_table(i int) with (appendonly=true)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE ao_table")
+			oid := testutils.OidFromRelationName(connection, "ao_table")
+
+			result := backup.GetStorageOptions(connection, oid)
+
+			Expect(result).To(Equal("appendonly=true"))
+		})
+	})
+	Describe("GetFunctionDefinitions", func() {
+		It("returns a slice of function definitions", func() {
+			testutils.AssertQueryRuns(connection, `CREATE FUNCTION add(integer, integer) RETURNS integer
+AS 'SELECT $1 + $2'
+LANGUAGE SQL`)
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION add(integer, integer)")
+			testutils.AssertQueryRuns(connection, `
+CREATE FUNCTION append(integer, integer) RETURNS SETOF record
+AS 'SELECT ($1, $2)'
+LANGUAGE SQL
+SECURITY DEFINER
+STRICT
+STABLE
+COST 200
+ROWS 200
+SET search_path = pg_temp
+MODIFIES SQL DATA
+`)
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION append(integer, integer)")
+			testutils.AssertQueryRuns(connection, "COMMENT ON FUNCTION append(integer, integer) IS 'this is a function comment'")
+
+			results := backup.GetFunctionDefinitions(connection)
+
+			Expect(len(results)).To(Equal(2))
+			Expect(results[0].SchemaName).To(Equal("public"))
+			Expect(results[0].FunctionName).To(Equal("add"))
+			Expect(results[0].ReturnsSet).To(BeFalse())
+			Expect(results[0].FunctionBody).To(Equal("SELECT $1 + $2"))
+			Expect(results[0].BinaryPath).To(Equal(""))
+			Expect(results[0].Arguments).To(Equal("integer, integer"))
+			Expect(results[0].IdentArgs).To(Equal("integer, integer"))
+			Expect(results[0].ResultType).To(Equal("integer"))
+			Expect(results[0].Volatility).To(Equal("v"))
+			Expect(results[0].IsStrict).To(BeFalse())
+			Expect(results[0].IsSecurityDefiner).To(BeFalse())
+			Expect(results[0].Config).To(Equal(""))
+			Expect(results[0].Cost).To(Equal(float32(100)))
+			Expect(results[0].NumRows).To(Equal(float32(0)))
+			Expect(results[0].SqlUsage).To(Equal("c"))
+			Expect(results[0].Language).To(Equal("sql"))
+			Expect(results[0].Comment).To(Equal(""))
+			Expect(results[0].Owner).To(Equal("testrole"))
+
+			Expect(results[1].SchemaName).To(Equal("public"))
+			Expect(results[1].FunctionName).To(Equal("append"))
+			Expect(results[1].ReturnsSet).To(BeTrue())
+			Expect(results[1].FunctionBody).To(Equal("SELECT ($1, $2)"))
+			Expect(results[1].BinaryPath).To(Equal(""))
+			Expect(results[1].Arguments).To(Equal("integer, integer"))
+			Expect(results[1].IdentArgs).To(Equal("integer, integer"))
+			Expect(results[1].ResultType).To(Equal("SETOF record"))
+			Expect(results[1].Volatility).To(Equal("s"))
+			Expect(results[1].IsStrict).To(BeTrue())
+			Expect(results[1].IsSecurityDefiner).To(BeTrue())
+			Expect(results[1].Config).To(Equal("SET search_path TO pg_temp"))
+			Expect(results[1].Cost).To(Equal(float32(200)))
+			Expect(results[1].NumRows).To(Equal(float32(200)))
+			Expect(results[1].SqlUsage).To(Equal("m"))
+			Expect(results[1].Language).To(Equal("sql"))
+			Expect(results[1].Comment).To(Equal("this is a function comment"))
+			Expect(results[1].Owner).To(Equal("testrole"))
+		})
+	})
+	Describe("GetAggregateDefinitions", func() {
+		It("returns a slice of aggregate definitions", func() {
+			testutils.AssertQueryRuns(connection, `
+CREATE FUNCTION mysfunc_accum(numeric, numeric, numeric)
+   RETURNS numeric
+   AS 'select $1 + $2 + $3'
+   LANGUAGE SQL
+   IMMUTABLE
+   RETURNS NULL ON NULL INPUT;
+`)
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION mysfunc_accum(numeric, numeric, numeric)")
+			testutils.AssertQueryRuns(connection, `
+CREATE FUNCTION mypre_accum(numeric, numeric)
+   RETURNS numeric
+   AS 'select $1 + $2'
+   LANGUAGE SQL
+   IMMUTABLE
+   RETURNS NULL ON NULL INPUT;
+`)
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION mypre_accum(numeric, numeric)")
+			testutils.AssertQueryRuns(connection, `
+CREATE AGGREGATE agg_prefunc(numeric, numeric) (
+	SFUNC = mysfunc_accum,
+	STYPE = numeric,
+	PREFUNC = mypre_accum,
+	INITCOND = 0 );
+`)
+			defer testutils.AssertQueryRuns(connection, "DROP AGGREGATE agg_prefunc(numeric, numeric)")
+
+			transitionOid := testutils.OidFromFunctionName(connection, "mysfunc_accum")
+			prelimOid := testutils.OidFromFunctionName(connection, "mypre_accum")
+			finalOid := uint32(0)
+			sortOid := uint32(0)
+
+			result := backup.GetAggregateDefinitions(connection)
+
+			Expect(len(result)).To(Equal(1))
+			Expect(result[0].SchemaName).To(Equal("public"))
+			Expect(result[0].AggregateName).To(Equal("agg_prefunc"))
+			Expect(result[0].Arguments).To(Equal("numeric, numeric"))
+			Expect(result[0].IdentArgs).To(Equal("numeric, numeric"))
+			Expect(result[0].TransitionFunction).To(Equal(transitionOid))
+			Expect(result[0].PreliminaryFunction).To(Equal(prelimOid))
+			Expect(result[0].FinalFunction).To(Equal(finalOid))
+			Expect(result[0].SortOperator).To(Equal(sortOid))
+			Expect(result[0].TransitionDataType).To(Equal("numeric"))
+			Expect(result[0].InitialValue).To(Equal("0"))
+			Expect(result[0].IsOrdered).To(BeFalse())
+			Expect(result[0].Comment).To(Equal(""))
+			Expect(result[0].Owner).To(Equal("testrole"))
+		})
+	})
+	Describe("GetFunctionOidToInfoMap", func() {
+		It("returns map containing function information", func() {
+			result := backup.GetFunctionOidToInfoMap(connection)
+			initialLength := len(result)
+			testutils.AssertQueryRuns(connection, `CREATE FUNCTION add(integer, integer) RETURNS integer
+AS 'SELECT $1 + $2'
+LANGUAGE SQL`)
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION add(integer, integer)")
+
+			result = backup.GetFunctionOidToInfoMap(connection)
+			oid := testutils.OidFromFunctionName(connection, "add")
+			Expect(len(result)).To(Equal(initialLength + 1))
+			Expect(result[oid].QualifiedName).To(Equal("public.add"))
+			Expect(result[oid].Arguments).To(Equal("integer, integer"))
+		})
+		It("returns map with external tables", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
+			testutils.AssertQueryRuns(connection, `CREATE READABLE EXTERNAL TABLE ext_table(i int)
+LOCATION ('file://tmp/myfile.txt')
+FORMAT 'TEXT' ( DELIMITER '|' NULL ' ')`)
+			defer testutils.AssertQueryRuns(connection, "DROP EXTERNAL TABLE ext_table")
+
+			result := backup.GetExternalTablesMap(connection)
+
+			Expect(len(result)).To(Equal(1))
+			Expect(result["public.ext_table"]).To(BeTrue())
+		})
+	})
+	Describe("GetCastDefinitions", func() {
+		It("returns a slice for a basic cast", func() {
+			testutils.AssertQueryRuns(connection, "CREATE FUNCTION casttoint(text) RETURNS integer STRICT IMMUTABLE LANGUAGE SQL AS 'SELECT cast($1 as integer);'")
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION casttoint(text)")
+			testutils.AssertQueryRuns(connection, "CREATE CAST (text AS integer) WITH FUNCTION casttoint(text) AS ASSIGNMENT")
+			defer testutils.AssertQueryRuns(connection, "DROP CAST (text AS integer)")
+
+			results := backup.GetCastDefinitions(connection)
+
+			Expect(len(results)).To(Equal(1))
+			Expect(results[0].SourceType).To(Equal("text"))
+			Expect(results[0].TargetType).To(Equal("integer"))
+			Expect(results[0].FunctionSchema).To(Equal("public"))
+			Expect(results[0].FunctionName).To(Equal("casttoint"))
+			Expect(results[0].FunctionArgs).To(Equal("text"))
+			Expect(results[0].CastContext).To(Equal("a"))
+			Expect(results[0].Comment).To(Equal(""))
+		})
+		It("returns a slice for a basic cast with comment", func() {
+			testutils.AssertQueryRuns(connection, "CREATE FUNCTION casttoint(text) RETURNS integer STRICT IMMUTABLE LANGUAGE SQL AS 'SELECT cast($1 as integer);'")
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION casttoint(text)")
+			testutils.AssertQueryRuns(connection, "CREATE CAST (text AS integer) WITH FUNCTION casttoint(text) AS ASSIGNMENT")
+			defer testutils.AssertQueryRuns(connection, "DROP CAST (text AS integer)")
+			testutils.AssertQueryRuns(connection, "COMMENT ON CAST (text AS integer) IS 'this is a cast comment'")
+
+			results := backup.GetCastDefinitions(connection)
+
+			Expect(len(results)).To(Equal(1))
+			Expect(results[0].SourceType).To(Equal("text"))
+			Expect(results[0].TargetType).To(Equal("integer"))
+			Expect(results[0].FunctionSchema).To(Equal("public"))
+			Expect(results[0].FunctionName).To(Equal("casttoint"))
+			Expect(results[0].FunctionArgs).To(Equal("text"))
+			Expect(results[0].CastContext).To(Equal("a"))
+			Expect(results[0].Comment).To(Equal("this is a cast comment"))
+		})
 	})
 })
