@@ -399,6 +399,21 @@ PARTITION BY LIST (gender)
 			Expect(sequenceDef.IsCalled).To(Equal(true))
 		})
 	})
+	Describe("GetSequenceOwnerMap", func() {
+		It("returns sequence information for sequences owned by columns", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLE without_sequence(a int, b char(20));")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE without_sequence")
+			testutils.AssertQueryRuns(connection, "CREATE TABLE with_sequence(a int, b char(20));")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE with_sequence")
+			testutils.AssertQueryRuns(connection, "CREATE SEQUENCE my_sequence OWNED BY with_sequence.a;")
+			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE my_sequence")
+
+			sequenceMap := backup.GetSequenceOwnerMap(connection)
+
+			Expect(len(sequenceMap)).To(Equal(1))
+			Expect(sequenceMap["public.my_sequence"]).To(Equal("with_sequence.a"))
+		})
+	})
 	Describe("GetDistributionPolicy", func() {
 		It("returns a slice for a table DISTRIBUTED RANDOMLY", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE with_random_dist(a int, b char(20)) DISTRIBUTED RANDOMLY")
@@ -556,6 +571,8 @@ CYCLE`)
 		It("returns a slice of composite types", func() {
 			testutils.AssertQueryRuns(connection, "create type comp_type as (name int4, name1 int, name2 text);")
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE comp_type")
+			testutils.AssertQueryRuns(connection, "CREATE SEQUENCE seq")
+			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE seq")
 
 			results := backup.GetTypeDefinitions(connection)
 

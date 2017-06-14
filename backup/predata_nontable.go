@@ -105,11 +105,12 @@ func GetAllSequenceDefinitions(connection *utils.DBConn) []SequenceDefinition {
  * This function is largely derived from the dumpSequence() function in pg_dump.c.  The values of
  * minVal and maxVal come from SEQ_MINVALUE and SEQ_MAXVALUE, defined in include/commands/sequence.h.
  */
-func PrintCreateSequenceStatements(predataFile io.Writer, sequences []SequenceDefinition) {
+func PrintCreateSequenceStatements(predataFile io.Writer, sequences []SequenceDefinition, sequenceOwners map[string]string) {
 	maxVal := int64(9223372036854775807)
 	minVal := int64(-9223372036854775807)
 	for _, sequence := range sequences {
-		utils.MustPrintln(predataFile, "\n\nCREATE SEQUENCE", sequence.ToString())
+		seqFQN := sequence.ToString()
+		utils.MustPrintln(predataFile, "\n\nCREATE SEQUENCE", seqFQN)
 		if !sequence.IsCalled {
 			utils.MustPrintln(predataFile, "\tSTART WITH", sequence.LastVal)
 		}
@@ -131,14 +132,17 @@ func PrintCreateSequenceStatements(predataFile io.Writer, sequences []SequenceDe
 		}
 		utils.MustPrintf(predataFile, "\tCACHE %d%s;", sequence.CacheVal, cycleStr)
 
-		utils.MustPrintf(predataFile, "\n\nSELECT pg_catalog.setval('%s', %d, %v);\n", sequence.ToString(), sequence.LastVal, sequence.IsCalled)
+		utils.MustPrintf(predataFile, "\n\nSELECT pg_catalog.setval('%s', %d, %v);\n", seqFQN, sequence.LastVal, sequence.IsCalled)
 
 		if sequence.Owner != "" {
-			utils.MustPrintf(predataFile, "\n\nALTER TABLE %s OWNER TO %s;\n", sequence.ToString(), utils.QuoteIdent(sequence.Owner))
+			utils.MustPrintf(predataFile, "\n\nALTER TABLE %s OWNER TO %s;\n", seqFQN, utils.QuoteIdent(sequence.Owner))
+		}
+		if owningColumn, hasOwner := sequenceOwners[seqFQN]; hasOwner {
+			utils.MustPrintf(predataFile, "\n\nALTER SEQUENCE %s OWNED BY %s;\n", seqFQN, owningColumn)
 		}
 
 		if sequence.Comment != "" {
-			utils.MustPrintf(predataFile, "\n\nCOMMENT ON SEQUENCE %s IS '%s';\n", sequence.ToString(), sequence.Comment)
+			utils.MustPrintf(predataFile, "\n\nCOMMENT ON SEQUENCE %s IS '%s';\n", seqFQN, sequence.Comment)
 		}
 	}
 }

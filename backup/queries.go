@@ -219,6 +219,7 @@ LEFT JOIN pg_namespace n
 	ON c.relnamespace = n.oid
 WHERE relkind = 'S'
 ORDER BY schemaname, relationname;`
+
 	results := make([]utils.Relation, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
@@ -243,6 +244,42 @@ func GetSequenceDefinition(connection *utils.DBConn, seqName string) QuerySequen
 	err := connection.Get(&result, query)
 	utils.CheckError(err)
 	return result
+}
+
+type QuerySequenceOwner struct {
+	SchemaName   string `db:"nspname"`
+	SequenceName string
+	TableName    string
+	ColumnName   string `db:"attname"`
+}
+
+func GetSequenceOwnerMap(connection *utils.DBConn) map[string]string {
+	query := `SELECT
+	n.nspname,
+	s.relname AS sequencename,
+	t.relname AS tablename,
+	a.attname
+FROM pg_depend d
+JOIN pg_attribute a
+	ON a.attrelid = d.refobjid AND a.attnum = d.refobjsubid
+JOIN pg_class s
+	ON s.oid = d.objid
+JOIN pg_class t
+	ON t.oid = d.refobjid
+JOIN pg_namespace n
+	ON n.oid = s.relnamespace
+WHERE s.relkind = 'S';`
+
+	results := make([]QuerySequenceOwner, 0)
+	sequenceOwners := make(map[string]string, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	for _, seqOwner := range results {
+		seqFQN := utils.MakeFQN(seqOwner.SchemaName, seqOwner.SequenceName)
+		columnFQN := utils.MakeFQN(seqOwner.TableName, seqOwner.ColumnName)
+		sequenceOwners[seqFQN] = columnFQN
+	}
+	return sequenceOwners
 }
 
 type QuerySessionGUCs struct {
@@ -527,8 +564,8 @@ LEFT JOIN (
 	) e ON t.oid = e.enumtypid
 WHERE %s
 AND (t.typtype = 'c' OR t.typtype = 'b' OR t.typtype='e')
-AND (n.nspname || '.' || t.typname) NOT IN (SELECT schemaname || '._' || tablename FROM pg_tables)
-AND (n.nspname || '.' || t.typname) NOT IN (SELECT schemaname || '.' || tablename FROM pg_tables)
+AND (n.nspname || '.' || t.typname) NOT IN (SELECT nspname || '._' || relname FROM pg_namespace n join pg_class c ON n.oid = c.relnamespace WHERE c.relkind = 'r' OR c.relkind = 'S')
+AND (n.nspname || '.' || t.typname) NOT IN (SELECT nspname || '.' || relname FROM pg_namespace n join pg_class c ON n.oid = c.relnamespace WHERE c.relkind = 'r' OR c.relkind = 'S')
 AND (n.nspname || '.' || t.typname) NOT IN (SELECT nspname || '._' || typname FROM pg_namespace n join pg_type t ON n.oid = t.typnamespace)
 ORDER BY n.nspname, t.typname, a.attname;`, nonUserSchemaFilterClause)
 
