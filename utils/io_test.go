@@ -11,6 +11,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
 
@@ -191,6 +192,28 @@ var _ = Describe("utils/io tests", func() {
 			output, _ := ioutil.ReadAll(r)
 			testutils.ExpectRegex(string(output), `public.foo: 1234
 public."foo|bar": 2345`)
+		})
+	})
+	Describe("MustPrintf", func() {
+		It("writes to a writable file", func() {
+			buffer := gbytes.NewBuffer()
+			utils.MustPrintf(buffer, "%s", "text")
+			Expect(string(buffer.Contents())).To(Equal("text"))
+		})
+		It("panics on error", func() {
+			defer testutils.ShouldPanicWithMessage("write /dev/stdin:")
+			utils.MustPrintf(os.Stdin, "text")
+		})
+	})
+	Describe("MustPrintln", func() {
+		It("writes to a writable file", func() {
+			buffer := gbytes.NewBuffer()
+			utils.MustPrintln(buffer, "text")
+			Expect(string(buffer.Contents())).To(Equal("text\n"))
+		})
+		It("panics on error", func() {
+			defer testutils.ShouldPanicWithMessage("write /dev/stdin:")
+			utils.MustPrintln(os.Stdin, "text")
 		})
 	})
 })

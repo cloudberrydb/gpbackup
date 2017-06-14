@@ -24,7 +24,7 @@ func GetTableDumpFilePath(table utils.Relation) string {
 func WriteTableMapFile(tables []utils.Relation) {
 	tableMapFile := utils.MustOpenFile(GetTableMapFilePath())
 	for _, table := range tables {
-		fmt.Fprintf(tableMapFile, "%s: %d\n", table.ToString(), table.RelationOid)
+		utils.MustPrintf(tableMapFile, "%s: %d\n", table.ToString(), table.RelationOid)
 	}
 }
 

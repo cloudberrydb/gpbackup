@@ -114,7 +114,7 @@ func backupGlobal(filename string) {
 	logger.Verbose("Writing database comment to global file")
 	databaseComment := GetDatabaseComment(connection)
 	if databaseComment != "" {
-		fmt.Fprintf(globalFile, "\nCOMMENT ON DATABASE %s IS '%s';\n", connection.DBName, databaseComment)
+		utils.MustPrintf(globalFile, "\nCOMMENT ON DATABASE %s IS '%s';\n", connection.DBName, databaseComment)
 	}
 }
 

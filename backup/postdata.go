@@ -31,6 +31,6 @@ func GetIndexesForAllTables(connection *utils.DBConn, tables []utils.Relation) [
 func PrintCreateIndexStatements(postdataFile io.Writer, indexes []string) {
 	sort.Strings(indexes)
 	for _, index := range indexes {
-		fmt.Fprintln(postdataFile, index)
+		utils.MustPrintln(postdataFile, index)
 	}
 }

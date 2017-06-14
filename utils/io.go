@@ -96,6 +96,20 @@ func ExecuteSQLFile(dbconn *DBConn, filename string) {
 	}
 }
 
+func MustPrintf(file io.Writer, s string, v ...interface{}) {
+	_, err := fmt.Fprintf(file, s, v...)
+	if err != nil {
+		logger.Fatal(err, "Unable to write to file")
+	}
+}
+
+func MustPrintln(file io.Writer, v ...interface{}) {
+	_, err := fmt.Fprintln(file, v...)
+	if err != nil {
+		logger.Fatal(err, "Unable to write to file")
+	}
+}
+
 /*
  * Backup-specific file/directory manipulation functions
  */

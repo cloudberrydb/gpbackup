@@ -112,19 +112,19 @@ func PrintCreateTableStatement(predataFile io.Writer, table utils.Relation, tabl
 }
 
 func PrintRegularTableCreateStatement(predataFile io.Writer, table utils.Relation, tableDef TableDefinition) {
-	fmt.Fprintf(predataFile, "\n\nCREATE TABLE %s (\n", table.ToString())
+	utils.MustPrintf(predataFile, "\n\nCREATE TABLE %s (\n", table.ToString())
 	printColumnStatements(predataFile, table, tableDef.ColumnDefs)
-	fmt.Fprintf(predataFile, ") ")
+	utils.MustPrintf(predataFile, ") ")
 	if tableDef.StorageOpts != "" {
-		fmt.Fprintf(predataFile, "WITH (%s) ", tableDef.StorageOpts)
+		utils.MustPrintf(predataFile, "WITH (%s) ", tableDef.StorageOpts)
 	}
-	fmt.Fprintf(predataFile, "%s", tableDef.DistPolicy)
+	utils.MustPrintf(predataFile, "%s", tableDef.DistPolicy)
 	if tableDef.PartDef != "" {
-		fmt.Fprintf(predataFile, " %s", strings.TrimSpace(tableDef.PartDef))
+		utils.MustPrintf(predataFile, " %s", strings.TrimSpace(tableDef.PartDef))
 	}
-	fmt.Fprintln(predataFile, ";")
+	utils.MustPrintln(predataFile, ";")
 	if tableDef.PartTemplateDef != "" {
-		fmt.Fprintf(predataFile, "%s;\n", strings.TrimSpace(tableDef.PartTemplateDef))
+		utils.MustPrintf(predataFile, "%s;\n", strings.TrimSpace(tableDef.PartTemplateDef))
 	}
 }
 
@@ -146,7 +146,7 @@ func printColumnStatements(predataFile io.Writer, table utils.Relation, columnDe
 		}
 	}
 	if len(lines) > 0 {
-		fmt.Fprintln(predataFile, strings.Join(lines, ",\n"))
+		utils.MustPrintln(predataFile, strings.Join(lines, ",\n"))
 	}
 }
 
@@ -156,15 +156,15 @@ func printColumnStatements(predataFile io.Writer, table utils.Relation, columnDe
  */
 func PrintPostCreateTableStatements(predataFile io.Writer, table utils.Relation, tableDef TableDefinition) {
 	if table.Comment != "" {
-		fmt.Fprintf(predataFile, "\n\nCOMMENT ON TABLE %s IS '%s';\n", table.ToString(), table.Comment)
+		utils.MustPrintf(predataFile, "\n\nCOMMENT ON TABLE %s IS '%s';\n", table.ToString(), table.Comment)
 	}
 	if table.Owner != "" {
-		fmt.Fprintf(predataFile, "\n\nALTER TABLE %s OWNER TO %s;\n", table.ToString(), utils.QuoteIdent(table.Owner))
+		utils.MustPrintf(predataFile, "\n\nALTER TABLE %s OWNER TO %s;\n", table.ToString(), utils.QuoteIdent(table.Owner))
 	}
 
 	for _, att := range tableDef.ColumnDefs {
 		if att.Comment != "" {
-			fmt.Fprintf(predataFile, "\n\nCOMMENT ON COLUMN %s.%s IS '%s';\n", table.ToString(), att.Name, att.Comment)
+			utils.MustPrintf(predataFile, "\n\nCOMMENT ON COLUMN %s.%s IS '%s';\n", table.ToString(), att.Name, att.Comment)
 		}
 	}
 }

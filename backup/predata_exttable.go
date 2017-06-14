@@ -51,14 +51,14 @@ func PrintExternalTableCreateStatement(predataFile io.Writer, table utils.Relati
 	}
 	extTableDef := tableDef.ExtTableDef
 	extTableDef.Type, extTableDef.Protocol = DetermineExternalTableCharacteristics(extTableDef)
-	fmt.Fprintf(predataFile, "\n\nCREATE %s TABLE %s (\n", tableTypeStrMap[extTableDef.Type], table.ToString())
+	utils.MustPrintf(predataFile, "\n\nCREATE %s TABLE %s (\n", tableTypeStrMap[extTableDef.Type], table.ToString())
 	printColumnStatements(predataFile, table, tableDef.ColumnDefs)
-	fmt.Fprintf(predataFile, ") ")
+	utils.MustPrintf(predataFile, ") ")
 	PrintExternalTableStatements(predataFile, table, extTableDef)
 	if extTableDef.Writable {
-		fmt.Fprintf(predataFile, "\n%s", tableDef.DistPolicy)
+		utils.MustPrintf(predataFile, "\n%s", tableDef.DistPolicy)
 	}
-	fmt.Fprint(predataFile, ";")
+	utils.MustPrintf(predataFile, ";")
 }
 
 func DetermineExternalTableCharacteristics(extTableDef ExternalTableDefinition) (int, int) {
@@ -111,34 +111,34 @@ func PrintExternalTableStatements(predataFile io.Writer, table utils.Relation, e
 			for _, loc := range strings.Split(extTableDef.Location, ",") {
 				locations = append(locations, fmt.Sprintf("\t'%s'", loc))
 			}
-			fmt.Fprintf(predataFile, "LOCATION (\n%s\n)", strings.Join(locations, "\n"))
+			utils.MustPrintf(predataFile, "LOCATION (\n%s\n)", strings.Join(locations, "\n"))
 		}
 	}
 	if extTableDef.Type == READABLE || (extTableDef.Type == WRITABLE_WEB && extTableDef.Protocol == S3) {
 		if extTableDef.ExecLocation == "MASTER_ONLY" {
-			fmt.Fprintf(predataFile, " ON MASTER")
+			utils.MustPrintf(predataFile, " ON MASTER")
 		}
 	}
 	if extTableDef.Type == READABLE_WEB || extTableDef.Type == WRITABLE_WEB {
 		if extTableDef.Command != "" {
-			fmt.Fprintf(predataFile, "EXECUTE '%s'", extTableDef.Command)
+			utils.MustPrintf(predataFile, "EXECUTE '%s'", extTableDef.Command)
 			execType := strings.Split(extTableDef.ExecLocation, ":")
 			switch execType[0] {
 			case "ALL_SEGMENTS": // Default case, don't print anything else
 			case "HOST":
-				fmt.Fprintf(predataFile, " ON HOST '%s'", execType[1])
+				utils.MustPrintf(predataFile, " ON HOST '%s'", execType[1])
 			case "MASTER_ONLY":
-				fmt.Fprintf(predataFile, " ON MASTER")
+				utils.MustPrintf(predataFile, " ON MASTER")
 			case "PER_HOST":
-				fmt.Fprintf(predataFile, " ON HOST")
+				utils.MustPrintf(predataFile, " ON HOST")
 			case "SEGMENT_ID":
-				fmt.Fprintf(predataFile, " ON SEGMENT %s", execType[1])
+				utils.MustPrintf(predataFile, " ON SEGMENT %s", execType[1])
 			case "TOTAL_SEGS":
-				fmt.Fprintf(predataFile, " ON %s", execType[1])
+				utils.MustPrintf(predataFile, " ON %s", execType[1])
 			}
 		}
 	}
-	fmt.Fprintln(predataFile)
+	utils.MustPrintln(predataFile)
 	formatType := ""
 	switch extTableDef.FormatType {
 	case "a":
@@ -157,15 +157,15 @@ func PrintExternalTableStatements(predataFile io.Writer, table utils.Relation, e
 	 * but FORMAT requires "formatter='function_name'".
 	 */
 	extTableDef.FormatOpts = strings.Replace(extTableDef.FormatOpts, "formatter ", "formatter=", 1)
-	fmt.Fprintf(predataFile, "FORMAT '%s'", formatType)
+	utils.MustPrintf(predataFile, "FORMAT '%s'", formatType)
 	if extTableDef.FormatOpts != "" {
-		fmt.Fprintf(predataFile, " (%s)", strings.TrimSpace(extTableDef.FormatOpts))
+		utils.MustPrintf(predataFile, " (%s)", strings.TrimSpace(extTableDef.FormatOpts))
 	}
-	fmt.Fprintln(predataFile)
+	utils.MustPrintln(predataFile)
 	if extTableDef.Options != "" {
-		fmt.Fprintf(predataFile, "OPTIONS (\n\t%s\n)\n", extTableDef.Options)
+		utils.MustPrintf(predataFile, "OPTIONS (\n\t%s\n)\n", extTableDef.Options)
 	}
-	fmt.Fprintf(predataFile, "ENCODING '%s'", extTableDef.Encoding)
+	utils.MustPrintf(predataFile, "ENCODING '%s'", extTableDef.Encoding)
 	if extTableDef.Type == READABLE || extTableDef.Type == READABLE_WEB {
 		/*
 		 * In GPDB 5 and later, LOG ERRORS INTO [table] has been replaced by LOG ERRORS,
@@ -173,15 +173,15 @@ func PrintExternalTableStatements(predataFile io.Writer, table utils.Relation, e
 		 * value of pg_exttable.fmterrtbl matches the table's own name, LOG ERRORS is set.
 		 */
 		if extTableDef.ErrTable == table.RelationName {
-			fmt.Fprint(predataFile, "\nLOG ERRORS")
+			utils.MustPrintf(predataFile, "\nLOG ERRORS")
 		}
 		if extTableDef.RejectLimit != 0 {
-			fmt.Fprintf(predataFile, "\nSEGMENT REJECT LIMIT %d ", extTableDef.RejectLimit)
+			utils.MustPrintf(predataFile, "\nSEGMENT REJECT LIMIT %d ", extTableDef.RejectLimit)
 			switch extTableDef.RejectLimitType {
 			case "r":
-				fmt.Fprint(predataFile, "ROWS")
+				utils.MustPrintf(predataFile, "ROWS")
 			case "p":
-				fmt.Fprint(predataFile, "PERCENT")
+				utils.MustPrintf(predataFile, "PERCENT")
 			}
 		}
 	}

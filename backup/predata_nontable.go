@@ -68,24 +68,24 @@ func PrintConstraintStatements(predataFile io.Writer, constraints []string, fkCo
 	sort.Strings(constraints)
 	sort.Strings(fkConstraints)
 	for _, constraint := range constraints {
-		fmt.Fprintln(predataFile, constraint)
+		utils.MustPrintln(predataFile, constraint)
 	}
 	for _, constraint := range fkConstraints {
-		fmt.Fprintln(predataFile, constraint)
+		utils.MustPrintln(predataFile, constraint)
 	}
 }
 
 func PrintCreateSchemaStatements(predataFile io.Writer, schemas []utils.Schema) {
 	for _, schema := range schemas {
-		fmt.Fprintln(predataFile)
+		utils.MustPrintln(predataFile)
 		if schema.SchemaName != "public" {
-			fmt.Fprintf(predataFile, "\nCREATE SCHEMA %s;", schema.ToString())
+			utils.MustPrintf(predataFile, "\nCREATE SCHEMA %s;", schema.ToString())
 		}
 		if schema.Owner != "" {
-			fmt.Fprintf(predataFile, "\nALTER SCHEMA %s OWNER TO %s;", schema.ToString(), utils.QuoteIdent(schema.Owner))
+			utils.MustPrintf(predataFile, "\nALTER SCHEMA %s OWNER TO %s;", schema.ToString(), utils.QuoteIdent(schema.Owner))
 		}
 		if schema.Comment != "" {
-			fmt.Fprintf(predataFile, "\nCOMMENT ON SCHEMA %s IS '%s';", schema.ToString(), schema.Comment)
+			utils.MustPrintf(predataFile, "\nCOMMENT ON SCHEMA %s IS '%s';", schema.ToString(), schema.Comment)
 		}
 	}
 }
@@ -109,36 +109,36 @@ func PrintCreateSequenceStatements(predataFile io.Writer, sequences []SequenceDe
 	maxVal := int64(9223372036854775807)
 	minVal := int64(-9223372036854775807)
 	for _, sequence := range sequences {
-		fmt.Fprintln(predataFile, "\n\nCREATE SEQUENCE", sequence.ToString())
+		utils.MustPrintln(predataFile, "\n\nCREATE SEQUENCE", sequence.ToString())
 		if !sequence.IsCalled {
-			fmt.Fprintln(predataFile, "\tSTART WITH", sequence.LastVal)
+			utils.MustPrintln(predataFile, "\tSTART WITH", sequence.LastVal)
 		}
-		fmt.Fprintln(predataFile, "\tINCREMENT BY", sequence.Increment)
+		utils.MustPrintln(predataFile, "\tINCREMENT BY", sequence.Increment)
 
 		if !((sequence.MaxVal == maxVal && sequence.Increment > 0) || (sequence.MaxVal == -1 && sequence.Increment < 0)) {
-			fmt.Fprintln(predataFile, "\tMAXVALUE", sequence.MaxVal)
+			utils.MustPrintln(predataFile, "\tMAXVALUE", sequence.MaxVal)
 		} else {
-			fmt.Fprintln(predataFile, "\tNO MAXVALUE")
+			utils.MustPrintln(predataFile, "\tNO MAXVALUE")
 		}
 		if !((sequence.MinVal == minVal && sequence.Increment < 0) || (sequence.MinVal == 1 && sequence.Increment > 0)) {
-			fmt.Fprintln(predataFile, "\tMINVALUE", sequence.MinVal)
+			utils.MustPrintln(predataFile, "\tMINVALUE", sequence.MinVal)
 		} else {
-			fmt.Fprintln(predataFile, "\tNO MINVALUE")
+			utils.MustPrintln(predataFile, "\tNO MINVALUE")
 		}
 		cycleStr := ""
 		if sequence.IsCycled {
 			cycleStr = "\n\tCYCLE"
 		}
-		fmt.Fprintf(predataFile, "\tCACHE %d%s;", sequence.CacheVal, cycleStr)
+		utils.MustPrintf(predataFile, "\tCACHE %d%s;", sequence.CacheVal, cycleStr)
 
-		fmt.Fprintf(predataFile, "\n\nSELECT pg_catalog.setval('%s', %d, %v);\n", sequence.ToString(), sequence.LastVal, sequence.IsCalled)
+		utils.MustPrintf(predataFile, "\n\nSELECT pg_catalog.setval('%s', %d, %v);\n", sequence.ToString(), sequence.LastVal, sequence.IsCalled)
 
 		if sequence.Owner != "" {
-			fmt.Fprintf(predataFile, "\n\nALTER TABLE %s OWNER TO %s;\n", sequence.ToString(), utils.QuoteIdent(sequence.Owner))
+			utils.MustPrintf(predataFile, "\n\nALTER TABLE %s OWNER TO %s;\n", sequence.ToString(), utils.QuoteIdent(sequence.Owner))
 		}
 
 		if sequence.Comment != "" {
-			fmt.Fprintf(predataFile, "\n\nCOMMENT ON SEQUENCE %s IS '%s';\n", sequence.ToString(), sequence.Comment)
+			utils.MustPrintf(predataFile, "\n\nCOMMENT ON SEQUENCE %s IS '%s';\n", sequence.ToString(), sequence.Comment)
 		}
 	}
 }
@@ -147,11 +147,11 @@ func PrintCreateLanguageStatements(predataFile io.Writer, procLangs []QueryProce
 	for _, procLang := range procLangs {
 		quotedOwner := utils.QuoteIdent(procLang.Owner)
 		quotedLanguage := utils.QuoteIdent(procLang.Name)
-		fmt.Fprintf(predataFile, "\n\nCREATE ")
+		utils.MustPrintf(predataFile, "\n\nCREATE ")
 		if procLang.PlTrusted {
-			fmt.Fprintf(predataFile, "TRUSTED ")
+			utils.MustPrintf(predataFile, "TRUSTED ")
 		}
-		fmt.Fprintf(predataFile, "PROCEDURAL LANGUAGE %s;", quotedLanguage)
+		utils.MustPrintf(predataFile, "PROCEDURAL LANGUAGE %s;", quotedLanguage)
 		/*
 		 * If the handler, validator, and inline functions are in pg_pltemplate, we can
 		 * dump a CREATE LANGUAGE command without specifying them individually.
@@ -162,44 +162,44 @@ func PrintCreateLanguageStatements(predataFile io.Writer, procLangs []QueryProce
 
 		if procLang.Handler != 0 {
 			handlerInfo := funcInfoMap[procLang.Handler]
-			fmt.Fprintf(predataFile, "\nALTER FUNCTION %s(%s) OWNER TO %s;", handlerInfo.QualifiedName, handlerInfo.Arguments, quotedOwner)
+			utils.MustPrintf(predataFile, "\nALTER FUNCTION %s(%s) OWNER TO %s;", handlerInfo.QualifiedName, handlerInfo.Arguments, quotedOwner)
 		}
 		if procLang.Inline != 0 {
 			inlineInfo := funcInfoMap[procLang.Inline]
-			fmt.Fprintf(predataFile, "\nALTER FUNCTION %s(%s) OWNER TO %s;", inlineInfo.QualifiedName, inlineInfo.Arguments, quotedOwner)
+			utils.MustPrintf(predataFile, "\nALTER FUNCTION %s(%s) OWNER TO %s;", inlineInfo.QualifiedName, inlineInfo.Arguments, quotedOwner)
 		}
 		if procLang.Validator != 0 {
 			validatorInfo := funcInfoMap[procLang.Validator]
-			fmt.Fprintf(predataFile, "\nALTER FUNCTION %s(%s) OWNER TO %s;", validatorInfo.QualifiedName, validatorInfo.Arguments, quotedOwner)
+			utils.MustPrintf(predataFile, "\nALTER FUNCTION %s(%s) OWNER TO %s;", validatorInfo.QualifiedName, validatorInfo.Arguments, quotedOwner)
 		}
 		if procLang.Owner != "" {
-			fmt.Fprintf(predataFile, "\nALTER LANGUAGE %s OWNER TO %s;", quotedLanguage, quotedOwner)
+			utils.MustPrintf(predataFile, "\nALTER LANGUAGE %s OWNER TO %s;", quotedLanguage, quotedOwner)
 		}
 		if procLang.Comment != "" {
-			fmt.Fprintf(predataFile, "\n\nCOMMENT ON LANGUAGE %s IS '%s';", quotedLanguage, procLang.Comment)
+			utils.MustPrintf(predataFile, "\n\nCOMMENT ON LANGUAGE %s IS '%s';", quotedLanguage, procLang.Comment)
 		}
-		fmt.Fprintln(predataFile)
+		utils.MustPrintln(predataFile)
 	}
 }
 
 func PrintCreateFunctionStatements(predataFile io.Writer, funcDefs []QueryFunctionDefinition) {
 	for _, funcDef := range funcDefs {
 		funcFQN := utils.MakeFQN(funcDef.SchemaName, funcDef.FunctionName)
-		fmt.Fprintf(predataFile, "\n\nCREATE FUNCTION %s(%s) RETURNS ", funcFQN, funcDef.Arguments)
+		utils.MustPrintf(predataFile, "\n\nCREATE FUNCTION %s(%s) RETURNS ", funcFQN, funcDef.Arguments)
 		if funcDef.ReturnsSet && !strings.HasPrefix(funcDef.ResultType, "TABLE") {
-			fmt.Fprintf(predataFile, "SETOF ")
+			utils.MustPrintf(predataFile, "SETOF ")
 		}
-		fmt.Fprintf(predataFile, "%s AS", funcDef.ResultType)
+		utils.MustPrintf(predataFile, "%s AS", funcDef.ResultType)
 		PrintFunctionBodyOrPath(predataFile, funcDef)
-		fmt.Fprintf(predataFile, "LANGUAGE %s", funcDef.Language)
+		utils.MustPrintf(predataFile, "LANGUAGE %s", funcDef.Language)
 		PrintFunctionModifiers(predataFile, funcDef)
-		fmt.Fprintln(predataFile, ";")
+		utils.MustPrintln(predataFile, ";")
 
 		if funcDef.Owner != "" {
-			fmt.Fprintf(predataFile, "\nALTER FUNCTION %s(%s) OWNER TO %s;\n", funcFQN, funcDef.IdentArgs, utils.QuoteIdent(funcDef.Owner))
+			utils.MustPrintf(predataFile, "\nALTER FUNCTION %s(%s) OWNER TO %s;\n", funcFQN, funcDef.IdentArgs, utils.QuoteIdent(funcDef.Owner))
 		}
 		if funcDef.Comment != "" {
-			fmt.Fprintf(predataFile, "\nCOMMENT ON FUNCTION %s(%s) IS '%s';\n", funcFQN, funcDef.IdentArgs, funcDef.Comment)
+			utils.MustPrintf(predataFile, "\nCOMMENT ON FUNCTION %s(%s) IS '%s';\n", funcFQN, funcDef.IdentArgs, funcDef.Comment)
 		}
 	}
 }
@@ -215,46 +215,46 @@ func PrintFunctionBodyOrPath(predataFile io.Writer, funcDef QueryFunctionDefinit
 	 * pg_dump.c for details.
 	 */
 	if funcDef.BinaryPath != "" && funcDef.BinaryPath != "-" {
-		fmt.Fprintf(predataFile, "\n'%s', '%s'\n", funcDef.BinaryPath, funcDef.FunctionBody)
+		utils.MustPrintf(predataFile, "\n'%s', '%s'\n", funcDef.BinaryPath, funcDef.FunctionBody)
 	} else {
-		fmt.Fprintf(predataFile, "\n%s\n", utils.DollarQuoteString(funcDef.FunctionBody))
+		utils.MustPrintf(predataFile, "\n%s\n", utils.DollarQuoteString(funcDef.FunctionBody))
 	}
 }
 
 func PrintFunctionModifiers(predataFile io.Writer, funcDef QueryFunctionDefinition) {
 	switch funcDef.SqlUsage {
 	case "c":
-		fmt.Fprint(predataFile, " CONTAINS SQL")
+		utils.MustPrintf(predataFile, " CONTAINS SQL")
 	case "m":
-		fmt.Fprint(predataFile, " MODIFIES SQL DATA")
+		utils.MustPrintf(predataFile, " MODIFIES SQL DATA")
 	case "n":
-		fmt.Fprint(predataFile, " NO SQL")
+		utils.MustPrintf(predataFile, " NO SQL")
 	case "r":
-		fmt.Fprint(predataFile, " READS SQL DATA")
+		utils.MustPrintf(predataFile, " READS SQL DATA")
 	}
 	switch funcDef.Volatility {
 	case "i":
-		fmt.Fprintf(predataFile, " IMMUTABLE")
+		utils.MustPrintf(predataFile, " IMMUTABLE")
 	case "s":
-		fmt.Fprintf(predataFile, " STABLE")
+		utils.MustPrintf(predataFile, " STABLE")
 	case "v": // Default case, don't print anything else
 	}
 	if funcDef.IsStrict {
-		fmt.Fprintf(predataFile, " STRICT")
+		utils.MustPrintf(predataFile, " STRICT")
 	}
 	if funcDef.IsSecurityDefiner {
-		fmt.Fprintf(predataFile, " SECURITY DEFINER")
+		utils.MustPrintf(predataFile, " SECURITY DEFINER")
 	}
 	// Default cost is 1 for C and internal functions or 100 for functions in other languages
 	isInternalOrC := funcDef.Language == "c" || funcDef.Language == "internal"
 	if !((!isInternalOrC && funcDef.Cost == 100) || (isInternalOrC && funcDef.Cost == 1)) {
-		fmt.Fprintf(predataFile, "\nCOST %v", funcDef.Cost)
+		utils.MustPrintf(predataFile, "\nCOST %v", funcDef.Cost)
 	}
 	if funcDef.ReturnsSet && funcDef.NumRows != 0 && funcDef.NumRows != 1000 {
-		fmt.Fprintf(predataFile, "\nROWS %v", funcDef.NumRows)
+		utils.MustPrintf(predataFile, "\nROWS %v", funcDef.NumRows)
 	}
 	if funcDef.Config != "" {
-		fmt.Fprintf(predataFile, "\n%s", funcDef.Config)
+		utils.MustPrintf(predataFile, "\n%s", funcDef.Config)
 	}
 }
 
@@ -265,30 +265,30 @@ func PrintCreateAggregateStatements(predataFile io.Writer, aggDefs []QueryAggreg
 		if aggDef.IsOrdered {
 			orderedStr = "ORDERED "
 		}
-		fmt.Fprintf(predataFile, "\n\nCREATE %sAGGREGATE %s(%s) (\n", orderedStr, aggFQN, aggDef.Arguments)
-		fmt.Fprintf(predataFile, "\tSFUNC = %s,\n", funcInfoMap[aggDef.TransitionFunction].QualifiedName)
-		fmt.Fprintf(predataFile, "\tSTYPE = %s", aggDef.TransitionDataType)
+		utils.MustPrintf(predataFile, "\n\nCREATE %sAGGREGATE %s(%s) (\n", orderedStr, aggFQN, aggDef.Arguments)
+		utils.MustPrintf(predataFile, "\tSFUNC = %s,\n", funcInfoMap[aggDef.TransitionFunction].QualifiedName)
+		utils.MustPrintf(predataFile, "\tSTYPE = %s", aggDef.TransitionDataType)
 
 		if aggDef.PreliminaryFunction != 0 {
-			fmt.Fprintf(predataFile, ",\n\tPREFUNC = %s", funcInfoMap[aggDef.PreliminaryFunction].QualifiedName)
+			utils.MustPrintf(predataFile, ",\n\tPREFUNC = %s", funcInfoMap[aggDef.PreliminaryFunction].QualifiedName)
 		}
 		if aggDef.FinalFunction != 0 {
-			fmt.Fprintf(predataFile, ",\n\tFINALFUNC = %s", funcInfoMap[aggDef.FinalFunction].QualifiedName)
+			utils.MustPrintf(predataFile, ",\n\tFINALFUNC = %s", funcInfoMap[aggDef.FinalFunction].QualifiedName)
 		}
 		if aggDef.InitialValue != "" {
-			fmt.Fprintf(predataFile, ",\n\tINITCOND = '%s'", aggDef.InitialValue)
+			utils.MustPrintf(predataFile, ",\n\tINITCOND = '%s'", aggDef.InitialValue)
 		}
 		if aggDef.SortOperator != 0 {
-			fmt.Fprintf(predataFile, ",\n\tSORTOP = %s", funcInfoMap[aggDef.SortOperator].QualifiedName)
+			utils.MustPrintf(predataFile, ",\n\tSORTOP = %s", funcInfoMap[aggDef.SortOperator].QualifiedName)
 		}
 
-		fmt.Fprintln(predataFile, "\n);")
+		utils.MustPrintln(predataFile, "\n);")
 
 		if aggDef.Owner != "" {
-			fmt.Fprintf(predataFile, "\nALTER AGGREGATE %s(%s) OWNER TO %s;\n", aggFQN, aggDef.IdentArgs, utils.QuoteIdent(aggDef.Owner))
+			utils.MustPrintf(predataFile, "\nALTER AGGREGATE %s(%s) OWNER TO %s;\n", aggFQN, aggDef.IdentArgs, utils.QuoteIdent(aggDef.Owner))
 		}
 		if aggDef.Comment != "" {
-			fmt.Fprintf(predataFile, "\nCOMMENT ON AGGREGATE %s(%s) IS '%s';\n", aggFQN, aggDef.IdentArgs, aggDef.Comment)
+			utils.MustPrintf(predataFile, "\nCOMMENT ON AGGREGATE %s(%s) IS '%s';\n", aggFQN, aggDef.IdentArgs, aggDef.Comment)
 		}
 	}
 }
@@ -296,23 +296,23 @@ func PrintCreateAggregateStatements(predataFile io.Writer, aggDefs []QueryAggreg
 func PrintCreateCastStatements(predataFile io.Writer, castDefs []QueryCastDefinition) {
 	for _, castDef := range castDefs {
 		castStr := fmt.Sprintf("CAST (%s AS %s)", castDef.SourceType, castDef.TargetType)
-		fmt.Fprintf(predataFile, "\n\nCREATE %s\n", castStr)
+		utils.MustPrintf(predataFile, "\n\nCREATE %s\n", castStr)
 		if castDef.FunctionSchema != "" {
 			funcFQN := fmt.Sprintf("%s.%s", utils.QuoteIdent(castDef.FunctionSchema), utils.QuoteIdent(castDef.FunctionName))
-			fmt.Fprintf(predataFile, "\tWITH FUNCTION %s(%s)", funcFQN, castDef.FunctionArgs)
+			utils.MustPrintf(predataFile, "\tWITH FUNCTION %s(%s)", funcFQN, castDef.FunctionArgs)
 		} else {
-			fmt.Fprintf(predataFile, "\tWITHOUT FUNCTION")
+			utils.MustPrintf(predataFile, "\tWITHOUT FUNCTION")
 		}
 		switch castDef.CastContext {
 		case "a":
-			fmt.Fprintf(predataFile, "\nAS ASSIGNMENT")
+			utils.MustPrintf(predataFile, "\nAS ASSIGNMENT")
 		case "i":
-			fmt.Fprintf(predataFile, "\nAS IMPLICIT")
+			utils.MustPrintf(predataFile, "\nAS IMPLICIT")
 		case "e": // Default case, don't print anything else
 		}
-		fmt.Fprintln(predataFile, ";")
+		utils.MustPrintln(predataFile, ";")
 		if castDef.Comment != "" {
-			fmt.Fprintf(predataFile, "\nCOMMENT ON %s IS '%s';\n", castStr, castDef.Comment)
+			utils.MustPrintf(predataFile, "\nCOMMENT ON %s IS '%s';\n", castStr, castDef.Comment)
 		}
 	}
 }
@@ -322,11 +322,11 @@ func PrintCreateCastStatements(predataFile io.Writer, castDefs []QueryCastDefini
  * shell type statements for base types.
  */
 func PrintShellTypeStatements(predataFile io.Writer, types []TypeDefinition) {
-	fmt.Fprintln(predataFile, "\n")
+	utils.MustPrintln(predataFile, "\n")
 	for _, typ := range types {
 		if typ.Type == "b" {
 			typeFQN := utils.MakeFQN(typ.TypeSchema, typ.TypeName)
-			fmt.Fprintf(predataFile, "CREATE TYPE %s;\n", typeFQN)
+			utils.MustPrintf(predataFile, "CREATE TYPE %s;\n", typeFQN)
 		}
 	}
 }
@@ -337,64 +337,64 @@ func PrintCreateBaseTypeStatements(predataFile io.Writer, types []TypeDefinition
 		typ := types[i]
 		if typ.Type == "b" {
 			typeFQN := utils.MakeFQN(typ.TypeSchema, typ.TypeName)
-			fmt.Fprintf(predataFile, "\n\nCREATE TYPE %s (\n", typeFQN)
+			utils.MustPrintf(predataFile, "\n\nCREATE TYPE %s (\n", typeFQN)
 
-			fmt.Fprintf(predataFile, "\tINPUT = %s,\n\tOUTPUT = %s", typ.Input, typ.Output)
+			utils.MustPrintf(predataFile, "\tINPUT = %s,\n\tOUTPUT = %s", typ.Input, typ.Output)
 			if typ.Receive != "-" {
-				fmt.Fprintf(predataFile, ",\n\tRECEIVE = %s", typ.Receive)
+				utils.MustPrintf(predataFile, ",\n\tRECEIVE = %s", typ.Receive)
 			}
 			if typ.Send != "-" {
-				fmt.Fprintf(predataFile, ",\n\tSEND = %s", typ.Send)
+				utils.MustPrintf(predataFile, ",\n\tSEND = %s", typ.Send)
 			}
 			if typ.ModIn != "-" {
-				fmt.Fprintf(predataFile, ",\n\tTYPMOD_IN = %s", typ.ModIn)
+				utils.MustPrintf(predataFile, ",\n\tTYPMOD_IN = %s", typ.ModIn)
 			}
 			if typ.ModOut != "-" {
-				fmt.Fprintf(predataFile, ",\n\tTYPMOD_OUT = %s", typ.ModOut)
+				utils.MustPrintf(predataFile, ",\n\tTYPMOD_OUT = %s", typ.ModOut)
 			}
 			if typ.InternalLength > 0 {
-				fmt.Fprintf(predataFile, ",\n\tINTERNALLENGTH = %d", typ.InternalLength)
+				utils.MustPrintf(predataFile, ",\n\tINTERNALLENGTH = %d", typ.InternalLength)
 			}
 			if typ.IsPassedByValue {
-				fmt.Fprintf(predataFile, ",\n\tPASSEDBYVALUE")
+				utils.MustPrintf(predataFile, ",\n\tPASSEDBYVALUE")
 			}
 			if typ.Alignment != "-" {
 				switch typ.Alignment {
 				case "d":
-					fmt.Fprintf(predataFile, ",\n\tALIGNMENT = double")
+					utils.MustPrintf(predataFile, ",\n\tALIGNMENT = double")
 				case "i":
-					fmt.Fprintf(predataFile, ",\n\tALIGNMENT = int4")
+					utils.MustPrintf(predataFile, ",\n\tALIGNMENT = int4")
 				case "s":
-					fmt.Fprintf(predataFile, ",\n\tALIGNMENT = int2")
+					utils.MustPrintf(predataFile, ",\n\tALIGNMENT = int2")
 				case "c": // Default case, don't print anything else
 				}
 			}
 			if typ.Storage != "" {
 				switch typ.Storage {
 				case "e":
-					fmt.Fprintf(predataFile, ",\n\tSTORAGE = extended")
+					utils.MustPrintf(predataFile, ",\n\tSTORAGE = extended")
 				case "m":
-					fmt.Fprintf(predataFile, ",\n\tSTORAGE = main")
+					utils.MustPrintf(predataFile, ",\n\tSTORAGE = main")
 				case "x":
-					fmt.Fprintf(predataFile, ",\n\tSTORAGE = external")
+					utils.MustPrintf(predataFile, ",\n\tSTORAGE = external")
 				case "p": // Default case, don't print anything else
 				}
 			}
 			if typ.DefaultVal != "" {
-				fmt.Fprintf(predataFile, ",\n\tDEFAULT = %s", typ.DefaultVal)
+				utils.MustPrintf(predataFile, ",\n\tDEFAULT = %s", typ.DefaultVal)
 			}
 			if typ.Element != "-" {
-				fmt.Fprintf(predataFile, ",\n\tELEMENT = %s", typ.Element)
+				utils.MustPrintf(predataFile, ",\n\tELEMENT = %s", typ.Element)
 			}
 			if typ.Delimiter != "" {
-				fmt.Fprintf(predataFile, ",\n\tDELIMITER = '%s'", typ.Delimiter)
+				utils.MustPrintf(predataFile, ",\n\tDELIMITER = '%s'", typ.Delimiter)
 			}
-			fmt.Fprintln(predataFile, "\n);")
+			utils.MustPrintln(predataFile, "\n);")
 			if typ.Comment != "" {
-				fmt.Fprintf(predataFile, "\nCOMMENT ON TYPE %s IS '%s';\n", typeFQN, typ.Comment)
+				utils.MustPrintf(predataFile, "\nCOMMENT ON TYPE %s IS '%s';\n", typeFQN, typ.Comment)
 			}
 			if typ.Owner != "" {
-				fmt.Fprintf(predataFile, "\nALTER TYPE %s OWNER TO %s;\n", typeFQN, typ.Owner)
+				utils.MustPrintf(predataFile, "\nALTER TYPE %s OWNER TO %s;\n", typeFQN, typ.Owner)
 			}
 		}
 		i++
@@ -426,27 +426,27 @@ func PrintCreateCompositeAndEnumTypeStatements(predataFile io.Writer, types []Ty
 			 */
 			composite := compositeTypes[0]
 			typeFQN := utils.MakeFQN(composite.TypeSchema, composite.TypeName)
-			fmt.Fprintf(predataFile, "\n\nCREATE TYPE %s AS (\n", typeFQN)
+			utils.MustPrintf(predataFile, "\n\nCREATE TYPE %s AS (\n", typeFQN)
 			atts := make([]string, 0)
 			for _, composite := range compositeTypes {
 				atts = append(atts, fmt.Sprintf("\t%s %s", composite.AttName, composite.AttValue))
 			}
-			fmt.Fprintf(predataFile, strings.Join(atts, ",\n"))
-			fmt.Fprintln(predataFile, "\n);")
+			utils.MustPrintf(predataFile, strings.Join(atts, ",\n"))
+			utils.MustPrintln(predataFile, "\n);")
 			if composite.Comment != "" {
-				fmt.Fprintf(predataFile, "\nCOMMENT ON TYPE %s IS '%s';\n", typeFQN, composite.Comment)
+				utils.MustPrintf(predataFile, "\nCOMMENT ON TYPE %s IS '%s';\n", typeFQN, composite.Comment)
 			}
 			if composite.Owner != "" {
-				fmt.Fprintf(predataFile, "\nALTER TYPE %s OWNER TO %s;\n", typeFQN, composite.Owner)
+				utils.MustPrintf(predataFile, "\nALTER TYPE %s OWNER TO %s;\n", typeFQN, composite.Owner)
 			}
 		} else if typ.Type == "e" {
 			typeFQN := utils.MakeFQN(typ.TypeSchema, typ.TypeName)
-			fmt.Fprintf(predataFile, "\n\nCREATE TYPE %s AS ENUM (\n\t%s\n);\n", typeFQN, typ.EnumLabels)
+			utils.MustPrintf(predataFile, "\n\nCREATE TYPE %s AS ENUM (\n\t%s\n);\n", typeFQN, typ.EnumLabels)
 			if typ.Comment != "" {
-				fmt.Fprintf(predataFile, "\nCOMMENT ON TYPE %s IS '%s';\n", typeFQN, typ.Comment)
+				utils.MustPrintf(predataFile, "\nCOMMENT ON TYPE %s IS '%s';\n", typeFQN, typ.Comment)
 			}
 			if typ.Owner != "" {
-				fmt.Fprintf(predataFile, "\nALTER TYPE %s OWNER TO %s;\n", typeFQN, typ.Owner)
+				utils.MustPrintf(predataFile, "\nALTER TYPE %s OWNER TO %s;\n", typeFQN, typ.Owner)
 			}
 			i++
 
@@ -462,11 +462,11 @@ func PrintCreateCompositeAndEnumTypeStatements(predataFile io.Writer, types []Ty
  */
 
 func PrintConnectionString(metadataFile io.Writer, dbname string) {
-	fmt.Fprintf(metadataFile, "\\c %s\n", dbname)
+	utils.MustPrintf(metadataFile, "\\c %s\n", dbname)
 }
 
 func PrintSessionGUCs(metadataFile io.Writer, gucs QuerySessionGUCs) {
-	fmt.Fprintf(metadataFile, `SET statement_timeout = 0;
+	utils.MustPrintf(metadataFile, `SET statement_timeout = 0;
 SET check_function_bodies = false;
 SET client_min_messages = error;
 SET client_encoding = '%s';
@@ -478,12 +478,12 @@ SET default_with_oids = %s;
 func PrintCreateDatabaseStatement(globalFile io.Writer) {
 	dbname := utils.QuoteIdent(connection.DBName)
 	owner := utils.QuoteIdent(GetDatabaseOwner(connection))
-	fmt.Fprintf(globalFile, "\n\nCREATE DATABASE %s;", dbname)
-	fmt.Fprintf(globalFile, "\nALTER DATABASE %s OWNER TO %s;", dbname, owner)
+	utils.MustPrintf(globalFile, "\n\nCREATE DATABASE %s;", dbname)
+	utils.MustPrintf(globalFile, "\nALTER DATABASE %s OWNER TO %s;", dbname, owner)
 }
 
 func PrintDatabaseGUCs(globalFile io.Writer, gucs []string, dbname string) {
 	for _, guc := range gucs {
-		fmt.Fprintf(globalFile, "\nALTER DATABASE %s %s;", dbname, guc)
+		utils.MustPrintf(globalFile, "\nALTER DATABASE %s %s;", dbname, guc)
 	}
 }
