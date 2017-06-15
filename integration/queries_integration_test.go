@@ -3,37 +3,12 @@ package integration
 import (
 	"gpbackup/backup"
 	"gpbackup/testutils"
-	"gpbackup/utils"
-	"os/exec"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gexec"
 )
 
 var _ = Describe("backup integration tests", func() {
-	var (
-		connection *utils.DBConn
-	)
-	BeforeSuite(func() {
-		exec.Command("dropdb", "testdb").Run()
-		err := exec.Command("createdb", "testdb").Run()
-		Expect(err).To(BeNil())
-		connection = utils.NewDBConn("testdb")
-		connection.Connect()
-		// We can't use AssertQueryRuns since if a role already exists it will error
-		connection.Exec("CREATE ROLE testrole SUPERUSER")
-		connection.Exec("CREATE ROLE gpadmin SUPERUSER")
-		testutils.AssertQueryRuns(connection, "SET ROLE testrole")
-		testutils.AssertQueryRuns(connection, "ALTER DATABASE testdb OWNER TO gpadmin")
-	})
-	AfterSuite(func() {
-		gexec.CleanupBuildArtifacts()
-
-		connection.Close()
-		err := exec.Command("dropdb", "testdb").Run()
-		Expect(err).To(BeNil())
-	})
 	Describe("GetAllUserSchemas", func() {
 		It("returns user schema information", func() {
 			testutils.AssertQueryRuns(connection, "CREATE SCHEMA bar")
