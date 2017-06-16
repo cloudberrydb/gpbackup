@@ -504,7 +504,7 @@ type TypeDefinition struct {
 	TypeName        string `db:"typname"`
 	Type            string `db:"typtype"`
 	AttName         string `db:"attname"`
-	AttValue        string
+	AttType         string
 	Input           string `db:"typinput"`
 	Output          string `db:"typoutput"`
 	Receive         string `db:"typreceive"`
@@ -539,7 +539,7 @@ SELECT
 	t.typname,
 	t.typtype,
 	coalesce(a.attname, '') AS attname,
-	coalesce(pg_catalog.format_type(a.atttypid, NULL), '') AS attvalue,
+	coalesce(pg_catalog.format_type(a.atttypid, NULL), '') AS atttype,
 	t.typinput,
 	t.typoutput,
 	t.typreceive,

@@ -751,13 +751,13 @@ COMMENT ON CAST (src AS dst) IS 'This is a cast comment.';`)
 		})
 	})
 	Describe("PrintCreateCompositeAndEnumTypeStatements", func() {
-		compOne := backup.TypeDefinition{TypeSchema: "public", TypeName: "composite_type", Type: "c", AttName: "bar", AttValue: "integer"}
-		compTwo := backup.TypeDefinition{TypeSchema: "public", TypeName: "composite_type", Type: "c", AttName: "baz", AttValue: "text"}
-		compThree := backup.TypeDefinition{TypeSchema: "public", TypeName: "composite_type", Type: "c", AttName: "foo", AttValue: "float"}
+		compOne := backup.TypeDefinition{TypeSchema: "public", TypeName: "composite_type", Type: "c", AttName: "bar", AttType: "integer"}
+		compTwo := backup.TypeDefinition{TypeSchema: "public", TypeName: "composite_type", Type: "c", AttName: "baz", AttType: "text"}
+		compThree := backup.TypeDefinition{TypeSchema: "public", TypeName: "composite_type", Type: "c", AttName: "foo", AttType: "float"}
 		compCommentOwnerOne := backup.TypeDefinition{TypeSchema: "public", TypeName: "composite_type", Type: "c", AttName: "bar",
-			AttValue: "integer", Comment: "This is a type comment.", Owner: "test_role"}
+			AttType: "integer", Comment: "This is a type comment.", Owner: "test_role"}
 		compCommentOwnerTwo := backup.TypeDefinition{TypeSchema: "public", TypeName: "composite_type", Type: "c", AttName: "foo",
-			AttValue: "float", Comment: "This is a type comment.", Owner: "test_role"}
+			AttType: "float", Comment: "This is a type comment.", Owner: "test_role"}
 		enumOne := backup.TypeDefinition{TypeSchema: "public", TypeName: "enum_type", Type: "e", EnumLabels: "'bar',\n\t'baz',\n\t'foo'"}
 
 		It("prints a composite type with one attribute", func() {
@@ -895,8 +895,8 @@ ALTER TYPE public.base_type OWNER TO test_role;`)
 			"-", "-", "-", "-", -1, false, "c", "p", "", "-", "", "", "", ""}
 		baseTwo := backup.TypeDefinition{"public", "base_type2", "b", "", "", "input_fn", "output_fn",
 			"-", "-", "-", "-", -1, false, "c", "p", "", "-", "", "", "", ""}
-		compOne := backup.TypeDefinition{TypeSchema: "public", TypeName: "composite_type1", Type: "c", AttName: "bar", AttValue: "integer"}
-		compTwo := backup.TypeDefinition{TypeSchema: "public", TypeName: "composite_type2", Type: "c", AttName: "bar", AttValue: "integer"}
+		compOne := backup.TypeDefinition{TypeSchema: "public", TypeName: "composite_type1", Type: "c", AttName: "bar", AttType: "integer"}
+		compTwo := backup.TypeDefinition{TypeSchema: "public", TypeName: "composite_type2", Type: "c", AttName: "bar", AttType: "integer"}
 		enumOne := backup.TypeDefinition{TypeSchema: "public", TypeName: "enum_type", Type: "e", EnumLabels: "'bar',\n\t'baz',\n\t'foo'"}
 		It("prints shell type for only a base type", func() {
 			backup.PrintShellTypeStatements(buffer, []backup.TypeDefinition{baseOne, baseTwo, compOne, compTwo, enumOne})

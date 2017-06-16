@@ -425,7 +425,7 @@ func PrintCreateCompositeAndEnumTypeStatements(predataFile io.Writer, types []Ty
 				}
 			}
 			/*
-			 * All values except AttName and AttValue will be the same for each TypeDefinition,
+			 * All values except AttName and AttType will be the same for each TypeDefinition,
 			 * so we can grab all other values from the first TypeDefinition in the list.
 			 */
 			composite := compositeTypes[0]
@@ -433,7 +433,7 @@ func PrintCreateCompositeAndEnumTypeStatements(predataFile io.Writer, types []Ty
 			utils.MustPrintf(predataFile, "\n\nCREATE TYPE %s AS (\n", typeFQN)
 			atts := make([]string, 0)
 			for _, composite := range compositeTypes {
-				atts = append(atts, fmt.Sprintf("\t%s %s", composite.AttName, composite.AttValue))
+				atts = append(atts, fmt.Sprintf("\t%s %s", composite.AttName, composite.AttType))
 			}
 			utils.MustPrintf(predataFile, strings.Join(atts, ",\n"))
 			utils.MustPrintln(predataFile, "\n);")
