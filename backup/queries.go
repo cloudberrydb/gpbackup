@@ -563,7 +563,7 @@ LEFT JOIN (
 	  SELECT enumtypid,string_agg(quote_literal(enumlabel), E',\n\t') AS enumlabels FROM pg_enum GROUP BY enumtypid
 	) e ON t.oid = e.enumtypid
 WHERE %s
-AND (t.typtype = 'c' OR t.typtype = 'b' OR t.typtype='e')
+AND (t.typtype = 'c' OR t.typtype = 'b' OR t.typtype='e' OR t.typtype='p')
 AND (n.nspname || '.' || t.typname) NOT IN (SELECT nspname || '._' || relname FROM pg_namespace n join pg_class c ON n.oid = c.relnamespace WHERE c.relkind = 'r' OR c.relkind = 'S')
 AND (n.nspname || '.' || t.typname) NOT IN (SELECT nspname || '.' || relname FROM pg_namespace n join pg_class c ON n.oid = c.relnamespace WHERE c.relkind = 'r' OR c.relkind = 'S')
 AND (n.nspname || '.' || t.typname) NOT IN (SELECT nspname || '._' || typname FROM pg_namespace n join pg_type t ON n.oid = t.typnamespace)

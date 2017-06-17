@@ -328,7 +328,7 @@ func PrintCreateCastStatements(predataFile io.Writer, castDefs []QueryCastDefini
 func PrintShellTypeStatements(predataFile io.Writer, types []TypeDefinition) {
 	utils.MustPrintln(predataFile, "\n")
 	for _, typ := range types {
-		if typ.Type == "b" {
+		if typ.Type == "b" || typ.Type == "p" {
 			typeFQN := utils.MakeFQN(typ.TypeSchema, typ.TypeName)
 			utils.MustPrintf(predataFile, "CREATE TYPE %s;\n", typeFQN)
 		}

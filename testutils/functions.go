@@ -97,7 +97,7 @@ func ShouldPanicWithMessage(message string) {
 
 func AssertQueryRuns(dbconn *utils.DBConn, query string) {
 	_, err := dbconn.Exec(query)
-	Expect(err).To(BeNil())
+	Expect(err).To(BeNil(), "%s", query)
 }
 
 func OidFromRelationName(dbconn *utils.DBConn, relname string) uint32 {
