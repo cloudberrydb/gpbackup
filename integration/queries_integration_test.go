@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"gpbackup/utils"
 )
 
 var _ = Describe("backup integration tests", func() {
@@ -15,17 +16,12 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA bar")
 			schemas := backup.GetAllUserSchemas(connection)
 
+			schemaBar := utils.Schema{0,"bar", "", "testrole"}
+			schemaPublic := utils.Schema{2200,"public", "standard public schema", "testrole"}
+
 			Expect(len(schemas)).To(Equal(2))
-
-			Expect(schemas[0].SchemaOid).ToNot(Equal(uint32(0)))
-			Expect(schemas[0].SchemaName).To(Equal("bar"))
-			Expect(schemas[0].Comment).To(Equal(""))
-			Expect(schemas[0].Owner).To(Equal("testrole"))
-
-			Expect(schemas[1].SchemaOid).ToNot(Equal(uint32(0)))
-			Expect(schemas[1].SchemaName).To(Equal("public"))
-			Expect(schemas[1].Comment).To(Equal("standard public schema"))
-			Expect(schemas[1].Owner).ToNot(Equal(""))
+			testutils.ExpectStructsToMatchExcluding(&schemas[0], &schemaBar, []string{"SchemaOid"})
+			testutils.ExpectStructsToMatchExcluding(&schemas[1], &schemaPublic, []string{"Owner"})
 		})
 	})
 	Describe("GetAllUserTables", func() {
@@ -526,23 +522,59 @@ CYCLE`)
 			handlerOid := testutils.OidFromFunctionName(connection, "plpython_call_handler")
 			inlineOid := testutils.OidFromFunctionName(connection, "plpython_inline_handler")
 
-			results := backup.GetProceduralLanguages(connection)
+			expectedPlpgsqlInfo := backup.QueryProceduralLanguage{"plpgsql", "testrole", true, true, 11905, 11906, 11907, "", ""}
+			expectedPlpythonuInfo := backup.QueryProceduralLanguage{"plpythonu", "testrole", true, false, handlerOid, inlineOid, 0, "", ""}
 
-			Expect(len(results)).To(Equal(2))
-			Expect(results[0].Name).To(Equal("plpgsql"))
-			Expect(results[0].PlTrusted).To(BeTrue())
-			Expect(results[1].Name).To(Equal("plpythonu"))
-			Expect(results[1].Owner).To(Equal("testrole"))
-			Expect(results[1].IsPl).To(BeTrue())
-			Expect(results[1].PlTrusted).To(BeFalse())
-			Expect(results[1].Handler).To(Equal(handlerOid))
-			Expect(results[1].Inline).To(Equal(inlineOid))
-			Expect(results[1].Validator).To(Equal(uint32(0)))
-			Expect(results[1].Access).To(Equal(""))
-			Expect(results[1].Comment).To(Equal(""))
+			resultProcLangs := backup.GetProceduralLanguages(connection)
+
+			Expect(len(resultProcLangs)).To(Equal(2))
+			testutils.ExpectStructsToMatchExcluding(&resultProcLangs[0], &expectedPlpgsqlInfo, []string{"Owner"})
+			testutils.ExpectStructsToMatch(&resultProcLangs[1], &expectedPlpythonuInfo)
 		})
 	})
 	Describe("GetTypeDefinitions", func() {
+		var (
+			shellType backup.TypeDefinition
+			baseTypeDefault backup.TypeDefinition
+			baseTypeCustom backup.TypeDefinition
+			compositeTypeAtt1 backup.TypeDefinition
+			compositeTypeAtt2 backup.TypeDefinition
+			compositeTypeAtt3 backup.TypeDefinition
+			enumType backup.TypeDefinition
+		)
+		BeforeEach(func() {
+			shellType = backup.TypeDefinition{Type: "p", TypeSchema: "public", TypeName: "shell_type"}
+			baseTypeDefault = backup.TypeDefinition{
+				Type: "b", TypeSchema: "public", TypeName: "base_type", Input: "base_fn_in", Output: "base_fn_out", Receive: "-",
+				Send: "-", ModIn: "-", ModOut: "-", InternalLength: -1, IsPassedByValue: false, Alignment: "i", Storage: "p",
+				DefaultVal: "", Element: "-", Delimiter: ",", Comment: "", Owner: "testrole",
+			}
+			baseTypeCustom = backup.TypeDefinition{
+				Type: "b", TypeSchema: "public", TypeName: "base_type", Input: "base_fn_in", Output: "base_fn_out", Receive: "-",
+				Send: "-", ModIn: "-", ModOut: "-", InternalLength: 8, IsPassedByValue: true, Alignment: "c", Storage: "p",
+				DefaultVal: "0", Element: "integer", Delimiter: ";", Comment: "this is a type comment", Owner: "testrole",
+			}
+			compositeTypeAtt1 = backup.TypeDefinition{
+				Type: "c", TypeSchema: "public", TypeName: "composite_type", Comment: "", Owner: "testrole",
+				AttName: "name", AttType: "integer",
+			}
+			compositeTypeAtt2 = backup.TypeDefinition{
+				Type: "c", TypeSchema: "public", TypeName: "composite_type", Comment: "", Owner: "testrole",
+				AttName: "name1", AttType: "integer",
+			}
+			compositeTypeAtt3 = backup.TypeDefinition{
+				Type: "c", TypeSchema: "public", TypeName: "composite_type", Comment: "", Owner: "testrole",
+				AttName: "name2", AttType: "text",
+			}
+			//enumType = backup.TypeDefinition{
+			//	Type: "e", TypeSchema: "public", TypeName: "enum_type", Comment: "comment", Owner: "testrole", EnumLabels: "'enum_labels'"}
+			enumType = backup.TypeDefinition{
+				Type: "e", TypeSchema:"public",TypeName:"enum_type",AttName:"",AttType:"",Input:"enum_in",Output:"enum_out",
+				Receive:"enum_recv", Send:"enum_send", ModIn:"-", ModOut:"-", InternalLength:4, IsPassedByValue:true,
+				Alignment:"i", Storage:"p", DefaultVal:"", Element:"-", Delimiter:",", EnumLabels:"'label1',\n\t'label2',\n\t'label3'",
+				Comment:"", Owner:"testrole",
+			}
+		})
 		It("returns a slice for a shell type", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TYPE shell_type")
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE shell_type")
@@ -550,9 +582,7 @@ CYCLE`)
 			results := backup.GetTypeDefinitions(connection)
 
 			Expect(len(results)).To(Equal(1))
-			Expect(results[0].TypeSchema).To(Equal("public"))
-			Expect(results[0].TypeName).To(Equal("shell_type"))
-			Expect(results[0].Type).To(Equal("p"))
+			testutils.ExpectStructsToMatchIncluding(&results[0], &shellType, []string{"TypeSchema", "TypeName", "Type"})
 		})
 		It("returns a slice of composite types", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TYPE composite_type AS (name int4, name1 int, name2 text);")
@@ -561,39 +591,9 @@ CYCLE`)
 			results := backup.GetTypeDefinitions(connection)
 
 			Expect(len(results)).To(Equal(3))
-			Expect(results[0].TypeSchema).To(Equal("public"))
-			Expect(results[0].TypeName).To(Equal("composite_type"))
-			Expect(results[0].Type).To(Equal("c"))
-			Expect(results[0].AttName).To(Equal("name"))
-			Expect(results[0].AttType).To(Equal("integer"))
-			Expect(results[0].Input).To(Equal("record_in"))
-			Expect(results[0].Output).To(Equal("record_out"))
-			Expect(results[0].Receive).To(Equal("record_recv"))
-			Expect(results[0].Send).To(Equal("record_send"))
-			Expect(results[0].ModIn).To(Equal("-"))
-			Expect(results[0].ModOut).To(Equal("-"))
-			Expect(results[0].InternalLength).To(Equal(-1))
-			Expect(results[0].IsPassedByValue).To(Equal(false))
-			Expect(results[0].Alignment).To(Equal("d"))
-			Expect(results[0].Storage).To(Equal("x"))
-			Expect(results[0].DefaultVal).To(Equal(""))
-			Expect(results[0].Element).To(Equal("-"))
-			Expect(results[0].Delimiter).To(Equal(","))
-			Expect(results[0].EnumLabels).To(Equal(""))
-			Expect(results[0].Comment).To(Equal(""))
-			Expect(results[0].Owner).To(Equal("testrole"))
-
-			Expect(results[1].TypeSchema).To(Equal("public"))
-			Expect(results[1].TypeName).To(Equal("composite_type"))
-			Expect(results[1].Type).To(Equal("c"))
-			Expect(results[1].AttName).To(Equal("name1"))
-			Expect(results[1].AttType).To(Equal("integer"))
-
-			Expect(results[2].TypeSchema).To(Equal("public"))
-			Expect(results[2].TypeName).To(Equal("composite_type"))
-			Expect(results[2].Type).To(Equal("c"))
-			Expect(results[2].AttName).To(Equal("name2"))
-			Expect(results[2].AttType).To(Equal("text"))
+			testutils.ExpectStructsToMatchIncluding(&results[0], &compositeTypeAtt1, []string{"Type", "TypeSchema", "TypeName", "Comment", "Owner", "AttName", "AttType"})
+			testutils.ExpectStructsToMatchIncluding(&results[1], &compositeTypeAtt2, []string{"Type", "TypeSchema", "TypeName", "Comment", "Owner", "AttName", "AttType"})
+			testutils.ExpectStructsToMatchIncluding(&results[2], &compositeTypeAtt3, []string{"Type", "TypeSchema", "TypeName", "Comment", "Owner", "AttName", "AttType"})
 		})
 		It("returns a slice for a base type with default values", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TYPE base_type")
@@ -605,27 +605,7 @@ CYCLE`)
 			results := backup.GetTypeDefinitions(connection)
 
 			Expect(len(results)).To(Equal(1))
-			Expect(results[0].TypeSchema).To(Equal("public"))
-			Expect(results[0].TypeName).To(Equal("base_type"))
-			Expect(results[0].Type).To(Equal("b"))
-			Expect(results[0].AttName).To(Equal(""))
-			Expect(results[0].AttType).To(Equal(""))
-			Expect(results[0].Input).To(Equal("base_fn_in"))
-			Expect(results[0].Output).To(Equal("base_fn_out"))
-			Expect(results[0].Receive).To(Equal("-"))
-			Expect(results[0].Send).To(Equal("-"))
-			Expect(results[0].ModIn).To(Equal("-"))
-			Expect(results[0].ModOut).To(Equal("-"))
-			Expect(results[0].InternalLength).To(Equal(-1))
-			Expect(results[0].IsPassedByValue).To(Equal(false))
-			Expect(results[0].Alignment).To(Equal("i"))
-			Expect(results[0].Storage).To(Equal("p"))
-			Expect(results[0].DefaultVal).To(Equal(""))
-			Expect(results[0].Element).To(Equal("-"))
-			Expect(results[0].Delimiter).To(Equal(","))
-			Expect(results[0].EnumLabels).To(Equal(""))
-			Expect(results[0].Comment).To(Equal(""))
-			Expect(results[0].Owner).To(Equal("testrole"))
+			testutils.ExpectStructsToMatch(&results[0], &baseTypeDefault)
 		})
 		It("returns a slice for a base type with custom configuration", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TYPE base_type")
@@ -638,27 +618,7 @@ CYCLE`)
 			results := backup.GetTypeDefinitions(connection)
 
 			Expect(len(results)).To(Equal(1))
-			Expect(results[0].TypeSchema).To(Equal("public"))
-			Expect(results[0].TypeName).To(Equal("base_type"))
-			Expect(results[0].Type).To(Equal("b"))
-			Expect(results[0].AttName).To(Equal(""))
-			Expect(results[0].AttType).To(Equal(""))
-			Expect(results[0].Input).To(Equal("base_fn_in"))
-			Expect(results[0].Output).To(Equal("base_fn_out"))
-			Expect(results[0].Receive).To(Equal("-"))
-			Expect(results[0].Send).To(Equal("-"))
-			Expect(results[0].ModIn).To(Equal("-"))
-			Expect(results[0].ModOut).To(Equal("-"))
-			Expect(results[0].InternalLength).To(Equal(8))
-			Expect(results[0].IsPassedByValue).To(Equal(true))
-			Expect(results[0].Alignment).To(Equal("c"))
-			Expect(results[0].Storage).To(Equal("p"))
-			Expect(results[0].DefaultVal).To(Equal("0"))
-			Expect(results[0].Element).To(Equal("integer"))
-			Expect(results[0].Delimiter).To(Equal(";"))
-			Expect(results[0].EnumLabels).To(Equal(""))
-			Expect(results[0].Comment).To(Equal("this is a type comment"))
-			Expect(results[0].Owner).To(Equal("testrole"))
+			testutils.ExpectStructsToMatch(&results[0], &baseTypeCustom)
 		})
 		It("returns a slice for an enum type", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TYPE enum_type AS ENUM ('label1','label2','label3')")
@@ -667,27 +627,7 @@ CYCLE`)
 			results := backup.GetTypeDefinitions(connection)
 
 			Expect(len(results)).To(Equal(1))
-			Expect(results[0].TypeSchema).To(Equal("public"))
-			Expect(results[0].TypeName).To(Equal("enum_type"))
-			Expect(results[0].Type).To(Equal("e"))
-			Expect(results[0].AttName).To(Equal(""))
-			Expect(results[0].AttType).To(Equal(""))
-			Expect(results[0].Input).To(Equal("enum_in"))
-			Expect(results[0].Output).To(Equal("enum_out"))
-			Expect(results[0].Receive).To(Equal("enum_recv"))
-			Expect(results[0].Send).To(Equal("enum_send"))
-			Expect(results[0].ModIn).To(Equal("-"))
-			Expect(results[0].ModOut).To(Equal("-"))
-			Expect(results[0].InternalLength).To(Equal(4))
-			Expect(results[0].IsPassedByValue).To(Equal(true))
-			Expect(results[0].Alignment).To(Equal("i"))
-			Expect(results[0].Storage).To(Equal("p"))
-			Expect(results[0].DefaultVal).To(Equal(""))
-			Expect(results[0].Element).To(Equal("-"))
-			Expect(results[0].Delimiter).To(Equal(","))
-			Expect(results[0].EnumLabels).To(Equal("'label1',\n\t'label2',\n\t'label3'"))
-			Expect(results[0].Comment).To(Equal(""))
-			Expect(results[0].Owner).To(Equal("testrole"))
+			testutils.ExpectStructsToMatch(&results[0], &enumType)
 		})
 		It("returns a slice containing information for a mix of types", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TYPE shell_type")
@@ -703,30 +643,15 @@ CYCLE`)
 			testutils.AssertQueryRuns(connection, "CREATE TYPE enum_type AS ENUM ('label1','label2','label3')")
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE enum_type")
 
-			types := backup.GetTypeDefinitions(connection)
+			resultTypes := backup.GetTypeDefinitions(connection)
 
-			Expect(len(types)).To(Equal(6))
-			Expect(types[0].TypeName).To(Equal("base_type"))
-			Expect(types[0].Type).To(Equal("b"))
-			Expect(types[0].Input).To(Equal("base_fn_in"))
-			Expect(types[0].Output).To(Equal("base_fn_out"))
-			Expect(types[1].TypeName).To(Equal("composite_type"))
-			Expect(types[1].Type).To(Equal("c"))
-			Expect(types[1].AttName).To(Equal("name"))
-			Expect(types[1].AttType).To(Equal("integer"))
-			Expect(types[2].TypeName).To(Equal("composite_type"))
-			Expect(types[2].Type).To(Equal("c"))
-			Expect(types[2].AttName).To(Equal("name1"))
-			Expect(types[2].AttType).To(Equal("integer"))
-			Expect(types[3].TypeName).To(Equal("composite_type"))
-			Expect(types[3].Type).To(Equal("c"))
-			Expect(types[3].AttName).To(Equal("name2"))
-			Expect(types[3].AttType).To(Equal("text"))
-			Expect(types[4].TypeName).To(Equal("enum_type"))
-			Expect(types[4].Type).To(Equal("e"))
-			Expect(types[4].EnumLabels).To(Equal("'label1',\n\t'label2',\n\t'label3'"))
-			Expect(types[5].TypeName).To(Equal("shell_type"))
-			Expect(types[5].Type).To(Equal("p"))
+			Expect(len(resultTypes)).To(Equal(6))
+			testutils.ExpectStructsToMatch(&resultTypes[0], &baseTypeCustom)
+			testutils.ExpectStructsToMatchIncluding(&resultTypes[1], &compositeTypeAtt1, []string{"Type", "TypeSchema", "TypeName", "Comment", "Owner", "AttName", "AttType"})
+			testutils.ExpectStructsToMatchIncluding(&resultTypes[2], &compositeTypeAtt2, []string{"Type", "TypeSchema", "TypeName", "Comment", "Owner", "AttName", "AttType"})
+			testutils.ExpectStructsToMatchIncluding(&resultTypes[3], &compositeTypeAtt3, []string{"Type", "TypeSchema", "TypeName", "Comment", "Owner", "AttName", "AttType"})
+			testutils.ExpectStructsToMatch(&resultTypes[4], &enumType)
+			testutils.ExpectStructsToMatchIncluding(&resultTypes[5], &shellType, []string{"TypeSchema", "TypeName", "Type"})
 		})
 	})
 	Describe("GetExternalTablesMap", func() {
@@ -836,7 +761,7 @@ SEGMENT REJECT LIMIT 10 PERCENT
 
 			Expect(result).To(Equal(""))
 		})
-		It("returns a value for a partition defintiion", func() {
+		It("returns a value for a partition definition", func() {
 			testutils.AssertQueryRuns(connection, `CREATE TABLE part_table (id int, rank int, year int, gender 
 char(1), count int ) 
 DISTRIBUTED BY (id)
@@ -945,44 +870,20 @@ MODIFIES SQL DATA
 
 			results := backup.GetFunctionDefinitions(connection)
 
-			Expect(len(results)).To(Equal(2))
-			Expect(results[0].SchemaName).To(Equal("public"))
-			Expect(results[0].FunctionName).To(Equal("add"))
-			Expect(results[0].ReturnsSet).To(BeFalse())
-			Expect(results[0].FunctionBody).To(Equal("SELECT $1 + $2"))
-			Expect(results[0].BinaryPath).To(Equal(""))
-			Expect(results[0].Arguments).To(Equal("integer, integer"))
-			Expect(results[0].IdentArgs).To(Equal("integer, integer"))
-			Expect(results[0].ResultType).To(Equal("integer"))
-			Expect(results[0].Volatility).To(Equal("v"))
-			Expect(results[0].IsStrict).To(BeFalse())
-			Expect(results[0].IsSecurityDefiner).To(BeFalse())
-			Expect(results[0].Config).To(Equal(""))
-			Expect(results[0].Cost).To(Equal(float32(100)))
-			Expect(results[0].NumRows).To(Equal(float32(0)))
-			Expect(results[0].SqlUsage).To(Equal("c"))
-			Expect(results[0].Language).To(Equal("sql"))
-			Expect(results[0].Comment).To(Equal(""))
-			Expect(results[0].Owner).To(Equal("testrole"))
+			addFunction := backup.QueryFunctionDefinition{
+				SchemaName:"public", FunctionName:"add", ReturnsSet:false, FunctionBody:"SELECT $1 + $2",
+				BinaryPath:"", Arguments:"integer, integer", IdentArgs:"integer, integer", ResultType:"integer",
+				Volatility:"v", IsStrict:false, IsSecurityDefiner:false, Config:"", Cost:100, NumRows:0, SqlUsage:"c",
+				Language:"sql", Comment:"", Owner:"testrole"}
+			appendFunction := backup.QueryFunctionDefinition{
+				SchemaName:"public", FunctionName:"append", ReturnsSet:true, FunctionBody:"SELECT ($1, $2)",
+				BinaryPath:"", Arguments:"integer, integer", IdentArgs:"integer, integer", ResultType:"SETOF record",
+				Volatility:"s", IsStrict:true, IsSecurityDefiner:true, Config:"SET search_path TO pg_temp", Cost:200,
+				NumRows:200, SqlUsage:"m", Language:"sql", Comment:"this is a function comment", Owner:"testrole"}
 
-			Expect(results[1].SchemaName).To(Equal("public"))
-			Expect(results[1].FunctionName).To(Equal("append"))
-			Expect(results[1].ReturnsSet).To(BeTrue())
-			Expect(results[1].FunctionBody).To(Equal("SELECT ($1, $2)"))
-			Expect(results[1].BinaryPath).To(Equal(""))
-			Expect(results[1].Arguments).To(Equal("integer, integer"))
-			Expect(results[1].IdentArgs).To(Equal("integer, integer"))
-			Expect(results[1].ResultType).To(Equal("SETOF record"))
-			Expect(results[1].Volatility).To(Equal("s"))
-			Expect(results[1].IsStrict).To(BeTrue())
-			Expect(results[1].IsSecurityDefiner).To(BeTrue())
-			Expect(results[1].Config).To(Equal("SET search_path TO pg_temp"))
-			Expect(results[1].Cost).To(Equal(float32(200)))
-			Expect(results[1].NumRows).To(Equal(float32(200)))
-			Expect(results[1].SqlUsage).To(Equal("m"))
-			Expect(results[1].Language).To(Equal("sql"))
-			Expect(results[1].Comment).To(Equal("this is a function comment"))
-			Expect(results[1].Owner).To(Equal("testrole"))
+			Expect(len(results)).To(Equal(2))
+			testutils.ExpectStructsToMatch(&results[0], &addFunction)
+			testutils.ExpectStructsToMatch(&results[1], &appendFunction)
 		})
 	})
 	Describe("GetAggregateDefinitions", func() {
@@ -1016,25 +917,18 @@ CREATE AGGREGATE agg_prefunc(numeric, numeric) (
 
 			transitionOid := testutils.OidFromFunctionName(connection, "mysfunc_accum")
 			prelimOid := testutils.OidFromFunctionName(connection, "mypre_accum")
-			finalOid := uint32(0)
-			sortOid := uint32(0)
 
 			result := backup.GetAggregateDefinitions(connection)
 
+			aggregateDef := backup.QueryAggregateDefinition{
+				SchemaName:"public", AggregateName:"agg_prefunc", Arguments:"numeric, numeric",
+				IdentArgs:"numeric, numeric", TransitionFunction:transitionOid, PreliminaryFunction:prelimOid,
+				FinalFunction:0, SortOperator:0, TransitionDataType:"numeric", InitialValue:"0", IsOrdered:false,
+				Comment:"", Owner:"testrole",
+			}
+
 			Expect(len(result)).To(Equal(1))
-			Expect(result[0].SchemaName).To(Equal("public"))
-			Expect(result[0].AggregateName).To(Equal("agg_prefunc"))
-			Expect(result[0].Arguments).To(Equal("numeric, numeric"))
-			Expect(result[0].IdentArgs).To(Equal("numeric, numeric"))
-			Expect(result[0].TransitionFunction).To(Equal(transitionOid))
-			Expect(result[0].PreliminaryFunction).To(Equal(prelimOid))
-			Expect(result[0].FinalFunction).To(Equal(finalOid))
-			Expect(result[0].SortOperator).To(Equal(sortOid))
-			Expect(result[0].TransitionDataType).To(Equal("numeric"))
-			Expect(result[0].InitialValue).To(Equal("0"))
-			Expect(result[0].IsOrdered).To(BeFalse())
-			Expect(result[0].Comment).To(Equal(""))
-			Expect(result[0].Owner).To(Equal("testrole"))
+			testutils.ExpectStructsToMatch(&result[0], &aggregateDef)
 		})
 	})
 	Describe("GetFunctionOidToInfoMap", func() {
