@@ -54,12 +54,12 @@ var _ = Describe("backup integration create statement tests", func() {
 
 	Describe("PrintTypeStatements", func() {
 		var (
-			shellType backup.TypeDefinition
-			baseType backup.TypeDefinition
+			shellType         backup.TypeDefinition
+			baseType          backup.TypeDefinition
 			compositeTypeAtt1 backup.TypeDefinition
 			compositeTypeAtt2 backup.TypeDefinition
-			enumType backup.TypeDefinition
-			types []backup.TypeDefinition
+			enumType          backup.TypeDefinition
+			types             []backup.TypeDefinition
 		)
 		BeforeEach(func() {
 			shellType = backup.TypeDefinition{Type: "p", TypeSchema: "public", TypeName: "shell_type"}
@@ -88,7 +88,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE shell_type")
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE base_type")
 
-			resultTypes:= backup.GetTypeDefinitions(connection)
+			resultTypes := backup.GetTypeDefinitions(connection)
 
 			Expect(len(resultTypes)).To(Equal(2))
 			Expect(resultTypes[0].TypeName).To(Equal("base_type"))
@@ -102,7 +102,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE composite_type")
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE enum_type")
 
-			resultTypes:= backup.GetTypeDefinitions(connection)
+			resultTypes := backup.GetTypeDefinitions(connection)
 
 			Expect(len(resultTypes)).To(Equal(3))
 			testutils.ExpectStructsToMatchIncluding(&resultTypes[0], &compositeTypeAtt1, []string{"Type", "TypeSchema", "TypeName", "Comment", "Owner", "AttName", "AttType"})
@@ -121,7 +121,7 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			resultTypes:= backup.GetTypeDefinitions(connection)
+			resultTypes := backup.GetTypeDefinitions(connection)
 
 			Expect(len(resultTypes)).To(Equal(1))
 			testutils.ExpectStructsToMatch(&resultTypes[0], &baseType)
@@ -130,11 +130,11 @@ var _ = Describe("backup integration create statement tests", func() {
 	Describe("PrintCreateLanguageStatements", func() {
 		It("creates procedural languages", func() {
 			funcInfoMap := map[uint32]backup.FunctionInfo{
-				11907:{"pg_catalog.plpgsql_validator", "oid"},
-				11906:{"pg_catalog.plpgsql_inline_handler", "internal"},
-				11905:{"pg_catalog.plpgsql_call_handler", ""},
-				228851:{"pg_catalog.plpython_call_handler", ""},
-				228852:{"pg_catalog.plpython_inline_handler", "internal"},
+				11907:  {"pg_catalog.plpgsql_validator", "oid"},
+				11906:  {"pg_catalog.plpgsql_inline_handler", "internal"},
+				11905:  {"pg_catalog.plpgsql_call_handler", ""},
+				228851: {"pg_catalog.plpython_call_handler", ""},
+				228852: {"pg_catalog.plpython_inline_handler", "internal"},
 			}
 			plpgsqlInfo := backup.QueryProceduralLanguage{"plpgsql", "testrole", true, true, 11905, 11906, 11907, "", ""}
 			plpythonuInfo := backup.QueryProceduralLanguage{"plpythonu", "testrole", true, false, 228851, 228852, 0, "", "this is a language comment"}
@@ -155,10 +155,10 @@ var _ = Describe("backup integration create statement tests", func() {
 	Describe("PrintCreateFunctionStatements", func() {
 		It("creates a function with a simple return type", func() {
 			addFunction := backup.QueryFunctionDefinition{
-				SchemaName:"public", FunctionName:"add", ReturnsSet:false, FunctionBody:"SELECT $1 + $2",
-				BinaryPath:"", Arguments:"integer, integer", IdentArgs:"integer, integer", ResultType:"integer",
-				Volatility:"v", IsStrict:false, IsSecurityDefiner:false, Config:"", Cost:100, NumRows:0, SqlUsage:"c",
-				Language:"sql", Comment:"", Owner:"testrole",
+				SchemaName: "public", FunctionName: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
+				BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "integer",
+				Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 0, SqlUsage: "c",
+				Language: "sql", Comment: "", Owner: "testrole",
 			}
 
 			backup.PrintCreateFunctionStatements(buffer, []backup.QueryFunctionDefinition{addFunction})
@@ -173,10 +173,10 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 		It("creates a function that returns a set", func() {
 			appendFunction := backup.QueryFunctionDefinition{
-				SchemaName:"public", FunctionName:"append", ReturnsSet:true, FunctionBody:"SELECT ($1, $2)",
-				BinaryPath:"", Arguments:"integer, integer", IdentArgs:"integer, integer", ResultType:"SETOF record",
-				Volatility:"s", IsStrict:true, IsSecurityDefiner:true, Config:"SET search_path TO pg_temp", Cost:200,
-				NumRows:200, SqlUsage:"m", Language:"sql", Comment:"this is a function comment", Owner:"testrole",
+				SchemaName: "public", FunctionName: "append", ReturnsSet: true, FunctionBody: "SELECT ($1, $2)",
+				BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "SETOF record",
+				Volatility: "s", IsStrict: true, IsSecurityDefiner: true, Config: "SET search_path TO pg_temp", Cost: 200,
+				NumRows: 200, SqlUsage: "m", Language: "sql", Comment: "this is a function comment", Owner: "testrole",
 			}
 
 			backup.PrintCreateFunctionStatements(buffer, []backup.QueryFunctionDefinition{appendFunction})
@@ -191,10 +191,10 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 		It("creates a function that returns a table", func() {
 			dupFunction := backup.QueryFunctionDefinition{
-				SchemaName:"public", FunctionName:"dup", ReturnsSet:true, FunctionBody:"SELECT $1, CAST($1 AS text) || ' is text'",
-				BinaryPath:"", Arguments:"integer", IdentArgs:"integer", ResultType:"TABLE(f1 integer, f2 text)",
-				Volatility:"v", IsStrict:false, IsSecurityDefiner:false, Config:"", Cost:100, NumRows:1000, SqlUsage:"c",
-				Language:"sql", Comment:"", Owner:"testrole",
+				SchemaName: "public", FunctionName: "dup", ReturnsSet: true, FunctionBody: "SELECT $1, CAST($1 AS text) || ' is text'",
+				BinaryPath: "", Arguments: "integer", IdentArgs: "integer", ResultType: "TABLE(f1 integer, f2 text)",
+				Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 1000, SqlUsage: "c",
+				Language: "sql", Comment: "", Owner: "testrole",
 			}
 
 			backup.PrintCreateFunctionStatements(buffer, []backup.QueryFunctionDefinition{dupFunction})
@@ -211,10 +211,10 @@ var _ = Describe("backup integration create statement tests", func() {
 	Describe("PrintCreateAggregateStatements", func() {
 		It("creates an aggregate", func() {
 			aggregateDef := backup.QueryAggregateDefinition{
-				SchemaName:"public", AggregateName:"agg_prefunc", Arguments:"numeric, numeric",
-				IdentArgs:"numeric, numeric", TransitionFunction:1, PreliminaryFunction:2, FinalFunction:0,
-				SortOperator:0, TransitionDataType:"numeric", InitialValue:"0", IsOrdered:false,
-				Comment:"this is an aggregate comment", Owner:"testrole",
+				SchemaName: "public", AggregateName: "agg_prefunc", Arguments: "numeric, numeric",
+				IdentArgs: "numeric, numeric", TransitionFunction: 1, PreliminaryFunction: 2, FinalFunction: 0,
+				SortOperator: 0, TransitionDataType: "numeric", InitialValue: "0", IsOrdered: false,
+				Comment: "this is an aggregate comment", Owner: "testrole",
 			}
 			funcInfoMap := map[uint32]backup.FunctionInfo{
 				1: {QualifiedName: "public.mysfunc_accum", Arguments: "numeric, numeric, numeric"},

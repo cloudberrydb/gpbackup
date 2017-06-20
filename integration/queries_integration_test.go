@@ -4,9 +4,10 @@ import (
 	"gpbackup/backup"
 	"gpbackup/testutils"
 
+	"gpbackup/utils"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"gpbackup/utils"
 )
 
 var _ = Describe("backup integration tests", func() {
@@ -16,8 +17,8 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA bar")
 			schemas := backup.GetAllUserSchemas(connection)
 
-			schemaBar := utils.Schema{0,"bar", "", "testrole"}
-			schemaPublic := utils.Schema{2200,"public", "standard public schema", "testrole"}
+			schemaBar := utils.Schema{0, "bar", "", "testrole"}
+			schemaPublic := utils.Schema{2200, "public", "standard public schema", "testrole"}
 
 			Expect(len(schemas)).To(Equal(2))
 			testutils.ExpectStructsToMatchExcluding(&schemas[0], &schemaBar, []string{"SchemaOid"})
@@ -534,13 +535,13 @@ CYCLE`)
 	})
 	Describe("GetTypeDefinitions", func() {
 		var (
-			shellType backup.TypeDefinition
-			baseTypeDefault backup.TypeDefinition
-			baseTypeCustom backup.TypeDefinition
+			shellType         backup.TypeDefinition
+			baseTypeDefault   backup.TypeDefinition
+			baseTypeCustom    backup.TypeDefinition
 			compositeTypeAtt1 backup.TypeDefinition
 			compositeTypeAtt2 backup.TypeDefinition
 			compositeTypeAtt3 backup.TypeDefinition
-			enumType backup.TypeDefinition
+			enumType          backup.TypeDefinition
 		)
 		BeforeEach(func() {
 			shellType = backup.TypeDefinition{Type: "p", TypeSchema: "public", TypeName: "shell_type"}
@@ -569,10 +570,10 @@ CYCLE`)
 			//enumType = backup.TypeDefinition{
 			//	Type: "e", TypeSchema: "public", TypeName: "enum_type", Comment: "comment", Owner: "testrole", EnumLabels: "'enum_labels'"}
 			enumType = backup.TypeDefinition{
-				Type: "e", TypeSchema:"public",TypeName:"enum_type",AttName:"",AttType:"",Input:"enum_in",Output:"enum_out",
-				Receive:"enum_recv", Send:"enum_send", ModIn:"-", ModOut:"-", InternalLength:4, IsPassedByValue:true,
-				Alignment:"i", Storage:"p", DefaultVal:"", Element:"-", Delimiter:",", EnumLabels:"'label1',\n\t'label2',\n\t'label3'",
-				Comment:"", Owner:"testrole",
+				Type: "e", TypeSchema: "public", TypeName: "enum_type", AttName: "", AttType: "", Input: "enum_in", Output: "enum_out",
+				Receive: "enum_recv", Send: "enum_send", ModIn: "-", ModOut: "-", InternalLength: 4, IsPassedByValue: true,
+				Alignment: "i", Storage: "p", DefaultVal: "", Element: "-", Delimiter: ",", EnumLabels: "'label1',\n\t'label2',\n\t'label3'",
+				Comment: "", Owner: "testrole",
 			}
 		})
 		It("returns a slice for a shell type", func() {
@@ -871,15 +872,15 @@ MODIFIES SQL DATA
 			results := backup.GetFunctionDefinitions(connection)
 
 			addFunction := backup.QueryFunctionDefinition{
-				SchemaName:"public", FunctionName:"add", ReturnsSet:false, FunctionBody:"SELECT $1 + $2",
-				BinaryPath:"", Arguments:"integer, integer", IdentArgs:"integer, integer", ResultType:"integer",
-				Volatility:"v", IsStrict:false, IsSecurityDefiner:false, Config:"", Cost:100, NumRows:0, SqlUsage:"c",
-				Language:"sql", Comment:"", Owner:"testrole"}
+				SchemaName: "public", FunctionName: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
+				BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "integer",
+				Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 0, SqlUsage: "c",
+				Language: "sql", Comment: "", Owner: "testrole"}
 			appendFunction := backup.QueryFunctionDefinition{
-				SchemaName:"public", FunctionName:"append", ReturnsSet:true, FunctionBody:"SELECT ($1, $2)",
-				BinaryPath:"", Arguments:"integer, integer", IdentArgs:"integer, integer", ResultType:"SETOF record",
-				Volatility:"s", IsStrict:true, IsSecurityDefiner:true, Config:"SET search_path TO pg_temp", Cost:200,
-				NumRows:200, SqlUsage:"m", Language:"sql", Comment:"this is a function comment", Owner:"testrole"}
+				SchemaName: "public", FunctionName: "append", ReturnsSet: true, FunctionBody: "SELECT ($1, $2)",
+				BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "SETOF record",
+				Volatility: "s", IsStrict: true, IsSecurityDefiner: true, Config: "SET search_path TO pg_temp", Cost: 200,
+				NumRows: 200, SqlUsage: "m", Language: "sql", Comment: "this is a function comment", Owner: "testrole"}
 
 			Expect(len(results)).To(Equal(2))
 			testutils.ExpectStructsToMatch(&results[0], &addFunction)
@@ -921,10 +922,10 @@ CREATE AGGREGATE agg_prefunc(numeric, numeric) (
 			result := backup.GetAggregateDefinitions(connection)
 
 			aggregateDef := backup.QueryAggregateDefinition{
-				SchemaName:"public", AggregateName:"agg_prefunc", Arguments:"numeric, numeric",
-				IdentArgs:"numeric, numeric", TransitionFunction:transitionOid, PreliminaryFunction:prelimOid,
-				FinalFunction:0, SortOperator:0, TransitionDataType:"numeric", InitialValue:"0", IsOrdered:false,
-				Comment:"", Owner:"testrole",
+				SchemaName: "public", AggregateName: "agg_prefunc", Arguments: "numeric, numeric",
+				IdentArgs: "numeric, numeric", TransitionFunction: transitionOid, PreliminaryFunction: prelimOid,
+				FinalFunction: 0, SortOperator: 0, TransitionDataType: "numeric", InitialValue: "0", IsOrdered: false,
+				Comment: "", Owner: "testrole",
 			}
 
 			Expect(len(result)).To(Equal(1))
