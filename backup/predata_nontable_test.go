@@ -428,6 +428,15 @@ LANGUAGE internal;
 ALTER FUNCTION public.func_name(integer, integer) OWNER TO testrole;
 `)
 			})
+			It("prints a function definition for a function that returns a set", func() {
+				funcDefs[0].ReturnsSet=true
+				funcDefs[0].ResultType="SETOF integer"
+				backup.PrintCreateFunctionStatements(buffer, funcDefs)
+				testutils.ExpectRegexp(buffer, `CREATE FUNCTION public.func_name(integer, integer) RETURNS SETOF integer AS
+$$add_two_ints$$
+LANGUAGE internal;
+`)
+			})
 			It("prints a function definition for a function with a comment", func() {
 				funcDefs[0].Comment = "This is a function comment."
 				backup.PrintCreateFunctionStatements(buffer, funcDefs)

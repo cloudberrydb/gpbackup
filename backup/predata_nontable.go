@@ -190,9 +190,6 @@ func PrintCreateFunctionStatements(predataFile io.Writer, funcDefs []QueryFuncti
 	for _, funcDef := range funcDefs {
 		funcFQN := utils.MakeFQN(funcDef.SchemaName, funcDef.FunctionName)
 		utils.MustPrintf(predataFile, "\n\nCREATE FUNCTION %s(%s) RETURNS ", funcFQN, funcDef.Arguments)
-		if funcDef.ReturnsSet && !strings.HasPrefix(funcDef.ResultType, "TABLE") {
-			utils.MustPrintf(predataFile, "SETOF ")
-		}
 		utils.MustPrintf(predataFile, "%s AS", funcDef.ResultType)
 		PrintFunctionBodyOrPath(predataFile, funcDef)
 		utils.MustPrintf(predataFile, "LANGUAGE %s", funcDef.Language)
