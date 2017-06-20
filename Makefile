@@ -5,6 +5,7 @@ SHELL := /bin/bash
 BACKUP=gpbackup
 RESTORE=gprestore
 DIR_PATH=$(shell dirname `pwd`)
+BIN_DIR=$(HOME)/go/bin
 
 DEST = .
 
@@ -34,16 +35,16 @@ test : unit integration
 depend : dependencies
 
 build :
-		go build -tags '$(BACKUP)' $(GOFLAGS) -o ../../bin/$(BACKUP)
-		go build -tags '$(RESTORE)' $(GOFLAGS) -o ../../bin/$(RESTORE)
+		go build -tags '$(BACKUP)' $(GOFLAGS) -o $(BIN_DIR)/$(BACKUP)
+		go build -tags '$(RESTORE)' $(GOFLAGS) -o $(BIN_DIR)/$(RESTORE)
 
 build_rhel :
-		env GOOS=linux GOARCH=amd64 go build -tags '$(BACKUP)' $(GOFLAGS) -o ../../bin/$(BACKUP)
-		env GOOS=linux GOARCH=amd64 go build -tags '$(RESTORE)' $(GOFLAGS) -o ../../bin/$(RESTORE)
+		env GOOS=linux GOARCH=amd64 go build -tags '$(BACKUP)' $(GOFLAGS) -o $(BIN_DIR)/$(BACKUP)
+		env GOOS=linux GOARCH=amd64 go build -tags '$(RESTORE)' $(GOFLAGS) -o $(BIN_DIR)/$(RESTORE)
 
 build_osx :
-		env GOOS=darwin GOARCH=amd64 go build -tags '$(BACKUP)' $(GOFLAGS) -o ../../bin/$(BACKUP)
-		env GOOS=darwin GOARCH=amd64 go build -tags '$(RESTORE)' $(GOFLAGS) -o ../../bin/$(RESTORE)
+		env GOOS=darwin GOARCH=amd64 go build -tags '$(BACKUP)' $(GOFLAGS) -o $(BIN_DIR)/$(BACKUP)
+		env GOOS=darwin GOARCH=amd64 go build -tags '$(RESTORE)' $(GOFLAGS) -o $(BIN_DIR)/$(RESTORE)
 
 install : all installdirs
 		$(INSTALL_PROGRAM) gpbackup$(X) '$(DESTDIR)$(bindir)/gpbackup$(X)'
