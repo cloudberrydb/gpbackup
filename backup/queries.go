@@ -207,7 +207,7 @@ WHERE a.attrelid = %d;`, oid)
 	}
 }
 
-func GetAllSequences(connection *utils.DBConn) []utils.Relation {
+func GetAllSequenceRelations(connection *utils.DBConn) []utils.Relation {
 	query := `SELECT
 	n.oid AS schemaoid,
 	c.oid AS relationoid,

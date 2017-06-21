@@ -15,7 +15,7 @@ import (
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
-type SequenceDefinition struct {
+type Sequence struct {
 	utils.Relation
 	QuerySequenceDefinition
 }
@@ -91,22 +91,22 @@ func PrintCreateSchemaStatements(predataFile io.Writer, schemas []utils.Schema) 
 	}
 }
 
-func GetAllSequenceDefinitions(connection *utils.DBConn) []SequenceDefinition {
-	allSequences := GetAllSequences(connection)
-	sequenceDefs := make([]SequenceDefinition, 0)
-	for _, seq := range allSequences {
-		sequence := GetSequenceDefinition(connection, seq.ToString())
-		sequenceDef := SequenceDefinition{seq, sequence}
-		sequenceDefs = append(sequenceDefs, sequenceDef)
+func GetAllSequences(connection *utils.DBConn) []Sequence {
+	sequenceRelations := GetAllSequenceRelations(connection)
+	sequences := make([]Sequence, 0)
+	for _, seqRelation := range sequenceRelations {
+		seqDef := GetSequenceDefinition(connection, seqRelation.ToString())
+		sequence := Sequence{seqRelation, seqDef}
+		sequences = append(sequences, sequence)
 	}
-	return sequenceDefs
+	return sequences
 }
 
 /*
  * This function is largely derived from the dumpSequence() function in pg_dump.c.  The values of
  * minVal and maxVal come from SEQ_MINVALUE and SEQ_MAXVALUE, defined in include/commands/sequence.h.
  */
-func PrintCreateSequenceStatements(predataFile io.Writer, sequences []SequenceDefinition, sequenceOwners map[string]string) {
+func PrintCreateSequenceStatements(predataFile io.Writer, sequences []Sequence, sequenceOwners map[string]string) {
 	maxVal := int64(9223372036854775807)
 	minVal := int64(-9223372036854775807)
 	for _, sequence := range sequences {

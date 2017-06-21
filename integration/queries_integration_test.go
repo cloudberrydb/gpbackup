@@ -255,7 +255,7 @@ PARTITION BY LIST (gender)
 			Expect(distPolicy).To(Equal("DISTRIBUTED BY (a, b)"))
 		})
 	})
-	Describe("GetAllSequences", func() {
+	Describe("GetAllSequenceRelations", func() {
 		It("", func() {
 			testutils.AssertQueryRuns(connection, "CREATE SEQUENCE my_sequence START 10")
 			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE my_sequence")
@@ -265,7 +265,7 @@ PARTITION BY LIST (gender)
 			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema CASCADE")
 			testutils.AssertQueryRuns(connection, "CREATE SEQUENCE testschema.my_sequence2")
 
-			sequences := backup.GetAllSequences(connection)
+			sequences := backup.GetAllSequenceRelations(connection)
 
 			mySequence := utils.Relation{0, 0, "public", "my_sequence", "this is a sequence comment", "testrole"}
 			mySequence2 := utils.Relation{0, 0, "testschema", "my_sequence2", "", "testrole"}
@@ -346,7 +346,7 @@ PARTITION BY LIST (gender)
 			Expect(result).To(Equal("DISTRIBUTED BY (a, b)"))
 		})
 	})
-	Describe("GetAllSequenceDefinitions", func() {
+	Describe("GetAllSequences", func() {
 		It("returns a slice of definitions for all sequences", func() {
 			testutils.AssertQueryRuns(connection, "CREATE SEQUENCE seq_one START 3")
 			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE seq_one")
@@ -360,7 +360,7 @@ PARTITION BY LIST (gender)
 			seqTwoRelation := utils.Relation{SchemaName: "public", RelationName: "seq_two", Owner: "testrole"}
 			seqTwoDef := backup.QuerySequenceDefinition{Name: "seq_two", LastVal: 7, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
 
-			results := backup.GetAllSequenceDefinitions(connection)
+			results := backup.GetAllSequences(connection)
 
 			testutils.ExpectStructsToMatchExcluding(&seqOneRelation, &results[0].Relation, "SchemaOid", "RelationOid")
 			testutils.ExpectStructsToMatchExcluding(&seqOneDef, &results[0].QuerySequenceDefinition)

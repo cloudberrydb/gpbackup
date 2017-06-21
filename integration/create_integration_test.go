@@ -342,21 +342,21 @@ var _ = Describe("backup integration create statement tests", func() {
 		var (
 			ownerMap    map[string]string
 			sequence    utils.Relation
-			sequenceDef backup.SequenceDefinition
+			sequenceDef backup.Sequence
 		)
 		BeforeEach(func() {
 			sequence = utils.Relation{SchemaName: "public", RelationName: "my_sequence", Owner: "testrole"}
-			sequenceDef = backup.SequenceDefinition{Relation: sequence}
+			sequenceDef = backup.Sequence{Relation: sequence}
 			ownerMap = map[string]string{}
 		})
 		It("creates a basic sequence", func() {
 			sequenceDef.QuerySequenceDefinition = backup.QuerySequenceDefinition{Name: "my_sequence", LastVal: 1, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
-			backup.PrintCreateSequenceStatements(buffer, []backup.SequenceDefinition{sequenceDef}, ownerMap)
+			backup.PrintCreateSequenceStatements(buffer, []backup.Sequence{sequenceDef}, ownerMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE my_sequence")
 
-			resultSequences := backup.GetAllSequenceDefinitions(connection)
+			resultSequences := backup.GetAllSequences(connection)
 
 			Expect(len(resultSequences)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&sequence, &resultSequences[0].Relation, "SchemaOid", "RelationOid")
@@ -364,12 +364,12 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 		It("creates a complex sequence", func() {
 			sequenceDef.QuerySequenceDefinition = backup.QuerySequenceDefinition{Name: "my_sequence", LastVal: 105, Increment: 5, MaxVal: 1000, MinVal: 20, CacheVal: 1, LogCnt: 0, IsCycled: false, IsCalled: true}
-			backup.PrintCreateSequenceStatements(buffer, []backup.SequenceDefinition{sequenceDef}, ownerMap)
+			backup.PrintCreateSequenceStatements(buffer, []backup.Sequence{sequenceDef}, ownerMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE my_sequence")
 
-			resultSequences := backup.GetAllSequenceDefinitions(connection)
+			resultSequences := backup.GetAllSequences(connection)
 
 			Expect(len(resultSequences)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&sequence, &resultSequences[0].Relation, "SchemaOid", "RelationOid")
@@ -379,7 +379,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			sequenceDef.QuerySequenceDefinition = backup.QuerySequenceDefinition{Name: "my_sequence",
 				LastVal: 1, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
 			ownerMap["public.my_sequence"] = "sequence_table.a"
-			backup.PrintCreateSequenceStatements(buffer, []backup.SequenceDefinition{sequenceDef}, ownerMap)
+			backup.PrintCreateSequenceStatements(buffer, []backup.Sequence{sequenceDef}, ownerMap)
 
 			//Create table that sequence can be owned by
 			testutils.AssertQueryRuns(connection, "CREATE TABLE sequence_table(a int)")
@@ -388,7 +388,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE my_sequence")
 
-			resultSequences := backup.GetAllSequenceDefinitions(connection)
+			resultSequences := backup.GetAllSequences(connection)
 
 			Expect(len(resultSequences)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&sequence, &resultSequences[0].Relation, "SchemaOid", "RelationOid")
