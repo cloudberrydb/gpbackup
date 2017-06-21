@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq"
+	_ "github.com/lib/pq" // Need driver for postgres
 	"github.com/pkg/errors"
 )
 

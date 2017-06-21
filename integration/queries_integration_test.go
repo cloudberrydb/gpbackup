@@ -784,13 +784,13 @@ MODIFIES SQL DATA
 			addFunction := backup.QueryFunctionDefinition{
 				SchemaName: "public", FunctionName: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
 				BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "integer",
-				Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 0, SqlUsage: "c",
+				Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 0, DataAccess: "c",
 				Language: "sql", Comment: "", Owner: "testrole"}
 			appendFunction := backup.QueryFunctionDefinition{
 				SchemaName: "public", FunctionName: "append", ReturnsSet: true, FunctionBody: "SELECT ($1, $2)",
 				BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "SETOF record",
 				Volatility: "s", IsStrict: true, IsSecurityDefiner: true, Config: "SET search_path TO pg_temp", Cost: 200,
-				NumRows: 200, SqlUsage: "m", Language: "sql", Comment: "this is a function comment", Owner: "testrole"}
+				NumRows: 200, DataAccess: "m", Language: "sql", Comment: "this is a function comment", Owner: "testrole"}
 
 			Expect(len(results)).To(Equal(2))
 			testutils.ExpectStructsToMatch(&results[0], &addFunction)

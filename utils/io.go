@@ -34,10 +34,10 @@ func CheckDirectoryExists(dirname string) (bool, error) {
 	if err != nil {
 		if System.IsNotExist(err) {
 			return false, nil
-		} else {
-			return false, err
 		}
-	} else if !(info.IsDir()) {
+		return false, err
+	}
+	if !(info.IsDir()) {
 		return false, errors.Errorf("%s is a file, not a directory", dirname)
 	}
 	return true, nil
@@ -116,11 +116,11 @@ func MustPrintln(file io.Writer, v ...interface{}) {
 
 // TODO: Handle multi-node clusters
 func CreateDumpDirs() {
-	for segId, dumpPath := range segDirMap {
+	for segID, dumpPath := range segDirMap {
 		logger.Verbose("Creating directory %s", dumpPath)
 		err := System.MkdirAll(dumpPath, 0700)
 		if err != nil {
-			logger.Fatal(err, "Cannot create directory %s on host %s", dumpPath, segHostMap[segId])
+			logger.Fatal(err, "Cannot create directory %s on host %s", dumpPath, segHostMap[segID])
 		}
 		CheckError(err)
 	}

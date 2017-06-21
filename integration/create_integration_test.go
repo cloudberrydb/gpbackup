@@ -159,7 +159,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			addFunction := backup.QueryFunctionDefinition{
 				SchemaName: "public", FunctionName: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
 				BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "integer",
-				Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 0, SqlUsage: "c",
+				Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 0, DataAccess: "c",
 				Language: "sql", Comment: "", Owner: "testrole",
 			}
 
@@ -178,7 +178,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				SchemaName: "public", FunctionName: "append", ReturnsSet: true, FunctionBody: "SELECT ($1, $2)",
 				BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "SETOF record",
 				Volatility: "s", IsStrict: true, IsSecurityDefiner: true, Config: "SET search_path TO pg_temp", Cost: 200,
-				NumRows: 200, SqlUsage: "m", Language: "sql", Comment: "this is a function comment", Owner: "testrole",
+				NumRows: 200, DataAccess: "m", Language: "sql", Comment: "this is a function comment", Owner: "testrole",
 			}
 
 			backup.PrintCreateFunctionStatements(buffer, []backup.QueryFunctionDefinition{appendFunction})
@@ -195,7 +195,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			dupFunction := backup.QueryFunctionDefinition{
 				SchemaName: "public", FunctionName: "dup", ReturnsSet: true, FunctionBody: "SELECT $1, CAST($1 AS text) || ' is text'",
 				BinaryPath: "", Arguments: "integer", IdentArgs: "integer", ResultType: "TABLE(f1 integer, f2 text)",
-				Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 1000, SqlUsage: "c",
+				Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 1000, DataAccess: "c",
 				Language: "sql", Comment: "", Owner: "testrole",
 			}
 

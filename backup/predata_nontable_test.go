@@ -297,7 +297,7 @@ ALTER SEQUENCE public.seq_name OWNED BY tablename.col_one`)
 	})
 	Describe("PrintCreateSchemaStatements", func() {
 		It("can print schema with comments", func() {
-			schemas := []utils.Schema{utils.Schema{0, "schema_with_comments", "This is a comment.", ""}}
+			schemas := []utils.Schema{{0, "schema_with_comments", "This is a comment.", ""}}
 
 			backup.PrintCreateSchemaStatements(buffer, schemas)
 			testutils.ExpectRegexp(buffer, `CREATE SCHEMA schema_with_comments;
@@ -350,10 +350,10 @@ ALTER DATABASE testdb SET gp_default_storage_options TO 'appendonly=true,blocksi
 		plAllFields := backup.QueryProceduralLanguage{"plpgsql", "testrole", true, true, 1, 2, 3, "", ""}
 		plComment := backup.QueryProceduralLanguage{"plpythonu", "testrole", true, false, 4, 0, 0, "", "language comment"}
 		funcInfoMap := map[uint32]backup.FunctionInfo{
-			1: backup.FunctionInfo{QualifiedName: "pg_catalog.plpgsql_call_handler", Arguments: ""},
-			2: backup.FunctionInfo{QualifiedName: "pg_catalog.plpgsql_inline_handler", Arguments: "internal"},
-			3: backup.FunctionInfo{QualifiedName: "pg_catalog.plpgsql_validator", Arguments: "oid"},
-			4: backup.FunctionInfo{QualifiedName: "pg_catalog.plpython_call_handler", Arguments: ""},
+			1: {QualifiedName: "pg_catalog.plpgsql_call_handler", Arguments: ""},
+			2: {QualifiedName: "pg_catalog.plpgsql_inline_handler", Arguments: "internal"},
+			3: {QualifiedName: "pg_catalog.plpgsql_validator", Arguments: "oid"},
+			4: {QualifiedName: "pg_catalog.plpython_call_handler", Arguments: ""},
 		}
 
 		It("prints untrusted language with a handler only", func() {
@@ -500,22 +500,22 @@ $_$`)
 		Describe("PrintFunctionModifiers", func() {
 			Context("SqlUsage cases", func() {
 				It("prints 'c' as CONTAINS SQL", func() {
-					funcDef.SqlUsage = "c"
+					funcDef.DataAccess = "c"
 					backup.PrintFunctionModifiers(buffer, funcDef)
 					testutils.ExpectRegexp(buffer, "CONTAINS SQL")
 				})
 				It("prints 'm' as MODIFIES SQL DATA", func() {
-					funcDef.SqlUsage = "m"
+					funcDef.DataAccess = "m"
 					backup.PrintFunctionModifiers(buffer, funcDef)
 					testutils.ExpectRegexp(buffer, "MODIFIES SQL DATA")
 				})
 				It("prints 'n' as NO SQL", func() {
-					funcDef.SqlUsage = "n"
+					funcDef.DataAccess = "n"
 					backup.PrintFunctionModifiers(buffer, funcDef)
 					testutils.ExpectRegexp(buffer, "NO SQL")
 				})
 				It("prints 'r' as READS SQL DATA", func() {
-					funcDef.SqlUsage = "r"
+					funcDef.DataAccess = "r"
 					backup.PrintFunctionModifiers(buffer, funcDef)
 					testutils.ExpectRegexp(buffer, "READS SQL DATA")
 				})
@@ -637,10 +637,10 @@ $_$`)
 		aggDefs := make([]backup.QueryAggregateDefinition, 1)
 		aggDefault := backup.QueryAggregateDefinition{"public", "agg_name", "integer, integer", "integer, integer", 1, 0, 0, 0, "integer", "", false, "", ""}
 		funcInfoMap := map[uint32]backup.FunctionInfo{
-			1: backup.FunctionInfo{QualifiedName: "public.mysfunc", Arguments: "integer"},
-			2: backup.FunctionInfo{QualifiedName: "public.mypfunc", Arguments: "numeric, numeric"},
-			3: backup.FunctionInfo{QualifiedName: "public.myffunc", Arguments: "text"},
-			4: backup.FunctionInfo{QualifiedName: "public.mysortop", Arguments: "bigint"},
+			1: {QualifiedName: "public.mysfunc", Arguments: "integer"},
+			2: {QualifiedName: "public.mypfunc", Arguments: "numeric, numeric"},
+			3: {QualifiedName: "public.myffunc", Arguments: "text"},
+			4: {QualifiedName: "public.mysortop", Arguments: "bigint"},
 		}
 		BeforeEach(func() {
 			aggDefs[0] = aggDefault

@@ -224,7 +224,7 @@ func PrintFunctionBodyOrPath(predataFile io.Writer, funcDef QueryFunctionDefinit
 }
 
 func PrintFunctionModifiers(predataFile io.Writer, funcDef QueryFunctionDefinition) {
-	switch funcDef.SqlUsage {
+	switch funcDef.DataAccess {
 	case "c":
 		utils.MustPrintf(predataFile, " CONTAINS SQL")
 	case "m":

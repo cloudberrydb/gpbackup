@@ -5,7 +5,6 @@ package testutils
  */
 
 import (
-	"errors"
 	"fmt"
 
 	"reflect"
@@ -26,9 +25,8 @@ type TestDriver struct {
 func (driver TestDriver) Connect(driverName string, dataSourceName string) (*sqlx.DB, error) {
 	if driver.DBExists {
 		return driver.DB, nil
-	} else {
-		return nil, errors.New(fmt.Sprintf("Database %s does not exist", driver.DBName))
 	}
+	return nil, fmt.Errorf("Database %s does not exist", driver.DBName)
 }
 
 type TestResult struct {
@@ -61,7 +59,7 @@ func StructMatcher(expected interface{}, actual interface{}) []string {
 func StructMatcherExcluding(expected interface{}, actual interface{}, excludeFields ...string) []string {
 
 	excludeMap := make(map[string]bool)
-	for i := 0; i < len(excludeFields); i += 1 {
+	for i := 0; i < len(excludeFields); i++ {
 		excludeMap[excludeFields[i]] = true
 	}
 
@@ -85,7 +83,7 @@ func StructMatcherExcluding(expected interface{}, actual interface{}, excludeFie
 
 func StructMatcherIncluding(expected interface{}, actual interface{}, includeFields ...string) []string {
 	includeMap := make(map[string]bool)
-	for i := 0; i < len(includeFields); i += 1 {
+	for i := 0; i < len(includeFields); i++ {
 		includeMap[includeFields[i]] = true
 	}
 

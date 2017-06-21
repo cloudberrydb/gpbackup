@@ -19,10 +19,15 @@ dependencies :
 		go get github.com/pkg/errors
 		go get golang.org/x/tools/cmd/goimports
 		go get gopkg.in/DATA-DOG/go-sqlmock.v1
+		go get github.com/alecthomas/gometalinter
 
 format :
 		goimports -w .
-		go fmt ./...
+		gofmt -w -s .
+
+lint :
+		! gofmt -l . | read
+		gometalinter --config=gometalinter.config ./...
 
 unit :
 		ginkgo -r -randomizeSuites -randomizeAllSpecs backup restore utils testutils 2>&1
@@ -30,7 +35,7 @@ unit :
 integration :
 		ginkgo -r -randomizeSuites -randomizeAllSpecs integration 2>&1
 
-test : unit integration
+test : lint unit integration
 
 depend : dependencies
 

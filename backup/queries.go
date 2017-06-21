@@ -198,13 +198,12 @@ WHERE a.attrelid = %d;`, oid)
 	results := SelectStringSlice(connection, query)
 	if len(results) == 0 {
 		return "DISTRIBUTED RANDOMLY"
-	} else {
-		distCols := make([]string, 0)
-		for _, dist := range results {
-			distCols = append(distCols, utils.QuoteIdent(dist))
-		}
-		return fmt.Sprintf("DISTRIBUTED BY (%s)", strings.Join(distCols, ", "))
 	}
+	distCols := make([]string, 0)
+	for _, dist := range results {
+		distCols = append(distCols, utils.QuoteIdent(dist))
+	}
+	return fmt.Sprintf("DISTRIBUTED BY (%s)", strings.Join(distCols, ", "))
 }
 
 func GetAllSequenceRelations(connection *utils.DBConn) []utils.Relation {
@@ -340,7 +339,7 @@ type QueryFunctionDefinition struct {
 	Config            string  `db:"proconfig"`
 	Cost              float32 `db:"procost"`
 	NumRows           float32 `db:"prorows"`
-	SqlUsage          string  `db:"prodataaccess"`
+	DataAccess        string  `db:"prodataaccess"`
 	Language          string
 	Comment           string
 	Owner             string
