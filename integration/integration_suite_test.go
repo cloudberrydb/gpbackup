@@ -8,8 +8,6 @@ import (
 	"github.com/greenplum-db/gpbackup/testutils"
 	"github.com/greenplum-db/gpbackup/utils"
 
-	"fmt"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
@@ -28,7 +26,7 @@ var _ = BeforeSuite(func() {
 	exec.Command("dropdb", "testdb").Run()
 	err := exec.Command("createdb", "testdb").Run()
 	if err != nil {
-		PrintAsciiWithText("Is greenplum running?")
+		Fail("Cannot create database testdb; is GPDB running?")
 	}
 	Expect(err).To(BeNil())
 	connection = utils.NewDBConn("testdb")
@@ -42,19 +40,9 @@ var _ = BeforeSuite(func() {
 
 var _ = AfterSuite(func() {
 	gexec.CleanupBuildArtifacts()
-
-	connection.Close()
-	err := exec.Command("dropdb", "testdb").Run()
-	Expect(err).To(BeNil())
+	if connection != nil {
+		connection.Close()
+		err := exec.Command("dropdb", "testdb").Run()
+		Expect(err).To(BeNil())
+	}
 })
-
-func PrintAsciiWithText(str string) {
-	ascii :=
-		`  __      _
-o'')}____//
- \_/      )
- (_(_/-(_/   `
-	fmt.Print(ascii)
-	fmt.Println(str)
-
-}

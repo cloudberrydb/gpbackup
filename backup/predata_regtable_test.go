@@ -18,7 +18,7 @@ var _ = Describe("backup/predata tests", func() {
 	distSingle := "DISTRIBUTED BY (i)"
 	distComposite := "DISTRIBUTED BY (i, j)"
 
-	rowOne := backup.ColumnDefinition{1, "i", false, false, false, "int", "", "", ""}
+	rowOne := backup.ColumnDefinition{1, "i", false, false, false, "integer", "", "", ""}
 	rowTwo := backup.ColumnDefinition{2, "j", false, false, false, "character varying(20)", "", "", ""}
 
 	heapOpts := ""
@@ -69,11 +69,11 @@ ENCODING 'UTF-8';`)
 	})
 	Describe("PrintRegularTableCreateStatement", func() {
 		rowDropped := backup.ColumnDefinition{2, "j", false, false, true, "character varying(20)", "", "", ""}
-		rowOneEncoding := backup.ColumnDefinition{1, "i", false, false, false, "int", "compresstype=none,blocksize=32768,compresslevel=0", "", ""}
+		rowOneEncoding := backup.ColumnDefinition{1, "i", false, false, false, "integer", "compresstype=none,blocksize=32768,compresslevel=0", "", ""}
 		rowTwoEncoding := backup.ColumnDefinition{2, "j", false, false, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", "", ""}
 		rowNotNull := backup.ColumnDefinition{2, "j", true, false, false, "character varying(20)", "", "", ""}
 		rowEncodingNotNull := backup.ColumnDefinition{2, "j", true, false, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", "", ""}
-		rowOneDef := backup.ColumnDefinition{1, "i", false, true, false, "int", "", "", "42"}
+		rowOneDef := backup.ColumnDefinition{1, "i", false, true, false, "integer", "", "", "42"}
 		rowTwoDef := backup.ColumnDefinition{2, "j", false, true, false, "character varying(20)", "", "", "'bar'::text"}
 		rowTwoEncodingDef := backup.ColumnDefinition{2, "j", false, true, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", "", "'bar'::text"}
 		rowNotNullDef := backup.ColumnDefinition{2, "j", true, true, false, "character varying(20)", "", "", "'bar'::text"}
@@ -85,7 +85,7 @@ ENCODING 'UTF-8';`)
 				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int
+	i integer
 ) DISTRIBUTED RANDOMLY;`)
 			})
 			It("prints a CREATE TABLE block with one line per attribute", func() {
@@ -93,7 +93,7 @@ ENCODING 'UTF-8';`)
 				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int,
+	i integer,
 	j character varying(20)
 ) DISTRIBUTED RANDOMLY;`)
 			})
@@ -108,7 +108,7 @@ ENCODING 'UTF-8';`)
 				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int
+	i integer
 ) DISTRIBUTED RANDOMLY;`)
 			})
 		})
@@ -118,7 +118,7 @@ ENCODING 'UTF-8';`)
 				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int ENCODING (compresstype=none,blocksize=32768,compresslevel=0),
+	i integer ENCODING (compresstype=none,blocksize=32768,compresslevel=0),
 	j character varying(20) ENCODING (compresstype=zlib,blocksize=65536,compresslevel=1)
 ) DISTRIBUTED RANDOMLY;`)
 			})
@@ -127,7 +127,7 @@ ENCODING 'UTF-8';`)
 				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int,
+	i integer,
 	j character varying(20) NOT NULL
 ) DISTRIBUTED RANDOMLY;`)
 			})
@@ -136,7 +136,7 @@ ENCODING 'UTF-8';`)
 				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int DEFAULT 42,
+	i integer DEFAULT 42,
 	j character varying(20)
 ) DISTRIBUTED RANDOMLY;`)
 			})
@@ -145,7 +145,7 @@ ENCODING 'UTF-8';`)
 				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int DEFAULT 42,
+	i integer DEFAULT 42,
 	j character varying(20) DEFAULT 'bar'::text
 ) DISTRIBUTED RANDOMLY;`)
 			})
@@ -156,7 +156,7 @@ ENCODING 'UTF-8';`)
 				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int ENCODING (compresstype=none,blocksize=32768,compresslevel=0),
+	i integer ENCODING (compresstype=none,blocksize=32768,compresslevel=0),
 	j character varying(20) NOT NULL ENCODING (compresstype=zlib,blocksize=65536,compresslevel=1)
 ) DISTRIBUTED RANDOMLY;`)
 			})
@@ -165,7 +165,7 @@ ENCODING 'UTF-8';`)
 				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int,
+	i integer,
 	j character varying(20) DEFAULT 'bar'::text NOT NULL
 ) DISTRIBUTED RANDOMLY;`)
 			})
@@ -174,7 +174,7 @@ ENCODING 'UTF-8';`)
 				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int ENCODING (compresstype=none,blocksize=32768,compresslevel=0),
+	i integer ENCODING (compresstype=none,blocksize=32768,compresslevel=0),
 	j character varying(20) DEFAULT 'bar'::text ENCODING (compresstype=zlib,blocksize=65536,compresslevel=1)
 ) DISTRIBUTED RANDOMLY;`)
 			})
@@ -183,7 +183,7 @@ ENCODING 'UTF-8';`)
 				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int ENCODING (compresstype=none,blocksize=32768,compresslevel=0),
+	i integer ENCODING (compresstype=none,blocksize=32768,compresslevel=0),
 	j character varying(20) DEFAULT 'bar'::text NOT NULL ENCODING (compresstype=zlib,blocksize=65536,compresslevel=1)
 ) DISTRIBUTED RANDOMLY;`)
 			})
@@ -194,7 +194,7 @@ ENCODING 'UTF-8';`)
 				tableDef := backup.TableDefinition{distSingle, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int,
+	i integer,
 	j character varying(20)
 ) DISTRIBUTED BY (i);`)
 			})
@@ -203,7 +203,7 @@ ENCODING 'UTF-8';`)
 				tableDef := backup.TableDefinition{distComposite, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int,
+	i integer,
 	j character varying(20)
 ) DISTRIBUTED BY (i, j);`)
 			})
@@ -212,7 +212,7 @@ ENCODING 'UTF-8';`)
 				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, aoOpts, col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int,
+	i integer,
 	j character varying(20)
 ) WITH (appendonly=true) DISTRIBUTED RANDOMLY;`)
 			})
@@ -221,7 +221,7 @@ ENCODING 'UTF-8';`)
 				tableDef := backup.TableDefinition{distSingle, partDefEmpty, partTemplateDefEmpty, aoOpts, col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int,
+	i integer,
 	j character varying(20)
 ) WITH (appendonly=true) DISTRIBUTED BY (i);`)
 			})
@@ -230,7 +230,7 @@ ENCODING 'UTF-8';`)
 				tableDef := backup.TableDefinition{distComposite, partDefEmpty, partTemplateDefEmpty, aoOpts, col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int,
+	i integer,
 	j character varying(20)
 ) WITH (appendonly=true) DISTRIBUTED BY (i, j);`)
 			})
@@ -239,7 +239,7 @@ ENCODING 'UTF-8';`)
 				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, coOpts, col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int,
+	i integer,
 	j character varying(20)
 ) WITH (appendonly=true, orientation=column) DISTRIBUTED RANDOMLY;`)
 			})
@@ -248,7 +248,7 @@ ENCODING 'UTF-8';`)
 				tableDef := backup.TableDefinition{distSingle, partDefEmpty, partTemplateDefEmpty, coOpts, col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int,
+	i integer,
 	j character varying(20)
 ) WITH (appendonly=true, orientation=column) DISTRIBUTED BY (i);`)
 			})
@@ -257,7 +257,7 @@ ENCODING 'UTF-8';`)
 				tableDef := backup.TableDefinition{distComposite, partDefEmpty, partTemplateDefEmpty, coOpts, col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int,
+	i integer,
 	j character varying(20)
 ) WITH (appendonly=true, orientation=column) DISTRIBUTED BY (i, j);`)
 			})
@@ -266,7 +266,7 @@ ENCODING 'UTF-8';`)
 				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapFillOpts, col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int,
+	i integer,
 	j character varying(20)
 ) WITH (fillfactor=42) DISTRIBUTED RANDOMLY;`)
 			})
@@ -275,7 +275,7 @@ ENCODING 'UTF-8';`)
 				tableDef := backup.TableDefinition{distSingle, partDefEmpty, partTemplateDefEmpty, heapFillOpts, col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int,
+	i integer,
 	j character varying(20)
 ) WITH (fillfactor=42) DISTRIBUTED BY (i);`)
 			})
@@ -284,7 +284,7 @@ ENCODING 'UTF-8';`)
 				tableDef := backup.TableDefinition{distComposite, partDefEmpty, partTemplateDefEmpty, heapFillOpts, col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int,
+	i integer,
 	j character varying(20)
 ) WITH (fillfactor=42) DISTRIBUTED BY (i, j);`)
 			})
@@ -293,7 +293,7 @@ ENCODING 'UTF-8';`)
 				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, coManyOpts, col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int,
+	i integer,
 	j character varying(20)
 ) WITH (appendonly=true, orientation=column, fillfactor=42, compresstype=zlib, blocksize=32768, compresslevel=1) DISTRIBUTED RANDOMLY;`)
 			})
@@ -302,7 +302,7 @@ ENCODING 'UTF-8';`)
 				tableDef := backup.TableDefinition{distSingle, partDefEmpty, partTemplateDefEmpty, coManyOpts, col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int,
+	i integer,
 	j character varying(20)
 ) WITH (appendonly=true, orientation=column, fillfactor=42, compresstype=zlib, blocksize=32768, compresslevel=1) DISTRIBUTED BY (i);`)
 			})
@@ -311,7 +311,7 @@ ENCODING 'UTF-8';`)
 				tableDef := backup.TableDefinition{distComposite, partDefEmpty, partTemplateDefEmpty, coManyOpts, col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int,
+	i integer,
 	j character varying(20)
 ) WITH (appendonly=true, orientation=column, fillfactor=42, compresstype=zlib, blocksize=32768, compresslevel=1) DISTRIBUTED BY (i, j);`)
 			})
@@ -322,7 +322,7 @@ ENCODING 'UTF-8';`)
 				tableDef := backup.TableDefinition{distRandom, partDef, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int,
+	i integer,
 	j character varying(20)
 ) DISTRIBUTED RANDOMLY PARTITION BY LIST(gender)
 	(
@@ -336,7 +336,7 @@ ENCODING 'UTF-8';`)
 				tableDef := backup.TableDefinition{distRandom, partDef, partTemplateDefEmpty, coOpts, col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int,
+	i integer,
 	j character varying(20)
 ) WITH (appendonly=true, orientation=column) DISTRIBUTED RANDOMLY PARTITION BY LIST(gender)
 	(
@@ -350,32 +350,9 @@ ENCODING 'UTF-8';`)
 				tableDef := backup.TableDefinition{distRandom, partDef, partTemplateDef, heapOpts, col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int,
+	i integer,
 	j character varying(20)
 ) DISTRIBUTED RANDOMLY PARTITION BY LIST(gender)
-	(
-	PARTITION girls VALUES('F') WITH (tablename='rank_1_prt_girls', appendonly=false ),
-	PARTITION boys VALUES('M') WITH (tablename='rank_1_prt_boys', appendonly=false ),
-	DEFAULT PARTITION other  WITH (tablename='rank_1_prt_other', appendonly=false )
-	);
-ALTER TABLE tablename
-SET SUBPARTITION TEMPLATE
-          (
-          SUBPARTITION usa VALUES('usa') WITH (tablename='tablename'),
-          SUBPARTITION asia VALUES('asia') WITH (tablename='tablename'),
-          SUBPARTITION europe VALUES('europe') WITH (tablename='tablename'),
-          DEFAULT SUBPARTITION other_regions  WITH (tablename='tablename')
-          );
-`)
-			})
-			It("is a partition table with subpartitions and no table attributes", func() {
-				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distRandom, partDef, partTemplateDef, coOpts, col, false, extTableEmpty}
-				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
-				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
-	i int,
-	j character varying(20)
-) WITH (appendonly=true, orientation=column) DISTRIBUTED RANDOMLY PARTITION BY LIST(gender)
 	(
 	PARTITION girls VALUES('F') WITH (tablename='rank_1_prt_girls', appendonly=false ),
 	PARTITION boys VALUES('M') WITH (tablename='rank_1_prt_boys', appendonly=false ),
@@ -397,8 +374,8 @@ SET SUBPARTITION TEMPLATE
 		tableWithComment := utils.Relation{0, 0, "public", "tablename", "This is a table comment.", ""}
 		tableWithOwner := utils.Relation{0, 0, "public", "tablename", "", "testrole"}
 		tableWithBoth := utils.Relation{0, 0, "public", "tablename", "This is a table comment.", "testrole"}
-		rowCommentOne := backup.ColumnDefinition{1, "i", false, false, false, "int", "", "This is a column comment.", ""}
-		rowCommentTwo := backup.ColumnDefinition{2, "j", false, false, false, "int", "", "This is another column comment.", ""}
+		rowCommentOne := backup.ColumnDefinition{1, "i", false, false, false, "integer", "", "This is a column comment.", ""}
+		rowCommentTwo := backup.ColumnDefinition{2, "j", false, false, false, "integer", "", "This is another column comment.", ""}
 
 		It("prints a CREATE TABLE block with a table comment", func() {
 			col := []backup.ColumnDefinition{rowOne}
@@ -454,12 +431,12 @@ COMMENT ON COLUMN public.tablename.j IS 'This is another column comment.';`)
 		})
 	})
 	Describe("ConsolidateColumnInfo", func() {
-		attsOne := backup.QueryTableAtts{1, "i", false, false, false, "int", "", ""}
-		attsTwo := backup.QueryTableAtts{2, "j", false, false, false, "int", "", ""}
-		attsThree := backup.QueryTableAtts{3, "k", false, false, false, "int", "", ""}
-		attsOneDef := backup.QueryTableAtts{1, "i", false, true, false, "int", "", ""}
-		attsTwoDef := backup.QueryTableAtts{2, "j", false, true, false, "int", "", ""}
-		attsThreeDef := backup.QueryTableAtts{3, "k", false, true, false, "int", "", ""}
+		attsOne := backup.QueryTableAtts{1, "i", false, false, false, "integer", "", ""}
+		attsTwo := backup.QueryTableAtts{2, "j", false, false, false, "integer", "", ""}
+		attsThree := backup.QueryTableAtts{3, "k", false, false, false, "integer", "", ""}
+		attsOneDef := backup.QueryTableAtts{1, "i", false, true, false, "integer", "", ""}
+		attsTwoDef := backup.QueryTableAtts{2, "j", false, true, false, "integer", "", ""}
+		attsThreeDef := backup.QueryTableAtts{3, "k", false, true, false, "integer", "", ""}
 
 		defaultsOne := backup.QueryTableDefault{1, "1"}
 		defaultsTwo := backup.QueryTableDefault{2, "2"}

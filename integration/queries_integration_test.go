@@ -20,8 +20,8 @@ var _ = Describe("backup integration tests", func() {
 			schemaPublic := utils.Schema{2200, "public", "standard public schema", "testrole"}
 
 			Expect(len(schemas)).To(Equal(2))
-			testutils.ExpectStructsToMatchExcluding(&schemas[0], &schemaBar, []string{"SchemaOid"})
-			testutils.ExpectStructsToMatchExcluding(&schemas[1], &schemaPublic, []string{"Owner"})
+			testutils.ExpectStructsToMatchExcluding(&schemaBar, &schemas[0], "SchemaOid")
+			testutils.ExpectStructsToMatchExcluding(&schemaPublic, &schemas[1], "Owner")
 		})
 	})
 	Describe("GetAllUserTables", func() {
@@ -35,21 +35,12 @@ var _ = Describe("backup integration tests", func() {
 
 			tables := backup.GetAllUserTables(connection)
 
+			tableFoo := utils.Relation{0, 0, "public", "foo", "this is a table comment", "testrole"}
+			tableTestTable := utils.Relation{0, 0, "testschema", "testtable", "", "testrole"}
+
 			Expect(len(tables)).To(Equal(2))
-
-			Expect(tables[0].SchemaOid).ToNot(Equal(uint32(0)))
-			Expect(tables[0].RelationOid).ToNot(Equal(uint32(0)))
-			Expect(tables[0].SchemaName).To(Equal("public"))
-			Expect(tables[0].RelationName).To(Equal("foo"))
-			Expect(tables[0].Comment).To(Equal("this is a table comment"))
-			Expect(tables[0].Owner).To(Equal("testrole"))
-
-			Expect(tables[1].SchemaOid).ToNot(Equal(uint32(0)))
-			Expect(tables[1].RelationOid).ToNot(Equal(uint32(0)))
-			Expect(tables[1].SchemaName).To(Equal("testschema"))
-			Expect(tables[1].RelationName).To(Equal("testtable"))
-			Expect(tables[1].Comment).To(Equal(""))
-			Expect(tables[1].Owner).To(Equal("testrole"))
+			testutils.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "RelationOid")
+			testutils.ExpectStructsToMatchExcluding(&tableTestTable, &tables[1], "SchemaOid", "RelationOid")
 		})
 		It("only returns the parent partition table for partition tables", func() {
 			createStmt := `CREATE TABLE rank (id int, rank int, year int, gender
@@ -64,14 +55,10 @@ PARTITION BY LIST (gender)
 
 			tables := backup.GetAllUserTables(connection)
 
-			Expect(len(tables)).To(Equal(1))
+			tableRank := utils.Relation{0, 0, "public", "rank", "", "testrole"}
 
-			Expect(tables[0].SchemaOid).ToNot(Equal(uint32(0)))
-			Expect(tables[0].RelationOid).ToNot(Equal(uint32(0)))
-			Expect(tables[0].SchemaName).To(Equal("public"))
-			Expect(tables[0].RelationName).To(Equal("rank"))
-			Expect(tables[0].Comment).To(Equal(""))
-			Expect(tables[0].Owner).To(Equal("testrole"))
+			Expect(len(tables)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&tableRank, &tables[0], "SchemaOid", "RelationOid")
 		})
 	})
 	Describe("GetTableAttributes", func() {
@@ -84,34 +71,15 @@ PARTITION BY LIST (gender)
 
 			tableAtts := backup.GetTableAttributes(connection, oid)
 
+			columnA := backup.QueryTableAtts{1, "a", false, false, false, "double precision", "", "att comment"}
+			columnC := backup.QueryTableAtts{3, "c", true, false, false, "text", "", ""}
+			columnD := backup.QueryTableAtts{4, "d", false, true, false, "integer", "", ""}
+
 			Expect(len(tableAtts)).To(Equal(3))
 
-			Expect(tableAtts[0].AttNum).To(Equal(1))
-			Expect(tableAtts[0].AttName).To(Equal("a"))
-			Expect(tableAtts[0].AttNotNull).To(BeFalse())
-			Expect(tableAtts[0].AttHasDefault).To(BeFalse())
-			Expect(tableAtts[0].AttIsDropped).To(BeFalse())
-			Expect(tableAtts[0].AttTypName).To(Equal("double precision"))
-			Expect(tableAtts[0].AttEncoding).To(Equal(""))
-			Expect(tableAtts[0].AttComment).To(Equal("att comment"))
-
-			Expect(tableAtts[1].AttNum).To(Equal(3))
-			Expect(tableAtts[1].AttName).To(Equal("c"))
-			Expect(tableAtts[1].AttNotNull).To(BeTrue())
-			Expect(tableAtts[1].AttHasDefault).To(BeFalse())
-			Expect(tableAtts[1].AttIsDropped).To(BeFalse())
-			Expect(tableAtts[1].AttTypName).To(Equal("text"))
-			Expect(tableAtts[1].AttEncoding).To(Equal(""))
-			Expect(tableAtts[1].AttComment).To(Equal(""))
-
-			Expect(tableAtts[2].AttNum).To(Equal(4))
-			Expect(tableAtts[2].AttName).To(Equal("d"))
-			Expect(tableAtts[2].AttNotNull).To(BeFalse())
-			Expect(tableAtts[2].AttHasDefault).To(BeTrue())
-			Expect(tableAtts[2].AttIsDropped).To(BeFalse())
-			Expect(tableAtts[2].AttTypName).To(Equal("integer"))
-			Expect(tableAtts[2].AttEncoding).To(Equal(""))
-			Expect(tableAtts[2].AttComment).To(Equal(""))
+			testutils.ExpectStructsToMatch(&columnA, &tableAtts[0])
+			testutils.ExpectStructsToMatch(&columnC, &tableAtts[1])
+			testutils.ExpectStructsToMatch(&columnD, &tableAtts[2])
 		})
 		It("returns table attributes including encoding for a column oriented table", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE co_atttable(a float, b text ENCODING(blocksize=65536)) WITH (appendonly=true, orientation=column)")
@@ -120,25 +88,13 @@ PARTITION BY LIST (gender)
 
 			tableAtts := backup.GetTableAttributes(connection, uint32(oid))
 
+			columnA := backup.QueryTableAtts{1, "a", false, false, false, "double precision", "compresstype=none,blocksize=32768,compresslevel=0", ""}
+			columnB := backup.QueryTableAtts{2, "b", false, false, false, "text", "blocksize=65536,compresstype=none,compresslevel=0", ""}
+
 			Expect(len(tableAtts)).To(Equal(2))
 
-			Expect(tableAtts[0].AttNum).To(Equal(1))
-			Expect(tableAtts[0].AttName).To(Equal("a"))
-			Expect(tableAtts[0].AttNotNull).To(BeFalse())
-			Expect(tableAtts[0].AttHasDefault).To(BeFalse())
-			Expect(tableAtts[0].AttIsDropped).To(BeFalse())
-			Expect(tableAtts[0].AttTypName).To(Equal("double precision"))
-			Expect(tableAtts[0].AttEncoding).To(Equal("compresstype=none,blocksize=32768,compresslevel=0"))
-			Expect(tableAtts[0].AttComment).To(Equal(""))
-
-			Expect(tableAtts[1].AttNum).To(Equal(2))
-			Expect(tableAtts[1].AttName).To(Equal("b"))
-			Expect(tableAtts[1].AttNotNull).To(BeFalse())
-			Expect(tableAtts[1].AttHasDefault).To(BeFalse())
-			Expect(tableAtts[1].AttIsDropped).To(BeFalse())
-			Expect(tableAtts[1].AttTypName).To(Equal("text"))
-			Expect(tableAtts[1].AttEncoding).To(Equal("blocksize=65536,compresstype=none,compresslevel=0"))
-			Expect(tableAtts[1].AttComment).To(Equal(""))
+			testutils.ExpectStructsToMatch(&columnA, &tableAtts[0])
+			testutils.ExpectStructsToMatch(&columnB, &tableAtts[1])
 		})
 		It("returns an empty attribute array for a table with no columns", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE nocol_atttable()")
@@ -207,7 +163,6 @@ PARTITION BY LIST (gender)
 				Expect(len(constraints)).To(Equal(1))
 				Expect(constraints[0]).To(Equal(uniqueConstraint))
 			})
-
 			It("returns a constraint array for a table with one PRIMARY KEY constraint and a comment", func() {
 				testutils.AssertQueryRuns(connection, "CREATE TABLE constraints_table(a int, b text, c float)")
 				defer testutils.AssertQueryRuns(connection, "DROP TABLE constraints_table")
@@ -219,9 +174,7 @@ PARTITION BY LIST (gender)
 
 				Expect(len(constraints)).To(Equal(1))
 				Expect(constraints[0]).To(Equal(pkConstraint))
-
 			})
-
 			It("returns a constraint array for a table with one FOREIGN KEY constraint", func() {
 				testutils.AssertQueryRuns(connection, "CREATE TABLE constraints_table(a int, b text, c float)")
 				defer testutils.AssertQueryRuns(connection, "DROP TABLE constraints_table CASCADE")
@@ -236,7 +189,6 @@ PARTITION BY LIST (gender)
 				Expect(len(constraints)).To(Equal(1))
 				Expect(constraints[0]).To(Equal(fkConstraint))
 			})
-
 			It("returns a constraint array for a table with one CHECK constraint", func() {
 				testutils.AssertQueryRuns(connection, "CREATE TABLE constraints_table(a int, b text, c float)")
 				defer testutils.AssertQueryRuns(connection, "DROP TABLE constraints_table")
@@ -309,26 +261,18 @@ PARTITION BY LIST (gender)
 			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE my_sequence")
 			testutils.AssertQueryRuns(connection, "COMMENT ON SEQUENCE public.my_sequence IS 'this is a sequence comment'")
 
-			testutils.AssertQueryRuns(connection, "CREATE SCHEMA test_schema")
-			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA test_schema CASCADE")
-			testutils.AssertQueryRuns(connection, "CREATE SEQUENCE test_schema.my_sequence2")
+			testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
+			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema CASCADE")
+			testutils.AssertQueryRuns(connection, "CREATE SEQUENCE testschema.my_sequence2")
 
 			sequences := backup.GetAllSequences(connection)
 
-			Expect(len(sequences)).To(Equal(2))
-			Expect(sequences[0].SchemaOid).ToNot(Equal(0))
-			Expect(sequences[0].RelationOid).ToNot(Equal(0))
-			Expect(sequences[0].SchemaName).To(Equal("public"))
-			Expect(sequences[0].RelationName).To(Equal("my_sequence"))
-			Expect(sequences[0].Comment).To(Equal("this is a sequence comment"))
-			Expect(sequences[0].Owner).To(Equal("testrole"))
+			mySequence := utils.Relation{0, 0, "public", "my_sequence", "this is a sequence comment", "testrole"}
+			mySequence2 := utils.Relation{0, 0, "testschema", "my_sequence2", "", "testrole"}
 
-			Expect(sequences[1].SchemaOid).ToNot(Equal(0))
-			Expect(sequences[1].RelationOid).ToNot(Equal(0))
-			Expect(sequences[1].SchemaName).To(Equal("test_schema"))
-			Expect(sequences[1].RelationName).To(Equal("my_sequence2"))
-			Expect(sequences[1].Comment).To(Equal(""))
-			Expect(sequences[1].Owner).To(Equal("testrole"))
+			Expect(len(sequences)).To(Equal(2))
+			testutils.ExpectStructsToMatchExcluding(&mySequence, &sequences[0], "SchemaOid", "RelationOid")
+			testutils.ExpectStructsToMatchExcluding(&mySequence2, &sequences[1], "SchemaOid", "RelationOid")
 		})
 	})
 	Describe("GetSequenceDefinition", func() {
@@ -336,17 +280,11 @@ PARTITION BY LIST (gender)
 			testutils.AssertQueryRuns(connection, "CREATE SEQUENCE my_sequence")
 			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE my_sequence")
 
-			sequenceDef := backup.GetSequenceDefinition(connection, "my_sequence")
+			resultSequenceDef := backup.GetSequenceDefinition(connection, "my_sequence")
 
-			Expect(sequenceDef.Name).To(Equal("my_sequence"))
-			Expect(sequenceDef.LastVal).To(Equal(int64(1)))
-			Expect(sequenceDef.Increment).To(Equal(int64(1)))
-			Expect(sequenceDef.MaxVal).To(Equal(int64(9223372036854775807)))
-			Expect(sequenceDef.MinVal).To(Equal(int64(1)))
-			Expect(sequenceDef.CacheVal).To(Equal(int64(1)))
-			Expect(sequenceDef.LogCnt).To(Equal(int64(0)))
-			Expect(sequenceDef.IsCycled).To(Equal(false))
-			Expect(sequenceDef.IsCalled).To(Equal(false))
+			expectedSequence := backup.QuerySequenceDefinition{Name: "my_sequence", LastVal: 1, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
+
+			testutils.ExpectStructsToMatch(&expectedSequence, &resultSequenceDef)
 		})
 		It("returns sequence information for a complex sequence", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE with_sequence(a int, b char(20))")
@@ -357,17 +295,11 @@ PARTITION BY LIST (gender)
 			testutils.AssertQueryRuns(connection, "INSERT INTO with_sequence VALUES (nextval('my_sequence'), 'acme')")
 			testutils.AssertQueryRuns(connection, "INSERT INTO with_sequence VALUES (nextval('my_sequence'), 'beta')")
 
-			sequenceDef := backup.GetSequenceDefinition(connection, "my_sequence")
+			resultSequenceDef := backup.GetSequenceDefinition(connection, "my_sequence")
 
-			Expect(sequenceDef.Name).To(Equal("my_sequence"))
-			Expect(sequenceDef.LastVal).To(Equal(int64(105)))
-			Expect(sequenceDef.Increment).To(Equal(int64(5)))
-			Expect(sequenceDef.MaxVal).To(Equal(int64(1000)))
-			Expect(sequenceDef.MinVal).To(Equal(int64(20)))
-			Expect(sequenceDef.CacheVal).To(Equal(int64(1)))
-			Expect(sequenceDef.LogCnt).To(Equal(int64(31)))
-			Expect(sequenceDef.IsCycled).To(Equal(false))
-			Expect(sequenceDef.IsCalled).To(Equal(true))
+			expectedSequence := backup.QuerySequenceDefinition{Name: "my_sequence", LastVal: 105, Increment: 5, MaxVal: 1000, MinVal: 20, CacheVal: 1, LogCnt: 31, IsCycled: false, IsCalled: true}
+
+			testutils.ExpectStructsToMatch(&expectedSequence, &resultSequenceDef)
 		})
 	})
 	Describe("GetSequenceOwnerMap", func() {
@@ -423,20 +355,17 @@ PARTITION BY LIST (gender)
 			testutils.AssertQueryRuns(connection, "CREATE SEQUENCE seq_two START 7")
 			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE seq_two")
 
+			seqOneRelation := utils.Relation{SchemaName: "public", RelationName: "seq_one", Comment: "this is a sequence comment", Owner: "testrole"}
+			seqOneDef := backup.QuerySequenceDefinition{Name: "seq_one", LastVal: 3, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
+			seqTwoRelation := utils.Relation{SchemaName: "public", RelationName: "seq_two", Owner: "testrole"}
+			seqTwoDef := backup.QuerySequenceDefinition{Name: "seq_two", LastVal: 7, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
+
 			results := backup.GetAllSequenceDefinitions(connection)
-			Expect(len(results)).To(Equal(2))
-			Expect(results[0].SchemaName).To(Equal("public"))
-			Expect(results[0].Name).To(Equal("seq_one"))
-			Expect(results[0].LastVal).To(Equal(int64(3)))
-			Expect(results[0].Increment).To(Equal(int64(1)))
-			Expect(results[0].Comment).To(Equal("this is a sequence comment"))
-			Expect(results[0].Owner).To(Equal("testrole"))
-			Expect(results[1].SchemaName).To(Equal("public"))
-			Expect(results[1].Name).To(Equal("seq_two"))
-			Expect(results[1].LastVal).To(Equal(int64(7)))
-			Expect(results[1].Increment).To(Equal(int64(1)))
-			Expect(results[1].Comment).To(Equal(""))
-			Expect(results[1].Owner).To(Equal("testrole"))
+
+			testutils.ExpectStructsToMatchExcluding(&seqOneRelation, &results[0].Relation, "SchemaOid", "RelationOid")
+			testutils.ExpectStructsToMatchExcluding(&seqOneDef, &results[0].QuerySequenceDefinition)
+			testutils.ExpectStructsToMatchExcluding(&seqTwoRelation, &results[1].Relation, "SchemaOid", "RelationOid")
+			testutils.ExpectStructsToMatchExcluding(&seqTwoDef, &results[1].QuerySequenceDefinition)
 		})
 	})
 	Describe("GetSequenceDefinition", func() {
@@ -449,15 +378,11 @@ CYCLE`)
 			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE mysequence")
 			testutils.AssertQueryRuns(connection, "COMMENT ON SEQUENCE public.mysequence IS 'this is a sequence comment'")
 
+			expectedSequenceDef := backup.QuerySequenceDefinition{Name: "mysequence", LastVal: 42, Increment: 1, MaxVal: 1000, MinVal: 1, CacheVal: 41, IsCycled: true}
+
 			result := backup.GetSequenceDefinition(connection, "mysequence")
-			Expect(result.Name).To(Equal("mysequence"))
-			Expect(result.LastVal).To(Equal(int64(42)))
-			Expect(result.Increment).To(Equal(int64(1)))
-			Expect(result.MaxVal).To(Equal(int64(1000)))
-			Expect(result.MinVal).To(Equal(int64(1)))
-			Expect(result.CacheVal).To(Equal(int64(41)))
-			Expect(result.IsCycled).To(BeTrue())
-			Expect(result.IsCalled).To(BeFalse())
+
+			testutils.ExpectStructsToMatch(&expectedSequenceDef, &result)
 		})
 	})
 	Describe("GetSessionGUCs", func() {
@@ -528,7 +453,7 @@ CYCLE`)
 			resultProcLangs := backup.GetProceduralLanguages(connection)
 
 			Expect(len(resultProcLangs)).To(Equal(2))
-			testutils.ExpectStructsToMatchExcluding(&resultProcLangs[0], &expectedPlpgsqlInfo, []string{"Owner"})
+			testutils.ExpectStructsToMatchExcluding(&expectedPlpgsqlInfo, &resultProcLangs[0], "Owner")
 			testutils.ExpectStructsToMatch(&resultProcLangs[1], &expectedPlpythonuInfo)
 		})
 	})
@@ -566,8 +491,6 @@ CYCLE`)
 				Type: "c", TypeSchema: "public", TypeName: "composite_type", Comment: "", Owner: "testrole",
 				AttName: "name2", AttType: "text",
 			}
-			//enumType = backup.TypeDefinition{
-			//	Type: "e", TypeSchema: "public", TypeName: "enum_type", Comment: "comment", Owner: "testrole", EnumLabels: "'enum_labels'"}
 			enumType = backup.TypeDefinition{
 				Type: "e", TypeSchema: "public", TypeName: "enum_type", AttName: "", AttType: "", Input: "enum_in", Output: "enum_out",
 				Receive: "enum_recv", Send: "enum_send", ModIn: "-", ModOut: "-", InternalLength: 4, IsPassedByValue: true,
@@ -582,7 +505,7 @@ CYCLE`)
 			results := backup.GetTypeDefinitions(connection)
 
 			Expect(len(results)).To(Equal(1))
-			testutils.ExpectStructsToMatchIncluding(&results[0], &shellType, []string{"TypeSchema", "TypeName", "Type"})
+			testutils.ExpectStructsToMatchIncluding(&shellType, &results[0], "TypeSchema", "TypeName", "Type")
 		})
 		It("returns a slice of composite types", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TYPE composite_type AS (name int4, name1 int, name2 text);")
@@ -591,9 +514,9 @@ CYCLE`)
 			results := backup.GetTypeDefinitions(connection)
 
 			Expect(len(results)).To(Equal(3))
-			testutils.ExpectStructsToMatchIncluding(&results[0], &compositeTypeAtt1, []string{"Type", "TypeSchema", "TypeName", "Comment", "Owner", "AttName", "AttType"})
-			testutils.ExpectStructsToMatchIncluding(&results[1], &compositeTypeAtt2, []string{"Type", "TypeSchema", "TypeName", "Comment", "Owner", "AttName", "AttType"})
-			testutils.ExpectStructsToMatchIncluding(&results[2], &compositeTypeAtt3, []string{"Type", "TypeSchema", "TypeName", "Comment", "Owner", "AttName", "AttType"})
+			testutils.ExpectStructsToMatchIncluding(&compositeTypeAtt1, &results[0], "Type", "TypeSchema", "TypeName", "Comment", "Owner", "AttName", "AttType")
+			testutils.ExpectStructsToMatchIncluding(&compositeTypeAtt2, &results[1], "Type", "TypeSchema", "TypeName", "Comment", "Owner", "AttName", "AttType")
+			testutils.ExpectStructsToMatchIncluding(&compositeTypeAtt3, &results[2], "Type", "TypeSchema", "TypeName", "Comment", "Owner", "AttName", "AttType")
 		})
 		It("returns a slice for a base type with default values", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TYPE base_type")
@@ -647,15 +570,15 @@ CYCLE`)
 
 			Expect(len(resultTypes)).To(Equal(6))
 			testutils.ExpectStructsToMatch(&resultTypes[0], &baseTypeCustom)
-			testutils.ExpectStructsToMatchIncluding(&resultTypes[1], &compositeTypeAtt1, []string{"Type", "TypeSchema", "TypeName", "Comment", "Owner", "AttName", "AttType"})
-			testutils.ExpectStructsToMatchIncluding(&resultTypes[2], &compositeTypeAtt2, []string{"Type", "TypeSchema", "TypeName", "Comment", "Owner", "AttName", "AttType"})
-			testutils.ExpectStructsToMatchIncluding(&resultTypes[3], &compositeTypeAtt3, []string{"Type", "TypeSchema", "TypeName", "Comment", "Owner", "AttName", "AttType"})
+			testutils.ExpectStructsToMatchIncluding(&compositeTypeAtt1, &resultTypes[1], "Type", "TypeSchema", "TypeName", "Comment", "Owner", "AttName", "AttType")
+			testutils.ExpectStructsToMatchIncluding(&compositeTypeAtt2, &resultTypes[2], "Type", "TypeSchema", "TypeName", "Comment", "Owner", "AttName", "AttType")
+			testutils.ExpectStructsToMatchIncluding(&compositeTypeAtt3, &resultTypes[3], "Type", "TypeSchema", "TypeName", "Comment", "Owner", "AttName", "AttType")
 			testutils.ExpectStructsToMatch(&resultTypes[4], &enumType)
-			testutils.ExpectStructsToMatchIncluding(&resultTypes[5], &shellType, []string{"TypeSchema", "TypeName", "Type"})
+			testutils.ExpectStructsToMatchIncluding(&shellType, &resultTypes[5], "TypeSchema", "TypeName", "Type")
 		})
 	})
 	Describe("GetExternalTablesMap", func() {
-		It("returns empty map", func() {
+		It("returns empty map when there are no external tables", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
 
@@ -690,19 +613,13 @@ FORMAT 'TEXT'`)
 
 			result := backup.GetExternalTableDefinition(connection, oid)
 
-			Expect(result.Type).To(Equal(0))
-			Expect(result.Protocol).To(Equal(0))
-			Expect(result.Location).To(Equal("file://tmp/myfile.txt"))
-			Expect(result.ExecLocation).To(Equal("ALL_SEGMENTS"))
-			Expect(result.FormatType).To(Equal("t"))
-			Expect(result.FormatOpts).To(Equal("delimiter '	' null '\\N' escape '\\'"))
-			Expect(result.Options).To(Equal(""))
-			Expect(result.Command).To(Equal(""))
-			Expect(result.RejectLimit).To(Equal(0))
-			Expect(result.RejectLimitType).To(Equal(""))
-			Expect(result.ErrTable).To(Equal(""))
-			Expect(result.Encoding).To(Equal("UTF8"))
-			Expect(result.Writable).To(BeFalse())
+			extTable := backup.ExternalTableDefinition{
+				0, 0, "file://tmp/myfile.txt", "ALL_SEGMENTS",
+				"t", "delimiter '	' null '\\N' escape '\\'", "", "",
+				0, "", "", "UTF8", false,
+			}
+
+			testutils.ExpectStructsToMatchExcluding(&extTable, &result)
 		})
 		It("returns a slice for a complex external table definition", func() {
 			testutils.AssertQueryRuns(connection, `CREATE READABLE EXTERNAL TABLE ext_table(i int)
@@ -717,19 +634,13 @@ SEGMENT REJECT LIMIT 10 PERCENT
 
 			result := backup.GetExternalTableDefinition(connection, oid)
 
-			Expect(result.Type).To(Equal(0))
-			Expect(result.Protocol).To(Equal(0))
-			Expect(result.Location).To(Equal("file://tmp/myfile.txt"))
-			Expect(result.ExecLocation).To(Equal("ALL_SEGMENTS"))
-			Expect(result.FormatType).To(Equal("t"))
-			Expect(result.FormatOpts).To(Equal("delimiter '	' null '\\N' escape '\\'"))
-			Expect(result.Options).To(Equal("foo 'bar'"))
-			Expect(result.Command).To(Equal(""))
-			Expect(result.RejectLimit).To(Equal(10))
-			Expect(result.RejectLimitType).To(Equal("p"))
-			Expect(result.ErrTable).To(Equal("ext_table"))
-			Expect(result.Encoding).To(Equal("UTF8"))
-			Expect(result.Writable).To(BeFalse())
+			extTable := backup.ExternalTableDefinition{
+				0, 0, "file://tmp/myfile.txt", "ALL_SEGMENTS",
+				"t", "delimiter '	' null '\\N' escape '\\'", "foo 'bar'", "",
+				10, "p", "ext_table", "UTF8", false,
+			}
+
+			testutils.ExpectStructsToMatchExcluding(&extTable, &result)
 		})
 		// TODO: Add tests for external partitions
 	})
@@ -969,14 +880,11 @@ FORMAT 'TEXT' ( DELIMITER '|' NULL ' ')`)
 
 			results := backup.GetCastDefinitions(connection)
 
+			castDef := backup.QueryCastDefinition{SourceType: "text", TargetType: "integer", FunctionSchema: "public",
+				FunctionName: "casttoint", FunctionArgs: "text", CastContext: "a", Comment: ""}
+
 			Expect(len(results)).To(Equal(1))
-			Expect(results[0].SourceType).To(Equal("text"))
-			Expect(results[0].TargetType).To(Equal("integer"))
-			Expect(results[0].FunctionSchema).To(Equal("public"))
-			Expect(results[0].FunctionName).To(Equal("casttoint"))
-			Expect(results[0].FunctionArgs).To(Equal("text"))
-			Expect(results[0].CastContext).To(Equal("a"))
-			Expect(results[0].Comment).To(Equal(""))
+			testutils.ExpectStructsToMatch(&castDef, &results[0])
 		})
 		It("returns a slice for a basic cast with comment", func() {
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION casttoint(text) RETURNS integer STRICT IMMUTABLE LANGUAGE SQL AS 'SELECT cast($1 as integer);'")
@@ -987,14 +895,11 @@ FORMAT 'TEXT' ( DELIMITER '|' NULL ' ')`)
 
 			results := backup.GetCastDefinitions(connection)
 
+			castDef := backup.QueryCastDefinition{SourceType: "text", TargetType: "integer", FunctionSchema: "public",
+				FunctionName: "casttoint", FunctionArgs: "text", CastContext: "a", Comment: "this is a cast comment"}
+
 			Expect(len(results)).To(Equal(1))
-			Expect(results[0].SourceType).To(Equal("text"))
-			Expect(results[0].TargetType).To(Equal("integer"))
-			Expect(results[0].FunctionSchema).To(Equal("public"))
-			Expect(results[0].FunctionName).To(Equal("casttoint"))
-			Expect(results[0].FunctionArgs).To(Equal("text"))
-			Expect(results[0].CastContext).To(Equal("a"))
-			Expect(results[0].Comment).To(Equal("this is a cast comment"))
+			testutils.ExpectStructsToMatchExcluding(&castDef, &results[0])
 		})
 	})
 })

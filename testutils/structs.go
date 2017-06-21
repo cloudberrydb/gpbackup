@@ -58,7 +58,7 @@ func StructMatcher(expected interface{}, actual interface{}) []string {
 	return mismatches
 }
 
-func StructMatcherExcluding(expected interface{}, actual interface{}, excludeFields []string) []string {
+func StructMatcherExcluding(expected interface{}, actual interface{}, excludeFields ...string) []string {
 
 	excludeMap := make(map[string]bool)
 	for i := 0; i < len(excludeFields); i += 1 {
@@ -83,7 +83,7 @@ func StructMatcherExcluding(expected interface{}, actual interface{}, excludeFie
 	return mismatches
 }
 
-func StructMatcherIncluding(expected interface{}, actual interface{}, includeFields []string) []string {
+func StructMatcherIncluding(expected interface{}, actual interface{}, includeFields ...string) []string {
 	includeMap := make(map[string]bool)
 	for i := 0; i < len(includeFields); i += 1 {
 		includeMap[includeFields[i]] = true
@@ -112,15 +112,15 @@ func ExpectStructsToMatch(expected interface{}, actual interface{}) {
 	}
 }
 
-func ExpectStructsToMatchExcluding(expected interface{}, actual interface{}, excludeFields []string) {
-	mismatches := StructMatcherExcluding(expected, actual, excludeFields)
+func ExpectStructsToMatchExcluding(expected interface{}, actual interface{}, excludeFields ...string) {
+	mismatches := StructMatcherExcluding(expected, actual, excludeFields...)
 	if len(mismatches) > 0 {
 		Fail(strings.Join(mismatches, "\n"))
 	}
 }
 
-func ExpectStructsToMatchIncluding(expected interface{}, actual interface{}, includeFields []string) {
-	mismatches := StructMatcherIncluding(expected, actual, includeFields)
+func ExpectStructsToMatchIncluding(expected interface{}, actual interface{}, includeFields ...string) {
+	mismatches := StructMatcherIncluding(expected, actual, includeFields...)
 	if len(mismatches) > 0 {
 		Fail(strings.Join(mismatches, "\n"))
 	}
