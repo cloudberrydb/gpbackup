@@ -36,6 +36,7 @@ var _ = BeforeSuite(func() {
 	connection.Exec("CREATE ROLE gpadmin SUPERUSER")
 	testutils.AssertQueryRuns(connection, "SET ROLE testrole")
 	testutils.AssertQueryRuns(connection, "ALTER DATABASE testdb OWNER TO gpadmin")
+	testutils.AssertQueryRuns(connection, "ALTER SCHEMA public OWNER TO gpadmin")
 })
 
 var _ = AfterSuite(func() {
