@@ -458,6 +458,16 @@ func PrintCreateCompositeAndEnumTypeStatements(predataFile io.Writer, types []Ty
 	}
 }
 
+func PrintCreateViewStatements(buffer io.Writer, views []QueryViewDefinition) {
+	for _, view := range views {
+		viewFQN := utils.MakeFQN(view.SchemaName, view.ViewName)
+		utils.MustPrintf(buffer, "\n\nCREATE VIEW %s AS %s\n", viewFQN, view.Definition)
+		if view.Comment != "" {
+			utils.MustPrintf(buffer, "\nCOMMENT ON VIEW %s IS '%s';\n", viewFQN, view.Comment)
+		}
+	}
+}
+
 /*
  * Functions to print to the global or postdata file instead of, or in addition
  * to, the predata file.

@@ -913,4 +913,19 @@ ALTER TYPE public.base_type OWNER TO test_role;`)
 CREATE TYPE public.base_type2;`)
 		})
 	})
+	Describe("PrintCreateViewStatements", func() {
+		It("prints create view statement", func() {
+			viewOne := backup.QueryViewDefinition{"public", "WowZa", "SELECT rolname FROM pg_role;", ""}
+			viewTwo := backup.QueryViewDefinition{"shamwow", "shazam", "SELECT count(*) FROM pg_tables;", "this is a view comment"}
+			backup.PrintCreateViewStatements(buffer, []backup.QueryViewDefinition{viewOne, viewTwo})
+			testutils.ExpectRegexp(buffer, `CREATE VIEW public."WowZa" AS SELECT rolname FROM pg_role;
+
+
+CREATE VIEW shamwow.shazam AS SELECT count(*) FROM pg_tables;
+
+COMMENT ON VIEW shamwow.shazam IS 'this is a view comment';
+`)
+		})
+
+	})
 })

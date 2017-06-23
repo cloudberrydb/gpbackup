@@ -564,8 +564,8 @@ LEFT JOIN (
 	) e ON t.oid = e.enumtypid
 WHERE %s
 AND (t.typtype = 'c' OR t.typtype = 'b' OR t.typtype='e' OR t.typtype='p')
-AND (n.nspname || '.' || t.typname) NOT IN (SELECT nspname || '._' || relname FROM pg_namespace n join pg_class c ON n.oid = c.relnamespace WHERE c.relkind = 'r' OR c.relkind = 'S')
-AND (n.nspname || '.' || t.typname) NOT IN (SELECT nspname || '.' || relname FROM pg_namespace n join pg_class c ON n.oid = c.relnamespace WHERE c.relkind = 'r' OR c.relkind = 'S')
+AND (n.nspname || '.' || t.typname) NOT IN (SELECT nspname || '._' || relname FROM pg_namespace n join pg_class c ON n.oid = c.relnamespace WHERE c.relkind = 'r' OR c.relkind = 'S' OR c.relkind = 'v')
+AND (n.nspname || '.' || t.typname) NOT IN (SELECT nspname || '.' || relname FROM pg_namespace n join pg_class c ON n.oid = c.relnamespace WHERE c.relkind = 'r' OR c.relkind = 'S' OR c.relkind = 'v')
 AND (n.nspname || '.' || t.typname) NOT IN (SELECT nspname || '._' || typname FROM pg_namespace n join pg_type t ON n.oid = t.typnamespace)
 ORDER BY n.nspname, t.typname, a.attname;`, nonUserSchemaFilterClause)
 
@@ -712,6 +712,29 @@ SELECT l.lanname,
 FROM pg_language l
 WHERE l.lanispl='t';
 `
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
+}
+
+type QueryViewDefinition struct {
+	SchemaName string
+	ViewName   string
+	Definition string
+	Comment    string
+}
+
+func GetViewDefinitions(connection *utils.DBConn) []QueryViewDefinition {
+	results := make([]QueryViewDefinition, 0)
+
+	query := fmt.Sprintf(`
+SELECT n.nspname AS schemaname,
+	c.relname AS viewname,
+	pg_get_viewdef(c.oid) AS definition,
+	coalesce(obj_description(c.oid, 'pg_class'), '') AS comment
+FROM pg_class c
+LEFT JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relkind = 'v'::"char" AND %s;`, nonUserSchemaFilterClause)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results

@@ -8,9 +8,10 @@ import (
 
 	"github.com/greenplum-db/gpbackup/utils"
 
+	"os"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"os"
 )
 
 var _ = Describe("backup integration create statement tests", func() {
@@ -130,6 +131,25 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatch(&baseType, &resultTypes[0])
 		})
 	})
+
+	Describe("PrintCreateViewStatements", func() {
+		It("creates a view with a comment", func() {
+			viewDef := backup.QueryViewDefinition{"public", "simpleview", "SELECT pg_roles.rolname FROM pg_roles;", "this is a view comment"}
+
+			backup.PrintCreateViewStatements(buffer, []backup.QueryViewDefinition{viewDef})
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, "DROP VIEW simpleview")
+
+			resultViews := backup.GetViewDefinitions(connection)
+
+			Expect(len(resultViews)).To(Equal(1))
+
+			testutils.ExpectStructsToMatch(&viewDef, &resultViews[0])
+
+		})
+	})
+
 	Describe("PrintCreateLanguageStatements", func() {
 		It("creates procedural languages", func() {
 			funcInfoMap := map[uint32]backup.FunctionInfo{

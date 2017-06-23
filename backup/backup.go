@@ -165,6 +165,10 @@ func backupPredata(filename string, tables []utils.Relation, extTableMap map[str
 		PrintCreateTableStatement(predataFile, table, tableDef)
 	}
 
+	logger.Verbose("Writing CREATE VIEW statements to predata file")
+	viewDefs := GetViewDefinitions(connection)
+	PrintCreateViewStatements(predataFile, viewDefs)
+
 	logger.Verbose("Writing ADD CONSTRAINT statements to predata file")
 	allConstraints, allFkConstraints := ConstructConstraintsForAllTables(connection, tables)
 	PrintConstraintStatements(predataFile, allConstraints, allFkConstraints)

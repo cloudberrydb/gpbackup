@@ -576,6 +576,16 @@ CYCLE`)
 			testutils.ExpectStructsToMatch(&resultTypes[4], &enumType)
 			testutils.ExpectStructsToMatchIncluding(&shellType, &resultTypes[5], "TypeSchema", "TypeName", "Type")
 		})
+		It("does not return types for sequences or views", func() {
+			testutils.AssertQueryRuns(connection, "CREATE SEQUENCE my_sequence START 10")
+			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE my_sequence")
+			testutils.AssertQueryRuns(connection, "CREATE VIEW simpleview AS SELECT rolname FROM pg_roles")
+			defer testutils.AssertQueryRuns(connection, "DROP VIEW simpleview")
+
+			results := backup.GetTypeDefinitions(connection)
+
+			Expect(len(results)).To(Equal(0))
+		})
 	})
 	Describe("GetExternalTablesMap", func() {
 		It("returns empty map when there are no external tables", func() {
@@ -899,7 +909,32 @@ FORMAT 'TEXT' ( DELIMITER '|' NULL ' ')`)
 				FunctionName: "casttoint", FunctionArgs: "text", CastContext: "a", Comment: "this is a cast comment"}
 
 			Expect(len(results)).To(Equal(1))
-			testutils.ExpectStructsToMatchExcluding(&castDef, &results[0])
+			testutils.ExpectStructsToMatch(&castDef, &results[0])
+		})
+	})
+	Describe("GetViewDefinitions", func() {
+		It("returns a slice for a basic view", func() {
+			testutils.AssertQueryRuns(connection, "CREATE VIEW simpleview AS SELECT rolname FROM pg_roles")
+			defer testutils.AssertQueryRuns(connection, "DROP VIEW simpleview")
+
+			results := backup.GetViewDefinitions(connection)
+
+			viewDef := backup.QueryViewDefinition{"public", "simpleview", "SELECT pg_roles.rolname FROM pg_roles;", ""}
+
+			Expect(len(results)).To(Equal(1))
+			testutils.ExpectStructsToMatch(&viewDef, &results[0])
+		})
+		It("returns a slice for a view with a comment", func() {
+			testutils.AssertQueryRuns(connection, "CREATE VIEW simpleview AS SELECT rolname FROM pg_roles")
+			defer testutils.AssertQueryRuns(connection, "DROP VIEW simpleview")
+			testutils.AssertQueryRuns(connection, "COMMENT ON VIEW simpleview IS 'this is a view comment'")
+
+			results := backup.GetViewDefinitions(connection)
+
+			viewDef := backup.QueryViewDefinition{"public", "simpleview", "SELECT pg_roles.rolname FROM pg_roles;", "this is a view comment"}
+
+			Expect(len(results)).To(Equal(1))
+			testutils.ExpectStructsToMatch(&viewDef, &results[0])
 		})
 	})
 })
