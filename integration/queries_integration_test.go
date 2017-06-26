@@ -937,4 +937,24 @@ FORMAT 'TEXT' ( DELIMITER '|' NULL ' ')`)
 			testutils.ExpectStructsToMatch(&viewDef, &results[0])
 		})
 	})
+	Describe("GetExternalProtocols", func() {
+		It("returns a slice for a protocol", func() {
+			testutils.AssertQueryRuns(connection, "CREATE OR REPLACE FUNCTION write_to_s3() RETURNS integer AS '$libdir/gps3ext.so', 's3_export' LANGUAGE C STABLE;")
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION write_to_s3()")
+			testutils.AssertQueryRuns(connection, "CREATE OR REPLACE FUNCTION read_from_s3() RETURNS integer AS '$libdir/gps3ext.so', 's3_import' LANGUAGE C STABLE;")
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION read_from_s3()")
+			testutils.AssertQueryRuns(connection, "CREATE PROTOCOL s3 (writefunc = write_to_s3, readfunc = read_from_s3);")
+			defer testutils.AssertQueryRuns(connection, "DROP PROTOCOL s3")
+
+			readFunctionOid := testutils.OidFromFunctionName(connection, "read_from_s3")
+			writeFunctionOid := testutils.OidFromFunctionName(connection, "write_to_s3")
+
+			results := backup.GetExternalProtocols(connection)
+
+			protocolDef := backup.QueryExtProtocol{"s3", "testrole", false, readFunctionOid, writeFunctionOid, 0, ""}
+
+			Expect(len(results)).To(Equal(1))
+			testutils.ExpectStructsToMatch(&protocolDef, &results[0])
+		})
+	})
 })

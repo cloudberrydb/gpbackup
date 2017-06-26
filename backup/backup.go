@@ -150,6 +150,10 @@ func backupPredata(filename string, tables []utils.Relation, extTableMap map[str
 	logger.Verbose("Writing CREATE TYPE statements for base types to predata file")
 	PrintCreateBaseTypeStatements(predataFile, types)
 
+	logger.Verbose("Writing CREATE PROTOCOL statements to predata file")
+	protocols := GetExternalProtocols(connection)
+	PrintCreateExternalProtocolStatements(predataFile, protocols, funcInfoMap)
+
 	logger.Verbose("Writing CREATE AGGREGATE statements to predata file")
 	aggDefs := GetAggregateDefinitions(connection)
 	PrintCreateAggregateStatements(predataFile, aggDefs, funcInfoMap)

@@ -458,12 +458,40 @@ func PrintCreateCompositeAndEnumTypeStatements(predataFile io.Writer, types []Ty
 	}
 }
 
-func PrintCreateViewStatements(buffer io.Writer, views []QueryViewDefinition) {
+func PrintCreateViewStatements(predataFile io.Writer, views []QueryViewDefinition) {
 	for _, view := range views {
 		viewFQN := utils.MakeFQN(view.SchemaName, view.ViewName)
-		utils.MustPrintf(buffer, "\n\nCREATE VIEW %s AS %s\n", viewFQN, view.Definition)
+		utils.MustPrintf(predataFile, "\n\nCREATE VIEW %s AS %s\n", viewFQN, view.Definition)
 		if view.Comment != "" {
-			utils.MustPrintf(buffer, "\nCOMMENT ON VIEW %s IS '%s';\n", viewFQN, view.Comment)
+			utils.MustPrintf(predataFile, "\nCOMMENT ON VIEW %s IS '%s';\n", viewFQN, view.Comment)
+		}
+	}
+}
+
+func PrintCreateExternalProtocolStatements(predataFile io.Writer, protocols []QueryExtProtocol, funcInfoMap map[uint32]FunctionInfo) {
+	for _, protocol := range protocols {
+		var needsComma = false
+		utils.MustPrintf(predataFile, "\n\nCREATE ")
+		if protocol.Trusted {
+			utils.MustPrintf(predataFile, "TRUSTED ")
+		}
+		utils.MustPrintf(predataFile, "PROTOCOL %s (", utils.QuoteIdent(protocol.Name))
+		if protocol.ReadFunction != 0 {
+			utils.MustPrintf(predataFile, "readfunc = %s", funcInfoMap[protocol.ReadFunction].QualifiedName)
+			needsComma = true
+		}
+		if protocol.WriteFunction != 0 {
+			if needsComma {
+				utils.MustPrintf(predataFile, ", ")
+			}
+			utils.MustPrintf(predataFile, "writefunc = %s", funcInfoMap[protocol.WriteFunction].QualifiedName)
+		}
+		if protocol.Validator != 0 {
+			utils.MustPrintf(predataFile, ", validatorfunc = %s", funcInfoMap[protocol.Validator].QualifiedName)
+		}
+		utils.MustPrintln(predataFile, ");")
+		if protocol.Owner != "" {
+			utils.MustPrintf(predataFile, "\nALTER PROTOCOL %s OWNER TO %s;\n", utils.QuoteIdent(protocol.Name), protocol.Owner)
 		}
 	}
 }

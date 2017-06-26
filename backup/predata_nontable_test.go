@@ -928,4 +928,63 @@ COMMENT ON VIEW shamwow.shazam IS 'this is a view comment';
 		})
 
 	})
+	Describe("PrintExternalProtocolStatements", func() {
+		protocolUntrustedReadWrite := backup.QueryExtProtocol{"s3", "testrole", false, 1, 2, 0, ""}
+		protocolUntrustedReadValidator := backup.QueryExtProtocol{"s3", "testrole", false, 1, 0, 3, ""}
+		protocolUntrustedWriteOnly := backup.QueryExtProtocol{"s3", "testrole", false, 0, 2, 0, ""}
+		protocolTrustedReadWriteValidator := backup.QueryExtProtocol{"s3", "testrole", true, 1, 2, 3, ""}
+		protocolUntrustedReadOnly := backup.QueryExtProtocol{"s4", "testrole", false, 4, 0, 0, ""}
+		funcInfoMap := map[uint32]backup.FunctionInfo{
+			1: {QualifiedName: "public.read_fn_s3", Arguments: ""},
+			2: {QualifiedName: "public.write_fn_s3", Arguments: ""},
+			3: {QualifiedName: "public.validator", Arguments: ""},
+			4: {QualifiedName: "public.read_fn_s4", Arguments: ""},
+		}
+
+		It("prints untrusted protocol with read and write function", func() {
+			protos := []backup.QueryExtProtocol{protocolUntrustedReadWrite}
+
+			backup.PrintCreateExternalProtocolStatements(buffer, protos, funcInfoMap)
+			testutils.ExpectRegexp(buffer, `CREATE PROTOCOL s3 (readfunc = public.read_fn_s3, writefunc = public.write_fn_s3);
+
+ALTER PROTOCOL s3 OWNER TO testrole;`)
+		})
+		It("prints untrusted protocol with read and validator", func() {
+			protos := []backup.QueryExtProtocol{protocolUntrustedReadValidator}
+
+			backup.PrintCreateExternalProtocolStatements(buffer, protos, funcInfoMap)
+			testutils.ExpectRegexp(buffer, `CREATE PROTOCOL s3 (readfunc = public.read_fn_s3, validatorfunc = public.validator);
+
+ALTER PROTOCOL s3 OWNER TO testrole;`)
+		})
+		It("prints untrusted protocol with write function only", func() {
+			protos := []backup.QueryExtProtocol{protocolUntrustedWriteOnly}
+
+			backup.PrintCreateExternalProtocolStatements(buffer, protos, funcInfoMap)
+			testutils.ExpectRegexp(buffer, `CREATE PROTOCOL s3 (writefunc = public.write_fn_s3);
+
+ALTER PROTOCOL s3 OWNER TO testrole;`)
+		})
+		It("prints trusted protocol with read, write, and validator", func() {
+			protos := []backup.QueryExtProtocol{protocolTrustedReadWriteValidator}
+
+			backup.PrintCreateExternalProtocolStatements(buffer, protos, funcInfoMap)
+			testutils.ExpectRegexp(buffer, `CREATE TRUSTED PROTOCOL s3 (readfunc = public.read_fn_s3, writefunc = public.write_fn_s3, validatorfunc = public.validator);
+
+ALTER PROTOCOL s3 OWNER TO testrole;`)
+		})
+		It("prints multiple protocols", func() {
+			protos := []backup.QueryExtProtocol{protocolUntrustedWriteOnly, protocolUntrustedReadOnly}
+
+			backup.PrintCreateExternalProtocolStatements(buffer, protos, funcInfoMap)
+			testutils.ExpectRegexp(buffer, `CREATE PROTOCOL s3 (writefunc = public.write_fn_s3);
+
+ALTER PROTOCOL s3 OWNER TO testrole;
+
+
+CREATE PROTOCOL s4 (readfunc = public.read_fn_s4);
+
+ALTER PROTOCOL s4 OWNER TO testrole;`)
+		})
+	})
 })

@@ -662,12 +662,13 @@ SET SUBPARTITION TEMPLATE  ` + `
 			resultTableDef := backup.GetExternalTableDefinition(connection, testTable.RelationOid)
 			resultTableDef.Type, resultTableDef.Protocol = backup.DetermineExternalTableCharacteristics(resultTableDef)
 
-			testutils.ExpectStructsToMatchExcluding(&extTable, &resultTableDef, "Protocol")
+			testutils.ExpectStructsToMatch(&extTable, &resultTableDef)
 		})
 		It("creates a WRITABLE EXTERNAL table", func() {
 			extTable.Type = backup.WRITABLE
 			extTable.Writable = true
 			extTable.Location = "gpfdist://outputhost:8081/data1.out"
+			extTable.Protocol = backup.GPFDIST
 			tableDef.ExtTableDef = extTable
 
 			backup.PrintExternalTableCreateStatement(buffer, testTable, tableDef)
@@ -678,7 +679,67 @@ SET SUBPARTITION TEMPLATE  ` + `
 			resultTableDef := backup.GetExternalTableDefinition(connection, testTable.RelationOid)
 			resultTableDef.Type, resultTableDef.Protocol = backup.DetermineExternalTableCharacteristics(resultTableDef)
 
-			testutils.ExpectStructsToMatchExcluding(&extTable, &resultTableDef, "Protocol")
+			testutils.ExpectStructsToMatch(&extTable, &resultTableDef)
+		})
+	})
+	Describe("PrintCreateExternalProtocolStatements", func() {
+		funcInfoMap := map[uint32]backup.FunctionInfo{
+			1: {"public.write_to_s3", ""},
+			2: {"public.read_from_s3", ""},
+		}
+		protocolReadOnly := backup.QueryExtProtocol{"s3_read", "testrole", true, 2, 0, 0, ""}
+		protocolWriteOnly := backup.QueryExtProtocol{"s3_write", "testrole", false, 0, 1, 0, ""}
+		protocolReadWrite := backup.QueryExtProtocol{"s3_read_write", "testrole", false, 2, 1, 0, ""}
+		It("creates a trusted protocol with a read function", func() {
+			externalProtocols := []backup.QueryExtProtocol{protocolReadOnly}
+
+			backup.PrintCreateExternalProtocolStatements(buffer, externalProtocols, funcInfoMap)
+
+			testutils.AssertQueryRuns(connection, "CREATE OR REPLACE FUNCTION read_from_s3() RETURNS integer AS '$libdir/gps3ext.so', 's3_import' LANGUAGE C STABLE;")
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION read_from_s3()")
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, "DROP PROTOCOL s3_read")
+
+			resultExternalProtocols := backup.GetExternalProtocols(connection)
+
+			Expect(len(resultExternalProtocols)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&protocolReadOnly, &resultExternalProtocols[0], "ReadFunction")
+		})
+		It("creates a protocol with a write function", func() {
+			externalProtocols := []backup.QueryExtProtocol{protocolWriteOnly}
+
+			backup.PrintCreateExternalProtocolStatements(buffer, externalProtocols, funcInfoMap)
+
+			testutils.AssertQueryRuns(connection, "CREATE OR REPLACE FUNCTION write_to_s3() RETURNS integer AS '$libdir/gps3ext.so', 's3_export' LANGUAGE C STABLE;")
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION write_to_s3()")
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, "DROP PROTOCOL s3_write")
+
+			resultExternalProtocols := backup.GetExternalProtocols(connection)
+
+			Expect(len(resultExternalProtocols)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&protocolWriteOnly, &resultExternalProtocols[0], "WriteFunction")
+		})
+		It("creates a protocol with a read and write function", func() {
+			externalProtocols := []backup.QueryExtProtocol{protocolReadWrite}
+
+			backup.PrintCreateExternalProtocolStatements(buffer, externalProtocols, funcInfoMap)
+
+			testutils.AssertQueryRuns(connection, "CREATE OR REPLACE FUNCTION read_from_s3() RETURNS integer AS '$libdir/gps3ext.so', 's3_import' LANGUAGE C STABLE;")
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION read_from_s3()")
+
+			testutils.AssertQueryRuns(connection, "CREATE OR REPLACE FUNCTION write_to_s3() RETURNS integer AS '$libdir/gps3ext.so', 's3_export' LANGUAGE C STABLE;")
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION write_to_s3()")
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, "DROP PROTOCOL s3_read_write")
+
+			resultExternalProtocols := backup.GetExternalProtocols(connection)
+
+			Expect(len(resultExternalProtocols)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&protocolReadWrite, &resultExternalProtocols[0], "ReadFunction", "WriteFunction")
 		})
 	})
 })

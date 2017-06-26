@@ -740,6 +740,33 @@ WHERE c.relkind = 'v'::"char" AND %s;`, nonUserSchemaFilterClause)
 	return results
 }
 
+type QueryExtProtocol struct {
+	Name          string `db:"ptcname"`
+	Owner         string
+	Trusted       bool   `db:"ptctrusted"`
+	ReadFunction  uint32 `db:"ptcreadfn"`
+	WriteFunction uint32 `db:"ptcwritefn"`
+	Validator     uint32 `db:"ptcvalidatorfn"`
+	Access        string `db:"ptcacl"`
+}
+
+func GetExternalProtocols(connection *utils.DBConn) []QueryExtProtocol {
+	results := make([]QueryExtProtocol, 0)
+	query := `
+SELECT p.ptcname,
+	pg_get_userbyid(p.ptcowner) as owner,
+	p.ptctrusted,
+	p.ptcreadfn,
+	p.ptcwritefn,
+	p.ptcvalidatorfn,
+	coalesce(pg_catalog.array_to_string(p.ptcacl, ','), '') as ptcacl
+FROM pg_extprotocol p;
+`
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
+}
+
 /*
  * Helper functions
  */
