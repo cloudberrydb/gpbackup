@@ -37,6 +37,7 @@ var _ = BeforeSuite(func() {
 	testutils.AssertQueryRuns(connection, "SET ROLE testrole")
 	testutils.AssertQueryRuns(connection, "ALTER DATABASE testdb OWNER TO gpadmin")
 	testutils.AssertQueryRuns(connection, "ALTER SCHEMA public OWNER TO gpadmin")
+	testutils.AssertQueryRuns(connection, "DROP PROTOCOL IF EXISTS gphdfs")
 })
 
 var _ = AfterSuite(func() {
