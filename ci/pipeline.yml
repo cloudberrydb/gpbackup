@@ -14,7 +14,6 @@ resources:
     branch: master
     ignore_paths:
     - ci
-    # - integration
 
 - name: gpbackup-ci
   type: git
@@ -24,13 +23,21 @@ resources:
     paths:
     - ci
 
-# - name: gpbackup-integration
-#   type: git
-#   source:
-#     uri: https://github.com/greenplum-db/gpbackup
-#     branch: master
-#     paths:
-#     - integration
+- name: gpdb_src
+  type: git
+  source:
+    uri: https://github.com/greenplum-db/gpdb
+    branch: master
+    tag_filter: 5.*
+
+- name: bin_gpdb
+  type: s3
+  source:
+      bucket: gpdb5-release-builds
+      versioned_file: bin_gpdb_centos6/bin_gpdb.tar.gz
+      region_name: us-west-2
+      access_key_id: {{bucket-access-key-id}}
+      secret_access_key: {{bucket-secret-access-key}}
 
 jobs:
 - name: units
@@ -43,4 +50,61 @@ jobs:
   - task: unit-tests
     file: gpbackup-ci/ci/tasks/unit-tests.yml
 
+- name: integrations
+  serial: true
+  plan:
+  - aggregate:
+    - get: gpbackup
+      trigger: true
+    - get: gpbackup-ci
+    - get: bin_gpdb
+    - get: gpdb_src
+  - task: integration-tests
+    config:
+        platform: linux
 
+        image_resource:
+          type: docker-image
+          source:
+            repository: pivotaldata/centos-gpdb-dev
+            tag: '6-gcc6.2-llvm3.7'
+
+        inputs:
+        - name: gpbackup
+          path: go/src/github.com/greenplum-db/gpbackup
+        - name: bin_gpdb
+        - name: gpdb_src
+
+        run:
+          path: bash
+          args:
+          - -c
+          - |
+            set -ex
+
+            export GOPATH=$PWD/go
+            export PATH=$GOPATH/bin:$PATH
+
+            pushd $GOPATH/src/github.com/greenplum-db/gpbackup
+                make depend
+            popd
+
+            source gpdb_src/concourse/scripts/common.bash
+            configure
+            install_gpdb
+            gpdb_src/concourse/scripts/setup_gpadmin_user.bash
+            make_cluster
+
+            chown gpadmin:gpadmin -R $PWD/go
+            cat <<SCRIPT > /tmp/run_tests.bash
+            source /usr/local/greenplum-db-devel/greenplum_path.sh
+            source gpdb_src/gpAux/gpdemo/gpdemo-env.sh
+            export GOPATH=$PWD/go
+            export PATH=\$GOPATH/bin:\$PATH
+
+            cd \$GOPATH/src/github.com/greenplum-db/gpbackup
+            make integration
+            SCRIPT
+
+            chmod +x /tmp/run_tests.bash
+            su gpadmin -c /tmp/run_tests.bash
