@@ -5,6 +5,7 @@ import (
 	"github.com/greenplum-db/gpbackup/testutils"
 
 	"bytes"
+	"regexp"
 
 	"github.com/greenplum-db/gpbackup/utils"
 
@@ -740,6 +741,47 @@ SET SUBPARTITION TEMPLATE  ` + `
 
 			Expect(len(resultExternalProtocols)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&protocolReadWrite, &resultExternalProtocols[0], "ReadFunction", "WriteFunction")
+		})
+	})
+	Describe("PrintCreateResourceQueueStatements", func() {
+		It("creates a basic resource queue with a comment", func() {
+			basicQueue := backup.QueryResourceQueue{"basicQueue", -1, "32.80", false, "0.00", "medium", "-1", "this is a resource queue comment"}
+
+			backup.PrintCreateResourceQueueStatements(buffer, []backup.QueryResourceQueue{basicQueue})
+
+			// CREATE RESOURCE QUEUE statements can not be part of a multi-command statement, so
+			// feed the CREATE RESOURCE QUEUE and COMMENT ON statements separately.
+			hunks := regexp.MustCompile(";\n\n").Split(buffer.String(), 2)
+			testutils.AssertQueryRuns(connection, hunks[0])
+			defer testutils.AssertQueryRuns(connection, `DROP RESOURCE QUEUE "basicQueue"`)
+			testutils.AssertQueryRuns(connection, hunks[1])
+
+			resultResourceQueues := backup.GetResourceQueues(connection)
+
+			for _, resultQueue := range resultResourceQueues {
+				if resultQueue.Name == "basicQueue" {
+					testutils.ExpectStructsToMatch(&basicQueue, &resultQueue)
+					return
+				}
+			}
+		})
+		It("creates a resource queue with all attributes", func() {
+			everythingQueue := backup.QueryResourceQueue{"everythingQueue", 7, "32.80", true, "22.80", "low", "2GB", ""}
+
+			backup.PrintCreateResourceQueueStatements(buffer, []backup.QueryResourceQueue{everythingQueue})
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, `DROP RESOURCE QUEUE "everythingQueue"`)
+
+			resultResourceQueues := backup.GetResourceQueues(connection)
+
+			for _, resultQueue := range resultResourceQueues {
+				if resultQueue.Name == "everythingQueue" {
+					testutils.ExpectStructsToMatch(&everythingQueue, &resultQueue)
+					return
+				}
+			}
+			Fail("didn't find everythingQueue :(")
 		})
 	})
 })

@@ -117,6 +117,10 @@ func backupGlobal(filename string) {
 	if databaseComment != "" {
 		utils.MustPrintf(globalFile, "\nCOMMENT ON DATABASE %s IS '%s';\n", connection.DBName, databaseComment)
 	}
+
+	logger.Verbose("Writing CREATE RESOURCE QUEUE statements to global file")
+	resQueues := GetResourceQueues(connection)
+	PrintCreateResourceQueueStatements(globalFile, resQueues)
 }
 
 func backupPredata(filename string, tables []utils.Relation, extTableMap map[string]bool) {

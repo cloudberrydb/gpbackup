@@ -767,6 +767,48 @@ FROM pg_extprotocol p;
 	return results
 }
 
+type QueryResourceQueue struct {
+	Name             string
+	ActiveStatements int
+	MaxCost          string
+	CostOvercommit   bool
+	MinCost          string
+	Priority         string
+	MemoryLimit      string
+	Comment          string
+}
+
+func GetResourceQueues(connection *utils.DBConn) []QueryResourceQueue {
+	results := make([]QueryResourceQueue, 0)
+	/*
+	 * maxcost and mincost are represented as real types in the database, but we round to two decimals
+	 * and cast them as text for more consistent formatting. pg_dumpall does this as well.
+	 */
+	query := `
+SELECT
+   rsqname AS name,
+   rsqcountlimit AS activestatements,
+   ROUND(rsqcostlimit::numeric, 2)::text AS maxcost,
+   rsqovercommit AS costovercommit,
+   ROUND(rsqignorecostlimit::numeric, 2)::text AS mincost,
+   priority_capability.ressetting::text AS priority,
+   memory_capability.ressetting::text AS memorylimit,
+   coalesce(descriptions.description, '') AS comment
+FROM
+   pg_resqueue r
+   JOIN
+      (SELECT resqueueid, ressetting FROM pg_resqueuecapability WHERE restypid = 5) priority_capability
+      ON r.oid = priority_capability.resqueueid
+   JOIN
+      (SELECT resqueueid, ressetting FROM pg_resqueuecapability WHERE restypid = 6) memory_capability
+      ON r.oid = memory_capability.resqueueid
+   LEFT JOIN pg_shdescription descriptions ON r.oid = descriptions.objoid;
+`
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
+}
+
 /*
  * Helper functions
  */

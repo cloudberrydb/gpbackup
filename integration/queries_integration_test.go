@@ -957,4 +957,53 @@ FORMAT 'TEXT' ( DELIMITER '|' NULL ' ')`)
 			testutils.ExpectStructsToMatch(&protocolDef, &results[0])
 		})
 	})
+	Describe("GetResourceQueues", func() {
+		It("returns a slice for a resource queue with only ACTIVE_STATEMENTS", func() {
+			testutils.AssertQueryRuns(connection, `CREATE RESOURCE QUEUE "statementsQueue" WITH (ACTIVE_STATEMENTS=7);`)
+			defer testutils.AssertQueryRuns(connection, `DROP RESOURCE QUEUE "statementsQueue"`)
+
+			results := backup.GetResourceQueues(connection)
+
+			statementsQueue := backup.QueryResourceQueue{"statementsQueue", 7, "-1.00", false, "0.00", "medium", "-1", ""}
+
+			//Since resource queues are global, we can't be sure this is the only one
+			for _, resultQueue := range results {
+				if resultQueue.Name == "statementsQueue" {
+					testutils.ExpectStructsToMatch(&statementsQueue, &resultQueue)
+					return
+				}
+			}
+		})
+		It("returns a slice for a resource queue with only MAX_COST", func() {
+			testutils.AssertQueryRuns(connection, `CREATE RESOURCE QUEUE "maxCostQueue" WITH (MAX_COST=32.8);`)
+			defer testutils.AssertQueryRuns(connection, `DROP RESOURCE QUEUE "maxCostQueue"`)
+
+			results := backup.GetResourceQueues(connection)
+
+			maxCostQueue := backup.QueryResourceQueue{"maxCostQueue", -1, "32.80", false, "0.00", "medium", "-1", ""}
+
+			for _, resultQueue := range results {
+				if resultQueue.Name == "maxCostQueue" {
+					testutils.ExpectStructsToMatch(&maxCostQueue, &resultQueue)
+					return
+				}
+			}
+		})
+		It("returns a slice for a resource queue with everything", func() {
+			testutils.AssertQueryRuns(connection, `CREATE RESOURCE QUEUE "commentQueue" WITH (ACTIVE_STATEMENTS=7, MAX_COST=3e+4, COST_OVERCOMMIT=TRUE, MIN_COST=22.53, PRIORITY=LOW, MEMORY_LIMIT='2GB');`)
+			defer testutils.AssertQueryRuns(connection, `DROP RESOURCE QUEUE "commentQueue"`)
+			testutils.AssertQueryRuns(connection, `COMMENT ON RESOURCE QUEUE "commentQueue" IS 'this is a resource queue comment'`)
+
+			results := backup.GetResourceQueues(connection)
+
+			commentQueue := backup.QueryResourceQueue{"commentQueue", 7, "30000.00", true, "22.53", "low", "2GB", "this is a resource queue comment"}
+
+			for _, resultQueue := range results {
+				if resultQueue.Name == "commentQueue" {
+					testutils.ExpectStructsToMatch(&commentQueue, &resultQueue)
+					return
+				}
+			}
+		})
+	})
 })
