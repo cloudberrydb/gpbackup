@@ -315,10 +315,10 @@ COMMENT ON SCHEMA schema_with_comments IS 'This is a comment.';`)
 		plAllFields := backup.QueryProceduralLanguage{"plpgsql", "testrole", true, true, 1, 2, 3, "", ""}
 		plComment := backup.QueryProceduralLanguage{"plpythonu", "testrole", true, false, 4, 0, 0, "", "language comment"}
 		funcInfoMap := map[uint32]backup.FunctionInfo{
-			1: {QualifiedName: "pg_catalog.plpgsql_call_handler", Arguments: ""},
-			2: {QualifiedName: "pg_catalog.plpgsql_inline_handler", Arguments: "internal"},
-			3: {QualifiedName: "pg_catalog.plpgsql_validator", Arguments: "oid"},
-			4: {QualifiedName: "pg_catalog.plpython_call_handler", Arguments: ""},
+			1: {QualifiedName: "pg_catalog.plpgsql_call_handler", Arguments: "", IsInternal: true},
+			2: {QualifiedName: "pg_catalog.plpgsql_inline_handler", Arguments: "internal", IsInternal: true},
+			3: {QualifiedName: "pg_catalog.plpgsql_validator", Arguments: "oid", IsInternal: true},
+			4: {QualifiedName: "pg_catalog.plpython_call_handler", Arguments: "", IsInternal: true},
 		}
 
 		It("prints untrusted language with a handler only", func() {
@@ -899,11 +899,16 @@ COMMENT ON VIEW shamwow.shazam IS 'this is a view comment';
 		protocolUntrustedWriteOnly := backup.QueryExtProtocol{"s3", "testrole", false, 0, 2, 0, ""}
 		protocolTrustedReadWriteValidator := backup.QueryExtProtocol{"s3", "testrole", true, 1, 2, 3, ""}
 		protocolUntrustedReadOnly := backup.QueryExtProtocol{"s4", "testrole", false, 4, 0, 0, ""}
+		protocolInternal := backup.QueryExtProtocol{"gphdfs", "testrole", false, 5, 6, 7, ""}
+		protocolInternalReadWrite := backup.QueryExtProtocol{"gphdfs", "testrole", false, 5, 6, 0, ""}
 		funcInfoMap := map[uint32]backup.FunctionInfo{
 			1: {QualifiedName: "public.read_fn_s3", Arguments: ""},
 			2: {QualifiedName: "public.write_fn_s3", Arguments: ""},
 			3: {QualifiedName: "public.validator", Arguments: ""},
 			4: {QualifiedName: "public.read_fn_s4", Arguments: ""},
+			5: {QualifiedName: "pg_catalog.read_internal_fn", Arguments: "", IsInternal: true},
+			6: {QualifiedName: "pg_catalog.write_internal_fn", Arguments: "", IsInternal: true},
+			7: {QualifiedName: "pg_catalog.validate_internal_fn", Arguments: "", IsInternal: true},
 		}
 
 		It("prints untrusted protocol with read and write function", func() {
@@ -948,6 +953,24 @@ ALTER PROTOCOL s3 OWNER TO testrole;
 
 
 CREATE PROTOCOL s4 (readfunc = public.read_fn_s4);
+
+ALTER PROTOCOL s4 OWNER TO testrole;`)
+		})
+		It("skips printing protocols where all functions are internal", func() {
+			protos := []backup.QueryExtProtocol{protocolInternal, protocolUntrustedReadOnly}
+
+			backup.PrintCreateExternalProtocolStatements(buffer, protos, funcInfoMap)
+			testutils.NotExpectRegexp(buffer, `CREATE PROTOCOL gphdfs`)
+			testutils.ExpectRegexp(buffer, `CREATE PROTOCOL s4 (readfunc = public.read_fn_s4);
+
+ALTER PROTOCOL s4 OWNER TO testrole;`)
+		})
+		It("skips printing protocols without validator where all functions are internal", func() {
+			protos := []backup.QueryExtProtocol{protocolInternalReadWrite, protocolUntrustedReadOnly}
+
+			backup.PrintCreateExternalProtocolStatements(buffer, protos, funcInfoMap)
+			testutils.NotExpectRegexp(buffer, `CREATE PROTOCOL gphdfs`)
+			testutils.ExpectRegexp(buffer, `CREATE PROTOCOL s4 (readfunc = public.read_fn_s4);
 
 ALTER PROTOCOL s4 OWNER TO testrole;`)
 		})

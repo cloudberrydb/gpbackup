@@ -866,19 +866,14 @@ LANGUAGE SQL`)
 			Expect(len(result)).To(Equal(initialLength + 1))
 			Expect(result[oid].QualifiedName).To(Equal("public.add"))
 			Expect(result[oid].Arguments).To(Equal("integer, integer"))
+			Expect(result[oid].IsInternal).To(BeFalse())
 		})
-		It("returns map with external tables", func() {
-			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int)")
-			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
-			testutils.AssertQueryRuns(connection, `CREATE READABLE EXTERNAL TABLE ext_table(i int)
-LOCATION ('file://tmp/myfile.txt')
-FORMAT 'TEXT' ( DELIMITER '|' NULL ' ')`)
-			defer testutils.AssertQueryRuns(connection, "DROP EXTERNAL TABLE ext_table")
+		It("returns a map containing an internal function", func() {
+			result := backup.GetFunctionOidToInfoMap(connection)
 
-			result := backup.GetExternalTablesMap(connection)
-
-			Expect(len(result)).To(Equal(1))
-			Expect(result["public.ext_table"]).To(BeTrue())
+			oid := testutils.OidFromFunctionName(connection, "boolin")
+			Expect(result[oid].QualifiedName).To(Equal("pg_catalog.boolin"))
+			Expect(result[oid].IsInternal).To(BeTrue())
 		})
 	})
 	Describe("GetCastDefinitions", func() {

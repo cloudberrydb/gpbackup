@@ -154,11 +154,11 @@ var _ = Describe("backup integration create statement tests", func() {
 	Describe("PrintCreateLanguageStatements", func() {
 		It("creates procedural languages", func() {
 			funcInfoMap := map[uint32]backup.FunctionInfo{
-				11907:  {"pg_catalog.plpgsql_validator", "oid"},
-				11906:  {"pg_catalog.plpgsql_inline_handler", "internal"},
-				11905:  {"pg_catalog.plpgsql_call_handler", ""},
-				228851: {"pg_catalog.plpython_call_handler", ""},
-				228852: {"pg_catalog.plpython_inline_handler", "internal"},
+				11907:  {"pg_catalog.plpgsql_validator", "oid", true},
+				11906:  {"pg_catalog.plpgsql_inline_handler", "internal", true},
+				11905:  {"pg_catalog.plpgsql_call_handler", "", true},
+				228851: {"pg_catalog.plpython_call_handler", "", true},
+				228852: {"pg_catalog.plpython_inline_handler", "internal", true},
 			}
 			plpgsqlInfo := backup.QueryProceduralLanguage{"plpgsql", "testrole", true, true, 11905, 11906, 11907, "", ""}
 			plpythonuInfo := backup.QueryProceduralLanguage{"plpythonu", "testrole", true, false, 228851, 228852, 0, "", "this is a language comment"}
@@ -685,8 +685,8 @@ SET SUBPARTITION TEMPLATE  ` + `
 	})
 	Describe("PrintCreateExternalProtocolStatements", func() {
 		funcInfoMap := map[uint32]backup.FunctionInfo{
-			1: {"public.write_to_s3", ""},
-			2: {"public.read_from_s3", ""},
+			1: {"public.write_to_s3", "", false},
+			2: {"public.read_from_s3", "", false},
 		}
 		protocolReadOnly := backup.QueryExtProtocol{"s3_read", "testrole", true, 2, 0, 0, ""}
 		protocolWriteOnly := backup.QueryExtProtocol{"s3_write", "testrole", false, 0, 1, 0, ""}

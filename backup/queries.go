@@ -440,6 +440,7 @@ type QueryFunction struct {
 type FunctionInfo struct {
 	QualifiedName string
 	Arguments     string
+	IsInternal    bool
 }
 
 func GetFunctionOidToInfoMap(connection *utils.DBConn) map[uint32]FunctionInfo {
@@ -460,7 +461,11 @@ LEFT JOIN pg_namespace n ON p.pronamespace = n.oid;
 	for _, function := range results {
 		fqn := utils.MakeFQN(function.FunctionSchema, function.FunctionName)
 
-		funcInfo := FunctionInfo{QualifiedName: fqn, Arguments: function.Arguments}
+		isInternal := false
+		if function.FunctionSchema == "pg_catalog" {
+			isInternal = true
+		}
+		funcInfo := FunctionInfo{QualifiedName: fqn, Arguments: function.Arguments, IsInternal: isInternal}
 		funcMap[function.FunctionOid] = funcInfo
 	}
 	return funcMap

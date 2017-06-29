@@ -470,6 +470,22 @@ func PrintCreateViewStatements(predataFile io.Writer, views []QueryViewDefinitio
 
 func PrintCreateExternalProtocolStatements(predataFile io.Writer, protocols []QueryExtProtocol, funcInfoMap map[uint32]FunctionInfo) {
 	for _, protocol := range protocols {
+
+		hasUserDefinedFunc := false
+		if function, ok := funcInfoMap[protocol.WriteFunction]; ok && !function.IsInternal {
+			hasUserDefinedFunc = true
+		}
+		if function, ok := funcInfoMap[protocol.ReadFunction]; ok && !function.IsInternal {
+			hasUserDefinedFunc = true
+		}
+		if function, ok := funcInfoMap[protocol.Validator]; ok && !function.IsInternal {
+			hasUserDefinedFunc = true
+		}
+
+		if !hasUserDefinedFunc {
+			continue
+		}
+
 		var needsComma = false
 		utils.MustPrintf(predataFile, "\n\nCREATE ")
 		if protocol.Trusted {
