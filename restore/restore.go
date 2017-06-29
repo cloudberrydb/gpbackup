@@ -15,11 +15,12 @@ var (
 )
 
 var ( // Command-line flags
-	debug     = flag.Bool("debug", false, "Print verbose and debug log messages")
-	dumpDir   = flag.String("dumpdir", "", "The directory in which the dump files to be restored are located")
-	quiet     = flag.Bool("quiet", false, "Suppress non-warning, non-error log messages")
-	timestamp = flag.String("timestamp", "", "The timestamp to be restored, in the format YYYYMMDDHHMMSS")
-	verbose   = flag.Bool("verbose", false, "Print verbose log messages")
+	debug          = flag.Bool("debug", false, "Print verbose and debug log messages")
+	dumpDir        = flag.String("dumpdir", "", "The directory in which the dump files to be restored are located")
+	quiet          = flag.Bool("quiet", false, "Suppress non-warning, non-error log messages")
+	timestamp      = flag.String("timestamp", "", "The timestamp to be restored, in the format YYYYMMDDHHMMSS")
+	verbose        = flag.Bool("verbose", false, "Print verbose log messages")
+	restoreGlobals = flag.Bool("globals", false, "Restore global metadata")
 )
 
 // This function handles setup that can be done before parsing flags.
@@ -77,9 +78,11 @@ func DoRestore() {
 	predataFilename := fmt.Sprintf("%s/predata.sql", masterDumpDir)
 	postdataFilename := fmt.Sprintf("%s/postdata.sql", masterDumpDir)
 
-	logger.Info("Restoring global database metadata from %s", globalFilename)
-	restoreGlobal(globalFilename)
-	logger.Info("Global database metadata restore complete")
+	if *restoreGlobals {
+		logger.Info("Restoring global database metadata from %s", globalFilename)
+		restoreGlobal(globalFilename)
+		logger.Info("Global database metadata restore complete")
+	}
 
 	logger.Info("Restoring pre-data metadata from %s", predataFilename)
 	restorePredata(predataFilename)
