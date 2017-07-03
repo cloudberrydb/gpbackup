@@ -121,6 +121,10 @@ func backupGlobal(filename string) {
 	logger.Verbose("Writing CREATE RESOURCE QUEUE statements to global file")
 	resQueues := GetResourceQueues(connection)
 	PrintCreateResourceQueueStatements(globalFile, resQueues)
+
+	logger.Verbose("Writing CREATE ROLE statements to global file")
+	roles := GetRoles(connection)
+	PrintCreateRoleStatements(globalFile, roles)
 }
 
 func backupPredata(filename string, tables []utils.Relation, extTableMap map[string]bool) {

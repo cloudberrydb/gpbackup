@@ -968,6 +968,7 @@ LANGUAGE SQL`)
 					return
 				}
 			}
+			Fail("Resource queue 'statementsQueue' was not found.")
 		})
 		It("returns a slice for a resource queue with only MAX_COST", func() {
 			testutils.AssertQueryRuns(connection, `CREATE RESOURCE QUEUE "maxCostQueue" WITH (MAX_COST=32.8);`)
@@ -983,6 +984,7 @@ LANGUAGE SQL`)
 					return
 				}
 			}
+			Fail("Resource queue 'maxCostQueue' was not found.")
 		})
 		It("returns a slice for a resource queue with everything", func() {
 			testutils.AssertQueryRuns(connection, `CREATE RESOURCE QUEUE "commentQueue" WITH (ACTIVE_STATEMENTS=7, MAX_COST=3e+4, COST_OVERCOMMIT=TRUE, MIN_COST=22.53, PRIORITY=LOW, MEMORY_LIMIT='2GB');`)
@@ -999,6 +1001,107 @@ LANGUAGE SQL`)
 					return
 				}
 			}
+			Fail("Resource queue 'commentsQueue' was not found.")
+		})
+
+	})
+	Describe("GetDatabaseRoles", func() {
+		It("returns a role with default properties", func() {
+			testutils.AssertQueryRuns(connection, "CREATE ROLE role1 SUPERUSER NOINHERIT")
+			defer testutils.AssertQueryRuns(connection, "DROP ROLE role1")
+
+			results := backup.GetRoles(connection)
+
+			roleOid := testutils.OidFromRoleName(connection, "role1")
+			expectedRole := backup.QueryRole{
+				Oid:             roleOid,
+				Name:            "role1",
+				Super:           true,
+				Inherit:         false,
+				CreateRole:      false,
+				CreateDB:        false,
+				CanLogin:        false,
+				ConnectionLimit: -1,
+				Password:        "",
+				ValidUntil:      "",
+				Comment:         "",
+				ResQueue:        "pg_default",
+				Createrexthttp:  false,
+				Createrextgpfd:  false,
+				Createwextgpfd:  false,
+				Createrexthdfs:  false,
+				Createwexthdfs:  false,
+				TimeConstraints: nil,
+			}
+
+			for _, role := range results {
+				if role.Name == "role1" {
+					testutils.ExpectStructsToMatch(&expectedRole, role)
+					return
+				}
+			}
+			Fail("Role 'role1' was not found")
+		})
+		It("returns a role with all properties specified", func() {
+			testutils.AssertQueryRuns(connection, "CREATE ROLE role1")
+			defer testutils.AssertQueryRuns(connection, "DROP ROLE role1")
+			testutils.AssertQueryRuns(connection, `
+ALTER ROLE role1 WITH NOSUPERUSER INHERIT CREATEROLE CREATEDB LOGIN
+CONNECTION LIMIT 4 PASSWORD 'swordfish' VALID UNTIL '2099-01-01 00:00:00-08'
+CREATEEXTTABLE (protocol='http')
+CREATEEXTTABLE (protocol='gpfdist', type='readable')
+CREATEEXTTABLE (protocol='gpfdist', type='writable')
+CREATEEXTTABLE (protocol='gphdfs', type='readable')
+CREATEEXTTABLE (protocol='gphdfs', type='writable')`)
+			testutils.AssertQueryRuns(connection, "ALTER ROLE role1 DENY BETWEEN DAY 'Sunday' TIME '1:30 PM' AND DAY 'Wednesday' TIME '14:30:00'")
+			testutils.AssertQueryRuns(connection, "ALTER ROLE role1 DENY DAY 'Friday'")
+			testutils.AssertQueryRuns(connection, "COMMENT ON ROLE role1 IS 'this is a role comment'")
+
+			results := backup.GetRoles(connection)
+
+			roleOid := testutils.OidFromRoleName(connection, "role1")
+			expectedRole := backup.QueryRole{
+				Oid:             roleOid,
+				Name:            "role1",
+				Super:           false,
+				Inherit:         true,
+				CreateRole:      true,
+				CreateDB:        true,
+				CanLogin:        true,
+				ConnectionLimit: 4,
+				Password:        "md5a8b2c77dfeba4705f29c094592eb3369",
+				ValidUntil:      "2099-01-01 00:00:00-08",
+				Comment:         "this is a role comment",
+				ResQueue:        "pg_default",
+				Createrexthttp:  true,
+				Createrextgpfd:  true,
+				Createwextgpfd:  true,
+				Createrexthdfs:  true,
+				Createwexthdfs:  true,
+				TimeConstraints: []backup.TimeConstraint{
+					{
+						Oid:       0,
+						StartDay:  0,
+						StartTime: "13:30:00",
+						EndDay:    3,
+						EndTime:   "14:30:00",
+					}, {
+						Oid:       0,
+						StartDay:  5,
+						StartTime: "00:00:00",
+						EndDay:    5,
+						EndTime:   "24:00:00",
+					},
+				},
+			}
+
+			for _, role := range results {
+				if role.Name == "role1" {
+					testutils.ExpectStructsToMatchExcluding(&expectedRole, role, "TimeConstraints")
+					return
+				}
+			}
+			Fail("Role 'role1' was not found")
 		})
 	})
 })

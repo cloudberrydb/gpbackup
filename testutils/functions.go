@@ -116,3 +116,11 @@ func OidFromFunctionName(dbconn *utils.DBConn, relname string) uint32 {
 	Expect(err).To(BeNil())
 	return uint32(oid)
 }
+
+func OidFromRoleName(dbconn *utils.DBConn, relname string) uint32 {
+	oidQuery := fmt.Sprintf("SELECT oid as string FROM pg_authid WHERE rolname='%s'", relname)
+	oidString := backup.SelectString(dbconn, oidQuery)
+	oid, err := strconv.ParseUint(oidString, 10, 32)
+	Expect(err).To(BeNil())
+	return uint32(oid)
+}

@@ -784,4 +784,92 @@ SET SUBPARTITION TEMPLATE  ` + `
 			Fail("didn't find everythingQueue :(")
 		})
 	})
+	Describe("PrintCreateRoleStatements", func() {
+		It("creates a basic role ", func() {
+			role1 := backup.QueryRole{
+				Oid:             0,
+				Name:            "role1",
+				Super:           true,
+				Inherit:         false,
+				CreateRole:      false,
+				CreateDB:        false,
+				CanLogin:        false,
+				ConnectionLimit: -1,
+				Password:        "",
+				ValidUntil:      "",
+				Comment:         "",
+				ResQueue:        "pg_default",
+				Createrexthttp:  false,
+				Createrextgpfd:  false,
+				Createwextgpfd:  false,
+				Createrexthdfs:  false,
+				Createwexthdfs:  false,
+				TimeConstraints: nil,
+			}
+
+			backup.PrintCreateRoleStatements(buffer, []backup.QueryRole{role1})
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, `DROP ROLE "role1"`)
+			role1.Oid = testutils.OidFromRoleName(connection, "role1")
+
+			resultRoles := backup.GetRoles(connection)
+			for _, role := range resultRoles {
+				if role.Name == "role1" {
+					testutils.ExpectStructsToMatch(&role1, role)
+					return
+				}
+			}
+			Fail("Role 'role1' was not found")
+		})
+		It("creates a role with all attributes", func() {
+			role1 := backup.QueryRole{
+				Oid:             0,
+				Name:            "role1",
+				Super:           false,
+				Inherit:         true,
+				CreateRole:      true,
+				CreateDB:        true,
+				CanLogin:        true,
+				ConnectionLimit: 4,
+				Password:        "md5a8b2c77dfeba4705f29c094592eb3369",
+				ValidUntil:      "2099-01-01 00:00:00-08",
+				Comment:         "this is a role comment",
+				ResQueue:        "pg_default",
+				Createrexthttp:  true,
+				Createrextgpfd:  true,
+				Createwextgpfd:  true,
+				Createrexthdfs:  true,
+				Createwexthdfs:  true,
+				TimeConstraints: []backup.TimeConstraint{
+					{
+						StartDay:  0,
+						StartTime: "13:30:00",
+						EndDay:    3,
+						EndTime:   "14:30:00",
+					}, {
+						StartDay:  5,
+						StartTime: "00:00:00",
+						EndDay:    5,
+						EndTime:   "24:00:00",
+					},
+				},
+			}
+
+			backup.PrintCreateRoleStatements(buffer, []backup.QueryRole{role1})
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, `DROP ROLE "role1"`)
+			role1.Oid = testutils.OidFromRoleName(connection, "role1")
+
+			resultRoles := backup.GetRoles(connection)
+			for _, role := range resultRoles {
+				if role.Name == "role1" {
+					testutils.ExpectStructsToMatchExcluding(&role1, role, "TimeConstraints")
+					return
+				}
+			}
+			Fail("Role 'role1' was not found")
+		})
+	})
 })

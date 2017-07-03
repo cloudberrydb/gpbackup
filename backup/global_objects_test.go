@@ -90,4 +90,91 @@ COMMENT ON RESOURCE QUEUE "commentQueue" IS 'this is a comment on a resource que
 			testutils.ExpectRegexp(buffer, `ALTER RESOURCE QUEUE pg_default WITH (ACTIVE_STATEMENTS=1);`)
 		})
 	})
+	Describe("PrintRoleStatements", func() {
+		testrole1 := backup.QueryRole{
+			Name:            "testrole1",
+			Super:           false,
+			Inherit:         false,
+			CreateRole:      false,
+			CreateDB:        false,
+			CanLogin:        false,
+			ConnectionLimit: -1,
+			Password:        "",
+			ValidUntil:      "",
+			Comment:         "",
+			ResQueue:        "pg_default",
+			Createrexthttp:  false,
+			Createrextgpfd:  false,
+			Createwextgpfd:  false,
+			Createrexthdfs:  false,
+			Createwexthdfs:  false,
+			TimeConstraints: []backup.TimeConstraint{},
+		}
+
+		testrole2 := backup.QueryRole{
+			Name:            "testRole2",
+			Super:           true,
+			Inherit:         true,
+			CreateRole:      true,
+			CreateDB:        true,
+			CanLogin:        true,
+			ConnectionLimit: 4,
+			Password:        "md5a8b2c77dfeba4705f29c094592eb3369",
+			ValidUntil:      "2099-01-01 00:00:00-08",
+			Comment:         "this is a role comment",
+			ResQueue:        "testQueue",
+			Createrexthttp:  true,
+			Createrextgpfd:  true,
+			Createwextgpfd:  true,
+			Createrexthdfs:  true,
+			Createwexthdfs:  true,
+			TimeConstraints: []backup.TimeConstraint{
+				{
+					StartDay:  0,
+					StartTime: "13:30:00",
+					EndDay:    3,
+					EndTime:   "14:30:00",
+				}, {
+					StartDay:  5,
+					StartTime: "00:00:00",
+					EndDay:    5,
+					EndTime:   "24:00:00",
+				},
+			},
+		}
+		It("prints basic role", func() {
+
+			backup.PrintCreateRoleStatements(buffer, []backup.QueryRole{testrole1})
+
+			testutils.ExpectRegexp(buffer, `CREATE ROLE testrole1;
+
+ALTER ROLE testrole1 WITH NOSUPERUSER NOINHERIT NOCREATEROLE NOCREATEDB NOLOGIN RESOURCE QUEUE pg_default;`)
+		})
+		It("prints roles with non-defaults", func() {
+
+			backup.PrintCreateRoleStatements(buffer, []backup.QueryRole{testrole2})
+
+			testutils.ExpectRegexp(buffer, `CREATE ROLE "testRole2";
+
+ALTER ROLE "testRole2" WITH SUPERUSER INHERIT CREATEROLE CREATEDB LOGIN CONNECTION LIMIT 4 PASSWORD 'md5a8b2c77dfeba4705f29c094592eb3369' VALID UNTIL '2099-01-01 00:00:00-08' RESOURCE QUEUE "testQueue" CREATEEXTTABLE (protocol='http') CREATEEXTTABLE (protocol='gpfdist', type='readable') CREATEEXTTABLE (protocol='gpfdist', type='writable') CREATEEXTTABLE (protocol='gphdfs', type='readable') CREATEEXTTABLE (protocol='gphdfs', type='writable');
+
+ALTER ROLE "testRole2" DENY BETWEEN DAY 0 TIME '13:30:00' AND DAY 3 TIME '14:30:00';
+
+ALTER ROLE "testRole2" DENY BETWEEN DAY 5 TIME '00:00:00' AND DAY 5 TIME '24:00:00';
+
+COMMENT ON ROLE "testRole2" IS 'this is a role comment';`)
+		})
+		It("prints multiple roles", func() {
+
+			backup.PrintCreateRoleStatements(buffer, []backup.QueryRole{testrole1, testrole1})
+
+			testutils.ExpectRegexp(buffer, `CREATE ROLE testrole1;
+
+ALTER ROLE testrole1 WITH NOSUPERUSER NOINHERIT NOCREATEROLE NOCREATEDB NOLOGIN RESOURCE QUEUE pg_default;
+
+CREATE ROLE testrole1;
+
+ALTER ROLE testrole1 WITH NOSUPERUSER NOINHERIT NOCREATEROLE NOCREATEDB NOLOGIN RESOURCE QUEUE pg_default;`)
+		})
+	})
 })

@@ -814,6 +814,98 @@ FROM
 	return results
 }
 
+type TimeConstraint struct {
+	Oid       uint32
+	StartDay  int
+	StartTime string
+	EndDay    int
+	EndTime   string
+}
+
+type QueryRole struct {
+	Oid             uint32
+	Name            string
+	Super           bool
+	Inherit         bool
+	CreateRole      bool
+	CreateDB        bool
+	CanLogin        bool
+	ConnectionLimit int
+	Password        string
+	ValidUntil      string
+	Comment         string
+	ResQueue        string
+	Createrextgpfd  bool
+	Createrexthttp  bool
+	Createwextgpfd  bool
+	Createrexthdfs  bool
+	Createwexthdfs  bool
+	TimeConstraints []TimeConstraint
+}
+
+func GetRoles(connection *utils.DBConn) []QueryRole {
+	roles := make([]QueryRole, 0)
+	query := `
+SELECT
+  oid AS oid,
+  rolname AS name,
+  rolsuper AS super,
+  rolinherit AS inherit,
+  rolcreaterole AS createrole,
+  rolcreatedb AS createdb,
+  rolcanlogin AS  canlogin,
+  rolconnlimit AS connectionlimit,
+  coalesce(rolpassword, '') AS password,
+  coalesce(rolvaliduntil::text,'') AS validuntil,
+  coalesce(shobj_description(oid, 'pg_authid'), '') AS comment,
+  (SELECT rsqname FROM pg_resqueue WHERE pg_resqueue.oid = rolresqueue) AS resqueue,
+  rolcreaterexthttp AS createrexthttp,
+  rolcreaterextgpfd AS createrextgpfd,
+  rolcreatewextgpfd AS createwextgpfd,
+  rolcreaterexthdfs AS createrexthdfs,
+  rolcreatewexthdfs AS createwexthdfs
+FROM
+  pg_authid`
+	err := connection.Select(&roles, query)
+	utils.CheckError(err)
+
+	constraintsByRole := getTimeConstraintsGroupedByRole(connection)
+
+	for idx, role := range roles {
+		roles[idx].TimeConstraints = constraintsByRole[role.Oid]
+	}
+
+	return roles
+}
+
+func getTimeConstraintsGroupedByRole(connection *utils.DBConn) map[uint32][]TimeConstraint {
+	timeConstraints := make([]TimeConstraint, 0)
+	query := `
+SELECT
+	authid AS oid,
+	start_day AS startday,
+	start_time::text AS starttime,
+	end_day AS endday,
+	end_time::text AS endtime
+FROM
+	pg_auth_time_constraint
+	`
+
+	err := connection.Select(&timeConstraints, query)
+	utils.CheckError(err)
+
+	constraintsByRole := make(map[uint32][]TimeConstraint, 0)
+	for _, constraint := range timeConstraints {
+		roleConstraints, ok := constraintsByRole[constraint.Oid]
+		if !ok {
+			roleConstraints = make([]TimeConstraint, 0)
+		}
+		constraintsByRole[constraint.Oid] = append(roleConstraints, constraint)
+	}
+
+	return constraintsByRole
+}
+
 /*
  * Helper functions
  */

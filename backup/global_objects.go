@@ -81,3 +81,88 @@ func PrintCreateResourceQueueStatements(globalFile io.Writer, resQueues []QueryR
 		}
 	}
 }
+
+func PrintCreateRoleStatements(globalFile io.Writer, roles []QueryRole) {
+	for _, role := range roles {
+		attrs := []string{}
+
+		if role.Super {
+			attrs = append(attrs, "SUPERUSER")
+		} else {
+			attrs = append(attrs, "NOSUPERUSER")
+		}
+
+		if role.Inherit {
+			attrs = append(attrs, "INHERIT")
+		} else {
+			attrs = append(attrs, "NOINHERIT")
+		}
+
+		if role.CreateRole {
+			attrs = append(attrs, "CREATEROLE")
+		} else {
+			attrs = append(attrs, "NOCREATEROLE")
+		}
+
+		if role.CreateDB {
+			attrs = append(attrs, "CREATEDB")
+		} else {
+			attrs = append(attrs, "NOCREATEDB")
+		}
+
+		if role.CanLogin {
+			attrs = append(attrs, "LOGIN")
+		} else {
+			attrs = append(attrs, "NOLOGIN")
+		}
+		if role.ConnectionLimit != -1 {
+			attrs = append(attrs, fmt.Sprintf("CONNECTION LIMIT %d", role.ConnectionLimit))
+		}
+
+		if role.Password != "" {
+			attrs = append(attrs, fmt.Sprintf("PASSWORD '%s'", role.Password))
+		}
+
+		if role.ValidUntil != "" {
+			attrs = append(attrs, fmt.Sprintf("VALID UNTIL '%s'", role.ValidUntil))
+		}
+
+		attrs = append(attrs, fmt.Sprintf("RESOURCE QUEUE %s", utils.QuoteIdent(role.ResQueue)))
+
+		if role.Createrexthttp {
+			attrs = append(attrs, "CREATEEXTTABLE (protocol='http')")
+		}
+
+		if role.Createrextgpfd {
+			attrs = append(attrs, "CREATEEXTTABLE (protocol='gpfdist', type='readable')")
+		}
+
+		if role.Createwextgpfd {
+			attrs = append(attrs, "CREATEEXTTABLE (protocol='gpfdist', type='writable')")
+		}
+
+		if role.Createrexthdfs {
+			attrs = append(attrs, "CREATEEXTTABLE (protocol='gphdfs', type='readable')")
+		}
+
+		if role.Createwexthdfs {
+			attrs = append(attrs, "CREATEEXTTABLE (protocol='gphdfs', type='writable')")
+		}
+
+		utils.MustPrintf(globalFile, `
+
+CREATE ROLE %s;
+
+ALTER ROLE %s WITH %s;`, utils.QuoteIdent(role.Name), utils.QuoteIdent(role.Name), strings.Join(attrs, " "))
+
+		if len(role.TimeConstraints) != 0 {
+			for _, timeConstraint := range role.TimeConstraints {
+				utils.MustPrintf(globalFile, "\n\nALTER ROLE %s DENY BETWEEN DAY %d TIME '%s' AND DAY %d TIME '%s';", utils.QuoteIdent(role.Name), timeConstraint.StartDay, timeConstraint.StartTime, timeConstraint.EndDay, timeConstraint.EndTime)
+			}
+		}
+
+		if role.Comment != "" {
+			utils.MustPrintf(globalFile, "\n\nCOMMENT ON ROLE %s IS '%s';", utils.QuoteIdent(role.Name), role.Comment)
+		}
+	}
+}
