@@ -791,23 +791,23 @@ func GetResourceQueues(connection *utils.DBConn) []QueryResourceQueue {
 	 */
 	query := `
 SELECT
-   rsqname AS name,
-   rsqcountlimit AS activestatements,
-   ROUND(rsqcostlimit::numeric, 2)::text AS maxcost,
-   rsqovercommit AS costovercommit,
-   ROUND(rsqignorecostlimit::numeric, 2)::text AS mincost,
-   priority_capability.ressetting::text AS priority,
-   memory_capability.ressetting::text AS memorylimit,
-   coalesce(descriptions.description, '') AS comment
+	rsqname AS name,
+	rsqcountlimit AS activestatements,
+	ROUND(rsqcostlimit::numeric, 2)::text AS maxcost,
+	rsqovercommit AS costovercommit,
+	ROUND(rsqignorecostlimit::numeric, 2)::text AS mincost,
+	priority_capability.ressetting::text AS priority,
+	memory_capability.ressetting::text AS memorylimit,
+	coalesce(descriptions.description, '') AS comment
 FROM
-   pg_resqueue r
-   JOIN
-      (SELECT resqueueid, ressetting FROM pg_resqueuecapability WHERE restypid = 5) priority_capability
-      ON r.oid = priority_capability.resqueueid
-   JOIN
-      (SELECT resqueueid, ressetting FROM pg_resqueuecapability WHERE restypid = 6) memory_capability
-      ON r.oid = memory_capability.resqueueid
-   LEFT JOIN pg_shdescription descriptions ON r.oid = descriptions.objoid;
+	pg_resqueue r
+		JOIN
+		(SELECT resqueueid, ressetting FROM pg_resqueuecapability WHERE restypid = 5) priority_capability
+		ON r.oid = priority_capability.resqueueid
+	JOIN
+		(SELECT resqueueid, ressetting FROM pg_resqueuecapability WHERE restypid = 6) memory_capability
+		ON r.oid = memory_capability.resqueueid
+	LEFT JOIN pg_shdescription descriptions ON r.oid = descriptions.objoid;
 `
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
@@ -847,29 +847,29 @@ func GetRoles(connection *utils.DBConn) []QueryRole {
 	roles := make([]QueryRole, 0)
 	query := `
 SELECT
-  oid AS oid,
-  rolname AS name,
-  rolsuper AS super,
-  rolinherit AS inherit,
-  rolcreaterole AS createrole,
-  rolcreatedb AS createdb,
-  rolcanlogin AS  canlogin,
-  rolconnlimit AS connectionlimit,
-  coalesce(rolpassword, '') AS password,
-  coalesce(rolvaliduntil::text,'') AS validuntil,
-  coalesce(shobj_description(oid, 'pg_authid'), '') AS comment,
-  (SELECT rsqname FROM pg_resqueue WHERE pg_resqueue.oid = rolresqueue) AS resqueue,
-  rolcreaterexthttp AS createrexthttp,
-  rolcreaterextgpfd AS createrextgpfd,
-  rolcreatewextgpfd AS createwextgpfd,
-  rolcreaterexthdfs AS createrexthdfs,
-  rolcreatewexthdfs AS createwexthdfs
+	oid AS oid,
+	rolname AS name,
+	rolsuper AS super,
+	rolinherit AS inherit,
+	rolcreaterole AS createrole,
+	rolcreatedb AS createdb,
+	rolcanlogin AS  canlogin,
+	rolconnlimit AS connectionlimit,
+	coalesce(rolpassword, '') AS password,
+	coalesce(rolvaliduntil::text,'') AS validuntil,
+	coalesce(shobj_description(oid, 'pg_authid'), '') AS comment,
+	(SELECT rsqname FROM pg_resqueue WHERE pg_resqueue.oid = rolresqueue) AS resqueue,
+	rolcreaterexthttp AS createrexthttp,
+	rolcreaterextgpfd AS createrextgpfd,
+	rolcreatewextgpfd AS createwextgpfd,
+	rolcreaterexthdfs AS createrexthdfs,
+	rolcreatewexthdfs AS createwexthdfs
 FROM
-  pg_authid`
+	pg_authid`
 	err := connection.Select(&roles, query)
 	utils.CheckError(err)
 
-	constraintsByRole := getTimeConstraintsGroupedByRole(connection)
+	constraintsByRole := getTimeConstraintsByRole(connection)
 
 	for idx, role := range roles {
 		roles[idx].TimeConstraints = constraintsByRole[role.Oid]
@@ -878,7 +878,7 @@ FROM
 	return roles
 }
 
-func getTimeConstraintsGroupedByRole(connection *utils.DBConn) map[uint32][]TimeConstraint {
+func getTimeConstraintsByRole(connection *utils.DBConn) map[uint32][]TimeConstraint {
 	timeConstraints := make([]TimeConstraint, 0)
 	query := `
 SELECT
