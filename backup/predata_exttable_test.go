@@ -49,6 +49,13 @@ var _ = Describe("backup/predata tests", func() {
 				Expect(typ).To(Equal(backup.READABLE_WEB))
 				Expect(proto).To(Equal(backup.HTTP))
 			})
+			It("classifies a WRITABLE EXTERNAL WEB table with a LOCATION correctly", func() {
+				extTableDef.Location = "http://webhost:port/path/file"
+				extTableDef.Writable = true
+				typ, proto := backup.DetermineExternalTableCharacteristics(extTableDef)
+				Expect(typ).To(Equal(backup.WRITABLE_WEB))
+				Expect(proto).To(Equal(backup.HTTP))
+			})
 			It("classifies a READABLE EXTERNAL WEB table with an EXECUTE correctly", func() {
 				extTableDef.Command = "hostname"
 				typ, proto := backup.DetermineExternalTableCharacteristics(extTableDef)

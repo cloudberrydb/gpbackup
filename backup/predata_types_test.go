@@ -23,6 +23,7 @@ var _ = Describe("backup/predata tests", func() {
 		compCommentOwnerTwo := backup.TypeDefinition{TypeSchema: "public", TypeName: "composite_type", Type: "c", AttName: "foo",
 			AttType: "float", Comment: "This is a type comment.", Owner: "test_role"}
 		enumOne := backup.TypeDefinition{TypeSchema: "public", TypeName: "enum_type", Type: "e", EnumLabels: "'bar',\n\t'baz',\n\t'foo'"}
+		enumTwo := backup.TypeDefinition{TypeSchema: "public", TypeName: "enum_type", Type: "e", EnumLabels: "'bar',\n\t'baz',\n\t'foo'", Comment: "This is an enum type comment", Owner: "test_role"}
 
 		It("prints a composite type with one attribute", func() {
 			backup.PrintCreateCompositeAndEnumTypeStatements(buffer, []backup.TypeDefinition{compOne})
@@ -56,6 +57,18 @@ ALTER TYPE public.composite_type OWNER TO test_role;`)
 	'baz',
 	'foo'
 );`)
+		})
+		It("prints an enum type with comment and owner", func() {
+			backup.PrintCreateCompositeAndEnumTypeStatements(buffer, []backup.TypeDefinition{enumTwo})
+			testutils.ExpectRegexp(buffer, `CREATE TYPE public.enum_type AS ENUM (
+	'bar',
+	'baz',
+	'foo'
+);
+
+COMMENT ON TYPE public.enum_type IS 'This is an enum type comment';
+
+ALTER TYPE public.enum_type OWNER TO test_role;`)
 		})
 		It("prints both an enum type and a composite type", func() {
 			backup.PrintCreateCompositeAndEnumTypeStatements(buffer, []backup.TypeDefinition{compOne, enumOne})
