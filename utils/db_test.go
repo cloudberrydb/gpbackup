@@ -54,7 +54,7 @@ var _ = Describe("utils/db tests", func() {
 			It("connects successfully", func() {
 				var mockdb *sqlx.DB
 				mockdb, mock = testutils.CreateMockDB()
-				driver := testutils.TestDriver{DBExists: true, DB: mockdb}
+				driver := testutils.TestDriver{DBExists: true, RoleExists: true, DB: mockdb, User: "testrole"}
 				connection = utils.NewDBConn("testdb")
 				connection.Driver = driver
 				Expect(connection.DBName).To(Equal("testdb"))
@@ -65,11 +65,28 @@ var _ = Describe("utils/db tests", func() {
 			It("fails", func() {
 				var mockdb *sqlx.DB
 				mockdb, mock = testutils.CreateMockDB()
-				driver := testutils.TestDriver{DBExists: false, DB: mockdb, DBName: "testdb"}
+				driver := testutils.TestDriver{DBExists: false, RoleExists: true, DB: mockdb, DBName: "testdb", User: "testrole"}
 				connection = utils.NewDBConn("testdb")
 				connection.Driver = driver
 				Expect(connection.DBName).To(Equal("testdb"))
-				defer testutils.ShouldPanicWithMessage("Database testdb does not exist, exiting")
+				defer testutils.ShouldPanicWithMessage("Database \"testdb\" does not exist, exiting")
+				connection.Connect()
+			})
+		})
+		Context("The role does not exist", func() {
+			It("fails", func() {
+				var mockdb *sqlx.DB
+				mockdb, mock = testutils.CreateMockDB()
+				driver := testutils.TestDriver{DBExists: true, RoleExists: false, DB: mockdb, DBName: "testdb", User: "nonexistent"}
+
+				oldPgUser := os.Getenv("PGUSER")
+				os.Setenv("PGUSER", "nonexistent")
+				defer os.Setenv("PGUSER", oldPgUser)
+
+				connection = utils.NewDBConn("testdb")
+				connection.Driver = driver
+				Expect(connection.User).To(Equal("nonexistent"))
+				defer testutils.ShouldPanicWithMessage("Role \"nonexistent\" does not exist, exiting")
 				connection.Connect()
 			})
 		})

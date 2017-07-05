@@ -23,7 +23,7 @@ import (
 
 func CreateAndConnectMockDB() (*utils.DBConn, sqlmock.Sqlmock) {
 	mockdb, mock := CreateMockDB()
-	driver := TestDriver{DBExists: true, DB: mockdb, DBName: "testdb"}
+	driver := TestDriver{DBExists: true, RoleExists: true, DB: mockdb, DBName: "testdb", User: "testrole"}
 	connection := utils.NewDBConn("testdb")
 	connection.Driver = driver
 	connection.Connect()

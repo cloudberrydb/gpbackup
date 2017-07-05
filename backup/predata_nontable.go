@@ -51,9 +51,9 @@ func ProcessConstraints(table utils.Relation, constraints []QueryConstraint) ([]
 	cons := make([]string, 0)
 	fkCons := make([]string, 0)
 	for _, constraint := range constraints {
-		conStr := fmt.Sprintf(alterStr, constraint.ConName, constraint.ConDef)
+		conStr := fmt.Sprintf(alterStr, utils.QuoteIdent(constraint.ConName), constraint.ConDef)
 		if constraint.ConComment != "" {
-			conStr += fmt.Sprintf(commentStr, constraint.ConName, constraint.ConComment)
+			conStr += fmt.Sprintf(commentStr, utils.QuoteIdent(constraint.ConName), constraint.ConComment)
 		}
 		if constraint.ConType == "f" {
 			fkCons = append(fkCons, conStr)
@@ -137,6 +137,7 @@ func PrintCreateSequenceStatements(predataFile io.Writer, sequences []Sequence, 
 		if sequence.Owner != "" {
 			utils.MustPrintf(predataFile, "\n\nALTER TABLE %s OWNER TO %s;\n", seqFQN, utils.QuoteIdent(sequence.Owner))
 		}
+		// owningColumn is quoted when the map is constructed in GetSequenceOwnerMap() and doesn't need to be quoted again
 		if owningColumn, hasOwner := sequenceOwners[seqFQN]; hasOwner {
 			utils.MustPrintf(predataFile, "\n\nALTER SEQUENCE %s OWNED BY %s;\n", seqFQN, owningColumn)
 		}
@@ -235,7 +236,7 @@ func PrintCreateExternalProtocolStatements(predataFile io.Writer, protocols []Qu
 		}
 		utils.MustPrintln(predataFile, ");")
 		if protocol.Owner != "" {
-			utils.MustPrintf(predataFile, "\nALTER PROTOCOL %s OWNER TO %s;\n", utils.QuoteIdent(protocol.Name), protocol.Owner)
+			utils.MustPrintf(predataFile, "\nALTER PROTOCOL %s OWNER TO %s;\n", utils.QuoteIdent(protocol.Name), utils.QuoteIdent(protocol.Owner))
 		}
 	}
 }

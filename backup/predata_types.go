@@ -39,6 +39,7 @@ func PrintCreateBaseTypeStatements(predataFile io.Writer, types []TypeDefinition
 			typeFQN := utils.MakeFQN(typ.TypeSchema, typ.TypeName)
 			utils.MustPrintf(predataFile, "\n\nCREATE TYPE %s (\n", typeFQN)
 
+			// All of the following functions are stored in quoted form and don't need to be quoted again
 			utils.MustPrintf(predataFile, "\tINPUT = %s,\n\tOUTPUT = %s", typ.Input, typ.Output)
 			if typ.Receive != "-" {
 				utils.MustPrintf(predataFile, ",\n\tRECEIVE = %s", typ.Receive)
@@ -137,7 +138,7 @@ func PrintCreateCompositeAndEnumTypeStatements(predataFile io.Writer, types []Ty
 				utils.MustPrintf(predataFile, "\nCOMMENT ON TYPE %s IS '%s';\n", typeFQN, composite.Comment)
 			}
 			if composite.Owner != "" {
-				utils.MustPrintf(predataFile, "\nALTER TYPE %s OWNER TO %s;\n", typeFQN, composite.Owner)
+				utils.MustPrintf(predataFile, "\nALTER TYPE %s OWNER TO %s;\n", typeFQN, utils.QuoteIdent(composite.Owner))
 			}
 		} else if typ.Type == "e" {
 			typeFQN := utils.MakeFQN(typ.TypeSchema, typ.TypeName)
@@ -146,7 +147,7 @@ func PrintCreateCompositeAndEnumTypeStatements(predataFile io.Writer, types []Ty
 				utils.MustPrintf(predataFile, "\nCOMMENT ON TYPE %s IS '%s';\n", typeFQN, typ.Comment)
 			}
 			if typ.Owner != "" {
-				utils.MustPrintf(predataFile, "\nALTER TYPE %s OWNER TO %s;\n", typeFQN, typ.Owner)
+				utils.MustPrintf(predataFile, "\nALTER TYPE %s OWNER TO %s;\n", typeFQN, utils.QuoteIdent(typ.Owner))
 			}
 			i++
 

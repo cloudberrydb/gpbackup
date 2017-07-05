@@ -17,16 +17,20 @@ import (
 )
 
 type TestDriver struct {
-	DBExists bool
-	DB       *sqlx.DB
-	DBName   string
+	DBExists   bool
+	RoleExists bool
+	DB         *sqlx.DB
+	DBName     string
+	User       string
 }
 
 func (driver TestDriver) Connect(driverName string, dataSourceName string) (*sqlx.DB, error) {
-	if driver.DBExists {
+	if driver.DBExists && driver.RoleExists {
 		return driver.DB, nil
+	} else if driver.DBExists {
+		return nil, fmt.Errorf("pq: role \"%s\" does not exist", driver.User)
 	}
-	return nil, fmt.Errorf("Database %s does not exist", driver.DBName)
+	return nil, fmt.Errorf("pq: database \"%s\" does not exist", driver.DBName)
 }
 
 type TestResult struct {

@@ -165,7 +165,7 @@ func PrintPostCreateTableStatements(predataFile io.Writer, table utils.Relation,
 
 	for _, att := range tableDef.ColumnDefs {
 		if att.Comment != "" {
-			utils.MustPrintf(predataFile, "\n\nCOMMENT ON COLUMN %s.%s IS '%s';\n", table.ToString(), att.Name, att.Comment)
+			utils.MustPrintf(predataFile, "\n\nCOMMENT ON COLUMN %s.%s IS '%s';\n", table.ToString(), utils.QuoteIdent(att.Name), att.Comment)
 		}
 	}
 }

@@ -132,6 +132,10 @@ func PrintCreateAggregateStatements(predataFile io.Writer, aggDefs []QueryAggreg
 
 func PrintCreateCastStatements(predataFile io.Writer, castDefs []QueryCastDefinition) {
 	for _, castDef := range castDefs {
+		/*
+		 * Because we use pg_catalog.format_type() in the query to get the cast definition,
+		 * castDef.SourceType and castDef.TargetType are already quoted appropriately.
+		 */
 		castStr := fmt.Sprintf("CAST (%s AS %s)", castDef.SourceType, castDef.TargetType)
 		utils.MustPrintf(predataFile, "\n\nCREATE %s\n", castStr)
 		if castDef.FunctionSchema != "" {

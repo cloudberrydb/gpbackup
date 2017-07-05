@@ -93,15 +93,19 @@ func (dbconn *DBConn) Commit() {
 }
 
 func (dbconn *DBConn) Connect() {
-	dbname := escapeDBName(dbconn.DBName)
-	connStr := fmt.Sprintf(`user=%s dbname='%s' host=%s port=%d sslmode=disable`, dbconn.User, dbname, dbconn.Host, dbconn.Port)
+	dbname := escapeConnectionParam(dbconn.DBName)
+	user := escapeConnectionParam(dbconn.User)
+	connStr := fmt.Sprintf(`user='%s' dbname='%s' host=%s port=%d sslmode=disable`, user, dbname, dbconn.Host, dbconn.Port)
 	var err error
 	dbconn.Conn, err = dbconn.Driver.Connect("postgres", connStr)
 	if err != nil {
 		if strings.Contains(err.Error(), "does not exist") {
-			logger.Fatal(errors.Errorf("Database %s does not exist, exiting", dbconn.DBName), "")
-		}
-		if strings.Contains(err.Error(), "connection refused") {
+			if strings.Contains(err.Error(), "pq: role") {
+				logger.Fatal(errors.Errorf("Role \"%s\" does not exist, exiting", dbconn.User), "")
+			} else if strings.Contains(err.Error(), "pq: database") {
+				logger.Fatal(errors.Errorf("Database \"%s\" does not exist, exiting", dbconn.DBName), "")
+			}
+		} else if strings.Contains(err.Error(), "connection refused") {
 			logger.Fatal(errors.Errorf(`could not connect to server: Connection refused
 	Is the server running on host "%s" and accepting
 	TCP/IP connections on port %d?`, dbconn.Host, dbconn.Port), "")
@@ -135,15 +139,15 @@ func (dbconn *DBConn) Select(destination interface{}, query string) error {
  * Other useful/helper functions involving DBConn
  */
 
-func escapeDBName(dbname string) string {
-	dbname = strings.Replace(dbname, `\`, `\\`, -1)
-	dbname = strings.Replace(dbname, `'`, `\'`, -1)
-	return dbname
+func escapeConnectionParam(param string) string {
+	param = strings.Replace(param, `\`, `\\`, -1)
+	param = strings.Replace(param, `'`, `\'`, -1)
+	return param
 }
 
 func (dbconn *DBConn) GetDBSize() string {
 	size := struct{ DBSize string }{}
-	sizeQuery := fmt.Sprintf("SELECT pg_size_pretty(sodddatsize) as dbsize FROM gp_toolkit.gp_size_of_database WHERE sodddatname=E'%s'", escapeDBName(dbconn.DBName))
+	sizeQuery := fmt.Sprintf("SELECT pg_size_pretty(sodddatsize) as dbsize FROM gp_toolkit.gp_size_of_database WHERE sodddatname=E'%s'", escapeConnectionParam(dbconn.DBName))
 	err := dbconn.Get(&size, sizeQuery)
 	CheckError(err)
 	return size.DBSize

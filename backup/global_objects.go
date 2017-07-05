@@ -36,12 +36,12 @@ func PrintCreateDatabaseStatement(globalFile io.Writer) {
 	dbname := utils.QuoteIdent(connection.DBName)
 	owner := utils.QuoteIdent(GetDatabaseOwner(connection))
 	utils.MustPrintf(globalFile, "\n\nCREATE DATABASE %s;", dbname)
-	utils.MustPrintf(globalFile, "\nALTER DATABASE %s OWNER TO %s;", dbname, owner)
+	utils.MustPrintf(globalFile, "\nALTER DATABASE %s OWNER TO %s;", dbname, utils.QuoteIdent(owner))
 }
 
 func PrintDatabaseGUCs(globalFile io.Writer, gucs []string, dbname string) {
 	for _, guc := range gucs {
-		utils.MustPrintf(globalFile, "\nALTER DATABASE %s %s;", dbname, guc)
+		utils.MustPrintf(globalFile, "\nALTER DATABASE %s %s;", utils.QuoteIdent(dbname), guc)
 	}
 }
 

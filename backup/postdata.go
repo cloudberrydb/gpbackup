@@ -21,7 +21,7 @@ func GetIndexesForAllTables(connection *utils.DBConn, tables []utils.Relation) [
 		for _, index := range indexList {
 			indexStr := fmt.Sprintf("\n\n%s;\n", index.Def)
 			if index.Comment != "" {
-				indexStr += fmt.Sprintf("\nCOMMENT ON INDEX %s IS '%s';", index.Name, index.Comment)
+				indexStr += fmt.Sprintf("\nCOMMENT ON INDEX %s IS '%s';", utils.QuoteIdent(index.Name), index.Comment)
 			}
 			indexes = append(indexes, indexStr)
 		}
