@@ -93,7 +93,16 @@ func PrintCreateAggregateStatements(predataFile io.Writer, aggDefs []QueryAggreg
 		if aggDef.IsOrdered {
 			orderedStr = "ORDERED "
 		}
-		utils.MustPrintf(predataFile, "\n\nCREATE %sAGGREGATE %s(%s) (\n", orderedStr, aggFQN, aggDef.Arguments)
+		argumentsStr := "*"
+		if aggDef.Arguments != "" {
+			argumentsStr = aggDef.Arguments
+		}
+		identArgumentsStr := "*"
+		if aggDef.IdentArgs != "" {
+			identArgumentsStr = aggDef.IdentArgs
+		}
+		utils.MustPrintf(predataFile, "\n\nCREATE %sAGGREGATE %s(%s) (\n", orderedStr, aggFQN, argumentsStr)
+
 		utils.MustPrintf(predataFile, "\tSFUNC = %s,\n", funcInfoMap[aggDef.TransitionFunction].QualifiedName)
 		utils.MustPrintf(predataFile, "\tSTYPE = %s", aggDef.TransitionDataType)
 
@@ -113,10 +122,10 @@ func PrintCreateAggregateStatements(predataFile io.Writer, aggDefs []QueryAggreg
 		utils.MustPrintln(predataFile, "\n);")
 
 		if aggDef.Owner != "" {
-			utils.MustPrintf(predataFile, "\nALTER AGGREGATE %s(%s) OWNER TO %s;\n", aggFQN, aggDef.IdentArgs, utils.QuoteIdent(aggDef.Owner))
+			utils.MustPrintf(predataFile, "\nALTER AGGREGATE %s(%s) OWNER TO %s;\n", aggFQN, identArgumentsStr, utils.QuoteIdent(aggDef.Owner))
 		}
 		if aggDef.Comment != "" {
-			utils.MustPrintf(predataFile, "\nCOMMENT ON AGGREGATE %s(%s) IS '%s';\n", aggFQN, aggDef.IdentArgs, aggDef.Comment)
+			utils.MustPrintf(predataFile, "\nCOMMENT ON AGGREGATE %s(%s) IS '%s';\n", aggFQN, identArgumentsStr, aggDef.Comment)
 		}
 	}
 }

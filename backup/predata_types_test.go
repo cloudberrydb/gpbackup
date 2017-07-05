@@ -19,11 +19,11 @@ var _ = Describe("backup/predata tests", func() {
 		compTwo := backup.TypeDefinition{TypeSchema: "public", TypeName: "composite_type", Type: "c", AttName: "baz", AttType: "text"}
 		compThree := backup.TypeDefinition{TypeSchema: "public", TypeName: "composite_type", Type: "c", AttName: "foo", AttType: "float"}
 		compCommentOwnerOne := backup.TypeDefinition{TypeSchema: "public", TypeName: "composite_type", Type: "c", AttName: "bar",
-			AttType: "integer", Comment: "This is a type comment.", Owner: "test_role"}
+			AttType: "integer", Comment: "This is a type comment.", Owner: "testrole"}
 		compCommentOwnerTwo := backup.TypeDefinition{TypeSchema: "public", TypeName: "composite_type", Type: "c", AttName: "foo",
-			AttType: "float", Comment: "This is a type comment.", Owner: "test_role"}
+			AttType: "float", Comment: "This is a type comment.", Owner: "testrole"}
 		enumOne := backup.TypeDefinition{TypeSchema: "public", TypeName: "enum_type", Type: "e", EnumLabels: "'bar',\n\t'baz',\n\t'foo'"}
-		enumTwo := backup.TypeDefinition{TypeSchema: "public", TypeName: "enum_type", Type: "e", EnumLabels: "'bar',\n\t'baz',\n\t'foo'", Comment: "This is an enum type comment", Owner: "test_role"}
+		enumTwo := backup.TypeDefinition{TypeSchema: "public", TypeName: "enum_type", Type: "e", EnumLabels: "'bar',\n\t'baz',\n\t'foo'", Comment: "This is an enum type comment", Owner: "testrole"}
 
 		It("prints a composite type with one attribute", func() {
 			backup.PrintCreateCompositeAndEnumTypeStatements(buffer, []backup.TypeDefinition{compOne})
@@ -48,7 +48,7 @@ var _ = Describe("backup/predata tests", func() {
 
 COMMENT ON TYPE public.composite_type IS 'This is a type comment.';
 
-ALTER TYPE public.composite_type OWNER TO test_role;`)
+ALTER TYPE public.composite_type OWNER TO testrole;`)
 		})
 		It("prints an enum type with multiple attributes", func() {
 			backup.PrintCreateCompositeAndEnumTypeStatements(buffer, []backup.TypeDefinition{enumOne})
@@ -68,7 +68,7 @@ ALTER TYPE public.composite_type OWNER TO test_role;`)
 
 COMMENT ON TYPE public.enum_type IS 'This is an enum type comment';
 
-ALTER TYPE public.enum_type OWNER TO test_role;`)
+ALTER TYPE public.enum_type OWNER TO testrole;`)
 		})
 		It("prints both an enum type and a composite type", func() {
 			backup.PrintCreateCompositeAndEnumTypeStatements(buffer, []backup.TypeDefinition{compOne, enumOne})
@@ -96,7 +96,7 @@ CREATE TYPE public.enum_type AS ENUM (
 		basePermTwo := backup.TypeDefinition{"public", "base_type", "b", "", "", "input_fn", "output_fn",
 			"-", "-", "-", "-", -1, false, "i", "x", "", "-", "", "", "", ""}
 		baseCommentOwner := backup.TypeDefinition{"public", "base_type", "b", "", "", "input_fn", "output_fn",
-			"-", "-", "-", "-", -1, false, "c", "p", "", "-", "", "", "This is a type comment.", "test_role"}
+			"-", "-", "-", "-", -1, false, "c", "p", "", "-", "", "", "This is a type comment.", "testrole"}
 
 		It("prints a base type with no optional arguments", func() {
 			backup.PrintCreateBaseTypeStatements(buffer, []backup.TypeDefinition{baseSimple})
@@ -164,7 +164,7 @@ CREATE TYPE public.enum_type AS ENUM (
 
 COMMENT ON TYPE public.base_type IS 'This is a type comment.';
 
-ALTER TYPE public.base_type OWNER TO test_role;`)
+ALTER TYPE public.base_type OWNER TO testrole;`)
 		})
 	})
 	Describe("PrintShellTypeStatements", func() {

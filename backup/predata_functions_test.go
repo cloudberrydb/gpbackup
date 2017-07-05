@@ -276,6 +276,15 @@ $_$`)
 	STYPE = integer
 );`)
 		})
+		It("prints an aggregate definition for an unordered aggregate with no arguments", func() {
+			aggDefs[0].Arguments = ""
+			aggDefs[0].IdentArgs = ""
+			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcInfoMap)
+			testutils.ExpectRegexp(buffer, `CREATE AGGREGATE public.agg_name(*) (
+	SFUNC = public.mysfunc,
+	STYPE = integer
+);`)
+		})
 		It("prints an aggregate with a preliminary function", func() {
 			aggDefs[0].PreliminaryFunction = 2
 			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcInfoMap)
@@ -322,6 +331,44 @@ $_$`)
 	FINALFUNC = public.myffunc,
 	SORTOP = public.mysortop
 );`)
+		})
+		It("prints an aggregate with owner", func() {
+			aggDefs[0].Owner = "testrole"
+			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcInfoMap)
+			testutils.ExpectRegexp(buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
+	SFUNC = public.mysfunc,
+	STYPE = integer
+);
+
+ALTER AGGREGATE public.agg_name(integer, integer) OWNER TO testrole;
+`)
+		})
+		It("prints an aggregate with comment", func() {
+			aggDefs[0].Comment = "This is an aggregate comment"
+			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcInfoMap)
+			testutils.ExpectRegexp(buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
+	SFUNC = public.mysfunc,
+	STYPE = integer
+);
+
+COMMENT ON AGGREGATE public.agg_name(integer, integer) IS 'This is an aggregate comment';
+`)
+		})
+		It("prints an aggregate with owner, comment, and no arguments", func() {
+			aggDefs[0].Arguments = ""
+			aggDefs[0].IdentArgs = ""
+			aggDefs[0].Owner = "testrole"
+			aggDefs[0].Comment = "This is an aggregate comment"
+			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcInfoMap)
+			testutils.ExpectRegexp(buffer, `CREATE AGGREGATE public.agg_name(*) (
+	SFUNC = public.mysfunc,
+	STYPE = integer
+);
+
+ALTER AGGREGATE public.agg_name(*) OWNER TO testrole;
+
+COMMENT ON AGGREGATE public.agg_name(*) IS 'This is an aggregate comment';
+`)
 		})
 	})
 	Describe("PrintCreateCastStatements", func() {
