@@ -843,11 +843,13 @@ SET SUBPARTITION TEMPLATE  ` + `
 				Createwexthdfs:  true,
 				TimeConstraints: []backup.TimeConstraint{
 					{
+						Oid:       0,
 						StartDay:  0,
 						StartTime: "13:30:00",
 						EndDay:    3,
 						EndTime:   "14:30:00",
 					}, {
+						Oid:       0,
 						StartDay:  5,
 						StartTime: "00:00:00",
 						EndDay:    5,
@@ -865,7 +867,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			resultRoles := backup.GetRoles(connection)
 			for _, role := range resultRoles {
 				if role.Name == "role1" {
-					testutils.ExpectStructsToMatchExcluding(&role1, role, "TimeConstraints")
+					testutils.ExpectStructsToMatchExcluding(&role1, role, "TimeConstraints.Oid")
 					return
 				}
 			}

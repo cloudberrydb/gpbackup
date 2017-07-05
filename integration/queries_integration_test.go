@@ -1097,7 +1097,7 @@ CREATEEXTTABLE (protocol='gphdfs', type='writable')`)
 
 			for _, role := range results {
 				if role.Name == "role1" {
-					testutils.ExpectStructsToMatchExcluding(&expectedRole, role, "TimeConstraints")
+					testutils.ExpectStructsToMatchExcluding(&expectedRole, role, "TimeConstraints.Oid")
 					return
 				}
 			}
