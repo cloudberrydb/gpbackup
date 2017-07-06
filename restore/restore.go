@@ -110,6 +110,7 @@ func restoreData() {
 }
 
 func restorePostdata(filename string) {
+	utils.ExecuteSQLFile(connection, filename)
 }
 
 func DoTeardown() {

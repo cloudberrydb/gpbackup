@@ -29,9 +29,29 @@ func GetIndexesForAllTables(connection *utils.DBConn, tables []utils.Relation) [
 	return indexes
 }
 
+func GetRuleDefinitions(connection *utils.DBConn) []string {
+	rules := make([]string, 0)
+	ruleList := GetRuleMetadata(connection)
+	for _, rule := range ruleList {
+		ruleStr := fmt.Sprintf("\n\n%s", rule.Def)
+		if rule.Comment != "" {
+			ruleStr += fmt.Sprintf("\nCOMMENT ON RULE %s IS '%s';", utils.QuoteIdent(rule.Name), rule.Comment)
+		}
+		rules = append(rules, ruleStr)
+	}
+	return rules
+}
+
 func PrintCreateIndexStatements(postdataFile io.Writer, indexes []string) {
 	sort.Strings(indexes)
 	for _, index := range indexes {
 		utils.MustPrintln(postdataFile, index)
+	}
+}
+
+func PrintCreateRuleStatements(postdataFile io.Writer, rules []string) {
+	sort.Strings(rules)
+	for _, rule := range rules {
+		utils.MustPrintln(postdataFile, rule)
 	}
 }

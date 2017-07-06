@@ -417,15 +417,48 @@ CYCLE`)
 			testutils.AssertQueryRuns(connection, "COMMENT ON INDEX simple_table_idx2 IS 'this is a index comment'")
 			oid := testutils.OidFromRelationName(connection, "simple_table")
 
+			index1 := backup.QuerySimpleDefinition{"simple_table_idx1", "CREATE INDEX simple_table_idx1 ON simple_table USING btree (i)", ""}
+			index2 := backup.QuerySimpleDefinition{"simple_table_idx2", "CREATE INDEX simple_table_idx2 ON simple_table USING btree (j)", "this is a index comment"}
+
 			results := backup.GetIndexMetadata(connection, oid)
 
 			Expect(len(results)).To(Equal(2))
-			Expect(results[0].Name).To(Equal("simple_table_idx1"))
-			Expect(results[0].Def).To(Equal("CREATE INDEX simple_table_idx1 ON simple_table USING btree (i)"))
-			Expect(results[0].Comment).To(Equal(""))
-			Expect(results[1].Name).To(Equal("simple_table_idx2"))
-			Expect(results[1].Def).To(Equal("CREATE INDEX simple_table_idx2 ON simple_table USING btree (j)"))
-			Expect(results[1].Comment).To(Equal("this is a index comment"))
+			testutils.ExpectStructsToMatch(&index1, &results[0])
+			testutils.ExpectStructsToMatch(&index2, &results[1])
+		})
+	})
+	Describe("GetRuleMetadata", func() {
+		It("returns no slice when no rule exists", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLE rule_table1(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE rule_table1")
+			testutils.AssertQueryRuns(connection, "CREATE TABLE rule_table2(j int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE rule_table2")
+
+			results := backup.GetRuleMetadata(connection)
+
+			Expect(len(results)).To(Equal(0))
+		})
+		It("returns a slice of multiple rules", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLE rule_table1(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE rule_table1")
+			testutils.AssertQueryRuns(connection, "CREATE TABLE rule_table2(j int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE rule_table2")
+			testutils.AssertQueryRuns(connection, "CREATE RULE double_insert AS ON INSERT TO rule_table1 DO INSERT INTO rule_table2 DEFAULT VALUES")
+			defer testutils.AssertQueryRuns(connection, "DROP RULE double_insert ON rule_table1")
+			testutils.AssertQueryRuns(connection, "CREATE RULE update_notify AS ON UPDATE TO rule_table1 DO NOTIFY rule_table1")
+			defer testutils.AssertQueryRuns(connection, "DROP RULE update_notify ON rule_table1")
+			testutils.AssertQueryRuns(connection, "COMMENT ON RULE update_notify IS 'This is a rule comment.'")
+
+			rule1 := backup.QuerySimpleDefinition{"double_insert",
+				"CREATE RULE double_insert AS ON INSERT TO rule_table1 DO INSERT INTO rule_table2 DEFAULT VALUES;", ""}
+			rule2 := backup.QuerySimpleDefinition{"update_notify",
+				"CREATE RULE update_notify AS ON UPDATE TO rule_table1 DO NOTIFY rule_table1;", "This is a rule comment."}
+
+			results := backup.GetRuleMetadata(connection)
+
+			Expect(len(results)).To(Equal(2))
+			testutils.ExpectStructsToMatch(&rule1, &results[0])
+			testutils.ExpectStructsToMatch(&rule2, &results[1])
 		})
 	})
 	Describe("GetDatabaseComment", func() {

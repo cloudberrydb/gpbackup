@@ -300,13 +300,17 @@ func GetSessionGUCs(connection *utils.DBConn) QuerySessionGUCs {
 	return result
 }
 
-type QueryIndexMetadata struct {
+/*
+ * This struct is for objects that only have a definition, like indexes
+ * (pg_get_indexdef) and rules (pg_get_ruledef), and no owners or the like.
+ */
+type QuerySimpleDefinition struct {
 	Name    string
 	Def     string
 	Comment string
 }
 
-func GetIndexMetadata(connection *utils.DBConn, oid uint32) []QueryIndexMetadata {
+func GetIndexMetadata(connection *utils.DBConn, oid uint32) []QuerySimpleDefinition {
 	query := fmt.Sprintf(`
 SELECT
 	t.relname AS name,
@@ -318,7 +322,28 @@ JOIN pg_class t
 WHERE i.indrelid = %d
 ORDER BY name;`, oid)
 
-	results := make([]QueryIndexMetadata, 0)
+	results := make([]QuerySimpleDefinition, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
+}
+
+/*
+ * Rules named "_RETURN", "pg_settings_n", and "pg_settings_u" are
+ * built-in rules and we don't want to dump them.
+ */
+func GetRuleMetadata(connection *utils.DBConn) []QuerySimpleDefinition {
+	query := `
+SELECT
+	rulename AS name,
+	pg_get_ruledef(oid) AS def,
+	coalesce(obj_description(oid, 'pg_rewrite'), '') AS comment
+FROM pg_rewrite
+WHERE rulename NOT LIKE '%RETURN'
+AND rulename NOT LIKE 'pg_settings%'
+ORDER BY rulename;`
+
+	results := make([]QuerySimpleDefinition, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results

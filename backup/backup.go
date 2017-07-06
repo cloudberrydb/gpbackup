@@ -218,6 +218,10 @@ func backupPostdata(filename string, tables []utils.Relation, extTableMap map[st
 	logger.Verbose("Writing CREATE INDEX statements to postdata file")
 	indexes := GetIndexesForAllTables(connection, tables)
 	PrintCreateIndexStatements(postdataFile, indexes)
+
+	logger.Verbose("Writing CREATE RULE statements to postdata file")
+	rules := GetRuleDefinitions(connection)
+	PrintCreateRuleStatements(postdataFile, rules)
 }
 
 func DoTeardown() {
