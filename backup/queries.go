@@ -902,6 +902,11 @@ type QueryRole struct {
 	TimeConstraints []TimeConstraint
 }
 
+/*
+ * We convert rolvaliduntil to UTC and then append '-00' so that
+ * we standardize times to UTC but do not lose time zone information
+ * in the timestamp.
+ */
 func GetRoles(connection *utils.DBConn) []QueryRole {
 	roles := make([]QueryRole, 0)
 	query := `
@@ -915,7 +920,7 @@ SELECT
 	rolcanlogin AS  canlogin,
 	rolconnlimit AS connectionlimit,
 	coalesce(rolpassword, '') AS password,
-	coalesce(rolvaliduntil::text,'') AS validuntil,
+	coalesce(timezone('UTC', rolvaliduntil) || '-00', '') AS validuntil,
 	coalesce(shobj_description(oid, 'pg_authid'), '') AS comment,
 	(SELECT rsqname FROM pg_resqueue WHERE pg_resqueue.oid = rolresqueue) AS resqueue,
 	rolcreaterexthttp AS createrexthttp,
