@@ -1134,7 +1134,7 @@ CREATEEXTTABLE (protocol='gphdfs', type='writable')`)
 				CanLogin:        true,
 				ConnectionLimit: 4,
 				Password:        "md5a8b2c77dfeba4705f29c094592eb3369",
-				ValidUntil:      "2099-01-01 00:00:00-08",
+				ValidUntil:      "2099-01-01 08:00:00-00",
 				Comment:         "this is a role comment",
 				ResQueue:        "pg_default",
 				Createrexthttp:  true,
