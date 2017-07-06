@@ -16,11 +16,11 @@ import (
 )
 
 var _ = Describe("backup integration create statement tests", func() {
-
 	var buffer *bytes.Buffer
 
 	BeforeEach(func() {
 		buffer = bytes.NewBuffer([]byte(""))
+		testutils.SetupTestLogger()
 	})
 	Describe("PrintCreateSchemaStatements", func() {
 		It("creates a non public schema", func() {
@@ -427,13 +427,13 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.AssertQueryRuns(connection, buffer.String())
 		})
 	})
-	Describe("PrintCreateIndexStatements", func() {
+	Describe("PrintPostdataCreateStatements", func() {
 		It("creates all indexes for all tables", func() {
 			testTable := utils.BasicRelation("public", "index_table")
-			btree := "\n\nCREATE INDEX simple_table_idx1 ON index_table USING btree (a);\n"
-			bitmap := "\n\nCREATE INDEX simple_table_idx2 ON index_table USING bitmap (b);\n\nCOMMENT ON INDEX simple_table_idx2 IS 'this is a index comment';"
+			btree := "\n\nCREATE INDEX simple_table_idx1 ON index_table USING btree (a);"
+			bitmap := "\n\nCREATE INDEX simple_table_idx2 ON index_table USING bitmap (b);\nCOMMENT ON INDEX simple_table_idx2 IS 'this is a index comment';"
 
-			backup.PrintCreateIndexStatements(buffer, []string{btree, bitmap})
+			backup.PrintPostdataCreateStatements(buffer, []string{btree, bitmap})
 
 			//Create table whose columns we can index
 			testutils.AssertQueryRuns(connection, "CREATE TABLE index_table(a int, b text)")
@@ -445,6 +445,44 @@ var _ = Describe("backup integration create statement tests", func() {
 			Expect(len(resultIndexes)).To(Equal(2))
 			Expect(resultIndexes[0]).To(Equal(btree))
 			Expect(resultIndexes[1]).To(Equal(bitmap))
+		})
+		It("creates all rules for all tables", func() {
+			insert := "\n\nCREATE RULE double_insert AS ON INSERT TO rule_table1 DO INSERT INTO rule_table2 DEFAULT VALUES;"
+			update := "\n\nCREATE RULE update_notify AS ON UPDATE TO rule_table1 DO NOTIFY rule_table1;\nCOMMENT ON RULE update_notify ON public.rule_table1 IS 'This is a rule comment.';"
+
+			backup.PrintPostdataCreateStatements(buffer, []string{insert, update})
+
+			testutils.AssertQueryRuns(connection, "CREATE TABLE rule_table1(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE rule_table1")
+			testutils.AssertQueryRuns(connection, "CREATE TABLE rule_table2(j int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE rule_table2")
+			defer testutils.AssertQueryRuns(connection, "DROP RULE double_insert ON rule_table1")
+			defer testutils.AssertQueryRuns(connection, "DROP RULE update_notify ON rule_table1")
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			resultRules := backup.GetRuleDefinitions(connection)
+			Expect(len(resultRules)).To(Equal(2))
+			Expect(resultRules[0]).To(Equal(insert))
+			Expect(resultRules[1]).To(Equal(update))
+		})
+		It("creates all triggers for all tables", func() {
+			sync1 := "\n\nCREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON trigger_table1 FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger();"
+			sync2 := "\n\nCREATE TRIGGER sync_trigger_table2 AFTER INSERT OR DELETE OR UPDATE ON trigger_table2 FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger();\nCOMMENT ON TRIGGER sync_trigger_table2 ON public.trigger_table2 IS 'This is a trigger comment.';"
+
+			backup.PrintPostdataCreateStatements(buffer, []string{sync1, sync2})
+
+			testutils.AssertQueryRuns(connection, "CREATE TABLE trigger_table1(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE trigger_table1")
+			testutils.AssertQueryRuns(connection, "CREATE TABLE trigger_table2(j int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE trigger_table2")
+			defer testutils.AssertQueryRuns(connection, "DROP TRIGGER sync_trigger_table1 ON trigger_table1")
+			defer testutils.AssertQueryRuns(connection, "DROP TRIGGER sync_trigger_table2 ON trigger_table2")
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			resultTriggers := backup.GetTriggerDefinitions(connection)
+			Expect(len(resultTriggers)).To(Equal(2))
+			Expect(resultTriggers[0]).To(Equal(sync1))
+			Expect(resultTriggers[1]).To(Equal(sync2))
 		})
 	})
 	Describe("PrintCreateCastStatements", func() {

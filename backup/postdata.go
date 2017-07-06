@@ -19,7 +19,7 @@ func GetIndexesForAllTables(connection *utils.DBConn, tables []utils.Relation) [
 	for _, table := range tables {
 		indexList := GetIndexMetadata(connection, table.RelationOid)
 		for _, index := range indexList {
-			indexStr := fmt.Sprintf("\n\n%s;\n", index.Def)
+			indexStr := fmt.Sprintf("\n\n%s;", index.Def)
 			if index.Comment != "" {
 				indexStr += fmt.Sprintf("\nCOMMENT ON INDEX %s IS '%s';", utils.QuoteIdent(index.Name), index.Comment)
 			}
@@ -35,23 +35,29 @@ func GetRuleDefinitions(connection *utils.DBConn) []string {
 	for _, rule := range ruleList {
 		ruleStr := fmt.Sprintf("\n\n%s", rule.Def)
 		if rule.Comment != "" {
-			ruleStr += fmt.Sprintf("\nCOMMENT ON RULE %s IS '%s';", utils.QuoteIdent(rule.Name), rule.Comment)
+			ruleStr += fmt.Sprintf("\nCOMMENT ON RULE %s ON %s IS '%s';", utils.QuoteIdent(rule.Name), rule.OwningTable, rule.Comment)
 		}
 		rules = append(rules, ruleStr)
 	}
 	return rules
 }
 
-func PrintCreateIndexStatements(postdataFile io.Writer, indexes []string) {
-	sort.Strings(indexes)
-	for _, index := range indexes {
-		utils.MustPrintln(postdataFile, index)
+func GetTriggerDefinitions(connection *utils.DBConn) []string {
+	triggers := make([]string, 0)
+	triggerList := GetTriggerMetadata(connection)
+	for _, trigger := range triggerList {
+		triggerStr := fmt.Sprintf("\n\n%s;", trigger.Def)
+		if trigger.Comment != "" {
+			triggerStr += fmt.Sprintf("\nCOMMENT ON TRIGGER %s ON %s IS '%s';", utils.QuoteIdent(trigger.Name), trigger.OwningTable, trigger.Comment)
+		}
+		triggers = append(triggers, triggerStr)
 	}
+	return triggers
 }
 
-func PrintCreateRuleStatements(postdataFile io.Writer, rules []string) {
-	sort.Strings(rules)
-	for _, rule := range rules {
-		utils.MustPrintln(postdataFile, rule)
+func PrintPostdataCreateStatements(postdataFile io.Writer, statements []string) {
+	sort.Strings(statements)
+	for _, statement := range statements {
+		utils.MustPrintln(postdataFile, statement)
 	}
 }

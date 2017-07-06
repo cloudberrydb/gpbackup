@@ -39,7 +39,7 @@ var _ = Describe("backup/postdata tests", func() {
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(resultOne)
 				indexes := backup.GetIndexesForAllTables(connection, testTables)
 				Expect(len(indexes)).To(Equal(1))
-				Expect(indexes[0]).To(Equal("\n\nCREATE INDEX btree_idx1 ON table_one USING btree (i);\n"))
+				Expect(indexes[0]).To(Equal("\n\nCREATE INDEX btree_idx1 ON table_one USING btree (i);"))
 			})
 			It("returns a slice containing one CREATE INDEX statement for two tables", func() {
 				testTables := []utils.Relation{tableOne, tableTwo}
@@ -49,8 +49,8 @@ var _ = Describe("backup/postdata tests", func() {
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(resultTwo)
 				indexes := backup.GetIndexesForAllTables(connection, testTables)
 				Expect(len(indexes)).To(Equal(2))
-				Expect(indexes[0]).To(Equal("\n\nCREATE INDEX btree_idx1 ON table_one USING btree (i);\n"))
-				Expect(indexes[1]).To(Equal("\n\nCREATE INDEX btree_idx2 ON table_two USING btree (j);\n"))
+				Expect(indexes[0]).To(Equal("\n\nCREATE INDEX btree_idx1 ON table_one USING btree (i);"))
+				Expect(indexes[1]).To(Equal("\n\nCREATE INDEX btree_idx2 ON table_two USING btree (j);"))
 			})
 			It("returns a slice containing two CREATE INDEX statement for one table", func() {
 				testTables := []utils.Relation{tableOne, tableTwo}
@@ -60,9 +60,9 @@ var _ = Describe("backup/postdata tests", func() {
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(resultTwo)
 				indexes := backup.GetIndexesForAllTables(connection, testTables)
 				Expect(len(indexes)).To(Equal(3))
-				Expect(indexes[0]).To(Equal("\n\nCREATE INDEX btree_idx1 ON table_one USING btree (i);\n"))
-				Expect(indexes[1]).To(Equal("\n\nCREATE INDEX bitmap_idx1 ON table_one USING bitmap (i);\n"))
-				Expect(indexes[2]).To(Equal("\n\nCREATE INDEX btree_idx2 ON table_two USING btree (j);\n"))
+				Expect(indexes[0]).To(Equal("\n\nCREATE INDEX btree_idx1 ON table_one USING btree (i);"))
+				Expect(indexes[1]).To(Equal("\n\nCREATE INDEX bitmap_idx1 ON table_one USING bitmap (i);"))
+				Expect(indexes[2]).To(Equal("\n\nCREATE INDEX btree_idx2 ON table_two USING btree (j);"))
 			})
 			It("returns a slice containing one CREATE INDEX statement when one table has an index and one does not", func() {
 				testTables := []utils.Relation{tableOne, tableWithout}
@@ -71,7 +71,7 @@ var _ = Describe("backup/postdata tests", func() {
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(resultEmpty)
 				indexes := backup.GetIndexesForAllTables(connection, testTables)
 				Expect(len(indexes)).To(Equal(1))
-				Expect(indexes[0]).To(Equal("\n\nCREATE INDEX btree_idx1 ON table_one USING btree (i);\n"))
+				Expect(indexes[0]).To(Equal("\n\nCREATE INDEX btree_idx1 ON table_one USING btree (i);"))
 			})
 			It("returns a slice containing one CREATE INDEX statement and accompanying comment", func() {
 				testTables := []utils.Relation{tableOne}
@@ -82,7 +82,6 @@ var _ = Describe("backup/postdata tests", func() {
 				Expect(indexes[0]).To(Equal(`
 
 CREATE INDEX btree_idx1 ON table_one USING btree (i);
-
 COMMENT ON INDEX btree_idx1 IS 'This is an index comment.';`))
 			})
 		})

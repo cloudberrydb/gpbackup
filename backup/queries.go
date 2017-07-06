@@ -303,20 +303,28 @@ func GetSessionGUCs(connection *utils.DBConn) QuerySessionGUCs {
 /*
  * This struct is for objects that only have a definition, like indexes
  * (pg_get_indexdef) and rules (pg_get_ruledef), and no owners or the like.
+ * We get the owning table for the object because COMMENT ON [object type]
+ * statements can require it.
  */
 type QuerySimpleDefinition struct {
-	Name    string
-	Def     string
-	Comment string
+	Name        string
+	OwningTable string
+	Def         string
+	Comment     string
 }
 
 func GetIndexMetadata(connection *utils.DBConn, oid uint32) []QuerySimpleDefinition {
 	query := fmt.Sprintf(`
 SELECT
 	t.relname AS name,
+	quote_ident(n.nspname) || '.' || quote_ident(c.relname) AS owningtable,
 	pg_get_indexdef(i.indexrelid) AS def,
 	coalesce(obj_description(t.oid, 'pg_class'), '') AS comment
 FROM pg_index i
+JOIN pg_class c
+	ON (c.oid = i.indrelid)
+JOIN pg_namespace n
+	ON (c.relnamespace = n.oid)
 JOIN pg_class t
 	ON (t.oid = i.indexrelid)
 WHERE i.indrelid = %d
@@ -335,13 +343,39 @@ ORDER BY name;`, oid)
 func GetRuleMetadata(connection *utils.DBConn) []QuerySimpleDefinition {
 	query := `
 SELECT
-	rulename AS name,
-	pg_get_ruledef(oid) AS def,
-	coalesce(obj_description(oid, 'pg_rewrite'), '') AS comment
-FROM pg_rewrite
+	r.rulename AS name,
+	quote_ident(n.nspname) || '.' || quote_ident(c.relname) AS owningtable,
+	pg_get_ruledef(r.oid) AS def,
+	coalesce(obj_description(r.oid, 'pg_rewrite'), '') AS comment
+FROM pg_rewrite r
+JOIN pg_class c
+	ON (c.oid = r.ev_class)
+JOIN pg_namespace n
+	ON (c.relnamespace = n.oid)
 WHERE rulename NOT LIKE '%RETURN'
-AND rulename NOT LIKE 'pg_settings%'
+AND rulename NOT LIKE 'pg_%'
 ORDER BY rulename;`
+
+	results := make([]QuerySimpleDefinition, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
+}
+
+func GetTriggerMetadata(connection *utils.DBConn) []QuerySimpleDefinition {
+	query := `
+SELECT
+	t.tgname AS name,
+	quote_ident(n.nspname) || '.' || quote_ident(c.relname) AS owningtable,
+	pg_get_triggerdef(t.oid) AS def,
+	coalesce(obj_description(t.oid, 'pg_trigger'), '') AS comment
+FROM pg_trigger t
+JOIN pg_class c
+	ON (c.oid = t.tgrelid)
+JOIN pg_namespace n
+	ON (c.relnamespace = n.oid)
+WHERE tgname NOT LIKE 'pg_%'
+ORDER BY tgname;`
 
 	results := make([]QuerySimpleDefinition, 0)
 	err := connection.Select(&results, query)
