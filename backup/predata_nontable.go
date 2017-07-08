@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 
 	"github.com/greenplum-db/gpbackup/utils"
 )
@@ -215,28 +216,25 @@ func PrintCreateExternalProtocolStatements(predataFile io.Writer, protocols []Qu
 			continue
 		}
 
-		var needsComma = false
+		protocolFunctions := []string{}
+		if protocol.ReadFunction != 0 {
+			protocolFunctions = append(protocolFunctions, fmt.Sprintf("readfunc = %s", funcInfoMap[protocol.ReadFunction].QualifiedName))
+		}
+		if protocol.WriteFunction != 0 {
+			protocolFunctions = append(protocolFunctions, fmt.Sprintf("writefunc = %s", funcInfoMap[protocol.WriteFunction].QualifiedName))
+		}
+		if protocol.Validator != 0 {
+			protocolFunctions = append(protocolFunctions, fmt.Sprintf("validatorfunc = %s", funcInfoMap[protocol.Validator].QualifiedName))
+		}
+
 		utils.MustPrintf(predataFile, "\n\nCREATE ")
 		if protocol.Trusted {
 			utils.MustPrintf(predataFile, "TRUSTED ")
 		}
-		utils.MustPrintf(predataFile, "PROTOCOL %s (", utils.QuoteIdent(protocol.Name))
-		if protocol.ReadFunction != 0 {
-			utils.MustPrintf(predataFile, "readfunc = %s", funcInfoMap[protocol.ReadFunction].QualifiedName)
-			needsComma = true
-		}
-		if protocol.WriteFunction != 0 {
-			if needsComma {
-				utils.MustPrintf(predataFile, ", ")
-			}
-			utils.MustPrintf(predataFile, "writefunc = %s", funcInfoMap[protocol.WriteFunction].QualifiedName)
-		}
-		if protocol.Validator != 0 {
-			utils.MustPrintf(predataFile, ", validatorfunc = %s", funcInfoMap[protocol.Validator].QualifiedName)
-		}
-		utils.MustPrintln(predataFile, ");")
+		utils.MustPrintf(predataFile, "PROTOCOL %s (%s);", utils.QuoteIdent(protocol.Name), strings.Join(protocolFunctions, ", "))
+
 		if protocol.Owner != "" {
-			utils.MustPrintf(predataFile, "\nALTER PROTOCOL %s OWNER TO %s;\n", utils.QuoteIdent(protocol.Name), utils.QuoteIdent(protocol.Owner))
+			utils.MustPrintf(predataFile, "\n\nALTER PROTOCOL %s OWNER TO %s;\n", utils.QuoteIdent(protocol.Name), utils.QuoteIdent(protocol.Owner))
 		}
 	}
 }
