@@ -423,6 +423,7 @@ JOIN pg_class c
 JOIN pg_namespace n
 	ON (c.relnamespace = n.oid)
 WHERE tgname NOT LIKE 'pg_%'
+AND tgisconstraint = 'f'
 ORDER BY tgname;`
 
 	results := make([]QuerySimpleDefinition, 0)

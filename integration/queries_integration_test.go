@@ -536,6 +536,17 @@ CYCLE`)
 			testutils.ExpectStructsToMatch(&trigger1, &results[0])
 			testutils.ExpectStructsToMatch(&trigger2, &results[1])
 		})
+		It("does not include constraint triggers", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLE trigger_table1(i int PRIMARY KEY)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE trigger_table1")
+			testutils.AssertQueryRuns(connection, "CREATE TABLE trigger_table2(j int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE trigger_table2")
+			testutils.AssertQueryRuns(connection, "ALTER TABLE trigger_table2 ADD CONSTRAINT fkc FOREIGN KEY (j) REFERENCES trigger_table1 (i) ON UPDATE RESTRICT ON DELETE RESTRICT")
+
+			results := backup.GetTriggerMetadata(connection)
+
+			Expect(len(results)).To(Equal(0))
+		})
 	})
 	Describe("GetDatabaseComment", func() {
 		It("returns empty string for a database comment", func() {
