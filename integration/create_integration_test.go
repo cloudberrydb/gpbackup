@@ -154,14 +154,14 @@ var _ = Describe("backup integration create statement tests", func() {
 	Describe("PrintCreateLanguageStatements", func() {
 		It("creates procedural languages", func() {
 			funcInfoMap := map[uint32]backup.FunctionInfo{
-				11907:  {"pg_catalog.plpgsql_validator", "oid", true},
-				11906:  {"pg_catalog.plpgsql_inline_handler", "internal", true},
-				11905:  {"pg_catalog.plpgsql_call_handler", "", true},
-				228851: {"pg_catalog.plpython_call_handler", "", true},
-				228852: {"pg_catalog.plpython_inline_handler", "internal", true},
+				1: {"pg_catalog.plpgsql_validator", "oid", true},
+				2: {"pg_catalog.plpgsql_inline_handler", "internal", true},
+				3: {"pg_catalog.plpgsql_call_handler", "", true},
+				4: {"pg_catalog.plpython_call_handler", "", true},
+				5: {"pg_catalog.plpython_inline_handler", "internal", true},
 			}
-			plpgsqlInfo := backup.QueryProceduralLanguage{"plpgsql", "testrole", true, true, 11905, 11906, 11907, "", ""}
-			plpythonuInfo := backup.QueryProceduralLanguage{"plpythonu", "testrole", true, false, 228851, 228852, 0, "", "this is a language comment"}
+			plpgsqlInfo := backup.QueryProceduralLanguage{"plpgsql", "testrole", true, true, 1, 2, 3, "", ""}
+			plpythonuInfo := backup.QueryProceduralLanguage{"plpythonu", "testrole", true, false, 4, 5, 0, "", "this is a language comment"}
 			procLangs := []backup.QueryProceduralLanguage{plpgsqlInfo, plpythonuInfo}
 
 			backup.PrintCreateLanguageStatements(buffer, procLangs, funcInfoMap)
@@ -172,7 +172,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			resultProcLangs := backup.GetProceduralLanguages(connection)
 
 			Expect(len(resultProcLangs)).To(Equal(2))
-			testutils.ExpectStructsToMatch(&plpgsqlInfo, &resultProcLangs[0])
+			testutils.ExpectStructsToMatchExcluding(&plpgsqlInfo, &resultProcLangs[0], "Validator", "Inline", "Handler")
 			testutils.ExpectStructsToMatchExcluding(&plpythonuInfo, &resultProcLangs[1], "Handler", "Inline")
 		})
 	})
