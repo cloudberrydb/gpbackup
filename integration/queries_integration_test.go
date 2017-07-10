@@ -400,13 +400,36 @@ CYCLE`)
 			Expect(results.DefaultWithOids).To(Equal("off"))
 		})
 	})
+	Describe("ConstructImplicitIndexNames", func() {
+		It("returns an empty map if there are no implicit indexes", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
+
+			indexNameMap := backup.ConstructImplicitIndexNames(connection)
+
+			Expect(len(indexNameMap)).To(Equal(0))
+		})
+		It("returns a map of all implicit indexes", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int UNIQUE)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
+
+			indexNameMap := backup.ConstructImplicitIndexNames(connection)
+
+			Expect(len(indexNameMap)).To(Equal(1))
+			Expect(indexNameMap["public.simple_table_i_key"]).To(BeTrue())
+		})
+	})
 	Describe("GetIndexMetadata", func() {
+		var indexNameMap map[string]bool
+		BeforeEach(func() {
+			indexNameMap = make(map[string]bool, 0)
+		})
 		It("returns no slice when no index exists", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
 			oid := testutils.OidFromRelationName(connection, "simple_table")
 
-			results := backup.GetIndexMetadata(connection, oid)
+			results := backup.GetIndexMetadata(connection, oid, indexNameMap)
 
 			Expect(len(results)).To(Equal(0))
 		})
@@ -420,12 +443,34 @@ CYCLE`)
 			testutils.AssertQueryRuns(connection, "COMMENT ON INDEX simple_table_idx2 IS 'this is a index comment'")
 			oid := testutils.OidFromRelationName(connection, "simple_table")
 
-			index1 := backup.QuerySimpleDefinition{"simple_table_idx1", "public.simple_table",
+			index1 := backup.QuerySimpleDefinition{"simple_table_idx1", "public", "simple_table",
 				"CREATE INDEX simple_table_idx1 ON simple_table USING btree (i)", ""}
-			index2 := backup.QuerySimpleDefinition{"simple_table_idx2", "public.simple_table",
+			index2 := backup.QuerySimpleDefinition{"simple_table_idx2", "public", "simple_table",
 				"CREATE INDEX simple_table_idx2 ON simple_table USING btree (j)", "this is a index comment"}
 
-			results := backup.GetIndexMetadata(connection, oid)
+			results := backup.GetIndexMetadata(connection, oid, indexNameMap)
+
+			Expect(len(results)).To(Equal(2))
+			testutils.ExpectStructsToMatch(&index1, &results[0])
+			testutils.ExpectStructsToMatch(&index2, &results[1])
+		})
+		It("returns a slice of multiple indexes, excluding implicit indexes", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int UNIQUE, j int, k int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
+			testutils.AssertQueryRuns(connection, "CREATE INDEX simple_table_idx1 ON simple_table(i)")
+			defer testutils.AssertQueryRuns(connection, "DROP INDEX simple_table_idx1")
+			testutils.AssertQueryRuns(connection, "CREATE INDEX simple_table_idx2 ON simple_table(j)")
+			defer testutils.AssertQueryRuns(connection, "DROP INDEX simple_table_idx2")
+			testutils.AssertQueryRuns(connection, "COMMENT ON INDEX simple_table_idx2 IS 'this is a index comment'")
+			oid := testutils.OidFromRelationName(connection, "simple_table")
+			indexNameMap["public.simple_table_i_key"] = true
+
+			index1 := backup.QuerySimpleDefinition{"simple_table_idx1", "public", "simple_table",
+				"CREATE INDEX simple_table_idx1 ON simple_table USING btree (i)", ""}
+			index2 := backup.QuerySimpleDefinition{"simple_table_idx2", "public", "simple_table",
+				"CREATE INDEX simple_table_idx2 ON simple_table USING btree (j)", "this is a index comment"}
+
+			results := backup.GetIndexMetadata(connection, oid, indexNameMap)
 
 			Expect(len(results)).To(Equal(2))
 			testutils.ExpectStructsToMatch(&index1, &results[0])
@@ -449,9 +494,9 @@ CYCLE`)
 			defer testutils.AssertQueryRuns(connection, "DROP RULE update_notify ON rule_table1")
 			testutils.AssertQueryRuns(connection, "COMMENT ON RULE update_notify ON rule_table1 IS 'This is a rule comment.'")
 
-			rule1 := backup.QuerySimpleDefinition{"double_insert", "public.rule_table1",
+			rule1 := backup.QuerySimpleDefinition{"double_insert", "public", "rule_table1",
 				"CREATE RULE double_insert AS ON INSERT TO rule_table1 DO INSERT INTO rule_table2 DEFAULT VALUES;", ""}
-			rule2 := backup.QuerySimpleDefinition{"update_notify", "public.rule_table1",
+			rule2 := backup.QuerySimpleDefinition{"update_notify", "public", "rule_table1",
 				"CREATE RULE update_notify AS ON UPDATE TO rule_table1 DO NOTIFY rule_table1;", "This is a rule comment."}
 
 			results := backup.GetRuleMetadata(connection)
@@ -478,10 +523,10 @@ CYCLE`)
 			defer testutils.AssertQueryRuns(connection, "DROP TRIGGER sync_trigger_table2 ON trigger_table2")
 			testutils.AssertQueryRuns(connection, "COMMENT ON TRIGGER sync_trigger_table2 ON trigger_table2 IS 'This is a trigger comment.'")
 
-			trigger1 := backup.QuerySimpleDefinition{"sync_trigger_table1", "public.trigger_table1",
+			trigger1 := backup.QuerySimpleDefinition{"sync_trigger_table1", "public", "trigger_table1",
 				"CREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON trigger_table1 FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger()",
 				""}
-			trigger2 := backup.QuerySimpleDefinition{"sync_trigger_table2", "public.trigger_table2",
+			trigger2 := backup.QuerySimpleDefinition{"sync_trigger_table2", "public", "trigger_table2",
 				"CREATE TRIGGER sync_trigger_table2 AFTER INSERT OR DELETE OR UPDATE ON trigger_table2 FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger()",
 				"This is a trigger comment."}
 

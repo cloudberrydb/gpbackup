@@ -16,8 +16,9 @@ import (
 
 func GetIndexesForAllTables(connection *utils.DBConn, tables []utils.Relation) []string {
 	indexes := make([]string, 0)
+	indexNameMap := ConstructImplicitIndexNames(connection)
 	for _, table := range tables {
-		indexList := GetIndexMetadata(connection, table.RelationOid)
+		indexList := GetIndexMetadata(connection, table.RelationOid, indexNameMap)
 		for _, index := range indexList {
 			indexStr := fmt.Sprintf("\n\n%s;", index.Def)
 			if index.Comment != "" {
@@ -35,7 +36,8 @@ func GetRuleDefinitions(connection *utils.DBConn) []string {
 	for _, rule := range ruleList {
 		ruleStr := fmt.Sprintf("\n\n%s", rule.Def)
 		if rule.Comment != "" {
-			ruleStr += fmt.Sprintf("\nCOMMENT ON RULE %s ON %s IS '%s';", utils.QuoteIdent(rule.Name), rule.OwningTable, rule.Comment)
+			tableFQN := utils.MakeFQN(rule.OwningSchema, rule.OwningTable)
+			ruleStr += fmt.Sprintf("\nCOMMENT ON RULE %s ON %s IS '%s';", utils.QuoteIdent(rule.Name), tableFQN, rule.Comment)
 		}
 		rules = append(rules, ruleStr)
 	}
@@ -48,7 +50,8 @@ func GetTriggerDefinitions(connection *utils.DBConn) []string {
 	for _, trigger := range triggerList {
 		triggerStr := fmt.Sprintf("\n\n%s;", trigger.Def)
 		if trigger.Comment != "" {
-			triggerStr += fmt.Sprintf("\nCOMMENT ON TRIGGER %s ON %s IS '%s';", utils.QuoteIdent(trigger.Name), trigger.OwningTable, trigger.Comment)
+			tableFQN := utils.MakeFQN(trigger.OwningSchema, trigger.OwningTable)
+			triggerStr += fmt.Sprintf("\nCOMMENT ON TRIGGER %s ON %s IS '%s';", utils.QuoteIdent(trigger.Name), tableFQN, trigger.Comment)
 		}
 		triggers = append(triggers, triggerStr)
 	}

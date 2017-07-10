@@ -301,23 +301,60 @@ func GetSessionGUCs(connection *utils.DBConn) QuerySessionGUCs {
 }
 
 /*
+ * This function constructs the names of implicit indexes created by
+ * unique constraints on tables, so they can be filtered out of the
+ * index list.
+ *
+ * Primary key indexes can only be created implicitly by a primary
+ * key constraint, so they can be filtered out directly in the query
+ * to get indexes, but multiple unique indexes can be created on the
+ * same column so we only want to filter out the implicit ones.
+ */
+func ConstructImplicitIndexNames(connection *utils.DBConn) map[string]bool {
+	query := `
+SELECT DISTINCT
+	n.nspname || '.' || t.relname || '_' || a.attname || '_key' AS string
+FROM pg_constraint c
+JOIN pg_class t
+	ON c.conrelid = t.oid
+JOIN pg_namespace n
+	ON (t.relnamespace = n.oid)
+JOIN pg_attribute a
+	ON c.conrelid = a.attrelid
+JOIN pg_index i
+	ON i.indrelid = c.conrelid
+WHERE a.attnum > 0
+AND i.indisunique = 't'
+AND i.indisprimary = 'f';
+`
+	indexNameMap := make(map[string]bool, 0)
+	indexNames := SelectStringSlice(connection, query)
+	for _, name := range indexNames {
+		indexNameMap[name] = true
+	}
+	return indexNameMap
+}
+
+/*
  * This struct is for objects that only have a definition, like indexes
  * (pg_get_indexdef) and rules (pg_get_ruledef), and no owners or the like.
  * We get the owning table for the object because COMMENT ON [object type]
  * statements can require it.
  */
 type QuerySimpleDefinition struct {
-	Name        string
-	OwningTable string
-	Def         string
-	Comment     string
+	Name         string
+	OwningSchema string
+	OwningTable  string
+	Def          string
+	Comment      string
 }
 
-func GetIndexMetadata(connection *utils.DBConn, oid uint32) []QuerySimpleDefinition {
+func GetIndexMetadata(connection *utils.DBConn, oid uint32, indexNameMap map[string]bool) []QuerySimpleDefinition {
 	query := fmt.Sprintf(`
 SELECT
 	t.relname AS name,
-	quote_ident(n.nspname) || '.' || quote_ident(c.relname) AS owningtable,
+	n.nspname AS owningschema,
+	c.relname AS owningtable,
 	pg_get_indexdef(i.indexrelid) AS def,
 	coalesce(obj_description(t.oid, 'pg_class'), '') AS comment
 FROM pg_index i
@@ -328,12 +365,21 @@ JOIN pg_namespace n
 JOIN pg_class t
 	ON (t.oid = i.indexrelid)
 WHERE i.indrelid = %d
+AND i.indisprimary = 'f'
 ORDER BY name;`, oid)
 
 	results := make([]QuerySimpleDefinition, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
-	return results
+	filteredIndexes := make([]QuerySimpleDefinition, 0)
+	for _, index := range results {
+		// We don't want to quote the index name, just prepend the schema
+		indexFQN := fmt.Sprintf("%s.%s", index.OwningSchema, index.Name)
+		if !indexNameMap[indexFQN] {
+			filteredIndexes = append(filteredIndexes, index)
+		}
+	}
+	return filteredIndexes
 }
 
 /*
@@ -344,7 +390,8 @@ func GetRuleMetadata(connection *utils.DBConn) []QuerySimpleDefinition {
 	query := `
 SELECT
 	r.rulename AS name,
-	quote_ident(n.nspname) || '.' || quote_ident(c.relname) AS owningtable,
+	n.nspname AS owningschema,
+	c.relname AS owningtable,
 	pg_get_ruledef(r.oid) AS def,
 	coalesce(obj_description(r.oid, 'pg_rewrite'), '') AS comment
 FROM pg_rewrite r
@@ -366,7 +413,8 @@ func GetTriggerMetadata(connection *utils.DBConn) []QuerySimpleDefinition {
 	query := `
 SELECT
 	t.tgname AS name,
-	quote_ident(n.nspname) || '.' || quote_ident(c.relname) AS owningtable,
+	n.nspname AS owningschema,
+	c.relname AS owningtable,
 	pg_get_triggerdef(t.oid) AS def,
 	coalesce(obj_description(t.oid, 'pg_trigger'), '') AS comment
 FROM pg_trigger t

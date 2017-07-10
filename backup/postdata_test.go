@@ -32,10 +32,13 @@ var _ = Describe("backup/postdata tests", func() {
 		bitmapOne := []driver.Value{"bitmap_idx1", "CREATE INDEX bitmap_idx1 ON table_one USING bitmap (i)", ""}
 		commentOne := []driver.Value{"btree_idx1", "CREATE INDEX btree_idx1 ON table_one USING btree (i)", "This is an index comment."}
 
+		filterEmpty := sqlmock.NewRows([]string{"string"})
+
 		Context("Indexes on a single column", func() {
 			It("returns a slice containing one CREATE INDEX statement for one table", func() {
 				testTables := []utils.Relation{tableOne}
 				resultOne := sqlmock.NewRows(header).AddRow(btreeOne...)
+				mock.ExpectQuery("SELECT DISTINCT (.*)").WillReturnRows(filterEmpty)
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(resultOne)
 				indexes := backup.GetIndexesForAllTables(connection, testTables)
 				Expect(len(indexes)).To(Equal(1))
@@ -45,6 +48,7 @@ var _ = Describe("backup/postdata tests", func() {
 				testTables := []utils.Relation{tableOne, tableTwo}
 				resultOne := sqlmock.NewRows(header).AddRow(btreeOne...)
 				resultTwo := sqlmock.NewRows(header).AddRow(btreeTwo...)
+				mock.ExpectQuery("SELECT DISTINCT (.*)").WillReturnRows(filterEmpty)
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(resultOne)
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(resultTwo)
 				indexes := backup.GetIndexesForAllTables(connection, testTables)
@@ -56,6 +60,7 @@ var _ = Describe("backup/postdata tests", func() {
 				testTables := []utils.Relation{tableOne, tableTwo}
 				resultOne := sqlmock.NewRows(header).AddRow(btreeOne...).AddRow(bitmapOne...)
 				resultTwo := sqlmock.NewRows(header).AddRow(btreeTwo...)
+				mock.ExpectQuery("SELECT DISTINCT (.*)").WillReturnRows(filterEmpty)
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(resultOne)
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(resultTwo)
 				indexes := backup.GetIndexesForAllTables(connection, testTables)
@@ -67,6 +72,7 @@ var _ = Describe("backup/postdata tests", func() {
 			It("returns a slice containing one CREATE INDEX statement when one table has an index and one does not", func() {
 				testTables := []utils.Relation{tableOne, tableWithout}
 				resultOne := sqlmock.NewRows(header).AddRow(btreeOne...)
+				mock.ExpectQuery("SELECT DISTINCT (.*)").WillReturnRows(filterEmpty)
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(resultOne)
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(resultEmpty)
 				indexes := backup.GetIndexesForAllTables(connection, testTables)
@@ -76,6 +82,7 @@ var _ = Describe("backup/postdata tests", func() {
 			It("returns a slice containing one CREATE INDEX statement and accompanying comment", func() {
 				testTables := []utils.Relation{tableOne}
 				resultOne := sqlmock.NewRows(header).AddRow(commentOne...)
+				mock.ExpectQuery("SELECT DISTINCT (.*)").WillReturnRows(filterEmpty)
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(resultOne)
 				indexes := backup.GetIndexesForAllTables(connection, testTables)
 				Expect(len(indexes)).To(Equal(1))
