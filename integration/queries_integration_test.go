@@ -508,11 +508,16 @@ CYCLE`)
 		It("returns a slice of procedural languages", func() {
 			testutils.AssertQueryRuns(connection, "CREATE LANGUAGE plpythonu")
 			defer testutils.AssertQueryRuns(connection, "DROP LANGUAGE plpythonu")
-			handlerOid := testutils.OidFromFunctionName(connection, "plpython_call_handler")
-			inlineOid := testutils.OidFromFunctionName(connection, "plpython_inline_handler")
 
-			expectedPlpgsqlInfo := backup.QueryProceduralLanguage{"plpgsql", "testrole", true, true, 11905, 11906, 11907, "", ""}
-			expectedPlpythonuInfo := backup.QueryProceduralLanguage{"plpythonu", "testrole", true, false, handlerOid, inlineOid, 0, "", ""}
+			pgsqlHandlerOid := testutils.OidFromFunctionName(connection, "plpgsql_call_handler")
+			pgsqlInlineOid := testutils.OidFromFunctionName(connection, "plpgsql_inline_handler")
+			pgsqlValidatorOid := testutils.OidFromFunctionName(connection, "plpgsql_validator")
+
+			pythonHandlerOid := testutils.OidFromFunctionName(connection, "plpython_call_handler")
+			pythonInlineOid := testutils.OidFromFunctionName(connection, "plpython_inline_handler")
+
+			expectedPlpgsqlInfo := backup.QueryProceduralLanguage{"plpgsql", "testrole", true, true, pgsqlHandlerOid, pgsqlInlineOid, pgsqlValidatorOid, "", ""}
+			expectedPlpythonuInfo := backup.QueryProceduralLanguage{"plpythonu", "testrole", true, false, pythonHandlerOid, pythonInlineOid, 0, "", ""}
 
 			resultProcLangs := backup.GetProceduralLanguages(connection)
 
