@@ -50,17 +50,19 @@ SET SUBPARTITION TEMPLATE
           )
 `
 
+	noMetadata := utils.ObjectMetadata{}
+
 	Describe("PrintCreateTableStatement", func() {
 		tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, colDefsEmpty, false, extTableEmpty}
 		It("calls PrintRegularTableCreateStatement for a regular table", func() {
 			tableDef.IsExternal = false
-			backup.PrintCreateTableStatement(buffer, testTable, tableDef)
+			backup.PrintCreateTableStatement(buffer, testTable, tableDef, noMetadata)
 			testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 ) DISTRIBUTED RANDOMLY;`)
 		})
 		It("calls PrintExternalTableCreateStatement for an external table", func() {
 			tableDef.IsExternal = true
-			backup.PrintCreateTableStatement(buffer, testTable, tableDef)
+			backup.PrintCreateTableStatement(buffer, testTable, tableDef, noMetadata)
 			testutils.ExpectRegexp(buffer, `CREATE READABLE EXTERNAL WEB TABLE public.tablename (
 ) 
 FORMAT 'text'
@@ -377,26 +379,27 @@ SET SUBPARTITION TEMPLATE
 		rowCommentOne := backup.ColumnDefinition{1, "i", false, false, false, "integer", "", "This is a column comment.", ""}
 		rowCommentTwo := backup.ColumnDefinition{2, "j", false, false, false, "integer", "", "This is another column comment.", ""}
 
-		It("prints a CREATE TABLE block with a table comment", func() {
+		It("prints a block with a table comment", func() {
 			col := []backup.ColumnDefinition{rowOne}
 			tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
-			backup.PrintPostCreateTableStatements(buffer, tableWithComment, tableDef)
+			tableMetadata := utils.ObjectMetadata{Comment: "This is a table comment."}
+			backup.PrintPostCreateTableStatements(buffer, tableWithComment, tableDef, tableMetadata)
 			testutils.ExpectRegexp(buffer, `
 
 COMMENT ON TABLE public.tablename IS 'This is a table comment.';`)
 		})
-		It("prints a CREATE TABLE block with a single column comment", func() {
+		It("prints a block with a single column comment", func() {
 			col := []backup.ColumnDefinition{rowCommentOne}
 			tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
-			backup.PrintPostCreateTableStatements(buffer, testTable, tableDef)
+			backup.PrintPostCreateTableStatements(buffer, testTable, tableDef, noMetadata)
 			testutils.ExpectRegexp(buffer, `
 
 COMMENT ON COLUMN public.tablename.i IS 'This is a column comment.';`)
 		})
-		It("prints a CREATE TABLE block with multiple column comments", func() {
+		It("prints a block with multiple column comments", func() {
 			col := []backup.ColumnDefinition{rowCommentOne, rowCommentTwo}
 			tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
-			backup.PrintPostCreateTableStatements(buffer, testTable, tableDef)
+			backup.PrintPostCreateTableStatements(buffer, testTable, tableDef, noMetadata)
 			testutils.ExpectRegexp(buffer, `
 
 COMMENT ON COLUMN public.tablename.i IS 'This is a column comment.';
@@ -407,7 +410,8 @@ COMMENT ON COLUMN public.tablename.j IS 'This is another column comment.';`)
 		It("prints an ALTER TABLE ... OWNER TO statement to set the table owner", func() {
 			col := []backup.ColumnDefinition{rowOne}
 			tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
-			backup.PrintPostCreateTableStatements(buffer, tableWithOwner, tableDef)
+			tableMetadata := utils.ObjectMetadata{Owner: "testrole"}
+			backup.PrintPostCreateTableStatements(buffer, tableWithOwner, tableDef, tableMetadata)
 			testutils.ExpectRegexp(buffer, `
 
 ALTER TABLE public.tablename OWNER TO testrole;`)
@@ -415,7 +419,8 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 		It("prints both an ALTER TABLE ... OWNER TO statement and comments", func() {
 			col := []backup.ColumnDefinition{rowCommentOne, rowCommentTwo}
 			tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
-			backup.PrintPostCreateTableStatements(buffer, tableWithBoth, tableDef)
+			tableMetadata := utils.ObjectMetadata{Owner: "testrole", Comment: "This is a table comment."}
+			backup.PrintPostCreateTableStatements(buffer, tableWithBoth, tableDef, tableMetadata)
 			testutils.ExpectRegexp(buffer, `
 
 COMMENT ON TABLE public.tablename IS 'This is a table comment.';

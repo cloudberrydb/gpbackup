@@ -25,9 +25,8 @@ var (
 	quotedOrUnquotedString = regexp.MustCompile(`^(?:\"(.*)\"|(.*))\.(?:\"(.*)\"|(.*))$`)
 
 	// Swap between double quotes and paired double quotes, and between literal whitespace characters and escape sequences
-	replacerTo = strings.NewReplacer("\"", "\"\"", `
-`, "\\n", "\n", "\\n", "	", "\\t", "\t", "\\t")
-	replacerFrom = strings.NewReplacer("\"\"", "\"", "\\n", "\n", "\\t", "\t")
+	replacerEscape   = strings.NewReplacer(`"`, `""`, `\`, `\\`)
+	replacerUnescape = strings.NewReplacer(`""`, `"`, `\\`, `\`)
 )
 
 // This will mostly be used for schemas, but can be used for any database object with an oid.
@@ -47,6 +46,23 @@ type Relation struct {
 	Owner        string
 }
 
+type ObjectMetadata struct {
+	Privileges []ACL
+	Owner      string
+	Comment    string
+}
+
+type ACL struct {
+	Grantee    string
+	Select     bool
+	Insert     bool
+	Update     bool
+	Delete     bool
+	Truncate   bool
+	References bool
+	Trigger    bool
+}
+
 /*
  * Functions for escaping schemas and tables
  */
@@ -54,7 +70,7 @@ type Relation struct {
 // This function quotes an unquoted identifier like quote_ident() in Postgres.
 func QuoteIdent(ident string) string {
 	if !unquotedIdentifier.MatchString(ident) {
-		ident = replacerTo.Replace(ident)
+		ident = replacerEscape.Replace(ident)
 		ident = fmt.Sprintf(`"%s"`, ident)
 	}
 	return ident
@@ -92,6 +108,10 @@ func BasicRelation(schema string, relation string) Relation {
 }
 
 /*
+ * Functions for struct input/parsing and output
+ */
+
+/*
  * This function prints a table in fully-qualified schema.table format, with
  * everything quoted and escaped appropriately.
  */
@@ -112,14 +132,14 @@ func RelationFromString(name string) Relation {
 	var matches []string
 	if matches = quotedOrUnquotedString.FindStringSubmatch(name); len(matches) != 0 {
 		if matches[1] != "" { // schema was quoted
-			schema = replacerFrom.Replace(matches[1])
+			schema = replacerUnescape.Replace(matches[1])
 		} else { // schema wasn't quoted
-			schema = replacerFrom.Replace(matches[2])
+			schema = replacerUnescape.Replace(matches[2])
 		}
 		if matches[3] != "" { // table was quoted
-			table = replacerFrom.Replace(matches[3])
+			table = replacerUnescape.Replace(matches[3])
 		} else { // table wasn't quoted
-			table = replacerFrom.Replace(matches[4])
+			table = replacerUnescape.Replace(matches[4])
 		}
 	} else {
 		logger.Fatal(errors.Errorf("\"%s\" is not a valid fully-qualified table expression", name), "")
@@ -131,13 +151,50 @@ func SchemaFromString(name string) Schema {
 	var schema string
 	var matches []string
 	if matches = quotedIdentifier.FindStringSubmatch(name); len(matches) != 0 {
-		schema = replacerFrom.Replace(matches[1])
+		schema = replacerUnescape.Replace(matches[1])
 	} else if matches = unquotedIdentifier.FindStringSubmatch(name); len(matches) != 0 {
-		schema = replacerFrom.Replace(matches[1])
+		schema = replacerUnescape.Replace(matches[1])
 	} else {
 		logger.Fatal(errors.Errorf("\"%s\" is not a valid identifier", name), "")
 	}
 	return BasicSchema(schema)
+}
+
+func ParseACL(aclStr string) *ACL {
+	aclRegex := regexp.MustCompile(`^(?:\"(.*)\"|(.*))=([a-zA-Z]*)/(?:\"(.*)\"|(.*))$`)
+	grantee := ""
+	acl := ACL{}
+	if matches := aclRegex.FindStringSubmatch(aclStr); len(matches) != 0 {
+		if matches[1] != "" {
+			grantee = matches[1]
+		} else if matches[2] != "" {
+			grantee = matches[2]
+		} else {
+			return nil
+		}
+		permStr := matches[3]
+		for _, char := range permStr {
+			switch char {
+			case 'a':
+				acl.Select = true
+			case 'r':
+				acl.Insert = true
+			case 'w':
+				acl.Update = true
+			case 'd':
+				acl.Delete = true
+			case 'D':
+				acl.Truncate = true
+			case 'x':
+				acl.References = true
+			case 't':
+				acl.Trigger = true
+			}
+		}
+		acl.Grantee = grantee
+		return &acl
+	}
+	return nil
 }
 
 /*

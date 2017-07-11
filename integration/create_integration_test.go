@@ -643,30 +643,40 @@ SET SUBPARTITION TEMPLATE  ` + `
 			testTable     = utils.Relation{SchemaName: "public", RelationName: "test_table", Owner: "testrole"}
 			tableRow      = backup.ColumnDefinition{1, "i", false, false, false, "integer", "", "", ""}
 			tableDef      = backup.TableDefinition{DistPolicy: "DISTRIBUTED BY (i)", ColumnDefs: []backup.ColumnDefinition{tableRow}, ExtTableDef: extTableEmpty}
+			tableMetadata utils.ObjectMetadata
 		)
 		BeforeEach(func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE test_table(i int)")
+			tableMetadata = utils.ObjectMetadata{Privileges: []utils.ACL{}}
 		})
 		AfterEach(func() {
 			testutils.AssertQueryRuns(connection, "DROP TABLE test_table")
 		})
 		It("prints only owner for a table with no comment or column comments", func() {
-			backup.PrintPostCreateTableStatements(buffer, testTable, tableDef)
+			tableMetadata.Owner = "testrole"
+			backup.PrintPostCreateTableStatements(buffer, testTable, tableDef, tableMetadata)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			testTable.RelationOid = testutils.OidFromRelationName(connection, "public.test_table")
+			resultMetadata := backup.GetMetadataForObjectType(connection, "relnamespace", "relacl", "relowner", "pg_class")
+			resultTableMetadata := resultMetadata[testTable.RelationOid]
+			testutils.ExpectStructsToMatch(&tableMetadata, &resultTableMetadata)
 			resultTableDef := backup.ConstructDefinitionsForTable(connection, testTable, false)
 			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ExtTableDef")
 		})
 		It("prints table comment, table owner, and column comments for a table with all three", func() {
-			testTable.Comment = "This is a table comment."
+			tableMetadata.Owner = "testrole"
+			tableMetadata.Comment = "This is a table comment."
 			tableDef.ColumnDefs[0].Comment = "This is a column comment."
-			backup.PrintPostCreateTableStatements(buffer, testTable, tableDef)
+			backup.PrintPostCreateTableStatements(buffer, testTable, tableDef, tableMetadata)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			testTable.RelationOid = testutils.OidFromRelationName(connection, "public.test_table")
 			resultTableDef := backup.ConstructDefinitionsForTable(connection, testTable, false)
 			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ExtTableDef")
+			resultMetadata := backup.GetMetadataForObjectType(connection, "relnamespace", "relacl", "relowner", "pg_class")
+			resultTableMetadata := resultMetadata[testTable.RelationOid]
+			testutils.ExpectStructsToMatch(&tableMetadata, &resultTableMetadata)
 		})
 	})
 	Describe("PrintExternalTableCreateStatement", func() {

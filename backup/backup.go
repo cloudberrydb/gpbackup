@@ -171,10 +171,11 @@ func backupPredata(filename string, tables []utils.Relation, extTableMap map[str
 	PrintCreateCastStatements(predataFile, castDefs)
 
 	logger.Verbose("Writing CREATE TABLE statements to predata file")
+	tablesMetadata := GetMetadataForObjectType(connection, "relnamespace", "relacl", "relowner", "pg_class")
 	for _, table := range tables {
 		isExternal := extTableMap[table.ToString()]
 		tableDef := ConstructDefinitionsForTable(connection, table, isExternal)
-		PrintCreateTableStatement(predataFile, table, tableDef)
+		PrintCreateTableStatement(predataFile, table, tableDef, tablesMetadata[table.RelationOid])
 	}
 
 	logger.Verbose("Writing CREATE VIEW statements to predata file")

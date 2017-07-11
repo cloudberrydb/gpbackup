@@ -24,6 +24,65 @@ type Sequence struct {
  * Functions to print to the predata file
  */
 
+func PrintObjectMetadata(file io.Writer, obj utils.ObjectMetadata, objectName string, objectType string, commentSuffix string, ownerType string) {
+	objectOwner := utils.QuoteIdent(obj.Owner)
+	if obj.Comment != "" {
+		utils.MustPrintf(file, "\n\nCOMMENT ON %s%s %s IS '%s';\n", objectType, commentSuffix, objectName, obj.Comment)
+	}
+	if obj.Owner != "" {
+		utils.MustPrintf(file, "\n\nALTER %s %s OWNER TO %s;\n", ownerType, objectName, objectOwner)
+	}
+	if len(obj.Privileges) != 0 {
+		utils.MustPrintf(file, "\n\nREVOKE ALL ON %s %s FROM PUBLIC;", objectType, objectName)
+		if obj.Owner != "" {
+			utils.MustPrintf(file, "\nREVOKE ALL ON %s %s FROM %s;", objectType, objectName, objectOwner)
+		}
+		for _, acl := range obj.Privileges {
+			/*
+			 * Determine whether to print "GRANT ALL" instead of granting individual
+			 * privileges.  Information on which privileges exist for a given object
+			 * comes from src/include/utils/acl.h in GPDB.
+			 */
+			hasAllPrivileges := false
+			grantStr := ""
+			switch objectType {
+			case "TABLE":
+				hasAllPrivileges = acl.Select && acl.Insert && acl.Update && acl.Delete && acl.Truncate && acl.References && acl.Trigger
+			}
+			if hasAllPrivileges {
+				grantStr = "ALL"
+			} else {
+				grantList := make([]string, 0)
+				if acl.Select {
+					grantList = append(grantList, "SELECT")
+				}
+				if acl.Insert {
+					grantList = append(grantList, "INSERT")
+				}
+				if acl.Update {
+					grantList = append(grantList, "UPDATE")
+				}
+				if acl.Delete {
+					grantList = append(grantList, "DELETE")
+				}
+				if acl.Truncate {
+					grantList = append(grantList, "TRUNCATE")
+				}
+				if acl.References {
+					grantList = append(grantList, "REFERENCES")
+				}
+				if acl.Trigger {
+					grantList = append(grantList, "TRIGGER")
+				}
+				grantStr = strings.Join(grantList, ",")
+			}
+			if grantStr != "" {
+				utils.MustPrintf(file, "\nGRANT %s ON %s %s TO %s;", grantStr, objectType, objectName, utils.QuoteIdent(acl.Grantee))
+			}
+		}
+	}
+}
+
 /*
  * This function calls per-table functions to get constraints related to each
  * table, then consolidates them in two slices holding all constraints for all

@@ -68,9 +68,7 @@ SELECT
 	n.oid AS schemaoid,
 	c.oid AS relationoid,
 n.nspname AS schemaname,
-	c.relname AS relationname,
-	coalesce(obj_description(c.oid, 'pg_class'), '') AS comment,
-	pg_get_userbyid(c.relowner) AS owner
+	c.relname AS relationname
 FROM pg_class c
 LEFT JOIN pg_partition_rule pr
 	ON c.oid = pr.parchildrelid
@@ -691,6 +689,60 @@ ORDER BY n.nspname, t.typname, a.attname;`, nonUserSchemaFilterClause)
 /*
  * Queries using generic structs defined below or structs defined elsewhere
  */
+
+type QueryObjectMetadata struct {
+	ObjectOid  uint32
+	Privileges string
+	Owner      string
+	Comment    string
+}
+
+func GetMetadataForObjectType(connection *utils.DBConn, schemaField string, aclField string, ownerField string, catalogTable string) map[uint32]utils.ObjectMetadata {
+	query := fmt.Sprintf(`
+SELECT
+	o.oid AS objectOid,
+	CASE
+		WHEN o.%s IS NULL THEN ''
+		WHEN array_length(o.%s, 1) = 0 THEN 'GRANTEE=/GRANTOR'
+		ELSE unnest(o.%s)::text
+	END AS privileges,
+	pg_get_userbyid(o.%s) AS owner,
+	coalesce(obj_description(o.oid, '%s'), '') AS comment
+FROM %s o
+JOIN pg_namespace n ON o.%s = n.oid
+WHERE %s
+ORDER BY o.oid, privileges;
+`, aclField, aclField, aclField, ownerField, catalogTable, catalogTable, schemaField, nonUserSchemaFilterClause)
+
+	results := make([]QueryObjectMetadata, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+
+	metadataMap := make(map[uint32]utils.ObjectMetadata)
+	var metadata utils.ObjectMetadata
+	if len(results) > 0 {
+		currentObjectOid := uint32(0)
+		// Collect all entries for the same object into one ObjectMetadata
+		for _, result := range results {
+			if result.ObjectOid != currentObjectOid {
+				if currentObjectOid != 0 {
+					metadataMap[currentObjectOid] = metadata
+				}
+				currentObjectOid = result.ObjectOid
+				metadata = utils.ObjectMetadata{}
+				metadata.Privileges = make([]utils.ACL, 0)
+				metadata.Owner = result.Owner
+				metadata.Comment = result.Comment
+			}
+			privileges := utils.ParseACL(result.Privileges)
+			if privileges != nil {
+				metadata.Privileges = append(metadata.Privileges, *privileges)
+			}
+		}
+		metadataMap[currentObjectOid] = metadata
+	}
+	return metadataMap
+}
 
 func GetExternalTablesMap(connection *utils.DBConn) map[string]bool {
 	extTableMap := make(map[string]bool)

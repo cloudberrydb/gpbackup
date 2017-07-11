@@ -21,6 +21,11 @@ var _ = Describe("utils/table tests", func() {
 			output := utils.QuoteIdent(name)
 			Expect(output).To(Equal(`"table""name"`))
 		})
+		It("replaces backslashes with pairs of backslashes", func() {
+			name := `table\name`
+			output := utils.QuoteIdent(name)
+			Expect(output).To(Equal(`"table\\name"`))
+		})
 		It("properly escapes capital letters", func() {
 			names := []string{"Relationname", "TABLENAME", "TaBlEnAmE"}
 			expected := []string{`"Relationname"`, `"TABLENAME"`, `"TaBlEnAmE"`}
@@ -30,7 +35,7 @@ var _ = Describe("utils/table tests", func() {
 			}
 		})
 		It("properly escapes shell-significant special characters", func() {
-			special := `.,!$/\` + "`"
+			special := `.,!$/` + "`"
 			for _, spec := range special {
 				name := fmt.Sprintf(`table%cname`, spec)
 				expected := fmt.Sprintf(`"table%cname"`, spec)
@@ -40,7 +45,7 @@ var _ = Describe("utils/table tests", func() {
 		})
 		It("properly escapes whitespace", func() {
 			names := []string{"table name", "table\tname", "table\nname"}
-			expected := []string{`"table name"`, `"table\tname"`, `"table\nname"`}
+			expected := []string{`"table name"`, "\"table\tname\"", "\"table\nname\""}
 			for i := range names {
 				output := utils.QuoteIdent(names[i])
 				Expect(output).To(Equal(expected[i]))

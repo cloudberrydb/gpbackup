@@ -34,12 +34,11 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
 			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema CASCADE")
 			testutils.AssertQueryRuns(connection, "CREATE TABLE testschema.testtable(t text)")
-			testutils.AssertQueryRuns(connection, "COMMENT ON TABLE public.foo IS 'this is a table comment'")
 
 			tables := backup.GetAllUserTables(connection)
 
-			tableFoo := utils.Relation{0, 0, "public", "foo", "this is a table comment", "testrole"}
-			tableTestTable := utils.Relation{0, 0, "testschema", "testtable", "", "testrole"}
+			tableFoo := utils.BasicRelation("public", "foo")
+			tableTestTable := utils.BasicRelation("testschema", "testtable")
 
 			Expect(len(tables)).To(Equal(2))
 			testutils.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "RelationOid")
@@ -58,7 +57,7 @@ PARTITION BY LIST (gender)
 
 			tables := backup.GetAllUserTables(connection)
 
-			tableRank := utils.Relation{0, 0, "public", "rank", "", "testrole"}
+			tableRank := utils.BasicRelation("public", "rank")
 
 			Expect(len(tables)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&tableRank, &tables[0], "SchemaOid", "RelationOid")
@@ -710,6 +709,55 @@ CYCLE`)
 			results := backup.GetTypeDefinitions(connection)
 
 			Expect(len(results)).To(Equal(0))
+		})
+	})
+	Describe("GetMetadataForObjectType", func() {
+		It("returns a slice of metadata with modified privileges", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLE foo(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE foo")
+			testutils.AssertQueryRuns(connection, "REVOKE DELETE ON TABLE foo FROM testrole")
+			testutils.AssertQueryRuns(connection, "CREATE TABLE bar(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE bar")
+			testutils.AssertQueryRuns(connection, "REVOKE ALL ON TABLE bar FROM testrole")
+			testutils.AssertQueryRuns(connection, "CREATE TABLE baz(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE baz")
+			testutils.AssertQueryRuns(connection, "GRANT ALL ON TABLE baz TO gpadmin")
+
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, "relnamespace", "relacl", "relowner", "pg_class")
+
+			fooOid := testutils.OidFromRelationName(connection, "foo")
+			barOid := testutils.OidFromRelationName(connection, "bar")
+			bazOid := testutils.OidFromRelationName(connection, "baz")
+			expectedFoo := utils.ObjectMetadata{Privileges: []utils.ACL{
+				{"testrole", true, true, true, false, true, true, true},
+			}, Owner: "testrole"}
+			expectedBar := utils.ObjectMetadata{Privileges: []utils.ACL{
+				{Grantee: "GRANTEE"},
+			}, Owner: "testrole"}
+			expectedBaz := utils.ObjectMetadata{Privileges: []utils.ACL{
+				{"gpadmin", true, true, true, true, true, true, true},
+				{"testrole", true, true, true, true, true, true, true},
+			}, Owner: "testrole"}
+			Expect(len(resultMetadataMap)).To(Equal(3))
+			resultFoo := resultMetadataMap[fooOid]
+			resultBar := resultMetadataMap[barOid]
+			resultBaz := resultMetadataMap[bazOid]
+			testutils.ExpectStructsToMatch(&resultFoo, &expectedFoo)
+			testutils.ExpectStructsToMatch(&resultBar, &expectedBar)
+			testutils.ExpectStructsToMatch(&resultBaz, &expectedBaz)
+		})
+		It("returns a slice of default metadata for a table", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLE testtable(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE testtable")
+			testutils.AssertQueryRuns(connection, "COMMENT ON TABLE testtable IS 'This is a table comment.'")
+
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, "relnamespace", "relacl", "relowner", "pg_class")
+
+			oid := testutils.OidFromRelationName(connection, "testtable")
+			expectedMetadata := utils.ObjectMetadata{Privileges: []utils.ACL{}, Owner: "testrole", Comment: "This is a table comment."}
+			Expect(len(resultMetadataMap)).To(Equal(1))
+			resultMetadata := resultMetadataMap[oid]
+			testutils.ExpectStructsToMatch(&resultMetadata, &expectedMetadata)
 		})
 	})
 	Describe("GetExternalTablesMap", func() {

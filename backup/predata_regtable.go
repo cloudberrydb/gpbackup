@@ -103,13 +103,13 @@ func ConsolidateColumnInfo(atts []QueryTableAtts, defs []QueryTableDefault) []Co
  * the search_path; this will aid in later filtering to include or exclude certain tables during the
  * backup process, and allows customers to copy just the CREATE TABLE block in order to use it directly.
  */
-func PrintCreateTableStatement(predataFile io.Writer, table utils.Relation, tableDef TableDefinition) {
+func PrintCreateTableStatement(predataFile io.Writer, table utils.Relation, tableDef TableDefinition, tableMetadata utils.ObjectMetadata) {
 	if tableDef.IsExternal {
 		PrintExternalTableCreateStatement(predataFile, table, tableDef)
 	} else {
 		PrintRegularTableCreateStatement(predataFile, table, tableDef)
 	}
-	PrintPostCreateTableStatements(predataFile, table, tableDef)
+	PrintPostCreateTableStatements(predataFile, table, tableDef, tableMetadata)
 }
 
 func PrintRegularTableCreateStatement(predataFile io.Writer, table utils.Relation, tableDef TableDefinition) {
@@ -155,13 +155,8 @@ func printColumnStatements(predataFile io.Writer, table utils.Relation, columnDe
  * This function prints additional statements that come after the CREATE TABLE
  * statement for both regular and external tables.
  */
-func PrintPostCreateTableStatements(predataFile io.Writer, table utils.Relation, tableDef TableDefinition) {
-	if table.Comment != "" {
-		utils.MustPrintf(predataFile, "\n\nCOMMENT ON TABLE %s IS '%s';\n", table.ToString(), table.Comment)
-	}
-	if table.Owner != "" {
-		utils.MustPrintf(predataFile, "\n\nALTER TABLE %s OWNER TO %s;\n", table.ToString(), utils.QuoteIdent(table.Owner))
-	}
+func PrintPostCreateTableStatements(predataFile io.Writer, table utils.Relation, tableDef TableDefinition, tableMetadata utils.ObjectMetadata) {
+	PrintObjectMetadata(predataFile, tableMetadata, table.ToString(), "TABLE", "", "TABLE")
 
 	for _, att := range tableDef.ColumnDefs {
 		if att.Comment != "" {
