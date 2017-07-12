@@ -47,13 +47,11 @@ func GetAllUserSchemas(connection *utils.DBConn) []utils.Schema {
 	 */
 	query := fmt.Sprintf(`
 SELECT
-	oid AS schemaoid,
-	nspname AS schemaname,
-	coalesce(obj_description(oid, 'pg_namespace'), '') AS comment,
-	pg_get_userbyid(nspowner) AS owner
+	oid,
+	nspname AS name
 FROM pg_namespace
 WHERE %s
-ORDER BY schemaname;`, nonUserSchemaFilterClause)
+ORDER BY name;`, nonUserSchemaFilterClause)
 	results := make([]utils.Schema, 0)
 
 	err := connection.Select(&results, query)
@@ -67,7 +65,7 @@ func GetAllUserTables(connection *utils.DBConn) []utils.Relation {
 SELECT
 	n.oid AS schemaoid,
 	c.oid AS relationoid,
-n.nspname AS schemaname,
+	n.nspname AS schemaname,
 	c.relname AS relationname
 FROM pg_class c
 LEFT JOIN pg_partition_rule pr
@@ -155,23 +153,29 @@ ORDER BY adrelid,
 }
 
 type QueryConstraint struct {
-	ConName    string
-	ConType    string
-	ConDef     string
-	ConComment string
+	Oid         uint32
+	ConName     string
+	ConType     string
+	ConDef      string
+	OwningTable string
 }
 
-func GetConstraints(connection *utils.DBConn, oid uint32) []QueryConstraint {
+func GetConstraints(connection *utils.DBConn) []QueryConstraint {
 	// This query is adapted from the queries underlying \d in psql.
 	query := fmt.Sprintf(`
 SELECT
+	c.oid,
 	conname,
 	contype,
-	pg_catalog.pg_get_constraintdef(oid, TRUE) AS condef,
-	coalesce(obj_description(oid, 'pg_constraint'), '') AS concomment
-FROM pg_catalog.pg_constraint
-WHERE conrelid = %d;
-`, oid)
+	pg_get_constraintdef(c.oid, TRUE) AS condef,
+	quote_ident(n.nspname) || '.' || quote_ident(t.relname) AS owningtable
+FROM pg_constraint c
+JOIN pg_class t
+	ON c.conrelid = t.oid
+JOIN pg_namespace n
+	ON n.oid = t.relnamespace
+WHERE %s
+ORDER BY conname;`, nonUserSchemaFilterClause)
 
 	results := make([]QueryConstraint, 0)
 	err := connection.Select(&results, query)
@@ -209,9 +213,7 @@ func GetAllSequenceRelations(connection *utils.DBConn) []utils.Relation {
 	n.oid AS schemaoid,
 	c.oid AS relationoid,
 	n.nspname AS schemaname,
-	c.relname AS relationname,
-	coalesce(obj_description(c.oid, 'pg_class'), '') AS comment,
-	pg_get_userbyid(c.relowner) AS owner
+	c.relname AS relationname
 FROM pg_class c
 LEFT JOIN pg_namespace n
 	ON c.relnamespace = n.oid
@@ -251,7 +253,7 @@ type QuerySequenceOwner struct {
 	ColumnName   string `db:"attname"`
 }
 
-func GetSequenceOwnerMap(connection *utils.DBConn) map[string]string {
+func GetSequenceColumnOwnerMap(connection *utils.DBConn) map[string]string {
 	query := `SELECT
 	n.nspname,
 	s.relname AS sequencename,
@@ -340,21 +342,21 @@ AND i.indisprimary = 'f';
  * statements can require it.
  */
 type QuerySimpleDefinition struct {
+	Oid          uint32
 	Name         string
 	OwningSchema string
 	OwningTable  string
 	Def          string
-	Comment      string
 }
 
-func GetIndexMetadata(connection *utils.DBConn, oid uint32, indexNameMap map[string]bool) []QuerySimpleDefinition {
+func GetIndexDefinitions(connection *utils.DBConn, indexNameMap map[string]bool) []QuerySimpleDefinition {
 	query := fmt.Sprintf(`
 SELECT
+	i.indexrelid AS oid,
 	t.relname AS name,
 	n.nspname AS owningschema,
 	c.relname AS owningtable,
-	pg_get_indexdef(i.indexrelid) AS def,
-	coalesce(obj_description(t.oid, 'pg_class'), '') AS comment
+	pg_get_indexdef(i.indexrelid) AS def
 FROM pg_index i
 JOIN pg_class c
 	ON (c.oid = i.indrelid)
@@ -362,16 +364,16 @@ JOIN pg_namespace n
 	ON (c.relnamespace = n.oid)
 JOIN pg_class t
 	ON (t.oid = i.indexrelid)
-WHERE i.indrelid = %d
+WHERE %s
 AND i.indisprimary = 'f'
-ORDER BY name;`, oid)
+ORDER BY name;`, nonUserSchemaFilterClause)
 
 	results := make([]QuerySimpleDefinition, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	filteredIndexes := make([]QuerySimpleDefinition, 0)
 	for _, index := range results {
-		// We don't want to quote the index name, just prepend the schema
+		// We don't want to quote the index name to use it as a map key, just prepend the schema
 		indexFQN := fmt.Sprintf("%s.%s", index.OwningSchema, index.Name)
 		if !indexNameMap[indexFQN] {
 			filteredIndexes = append(filteredIndexes, index)
@@ -384,14 +386,14 @@ ORDER BY name;`, oid)
  * Rules named "_RETURN", "pg_settings_n", and "pg_settings_u" are
  * built-in rules and we don't want to dump them.
  */
-func GetRuleMetadata(connection *utils.DBConn) []QuerySimpleDefinition {
+func GetRuleDefinitions(connection *utils.DBConn) []QuerySimpleDefinition {
 	query := `
 SELECT
+	r.oid,
 	r.rulename AS name,
 	n.nspname AS owningschema,
 	c.relname AS owningtable,
-	pg_get_ruledef(r.oid) AS def,
-	coalesce(obj_description(r.oid, 'pg_rewrite'), '') AS comment
+	pg_get_ruledef(r.oid) AS def
 FROM pg_rewrite r
 JOIN pg_class c
 	ON (c.oid = r.ev_class)
@@ -407,14 +409,14 @@ ORDER BY rulename;`
 	return results
 }
 
-func GetTriggerMetadata(connection *utils.DBConn) []QuerySimpleDefinition {
+func GetTriggerDefinitions(connection *utils.DBConn) []QuerySimpleDefinition {
 	query := `
 SELECT
+	t.oid,
 	t.tgname AS name,
 	n.nspname AS owningschema,
 	c.relname AS owningtable,
-	pg_get_triggerdef(t.oid) AS def,
-	coalesce(obj_description(t.oid, 'pg_trigger'), '') AS comment
+	pg_get_triggerdef(t.oid) AS def
 FROM pg_trigger t
 JOIN pg_class c
 	ON (c.oid = t.tgrelid)
@@ -431,6 +433,7 @@ ORDER BY tgname;`
 }
 
 type QueryFunctionDefinition struct {
+	Oid               uint32
 	SchemaName        string `db:"nspname"`
 	FunctionName      string `db:"proname"`
 	ReturnsSet        bool   `db:"proretset"`
@@ -447,8 +450,6 @@ type QueryFunctionDefinition struct {
 	NumRows           float32 `db:"prorows"`
 	DataAccess        string  `db:"prodataaccess"`
 	Language          string
-	Comment           string
-	Owner             string
 }
 
 func GetFunctionDefinitions(connection *utils.DBConn) []QueryFunctionDefinition {
@@ -458,6 +459,7 @@ func GetFunctionDefinitions(connection *utils.DBConn) []QueryFunctionDefinition 
 	 */
 	query := fmt.Sprintf(`
 SELECT
+	p.oid,
 	nspname,
 	proname,
 	proretset,
@@ -476,9 +478,7 @@ SELECT
 	procost,
 	prorows,
 	prodataaccess,
-	(SELECT lanname FROM pg_catalog.pg_language WHERE oid = prolang) AS language,
-	coalesce(obj_description(p.oid, 'pg_proc'), '') AS comment,
-	pg_get_userbyid(proowner) AS owner
+	(SELECT lanname FROM pg_catalog.pg_language WHERE oid = prolang) AS language
 FROM pg_proc p
 LEFT JOIN pg_namespace n
 	ON p.pronamespace = n.oid
@@ -493,6 +493,7 @@ ORDER BY nspname, proname, identargs;`, nonUserSchemaFilterClause)
 }
 
 type QueryAggregateDefinition struct {
+	Oid                 uint32
 	SchemaName          string `db:"nspname"`
 	AggregateName       string `db:"proname"`
 	Arguments           string
@@ -504,13 +505,12 @@ type QueryAggregateDefinition struct {
 	TransitionDataType  string
 	InitialValue        string
 	IsOrdered           bool `db:"aggordered"`
-	Comment             string
-	Owner               string
 }
 
 func GetAggregateDefinitions(connection *utils.DBConn) []QueryAggregateDefinition {
 	query := fmt.Sprintf(`
 SELECT
+	p.oid,
 	n.nspname,
 	p.proname,
 	pg_catalog.pg_get_function_arguments(p.oid) AS arguments,
@@ -521,9 +521,7 @@ SELECT
 	a.aggsortop::regproc::oid,
 	t.typname as transitiondatatype,
 	coalesce(a.agginitval, '') AS initialvalue,
-	a.aggordered,
-	coalesce(obj_description(a.aggfnoid), '') AS comment,
-	pg_get_userbyid(p.proowner) AS owner
+	a.aggordered
 FROM pg_aggregate a
 LEFT JOIN pg_proc p ON a.aggfnoid = p.oid
 LEFT JOIN pg_type t ON a.aggtranstype = t.oid
@@ -537,7 +535,7 @@ WHERE %s;`, nonUserSchemaFilterClause)
 }
 
 type QueryFunction struct {
-	FunctionOid    uint32 `db:"oid"`
+	Oid            uint32
 	FunctionSchema string `db:"nspname"`
 	FunctionName   string `db:"proname"`
 	Arguments      string
@@ -572,31 +570,31 @@ LEFT JOIN pg_namespace n ON p.pronamespace = n.oid;
 			isInternal = true
 		}
 		funcInfo := FunctionInfo{QualifiedName: fqn, Arguments: function.Arguments, IsInternal: isInternal}
-		funcMap[function.FunctionOid] = funcInfo
+		funcMap[function.Oid] = funcInfo
 	}
 	return funcMap
 }
 
 type QueryCastDefinition struct {
+	Oid            uint32
 	SourceType     string
 	TargetType     string
 	FunctionSchema string
 	FunctionName   string
 	FunctionArgs   string
 	CastContext    string
-	Comment        string
 }
 
 func GetCastDefinitions(connection *utils.DBConn) []QueryCastDefinition {
 	query := fmt.Sprintf(`
 SELECT
+	c.oid,
 	pg_catalog.format_type(c.castsource, NULL) AS sourcetype,
 	pg_catalog.format_type(c.casttarget, NULL) AS targettype,
 	coalesce(n.nspname, '') AS functionschema,
 	coalesce(p.proname, '') AS functionname,
 	pg_get_function_arguments(p.oid) AS functionargs,
-	c.castcontext,
-	coalesce(d.description, '') AS comment
+	c.castcontext
 FROM pg_cast c
 LEFT JOIN pg_proc p ON c.castfunc = p.oid
 LEFT JOIN pg_description d ON c.oid = d.objoid
@@ -611,6 +609,7 @@ ORDER BY 1, 2;`, nonUserSchemaFilterClause)
 }
 
 type TypeDefinition struct {
+	Oid             uint32
 	TypeSchema      string `db:"nspname"`
 	TypeName        string `db:"typname"`
 	Type            string `db:"typtype"`
@@ -630,8 +629,6 @@ type TypeDefinition struct {
 	Element         string
 	Delimiter       string `db:"typdelim"`
 	EnumLabels      string
-	Comment         string
-	Owner           string
 }
 
 func GetTypeDefinitions(connection *utils.DBConn) []TypeDefinition {
@@ -646,6 +643,7 @@ func GetTypeDefinitions(connection *utils.DBConn) []TypeDefinition {
 	 */
 	query := fmt.Sprintf(`
 SELECT
+	t.oid,
 	n.nspname,
 	t.typname,
 	t.typtype,
@@ -664,9 +662,7 @@ SELECT
 	coalesce(t.typdefault, '') AS defaultval,
 	coalesce(pg_catalog.format_type(t.typelem, NULL), '') AS element,
 	t.typdelim,
-	coalesce(enumlabels, '') as enumlabels,
-	coalesce(pg_catalog.obj_description(t.oid, 'pg_type'), '') AS comment,
-	pg_catalog.pg_get_userbyid(t.typowner) AS owner
+	coalesce(enumlabels, '') as enumlabels
 FROM pg_type t
 LEFT JOIN pg_attribute a ON t.typrelid = a.attrelid
 LEFT JOIN pg_namespace n ON t.typnamespace = n.oid
@@ -689,46 +685,72 @@ ORDER BY n.nspname, t.typname, a.attname;`, nonUserSchemaFilterClause)
 /*
  * Queries using generic structs defined below or structs defined elsewhere
  */
+type QueryOid struct {
+	Oid uint32
+}
+
+func OidFromObjectName(dbconn *utils.DBConn, name string, nameField string, catalogTable string) uint32 {
+	query := fmt.Sprintf("SELECT oid FROM %s WHERE %s ='%s'", catalogTable, nameField, name)
+	result := QueryOid{}
+	err := dbconn.Get(&result, query)
+	utils.CheckError(err)
+	return result.Oid
+}
 
 type QueryObjectMetadata struct {
-	ObjectOid  uint32
+	Oid        uint32
 	Privileges string
 	Owner      string
 	Comment    string
 }
 
-func GetMetadataForObjectType(connection *utils.DBConn, schemaField string, aclField string, ownerField string, catalogTable string) map[uint32]utils.ObjectMetadata {
-	query := fmt.Sprintf(`
-SELECT
-	o.oid AS objectOid,
-	CASE
+func GetMetadataForObjectType(connection *utils.DBConn, schemaField string, aclField string, ownerField string, catalogTable string) utils.MetadataMap {
+	schemaStr := ""
+	if schemaField != "" {
+		schemaStr = fmt.Sprintf(`JOIN pg_namespace n ON o.%s = n.oid
+WHERE %s`, schemaField, nonUserSchemaFilterClause)
+	}
+	aclStr := ""
+	if aclField != "" {
+		aclStr = fmt.Sprintf(`CASE
 		WHEN o.%s IS NULL THEN ''
 		WHEN array_length(o.%s, 1) = 0 THEN 'GRANTEE=/GRANTOR'
 		ELSE unnest(o.%s)::text
-	END AS privileges,
+	END
+`, aclField, aclField, aclField)
+	} else {
+		aclStr = "''"
+	}
+	sh := ""
+	if catalogTable == "pg_database" {
+		sh = "sh"
+	}
+	query := fmt.Sprintf(`
+SELECT
+	o.oid,
+	%s AS privileges,
 	pg_get_userbyid(o.%s) AS owner,
-	coalesce(obj_description(o.oid, '%s'), '') AS comment
+	coalesce(%sobj_description(o.oid, '%s'), '') AS comment
 FROM %s o
-JOIN pg_namespace n ON o.%s = n.oid
-WHERE %s
+%s
 ORDER BY o.oid, privileges;
-`, aclField, aclField, aclField, ownerField, catalogTable, catalogTable, schemaField, nonUserSchemaFilterClause)
+`, aclStr, ownerField, sh, catalogTable, catalogTable, schemaStr)
 
 	results := make([]QueryObjectMetadata, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 
-	metadataMap := make(map[uint32]utils.ObjectMetadata)
+	metadataMap := make(utils.MetadataMap)
 	var metadata utils.ObjectMetadata
 	if len(results) > 0 {
-		currentObjectOid := uint32(0)
+		currentOid := uint32(0)
 		// Collect all entries for the same object into one ObjectMetadata
 		for _, result := range results {
-			if result.ObjectOid != currentObjectOid {
-				if currentObjectOid != 0 {
-					metadataMap[currentObjectOid] = metadata
+			if result.Oid != currentOid {
+				if currentOid != 0 {
+					metadataMap[currentOid] = metadata
 				}
-				currentObjectOid = result.ObjectOid
+				currentOid = result.Oid
 				metadata = utils.ObjectMetadata{}
 				metadata.Privileges = make([]utils.ACL, 0)
 				metadata.Owner = result.Owner
@@ -739,7 +761,33 @@ ORDER BY o.oid, privileges;
 				metadata.Privileges = append(metadata.Privileges, *privileges)
 			}
 		}
-		metadataMap[currentObjectOid] = metadata
+		metadataMap[currentOid] = metadata
+	}
+	return metadataMap
+}
+
+func GetCommentsForObjectType(connection *utils.DBConn, schemaField string, oidField string, commentTable string, catalogTable string) utils.MetadataMap {
+	schemaStr := ""
+	if schemaField != "" {
+		schemaStr = fmt.Sprintf(`JOIN pg_namespace n ON o.%s = n.oid
+WHERE %s`, schemaField, nonUserSchemaFilterClause)
+	}
+	query := fmt.Sprintf(`
+SELECT
+	o.%s AS oid,
+	coalesce(obj_description(o.%s, '%s'), '') AS comment
+FROM %s o
+%s;`, oidField, oidField, commentTable, catalogTable, schemaStr)
+
+	results := make([]QueryObjectMetadata, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+
+	metadataMap := make(utils.MetadataMap)
+	if len(results) > 0 {
+		for _, result := range results {
+			metadataMap[result.Oid] = utils.ObjectMetadata{[]utils.ACL{}, result.Owner, result.Comment}
+		}
 	}
 	return metadataMap
 }
@@ -812,13 +860,6 @@ FROM pg_options_to_table(
 	return SelectStringSlice(connection, query)
 }
 
-func GetDatabaseOwner(connection *utils.DBConn) string {
-	query := fmt.Sprintf(`SELECT pg_catalog.pg_get_userbyid(datdba) AS string
-FROM pg_database
-WHERE datname = '%s';`, connection.DBName)
-	return SelectString(connection, query)
-}
-
 func GetPartitionDefinition(connection *utils.DBConn, oid uint32) string {
 	/* This query is adapted from the gp_partitioning_available == true case of the dumpTableSchema
 	 * function in pg_dump.c.
@@ -843,14 +884,8 @@ WHERE oid = %d AND reloptions IS NOT NULL;`, oid)
 	return SelectString(connection, query)
 }
 
-func GetDatabaseComment(connection *utils.DBConn) string {
-	query := fmt.Sprintf(`SELECT description AS string FROM pg_shdescription
-JOIN pg_database ON objoid = pg_database.oid
-WHERE datname = '%s';`, connection.DBName)
-	return SelectString(connection, query)
-}
-
 type QueryProceduralLanguage struct {
+	Oid       uint32
 	Name      string `db:"lanname"`
 	Owner     string
 	IsPl      bool   `db:"lanispl"`
@@ -858,22 +893,20 @@ type QueryProceduralLanguage struct {
 	Handler   uint32 `db:"lanplcallfoid"`
 	Inline    uint32 `db:"laninline"`
 	Validator uint32 `db:"lanvalidator"`
-	Access    string `db:"lanacl"`
-	Comment   string
 }
 
 func GetProceduralLanguages(connection *utils.DBConn) []QueryProceduralLanguage {
 	results := make([]QueryProceduralLanguage, 0)
 	query := `
-SELECT l.lanname,
+SELECT
+	oid,
+	l.lanname,
 	pg_get_userbyid(l.lanowner) as owner,
 	l.lanispl,
 	l.lanpltrusted,
 	l.lanplcallfoid::regprocedure::oid,
 	l.laninline::regprocedure::oid,
-	l.lanvalidator::regprocedure::oid,
-	coalesce(pg_catalog.array_to_string(l.lanacl, ','), '') as lanacl,
-	coalesce(obj_description(l.oid, 'pg_language'), '') AS comment
+	l.lanvalidator::regprocedure::oid
 FROM pg_language l
 WHERE l.lanispl='t';
 `
@@ -883,20 +916,21 @@ WHERE l.lanispl='t';
 }
 
 type QueryViewDefinition struct {
+	Oid        uint32
 	SchemaName string
 	ViewName   string
 	Definition string
-	Comment    string
 }
 
 func GetViewDefinitions(connection *utils.DBConn) []QueryViewDefinition {
 	results := make([]QueryViewDefinition, 0)
 
 	query := fmt.Sprintf(`
-SELECT n.nspname AS schemaname,
+SELECT
+	c.oid,
+	n.nspname AS schemaname,
 	c.relname AS viewname,
-	pg_get_viewdef(c.oid) AS definition,
-	coalesce(obj_description(c.oid, 'pg_class'), '') AS comment
+	pg_get_viewdef(c.oid) AS definition
 FROM pg_class c
 LEFT JOIN pg_namespace n ON n.oid = c.relnamespace
 WHERE c.relkind = 'v'::"char" AND %s;`, nonUserSchemaFilterClause)
@@ -906,25 +940,26 @@ WHERE c.relkind = 'v'::"char" AND %s;`, nonUserSchemaFilterClause)
 }
 
 type QueryExtProtocol struct {
+	Oid           uint32
 	Name          string `db:"ptcname"`
 	Owner         string
 	Trusted       bool   `db:"ptctrusted"`
 	ReadFunction  uint32 `db:"ptcreadfn"`
 	WriteFunction uint32 `db:"ptcwritefn"`
 	Validator     uint32 `db:"ptcvalidatorfn"`
-	Access        string `db:"ptcacl"`
 }
 
 func GetExternalProtocols(connection *utils.DBConn) []QueryExtProtocol {
 	results := make([]QueryExtProtocol, 0)
 	query := `
-SELECT p.ptcname,
+SELECT
+	p.oid,
+	p.ptcname,
 	pg_get_userbyid(p.ptcowner) as owner,
 	p.ptctrusted,
 	p.ptcreadfn,
 	p.ptcwritefn,
-	p.ptcvalidatorfn,
-	coalesce(pg_catalog.array_to_string(p.ptcacl, ','), '') as ptcacl
+	p.ptcvalidatorfn
 FROM pg_extprotocol p;
 `
 	err := connection.Select(&results, query)

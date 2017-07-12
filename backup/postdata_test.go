@@ -1,96 +1,78 @@
 package backup_test
 
 import (
-	"database/sql/driver"
-
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
 	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	"gopkg.in/DATA-DOG/go-sqlmock.v1"
+	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("backup/postdata tests", func() {
-	var connection *utils.DBConn
-	var mock sqlmock.Sqlmock
+	var buffer *gbytes.Buffer
 	BeforeEach(func() {
-		connection, mock = testutils.CreateAndConnectMockDB()
+		buffer = gbytes.NewBuffer()
 		testutils.SetupTestLogger()
 	})
+	Context("PrintCreateIndexStatements", func() {
+		It("can print a basic index", func() {
+			indexes := []backup.QuerySimpleDefinition{{1, "testindex", "public", "testtable", "CREATE INDEX testindex ON public.testtable USING btree(i)"}}
+			emptyMetadataMap := utils.MetadataMap{}
+			backup.PrintCreateIndexStatements(buffer, indexes, emptyMetadataMap)
+			testutils.ExpectRegexp(buffer, `
 
-	Describe("GetIndexesForAllTables", func() {
-		tableOne := utils.BasicRelation("public", "table_one")
-		tableTwo := utils.BasicRelation("public", "table_two")
-		tableWithout := utils.BasicRelation("public", "table_no_index")
+CREATE INDEX testindex ON public.testtable USING btree(i);`)
+		})
+		It("can print an index with a comment", func() {
+			indexes := []backup.QuerySimpleDefinition{{1, "testindex", "public", "testtable", "CREATE INDEX testindex ON public.testtable USING btree(i)"}}
+			indexMetadataMap := utils.MetadataMap{1: {Comment: "This is an index comment."}}
+			backup.PrintCreateIndexStatements(buffer, indexes, indexMetadataMap)
+			testutils.ExpectRegexp(buffer, `
 
-		header := []string{"name", "def", "comment"}
-		resultEmpty := sqlmock.NewRows(header)
-		btreeOne := []driver.Value{"btree_idx1", "CREATE INDEX btree_idx1 ON table_one USING btree (i)", ""}
-		btreeTwo := []driver.Value{"btree_idx2", "CREATE INDEX btree_idx2 ON table_two USING btree (j)", ""}
-		bitmapOne := []driver.Value{"bitmap_idx1", "CREATE INDEX bitmap_idx1 ON table_one USING bitmap (i)", ""}
-		commentOne := []driver.Value{"btree_idx1", "CREATE INDEX btree_idx1 ON table_one USING btree (i)", "This is an index comment."}
+CREATE INDEX testindex ON public.testtable USING btree(i);
 
-		filterEmpty := sqlmock.NewRows([]string{"string"})
+COMMENT ON INDEX testindex IS 'This is an index comment.';`)
+		})
+	})
+	Context("PrintCreateRuleStatements", func() {
+		It("can print a basic rule", func() {
+			rules := []backup.QuerySimpleDefinition{{1, "testrule", "public", "testtable", "CREATE RULE update_notify AS ON UPDATE TO testtable DO NOTIFY testtable;"}}
+			emptyMetadataMap := utils.MetadataMap{}
+			backup.PrintCreateRuleStatements(buffer, rules, emptyMetadataMap)
+			testutils.ExpectRegexp(buffer, `
 
-		Context("Indexes on a single column", func() {
-			It("returns a slice containing one CREATE INDEX statement for one table", func() {
-				testTables := []utils.Relation{tableOne}
-				resultOne := sqlmock.NewRows(header).AddRow(btreeOne...)
-				mock.ExpectQuery("SELECT DISTINCT (.*)").WillReturnRows(filterEmpty)
-				mock.ExpectQuery("SELECT (.*)").WillReturnRows(resultOne)
-				indexes := backup.GetIndexesForAllTables(connection, testTables)
-				Expect(len(indexes)).To(Equal(1))
-				Expect(indexes[0]).To(Equal("\n\nCREATE INDEX btree_idx1 ON table_one USING btree (i);"))
-			})
-			It("returns a slice containing one CREATE INDEX statement for two tables", func() {
-				testTables := []utils.Relation{tableOne, tableTwo}
-				resultOne := sqlmock.NewRows(header).AddRow(btreeOne...)
-				resultTwo := sqlmock.NewRows(header).AddRow(btreeTwo...)
-				mock.ExpectQuery("SELECT DISTINCT (.*)").WillReturnRows(filterEmpty)
-				mock.ExpectQuery("SELECT (.*)").WillReturnRows(resultOne)
-				mock.ExpectQuery("SELECT (.*)").WillReturnRows(resultTwo)
-				indexes := backup.GetIndexesForAllTables(connection, testTables)
-				Expect(len(indexes)).To(Equal(2))
-				Expect(indexes[0]).To(Equal("\n\nCREATE INDEX btree_idx1 ON table_one USING btree (i);"))
-				Expect(indexes[1]).To(Equal("\n\nCREATE INDEX btree_idx2 ON table_two USING btree (j);"))
-			})
-			It("returns a slice containing two CREATE INDEX statement for one table", func() {
-				testTables := []utils.Relation{tableOne, tableTwo}
-				resultOne := sqlmock.NewRows(header).AddRow(btreeOne...).AddRow(bitmapOne...)
-				resultTwo := sqlmock.NewRows(header).AddRow(btreeTwo...)
-				mock.ExpectQuery("SELECT DISTINCT (.*)").WillReturnRows(filterEmpty)
-				mock.ExpectQuery("SELECT (.*)").WillReturnRows(resultOne)
-				mock.ExpectQuery("SELECT (.*)").WillReturnRows(resultTwo)
-				indexes := backup.GetIndexesForAllTables(connection, testTables)
-				Expect(len(indexes)).To(Equal(3))
-				Expect(indexes[0]).To(Equal("\n\nCREATE INDEX btree_idx1 ON table_one USING btree (i);"))
-				Expect(indexes[1]).To(Equal("\n\nCREATE INDEX bitmap_idx1 ON table_one USING bitmap (i);"))
-				Expect(indexes[2]).To(Equal("\n\nCREATE INDEX btree_idx2 ON table_two USING btree (j);"))
-			})
-			It("returns a slice containing one CREATE INDEX statement when one table has an index and one does not", func() {
-				testTables := []utils.Relation{tableOne, tableWithout}
-				resultOne := sqlmock.NewRows(header).AddRow(btreeOne...)
-				mock.ExpectQuery("SELECT DISTINCT (.*)").WillReturnRows(filterEmpty)
-				mock.ExpectQuery("SELECT (.*)").WillReturnRows(resultOne)
-				mock.ExpectQuery("SELECT (.*)").WillReturnRows(resultEmpty)
-				indexes := backup.GetIndexesForAllTables(connection, testTables)
-				Expect(len(indexes)).To(Equal(1))
-				Expect(indexes[0]).To(Equal("\n\nCREATE INDEX btree_idx1 ON table_one USING btree (i);"))
-			})
-			It("returns a slice containing one CREATE INDEX statement and accompanying comment", func() {
-				testTables := []utils.Relation{tableOne}
-				resultOne := sqlmock.NewRows(header).AddRow(commentOne...)
-				mock.ExpectQuery("SELECT DISTINCT (.*)").WillReturnRows(filterEmpty)
-				mock.ExpectQuery("SELECT (.*)").WillReturnRows(resultOne)
-				indexes := backup.GetIndexesForAllTables(connection, testTables)
-				Expect(len(indexes)).To(Equal(1))
-				Expect(indexes[0]).To(Equal(`
+CREATE RULE update_notify AS ON UPDATE TO testtable DO NOTIFY testtable;`)
+		})
+		It("can print a rule with a comment", func() {
+			rules := []backup.QuerySimpleDefinition{{1, "testrule", "public", "testtable", "CREATE RULE update_notify AS ON UPDATE TO testtable DO NOTIFY testtable;"}}
+			ruleMetadataMap := utils.MetadataMap{1: {Comment: "This is a rule comment."}}
+			backup.PrintCreateRuleStatements(buffer, rules, ruleMetadataMap)
+			testutils.ExpectRegexp(buffer, `
 
-CREATE INDEX btree_idx1 ON table_one USING btree (i);
-COMMENT ON INDEX btree_idx1 IS 'This is an index comment.';`))
-			})
+CREATE RULE update_notify AS ON UPDATE TO testtable DO NOTIFY testtable;
+
+COMMENT ON RULE testrule ON public.testtable IS 'This is a rule comment.';`)
+		})
+	})
+	Context("PrintCreateTriggerStatements", func() {
+		It("can print a basic trigger", func() {
+			triggers := []backup.QuerySimpleDefinition{{1, "testtrigger", "public", "testtable", "CREATE TRIGGER sync_testtable AFTER INSERT OR DELETE OR UPDATE ON testtable FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger()"}}
+			emptyMetadataMap := utils.MetadataMap{}
+			backup.PrintCreateTriggerStatements(buffer, triggers, emptyMetadataMap)
+			testutils.ExpectRegexp(buffer, `
+
+CREATE TRIGGER sync_testtable AFTER INSERT OR DELETE OR UPDATE ON testtable FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger();`)
+		})
+		It("can print a trigger with a comment", func() {
+			triggers := []backup.QuerySimpleDefinition{{1, "testtrigger", "public", "testtable", "CREATE TRIGGER sync_testtable AFTER INSERT OR DELETE OR UPDATE ON testtable FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger()"}}
+			triggerMetadataMap := utils.MetadataMap{1: {Comment: "This is a trigger comment."}}
+			backup.PrintCreateTriggerStatements(buffer, triggers, triggerMetadataMap)
+			testutils.ExpectRegexp(buffer, `
+
+CREATE TRIGGER sync_testtable AFTER INSERT OR DELETE OR UPDATE ON testtable FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger();
+
+COMMENT ON TRIGGER testtrigger ON public.testtable IS 'This is a trigger comment.';`)
 		})
 	})
 })

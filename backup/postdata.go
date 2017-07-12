@@ -7,60 +7,30 @@ package backup
  */
 
 import (
-	"fmt"
 	"io"
-	"sort"
 
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
-func GetIndexesForAllTables(connection *utils.DBConn, tables []utils.Relation) []string {
-	indexes := make([]string, 0)
-	indexNameMap := ConstructImplicitIndexNames(connection)
-	for _, table := range tables {
-		indexList := GetIndexMetadata(connection, table.RelationOid, indexNameMap)
-		for _, index := range indexList {
-			indexStr := fmt.Sprintf("\n\n%s;", index.Def)
-			if index.Comment != "" {
-				indexStr += fmt.Sprintf("\nCOMMENT ON INDEX %s IS '%s';", utils.QuoteIdent(index.Name), index.Comment)
-			}
-			indexes = append(indexes, indexStr)
-		}
+func PrintCreateIndexStatements(postdataFile io.Writer, indexes []QuerySimpleDefinition, indexMetadata utils.MetadataMap) {
+	for _, index := range indexes {
+		utils.MustPrintf(postdataFile, "\n\n%s;", index.Def)
+		PrintObjectMetadata(postdataFile, indexMetadata[index.Oid], index.Name, "INDEX")
 	}
-	return indexes
 }
 
-func GetRuleDefinitions(connection *utils.DBConn) []string {
-	rules := make([]string, 0)
-	ruleList := GetRuleMetadata(connection)
-	for _, rule := range ruleList {
-		ruleStr := fmt.Sprintf("\n\n%s", rule.Def)
-		if rule.Comment != "" {
-			tableFQN := utils.MakeFQN(rule.OwningSchema, rule.OwningTable)
-			ruleStr += fmt.Sprintf("\nCOMMENT ON RULE %s ON %s IS '%s';", utils.QuoteIdent(rule.Name), tableFQN, rule.Comment)
-		}
-		rules = append(rules, ruleStr)
+func PrintCreateRuleStatements(postdataFile io.Writer, rules []QuerySimpleDefinition, ruleMetadata utils.MetadataMap) {
+	for _, rule := range rules {
+		utils.MustPrintf(postdataFile, "\n\n%s", rule.Def)
+		tableFQN := utils.MakeFQN(rule.OwningSchema, rule.OwningTable)
+		PrintObjectMetadata(postdataFile, ruleMetadata[rule.Oid], rule.Name, "RULE", tableFQN)
 	}
-	return rules
 }
 
-func GetTriggerDefinitions(connection *utils.DBConn) []string {
-	triggers := make([]string, 0)
-	triggerList := GetTriggerMetadata(connection)
-	for _, trigger := range triggerList {
-		triggerStr := fmt.Sprintf("\n\n%s;", trigger.Def)
-		if trigger.Comment != "" {
-			tableFQN := utils.MakeFQN(trigger.OwningSchema, trigger.OwningTable)
-			triggerStr += fmt.Sprintf("\nCOMMENT ON TRIGGER %s ON %s IS '%s';", utils.QuoteIdent(trigger.Name), tableFQN, trigger.Comment)
-		}
-		triggers = append(triggers, triggerStr)
-	}
-	return triggers
-}
-
-func PrintPostdataCreateStatements(postdataFile io.Writer, statements []string) {
-	sort.Strings(statements)
-	for _, statement := range statements {
-		utils.MustPrintln(postdataFile, statement)
+func PrintCreateTriggerStatements(postdataFile io.Writer, triggers []QuerySimpleDefinition, triggerMetadata utils.MetadataMap) {
+	for _, trigger := range triggers {
+		utils.MustPrintf(postdataFile, "\n\n%s;", trigger.Def)
+		tableFQN := utils.MakeFQN(trigger.OwningSchema, trigger.OwningTable)
+		PrintObjectMetadata(postdataFile, triggerMetadata[trigger.Oid], trigger.Name, "TRIGGER", tableFQN)
 	}
 }

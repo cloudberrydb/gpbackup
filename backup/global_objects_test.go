@@ -3,6 +3,7 @@ package backup_test
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
+	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/gomega/gbytes"
@@ -25,6 +26,28 @@ SET client_min_messages = error;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SET default_with_oids = false`)
+		})
+	})
+	Describe("PrintCreateDatabaseStatement", func() {
+		It("prints a basic CREATE DATABASE statement", func() {
+			emptyMetadata := utils.ObjectMetadata{Privileges: []utils.ACL{}}
+			backup.PrintCreateDatabaseStatement(buffer, "testdb", emptyMetadata)
+			testutils.ExpectRegexp(buffer, `CREATE DATABASE testdb;`)
+		})
+		It("prints a CREATE DATABASE statement with privileges, an owner, and a comment", func() {
+			dbMetadata := testutils.DefaultMetadataMap("DATABASE", true, true, true)[1]
+			backup.PrintCreateDatabaseStatement(buffer, "testdb", dbMetadata)
+			testutils.ExpectRegexp(buffer, `CREATE DATABASE testdb;
+
+COMMENT ON DATABASE testdb IS 'This is a database comment.';
+
+
+ALTER DATABASE testdb OWNER TO testrole;
+
+
+REVOKE ALL ON DATABASE testdb FROM PUBLIC;
+REVOKE ALL ON DATABASE testdb FROM testrole;
+GRANT ALL ON DATABASE testdb TO testrole;`)
 		})
 	})
 	Describe("PrintDatabaseGUCs", func() {

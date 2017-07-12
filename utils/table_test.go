@@ -72,12 +72,12 @@ var _ = Describe("utils/table tests", func() {
 	})
 	Describe("Schema.ToString", func() {
 		It("remains unquoted if it contains no special characters", func() {
-			testSchema := utils.BasicSchema(`schemaname`)
+			testSchema := utils.Schema{0, `schemaname`}
 			expected := `schemaname`
 			Expect(testSchema.ToString()).To(Equal(expected))
 		})
 		It("is quoted if it contains special characters", func() {
-			testSchema := utils.BasicSchema(`schema,name`)
+			testSchema := utils.Schema{0, `schema,name`}
 			expected := `"schema,name"`
 			Expect(testSchema.ToString()).To(Equal(expected))
 		})
@@ -86,14 +86,14 @@ var _ = Describe("utils/table tests", func() {
 		It("can parse an unquoted string", func() {
 			testString := `schemaname`
 			newSchema := utils.SchemaFromString(testString)
-			Expect(newSchema.SchemaOid).To(Equal(uint32(0)))
-			Expect(newSchema.SchemaName).To(Equal(`schemaname`))
+			Expect(newSchema.Oid).To(Equal(uint32(0)))
+			Expect(newSchema.Name).To(Equal(`schemaname`))
 		})
 		It("can parse a quoted string", func() {
 			testString := `"schema,name"`
 			newSchema := utils.SchemaFromString(testString)
-			Expect(newSchema.SchemaOid).To(Equal(uint32(0)))
-			Expect(newSchema.SchemaName).To(Equal(`schema,name`))
+			Expect(newSchema.Oid).To(Equal(uint32(0)))
+			Expect(newSchema.Name).To(Equal(`schema,name`))
 		})
 	})
 	Describe("Relation.ToString", func() {
@@ -153,12 +153,12 @@ var _ = Describe("utils/table tests", func() {
 		})
 	})
 	Describe("GetUniqueSchemas", func() {
-		alphabeticalAFoo := utils.Relation{1, 0, "otherschema", "foo", "", ""}
-		alphabeticalABar := utils.Relation{1, 0, "otherschema", "bar", "", ""}
-		schemaOther := utils.Schema{2, "otherschema", "", ""}
-		alphabeticalBFoo := utils.Relation{2, 0, "public", "foo", "", ""}
-		alphabeticalBBar := utils.Relation{2, 0, "public", "bar", "", ""}
-		schemaPublic := utils.Schema{1, "public", "Standard public schema", ""}
+		alphabeticalAFoo := utils.Relation{1, 0, "otherschema", "foo"}
+		alphabeticalABar := utils.Relation{1, 0, "otherschema", "bar"}
+		schemaOther := utils.Schema{2, "otherschema"}
+		alphabeticalBFoo := utils.Relation{2, 0, "public", "foo"}
+		alphabeticalBBar := utils.Relation{2, 0, "public", "bar"}
+		schemaPublic := utils.Schema{1, "public"}
 		schemas := []utils.Schema{schemaOther, schemaPublic}
 
 		It("has multiple tables in a single schema", func() {

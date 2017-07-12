@@ -31,10 +31,8 @@ var (
 
 // This will mostly be used for schemas, but can be used for any database object with an oid.
 type Schema struct {
-	SchemaOid  uint32
-	SchemaName string
-	Comment    string
-	Owner      string
+	Oid  uint32
+	Name string
 }
 
 type Relation struct {
@@ -42,8 +40,6 @@ type Relation struct {
 	RelationOid  uint32
 	SchemaName   string
 	RelationName string
-	Comment      string
-	Owner        string
 }
 
 type ObjectMetadata struct {
@@ -61,7 +57,14 @@ type ACL struct {
 	Truncate   bool
 	References bool
 	Trigger    bool
+	Usage      bool
+	Execute    bool
+	Create     bool
+	CreateTemp bool
+	Connect    bool
 }
+
+type MetadataMap map[uint32]ObjectMetadata
 
 /*
  * Functions for escaping schemas and tables
@@ -83,18 +86,10 @@ func MakeFQN(schema string, object string) string {
 }
 
 /*
- * The following functions create Schemas and Relations with only the schema and
- * relation names set, for use in SchemaFromString and RelationFromString and to
- * make creating sample schemas and relations in tests easier.
+ * The following functions create structs with reasonable default values set,
+ * for use in RelationFromString and to make creating sample structs in tests
+ * easier.
  */
-func BasicSchema(schema string) Schema {
-	return Schema{
-		SchemaOid:  0,
-		SchemaName: schema,
-		Comment:    "",
-		Owner:      "",
-	}
-}
 
 func BasicRelation(schema string, relation string) Relation {
 	return Relation{
@@ -102,9 +97,52 @@ func BasicRelation(schema string, relation string) Relation {
 		SchemaName:   schema,
 		RelationOid:  0,
 		RelationName: relation,
-		Comment:      "",
-		Owner:        "",
 	}
+}
+
+func DefaultACLForType(grantee string, objType string) ACL {
+	return ACL{
+		Grantee:    grantee,
+		Select:     objType == "PROTOCOL" || objType == "SEQUENCE" || objType == "TABLE" || objType == "VIEW",
+		Insert:     objType == "PROTOCOL" || objType == "TABLE" || objType == "VIEW",
+		Update:     objType == "SEQUENCE" || objType == "TABLE" || objType == "VIEW",
+		Delete:     objType == "TABLE" || objType == "VIEW",
+		Truncate:   objType == "TABLE" || objType == "VIEW",
+		References: objType == "TABLE" || objType == "VIEW",
+		Trigger:    objType == "TABLE" || objType == "VIEW",
+		Usage:      objType == "LANGUAGE" || objType == "SCHEMA" || objType == "SEQUENCE",
+		Execute:    objType == "FUNCTION",
+		Create:     objType == "DATABASE" || objType == "SCHEMA",
+		CreateTemp: objType == "DATABASE",
+		Connect:    objType == "DATABASE",
+	}
+}
+
+func DefaultACLWithout(grantee string, objType string, revoke ...string) ACL {
+	defaultACL := DefaultACLForType(grantee, objType)
+	for _, priv := range revoke {
+		switch priv {
+		case "SELECT":
+			defaultACL.Select = false
+		case "INSERT":
+			defaultACL.Insert = false
+		case "UPDATE":
+			defaultACL.Update = false
+		case "DELETE":
+			defaultACL.Delete = false
+		case "TRUNCATE":
+			defaultACL.Truncate = false
+		case "REFERENCES":
+			defaultACL.References = false
+		case "TRIGGER":
+			defaultACL.Trigger = false
+		case "EXECUTE":
+			defaultACL.Execute = false
+		case "USAGE":
+			defaultACL.Usage = false
+		}
+	}
+	return defaultACL
 }
 
 /*
@@ -120,7 +158,7 @@ func (t Relation) ToString() string {
 }
 
 func (s Schema) ToString() string {
-	return QuoteIdent(s.SchemaName)
+	return QuoteIdent(s.Name)
 }
 
 /* Parse an appropriately-escaped schema.table string into a Relation.  The Relation's
@@ -157,7 +195,7 @@ func SchemaFromString(name string) Schema {
 	} else {
 		logger.Fatal(errors.Errorf("\"%s\" is not a valid identifier", name), "")
 	}
-	return BasicSchema(schema)
+	return Schema{0, schema}
 }
 
 func ParseACL(aclStr string) *ACL {
@@ -170,15 +208,15 @@ func ParseACL(aclStr string) *ACL {
 		} else if matches[2] != "" {
 			grantee = matches[2]
 		} else {
-			return nil
+			grantee = "" // Empty string indicates privileges granted to PUBLIC
 		}
 		permStr := matches[3]
 		for _, char := range permStr {
 			switch char {
 			case 'a':
-				acl.Select = true
-			case 'r':
 				acl.Insert = true
+			case 'r':
+				acl.Select = true
 			case 'w':
 				acl.Update = true
 			case 'd':
@@ -189,12 +227,136 @@ func ParseACL(aclStr string) *ACL {
 				acl.References = true
 			case 't':
 				acl.Trigger = true
+			case 'X':
+				acl.Execute = true
+			case 'U':
+				acl.Usage = true
+			case 'C':
+				acl.Create = true
+			case 'T':
+				acl.CreateTemp = true
+			case 'c':
+				acl.Connect = true
 			}
 		}
 		acl.Grantee = grantee
 		return &acl
 	}
 	return nil
+}
+
+func (obj ObjectMetadata) GetPrivilegesStatements(objectName string, objectType string) string {
+	statements := []string{}
+	typeStr := fmt.Sprintf("%s ", objectType)
+	if objectType == "VIEW" {
+		typeStr = ""
+	}
+	if len(obj.Privileges) != 0 {
+		statements = append(statements, fmt.Sprintf("REVOKE ALL ON %s%s FROM PUBLIC;", typeStr, objectName))
+		if obj.Owner != "" {
+			statements = append(statements, fmt.Sprintf("REVOKE ALL ON %s%s FROM %s;", typeStr, objectName, QuoteIdent(obj.Owner)))
+		}
+		for _, acl := range obj.Privileges {
+			/*
+			 * Determine whether to print "GRANT ALL" instead of granting individual
+			 * privileges.  Information on which privileges exist for a given object
+			 * comes from src/include/utils/acl.h in GPDB.
+			 */
+			hasAllPrivileges := false
+			grantStr := ""
+			grantee := ""
+			if acl.Grantee == "" {
+				grantee = "PUBLIC"
+			} else {
+				grantee = QuoteIdent(acl.Grantee)
+			}
+			switch objectType {
+			case "DATABASE":
+				hasAllPrivileges = acl.Create && acl.CreateTemp && acl.Connect
+			case "FUNCTION":
+				hasAllPrivileges = acl.Execute
+			case "LANGUAGE":
+				hasAllPrivileges = acl.Usage
+			case "PROTOCOL":
+				hasAllPrivileges = acl.Select && acl.Insert
+			case "SCHEMA":
+				hasAllPrivileges = acl.Usage && acl.Create
+			case "SEQUENCE":
+				hasAllPrivileges = acl.Select && acl.Update && acl.Usage
+			case "TABLE":
+				hasAllPrivileges = acl.Select && acl.Insert && acl.Update && acl.Delete && acl.Truncate && acl.References && acl.Trigger
+			case "VIEW":
+				hasAllPrivileges = acl.Select && acl.Insert && acl.Update && acl.Delete && acl.Truncate && acl.References && acl.Trigger
+			}
+			if hasAllPrivileges {
+				grantStr = "ALL"
+			} else {
+				grantList := make([]string, 0)
+				if acl.Select {
+					grantList = append(grantList, "SELECT")
+				}
+				if acl.Insert {
+					grantList = append(grantList, "INSERT")
+				}
+				if acl.Update {
+					grantList = append(grantList, "UPDATE")
+				}
+				if acl.Delete {
+					grantList = append(grantList, "DELETE")
+				}
+				if acl.Truncate {
+					grantList = append(grantList, "TRUNCATE")
+				}
+				if acl.References {
+					grantList = append(grantList, "REFERENCES")
+				}
+				if acl.Trigger {
+					grantList = append(grantList, "TRIGGER")
+				}
+				if acl.Execute {
+					grantList = append(grantList, "EXECUTE")
+				}
+				if acl.Usage {
+					grantList = append(grantList, "USAGE")
+				}
+				grantStr = strings.Join(grantList, ",")
+			}
+			if grantStr != "" {
+				statements = append(statements, fmt.Sprintf("GRANT %s ON %s%s TO %s;", grantStr, typeStr, objectName, grantee))
+			}
+		}
+	}
+	if len(statements) > 0 {
+		return "\n\n" + strings.Join(statements, "\n")
+	}
+	return ""
+}
+
+func (obj ObjectMetadata) GetOwnerStatement(objectName string, objectType string) string {
+	if objectType == "VIEW" {
+		return ""
+	}
+	typeStr := objectType
+	if objectType == "SEQUENCE" {
+		typeStr = "TABLE"
+	}
+	ownerStr := ""
+	if obj.Owner != "" {
+		ownerStr = fmt.Sprintf("\n\nALTER %s %s OWNER TO %s;\n", typeStr, objectName, QuoteIdent(obj.Owner))
+	}
+	return ownerStr
+}
+
+func (obj ObjectMetadata) GetCommentStatement(objectName string, objectType string, owningTable ...string) string {
+	commentStr := ""
+	tableStr := ""
+	if len(owningTable) == 1 {
+		tableStr = fmt.Sprintf(" ON %s", owningTable[0])
+	}
+	if obj.Comment != "" {
+		commentStr = fmt.Sprintf("\n\nCOMMENT ON %s %s%s IS '%s';\n", objectType, objectName, tableStr, obj.Comment)
+	}
+	return commentStr
 }
 
 /*
@@ -208,7 +370,7 @@ func (slice Schemas) Len() int {
 }
 
 func (slice Schemas) Less(i int, j int) bool {
-	return slice[i].SchemaName < slice[j].SchemaName
+	return slice[i].Name < slice[j].Name
 }
 
 func (slice Schemas) Swap(i int, j int) {
@@ -257,7 +419,7 @@ func GetUniqueSchemas(schemas []Schema, tables []Relation) []Schema {
 	uniqueSchemas := make([]Schema, 0)
 	schemaMap := make(map[uint32]Schema, 0)
 	for _, schema := range schemas {
-		schemaMap[schema.SchemaOid] = schema
+		schemaMap[schema.Oid] = schema
 	}
 	for _, table := range tables {
 		if table.SchemaOid != currentSchemaOid {

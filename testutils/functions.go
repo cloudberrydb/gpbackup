@@ -8,8 +8,6 @@ import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/utils"
 
-	"strconv"
-
 	"github.com/jmoiron/sqlx"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -18,7 +16,7 @@ import (
 )
 
 /*
- * Functions for setting up the test environment and mocking out global variables
+ * Functions for setting up the test environment and mocking out variables
  */
 
 func CreateAndConnectMockDB() (*utils.DBConn, sqlmock.Sqlmock) {
@@ -63,8 +61,36 @@ func SetDefaultSegmentConfiguration() {
 	utils.SetupSegmentConfiguration([]utils.QuerySegConfig{configMaster, configSegOne, configSegTwo})
 }
 
+// objType should be an all-caps string like TABLE, INDEX, etc.
+func DefaultMetadataMap(objType string, hasPrivileges bool, hasOwner bool, hasComment bool) utils.MetadataMap {
+	privileges := []utils.ACL{}
+	if hasPrivileges {
+		privileges = []utils.ACL{utils.DefaultACLForType("testrole", objType)}
+	}
+	owner := ""
+	if hasOwner {
+		owner = "testrole"
+	}
+	comment := ""
+	if hasComment {
+		n := ""
+		switch objType[0] {
+		case 'A', 'E', 'I', 'O', 'U':
+			n = "n"
+		}
+		comment = fmt.Sprintf("This is a%s %s comment.", n, strings.ToLower(objType))
+	}
+	return utils.MetadataMap{
+		1: {
+			privileges,
+			owner,
+			comment,
+		},
+	}
+}
+
 /*
- * Wrapper functions aroung gomega operators for ease of use in tests
+ * Wrapper functions around gomega operators for ease of use in tests
  */
 
 func ExpectBegin(mock sqlmock.Sqlmock) {
@@ -101,26 +127,10 @@ func AssertQueryRuns(dbconn *utils.DBConn, query string) {
 	Expect(err).To(BeNil(), "%s", query)
 }
 
-func OidFromRelationName(dbconn *utils.DBConn, relname string) uint32 {
-	oidQuery := fmt.Sprintf("SELECT '%s'::regclass::oid as string", relname)
-	oidString := backup.SelectString(dbconn, oidQuery)
-	oid, err := strconv.ParseUint(oidString, 10, 32)
-	Expect(err).To(BeNil())
-	return uint32(oid)
-}
-
-func OidFromFunctionName(dbconn *utils.DBConn, relname string) uint32 {
-	oidQuery := fmt.Sprintf("SELECT '%s'::regproc::oid as string", relname)
-	oidString := backup.SelectString(dbconn, oidQuery)
-	oid, err := strconv.ParseUint(oidString, 10, 32)
-	Expect(err).To(BeNil())
-	return uint32(oid)
-}
-
-func OidFromRoleName(dbconn *utils.DBConn, relname string) uint32 {
-	oidQuery := fmt.Sprintf("SELECT oid as string FROM pg_authid WHERE rolname='%s'", relname)
-	oidString := backup.SelectString(dbconn, oidQuery)
-	oid, err := strconv.ParseUint(oidString, 10, 32)
-	Expect(err).To(BeNil())
-	return uint32(oid)
+func OidFromCast(connection *utils.DBConn, castSource uint32, castTarget uint32) uint32 {
+	query := fmt.Sprintf("SELECT c.oid FROM pg_cast c WHERE castsource = '%d' AND casttarget = '%d'", castSource, castTarget)
+	result := backup.QueryOid{}
+	err := connection.Get(&result, query)
+	utils.CheckError(err)
+	return result.Oid
 }

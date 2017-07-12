@@ -1,15 +1,13 @@
 package integration
 
 import (
-	"github.com/greenplum-db/gpbackup/backup"
-	"github.com/greenplum-db/gpbackup/testutils"
-
 	"bytes"
+	"os"
 	"regexp"
 
+	"github.com/greenplum-db/gpbackup/backup"
+	"github.com/greenplum-db/gpbackup/testutils"
 	"github.com/greenplum-db/gpbackup/utils"
-
-	"os"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -24,9 +22,10 @@ var _ = Describe("backup integration create statement tests", func() {
 	})
 	Describe("PrintCreateSchemaStatements", func() {
 		It("creates a non public schema", func() {
-			schemas := []utils.Schema{{0, "test_schema", "test comment", "testrole"}}
+			schemas := []utils.Schema{{0, "test_schema"}}
+			schemaMetadata := testutils.DefaultMetadataMap("SCHEMA", true, true, true)
 
-			backup.PrintCreateSchemaStatements(buffer, schemas)
+			backup.PrintCreateSchemaStatements(buffer, schemas, schemaMetadata)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA test_schema")
@@ -34,16 +33,16 @@ var _ = Describe("backup integration create statement tests", func() {
 			resultSchemas := backup.GetAllUserSchemas(connection)
 
 			Expect(len(resultSchemas)).To(Equal(2))
-			Expect(resultSchemas[0].SchemaName).To(Equal("public"))
+			Expect(resultSchemas[0].Name).To(Equal("public"))
 
-			testutils.ExpectStructsToMatchExcluding(&schemas[0], &resultSchemas[1], "SchemaOid")
-
+			testutils.ExpectStructsToMatchExcluding(&schemas[0], &resultSchemas[1], "Oid")
 		})
 
 		It("modifies the public schema", func() {
-			schemas := []utils.Schema{{2200, "public", "test comment", "testrole"}}
+			schemas := []utils.Schema{{2200, "public"}}
+			schemaMetadata := testutils.DefaultMetadataMap("SCHEMA", true, true, true)
 
-			backup.PrintCreateSchemaStatements(buffer, schemas)
+			backup.PrintCreateSchemaStatements(buffer, schemas, schemaMetadata)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "ALTER SCHEMA public OWNER TO gpadmin")
@@ -53,7 +52,6 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			Expect(len(resultSchemas)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&schemas[0], &resultSchemas[0])
-
 		})
 	})
 
@@ -65,25 +63,27 @@ var _ = Describe("backup integration create statement tests", func() {
 			compositeTypeAtt2 backup.TypeDefinition
 			enumType          backup.TypeDefinition
 			types             []backup.TypeDefinition
+			typeMetadataMap   utils.MetadataMap
 		)
 		BeforeEach(func() {
 			shellType = backup.TypeDefinition{Type: "p", TypeSchema: "public", TypeName: "shell_type"}
 			baseType = backup.TypeDefinition{
 				Type: "b", TypeSchema: "public", TypeName: "base_type", Input: "base_fn_in", Output: "base_fn_out", Receive: "-",
 				Send: "-", ModIn: "-", ModOut: "-", InternalLength: 4, IsPassedByValue: true, Alignment: "i", Storage: "p",
-				DefaultVal: "default", Element: "text", Delimiter: ";", Comment: "base type comment", Owner: "testrole",
+				DefaultVal: "default", Element: "text", Delimiter: ";",
 			}
 			compositeTypeAtt1 = backup.TypeDefinition{
-				Type: "c", TypeSchema: "public", TypeName: "composite_type", Comment: "comment", Owner: "testrole",
+				Type: "c", TypeSchema: "public", TypeName: "composite_type",
 				AttName: "att1", AttType: "text",
 			}
 			compositeTypeAtt2 = backup.TypeDefinition{
-				Type: "c", TypeSchema: "public", TypeName: "composite_type", Comment: "comment", Owner: "testrole",
+				Type: "c", TypeSchema: "public", TypeName: "composite_type",
 				AttName: "att2", AttType: "integer",
 			}
 			enumType = backup.TypeDefinition{
-				Type: "e", TypeSchema: "public", TypeName: "enum_type", Comment: "comment", Owner: "testrole", EnumLabels: "'enum_labels'"}
+				Type: "e", TypeSchema: "public", TypeName: "enum_type", EnumLabels: "'enum_labels'"}
 			types = []backup.TypeDefinition{shellType, baseType, compositeTypeAtt1, compositeTypeAtt2, enumType}
+			typeMetadataMap = utils.MetadataMap{}
 		})
 
 		It("creates shell types for base and shell types only", func() {
@@ -101,7 +101,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 
 		It("creates composite and enum types", func() {
-			backup.PrintCreateCompositeAndEnumTypeStatements(buffer, types)
+			backup.PrintCreateCompositeAndEnumTypeStatements(buffer, types, typeMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE composite_type")
@@ -116,7 +116,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 
 		It("creates base types", func() {
-			backup.PrintCreateBaseTypeStatements(buffer, types)
+			backup.PrintCreateBaseTypeStatements(buffer, types, typeMetadataMap)
 
 			//Run queries to set up the database state so we can successfully create base types
 			testutils.AssertQueryRuns(connection, "CREATE TYPE base_type")
@@ -129,25 +129,29 @@ var _ = Describe("backup integration create statement tests", func() {
 			resultTypes := backup.GetTypeDefinitions(connection)
 
 			Expect(len(resultTypes)).To(Equal(1))
-			testutils.ExpectStructsToMatch(&baseType, &resultTypes[0])
+			testutils.ExpectStructsToMatchExcluding(&baseType, &resultTypes[0], "Oid")
 		})
 	})
 
 	Describe("PrintCreateViewStatements", func() {
-		It("creates a view with a comment", func() {
-			viewDef := backup.QueryViewDefinition{"public", "simpleview", "SELECT pg_roles.rolname FROM pg_roles;", "this is a view comment"}
+		It("creates a view with privileges and a comment (can't specify owner in GPDB5)", func() {
+			viewDef := backup.QueryViewDefinition{1, "public", "simpleview", "SELECT pg_roles.rolname FROM pg_roles;"}
+			viewMetadataMap := testutils.DefaultMetadataMap("VIEW", true, true, true)
+			viewMetadata := viewMetadataMap[1]
 
-			backup.PrintCreateViewStatements(buffer, []backup.QueryViewDefinition{viewDef})
+			backup.PrintCreateViewStatements(buffer, []backup.QueryViewDefinition{viewDef}, viewMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP VIEW simpleview")
 
 			resultViews := backup.GetViewDefinitions(connection)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, "relnamespace", "relacl", "relowner", "pg_class")
 
+			viewDef.Oid = backup.OidFromObjectName(connection, "simpleview", "relname", "pg_class")
 			Expect(len(resultViews)).To(Equal(1))
-
+			resultMetadata := resultMetadataMap[viewDef.Oid]
 			testutils.ExpectStructsToMatch(&viewDef, &resultViews[0])
-
+			testutils.ExpectStructsToMatch(&viewMetadata, &resultMetadata)
 		})
 	})
 
@@ -157,35 +161,43 @@ var _ = Describe("backup integration create statement tests", func() {
 				1: {"pg_catalog.plpgsql_validator", "oid", true},
 				2: {"pg_catalog.plpgsql_inline_handler", "internal", true},
 				3: {"pg_catalog.plpgsql_call_handler", "", true},
-				4: {"pg_catalog.plpython_call_handler", "", true},
-				5: {"pg_catalog.plpython_inline_handler", "internal", true},
+				4: {"pg_catalog.plperl_validator", "oid", true},
+				5: {"pg_catalog.plperl_inline_handler", "internal", true},
+				6: {"pg_catalog.plperl_call_handler", "", true},
 			}
-			plpgsqlInfo := backup.QueryProceduralLanguage{"plpgsql", "testrole", true, true, 1, 2, 3, "", ""}
-			plpythonuInfo := backup.QueryProceduralLanguage{"plpythonu", "testrole", true, false, 4, 5, 0, "", "this is a language comment"}
-			procLangs := []backup.QueryProceduralLanguage{plpgsqlInfo, plpythonuInfo}
+			plpgsqlInfo := backup.QueryProceduralLanguage{0, "plpgsql", "testrole", true, true, 1, 2, 3}
+			plperlInfo := backup.QueryProceduralLanguage{1, "plperl", "testrole", true, true, 4, 5, 6}
+			procLangs := []backup.QueryProceduralLanguage{plpgsqlInfo, plperlInfo}
+			langMetadataMap := testutils.DefaultMetadataMap("LANGUAGE", true, true, true)
+			langMetadata := langMetadataMap[1]
 
-			backup.PrintCreateLanguageStatements(buffer, procLangs, funcInfoMap)
+			backup.PrintCreateLanguageStatements(buffer, procLangs, funcInfoMap, langMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
-			defer testutils.AssertQueryRuns(connection, "DROP LANGUAGE plpythonu")
+			defer testutils.AssertQueryRuns(connection, "DROP LANGUAGE plperl")
 
 			resultProcLangs := backup.GetProceduralLanguages(connection)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, "", "lanacl", "lanowner", "pg_language")
 
+			plperlInfo.Oid = backup.OidFromObjectName(connection, "plperl", "lanname", "pg_language")
 			Expect(len(resultProcLangs)).To(Equal(2))
-			testutils.ExpectStructsToMatchExcluding(&plpgsqlInfo, &resultProcLangs[0], "Validator", "Inline", "Handler")
-			testutils.ExpectStructsToMatchExcluding(&plpythonuInfo, &resultProcLangs[1], "Handler", "Inline")
+			resultMetadata := resultMetadataMap[plperlInfo.Oid]
+			testutils.ExpectStructsToMatchIncluding(&plpgsqlInfo, &resultProcLangs[0], "IsPl", "PlTrusted")
+			testutils.ExpectStructsToMatchIncluding(&plperlInfo, &resultProcLangs[1], "IsPl", "PlTrusted")
+			testutils.ExpectStructsToMatch(&langMetadata, &resultMetadata)
 		})
 	})
 	Describe("PrintCreateFunctionStatements", func() {
+		funcMetadataMap := utils.MetadataMap{}
 		It("creates a function with a simple return type", func() {
 			addFunction := backup.QueryFunctionDefinition{
 				SchemaName: "public", FunctionName: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
 				BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "integer",
 				Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 0, DataAccess: "c",
-				Language: "sql", Comment: "", Owner: "testrole",
+				Language: "sql",
 			}
 
-			backup.PrintCreateFunctionStatements(buffer, []backup.QueryFunctionDefinition{addFunction})
+			backup.PrintCreateFunctionStatements(buffer, []backup.QueryFunctionDefinition{addFunction}, funcMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION add(integer, integer)")
@@ -193,17 +205,17 @@ var _ = Describe("backup integration create statement tests", func() {
 			resultFunctions := backup.GetFunctionDefinitions(connection)
 
 			Expect(len(resultFunctions)).To(Equal(1))
-			testutils.ExpectStructsToMatch(&addFunction, &resultFunctions[0])
+			testutils.ExpectStructsToMatchExcluding(&addFunction, &resultFunctions[0], "Oid")
 		})
 		It("creates a function that returns a set", func() {
 			appendFunction := backup.QueryFunctionDefinition{
 				SchemaName: "public", FunctionName: "append", ReturnsSet: true, FunctionBody: "SELECT ($1, $2)",
 				BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "SETOF record",
 				Volatility: "s", IsStrict: true, IsSecurityDefiner: true, Config: "SET search_path TO pg_temp", Cost: 200,
-				NumRows: 200, DataAccess: "m", Language: "sql", Comment: "this is a function comment", Owner: "testrole",
+				NumRows: 200, DataAccess: "m", Language: "sql",
 			}
 
-			backup.PrintCreateFunctionStatements(buffer, []backup.QueryFunctionDefinition{appendFunction})
+			backup.PrintCreateFunctionStatements(buffer, []backup.QueryFunctionDefinition{appendFunction}, funcMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION append(integer, integer)")
@@ -211,17 +223,17 @@ var _ = Describe("backup integration create statement tests", func() {
 			resultFunctions := backup.GetFunctionDefinitions(connection)
 
 			Expect(len(resultFunctions)).To(Equal(1))
-			testutils.ExpectStructsToMatch(&appendFunction, &resultFunctions[0])
+			testutils.ExpectStructsToMatchExcluding(&appendFunction, &resultFunctions[0], "Oid")
 		})
 		It("creates a function that returns a table", func() {
 			dupFunction := backup.QueryFunctionDefinition{
 				SchemaName: "public", FunctionName: "dup", ReturnsSet: true, FunctionBody: "SELECT $1, CAST($1 AS text) || ' is text'",
 				BinaryPath: "", Arguments: "integer", IdentArgs: "integer", ResultType: "TABLE(f1 integer, f2 text)",
 				Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 1000, DataAccess: "c",
-				Language: "sql", Comment: "", Owner: "testrole",
+				Language: "sql",
 			}
 
-			backup.PrintCreateFunctionStatements(buffer, []backup.QueryFunctionDefinition{dupFunction})
+			backup.PrintCreateFunctionStatements(buffer, []backup.QueryFunctionDefinition{dupFunction}, funcMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION dup(integer)")
@@ -229,24 +241,20 @@ var _ = Describe("backup integration create statement tests", func() {
 			resultFunctions := backup.GetFunctionDefinitions(connection)
 
 			Expect(len(resultFunctions)).To(Equal(1))
-			testutils.ExpectStructsToMatch(&dupFunction, &resultFunctions[0])
+			testutils.ExpectStructsToMatchExcluding(&dupFunction, &resultFunctions[0], "Oid")
 		})
 	})
 	Describe("PrintCreateAggregateStatements", func() {
-		It("creates an aggregate", func() {
-			aggregateDef := backup.QueryAggregateDefinition{
-				SchemaName: "public", AggregateName: "agg_prefunc", Arguments: "numeric, numeric",
-				IdentArgs: "numeric, numeric", TransitionFunction: 1, PreliminaryFunction: 2, FinalFunction: 0,
-				SortOperator: 0, TransitionDataType: "numeric", InitialValue: "0", IsOrdered: false,
-				Comment: "this is an aggregate comment", Owner: "testrole",
-			}
-			funcInfoMap := map[uint32]backup.FunctionInfo{
-				1: {QualifiedName: "public.mysfunc_accum", Arguments: "numeric, numeric, numeric"},
-				2: {QualifiedName: "public.mypre_accum", Arguments: "numeric, numeric"},
-			}
-
-			backup.PrintCreateAggregateStatements(buffer, []backup.QueryAggregateDefinition{aggregateDef}, funcInfoMap)
-
+		aggregateDef := backup.QueryAggregateDefinition{
+			Oid: 1, SchemaName: "public", AggregateName: "agg_prefunc", Arguments: "numeric, numeric",
+			IdentArgs: "numeric, numeric", TransitionFunction: 1, PreliminaryFunction: 2, FinalFunction: 0,
+			SortOperator: 0, TransitionDataType: "numeric", InitialValue: "0", IsOrdered: false,
+		}
+		funcInfoMap := map[uint32]backup.FunctionInfo{
+			1: {QualifiedName: "public.mysfunc_accum", Arguments: "numeric, numeric, numeric"},
+			2: {QualifiedName: "public.mypre_accum", Arguments: "numeric, numeric"},
+		}
+		BeforeEach(func() {
 			//Run queries to set up the database state so we can successfully create an aggregate
 			testutils.AssertQueryRuns(connection, `
 			CREATE FUNCTION mysfunc_accum(numeric, numeric, numeric)
@@ -256,7 +264,6 @@ var _ = Describe("backup integration create statement tests", func() {
 			   IMMUTABLE
 			   RETURNS NULL ON NULL INPUT;
 			`)
-			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION mysfunc_accum(numeric, numeric, numeric)")
 			testutils.AssertQueryRuns(connection, `
 			CREATE FUNCTION mypre_accum(numeric, numeric)
 			   RETURNS numeric
@@ -265,13 +272,37 @@ var _ = Describe("backup integration create statement tests", func() {
 			   IMMUTABLE
 			   RETURNS NULL ON NULL INPUT;
 			`)
+		})
+		It("creates a basic aggregate", func() {
+			emptyMetadataMap := utils.MetadataMap{}
+			backup.PrintCreateAggregateStatements(buffer, []backup.QueryAggregateDefinition{aggregateDef}, funcInfoMap, emptyMetadataMap)
+
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION mysfunc_accum(numeric, numeric, numeric)")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION mypre_accum(numeric, numeric)")
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP AGGREGATE agg_prefunc(numeric, numeric)")
 
 			resultAggregates := backup.GetAggregateDefinitions(connection)
 			Expect(len(resultAggregates)).To(Equal(1))
-			testutils.ExpectStructsToMatchExcluding(&aggregateDef, &resultAggregates[0], "TransitionFunction", "PreliminaryFunction")
+			testutils.ExpectStructsToMatchExcluding(&aggregateDef, &resultAggregates[0], "Oid", "TransitionFunction", "PreliminaryFunction")
+		})
+		It("creates an aggregate with an owner and a comment", func() {
+			aggMetadata := utils.ObjectMetadata{[]utils.ACL{}, "testrole", "This is an aggregate comment."}
+			aggMetadataMap := utils.MetadataMap{1: aggMetadata}
+			backup.PrintCreateAggregateStatements(buffer, []backup.QueryAggregateDefinition{aggregateDef}, funcInfoMap, aggMetadataMap)
+
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION mysfunc_accum(numeric, numeric, numeric)")
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION mypre_accum(numeric, numeric)")
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, "DROP AGGREGATE agg_prefunc(numeric, numeric)")
+
+			oid := backup.OidFromObjectName(connection, "agg_prefunc", "proname", "pg_proc")
+			resultAggregates := backup.GetAggregateDefinitions(connection)
+			Expect(len(resultAggregates)).To(Equal(1))
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, "", "", "proowner", "pg_proc")
+			resultMetadata := resultMetadataMap[oid]
+			testutils.ExpectStructsToMatchExcluding(&aggregateDef, &resultAggregates[0], "Oid", "TransitionFunction", "PreliminaryFunction")
+			testutils.ExpectStructsToMatch(&aggMetadata, &resultMetadata)
 		})
 	})
 	Describe("PrintConstraintStatements", func() {
@@ -282,98 +313,103 @@ var _ = Describe("backup integration create statement tests", func() {
 			pkConstraint     backup.QueryConstraint
 			fkConstraint     backup.QueryConstraint
 			checkConstraint  backup.QueryConstraint
-			constraints      []string
-			fkConstraints    []string
+			conMetadataMap   utils.MetadataMap
 		)
 		BeforeEach(func() {
 			testTable = utils.BasicRelation("public", "testtable")
-			uniqueConstraint = backup.QueryConstraint{ConName: "uniq2", ConType: "u", ConDef: "UNIQUE (a, b)", ConComment: "this is a constraint comment"}
-			pkConstraint = backup.QueryConstraint{ConName: "pk1", ConType: "p", ConDef: "PRIMARY KEY (a, b)", ConComment: "this is a constraint comment"}
-			fkConstraint = backup.QueryConstraint{ConName: "fk1", ConType: "f", ConDef: "FOREIGN KEY (b) REFERENCES constraints_other_table(b)", ConComment: ""}
-			checkConstraint = backup.QueryConstraint{ConName: "check1", ConType: "c", ConDef: "CHECK (a <> 42)", ConComment: ""}
-			testutils.AssertQueryRuns(connection, "CREATE TABLE public.testtable(a int, b text)")
-			tableOid = testutils.OidFromRelationName(connection, "public.testtable")
+			uniqueConstraint = backup.QueryConstraint{0, "uniq2", "u", "UNIQUE (a, b)", "public.testtable"}
+			pkConstraint = backup.QueryConstraint{0, "constraints_other_table_pkey", "p", "PRIMARY KEY (b)", "public.constraints_other_table"}
+			fkConstraint = backup.QueryConstraint{0, "fk1", "f", "FOREIGN KEY (b) REFERENCES constraints_other_table(b)", "public.testtable"}
+			checkConstraint = backup.QueryConstraint{0, "check1", "c", "CHECK (a <> 42)", "public.testtable"}
+			testutils.AssertQueryRuns(connection, "CREATE TABLE public.testtable(a int, b text) DISTRIBUTED BY (b)")
+			tableOid = backup.OidFromObjectName(connection, "testtable", "relname", "pg_class")
+			conMetadataMap = utils.MetadataMap{}
 		})
 		AfterEach(func() {
 			testutils.AssertQueryRuns(connection, "DROP TABLE testtable CASCADE")
 		})
 		It("creates a unique constraint", func() {
-			constraints, fkConstraints = backup.ProcessConstraints(testTable, []backup.QueryConstraint{uniqueConstraint})
-			backup.PrintConstraintStatements(buffer, constraints, fkConstraints)
+			constraints := []backup.QueryConstraint{uniqueConstraint}
+			backup.PrintConstraintStatements(buffer, constraints, conMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			resultConstraints := backup.GetConstraints(connection, tableOid)
+			resultConstraints := backup.GetConstraints(connection)
 
 			Expect(len(resultConstraints)).To(Equal(1))
-			testutils.ExpectStructsToMatch(&uniqueConstraint, &resultConstraints[0])
+			testutils.ExpectStructsToMatchExcluding(&uniqueConstraint, &resultConstraints[0], "Oid")
 		})
 		It("creates a primary key constraint", func() {
-			constraints, fkConstraints = backup.ProcessConstraints(testTable, []backup.QueryConstraint{pkConstraint})
-			backup.PrintConstraintStatements(buffer, constraints, fkConstraints)
-
-			testutils.AssertQueryRuns(connection, buffer.String())
-
-			resultConstraints := backup.GetConstraints(connection, tableOid)
-
-			Expect(len(resultConstraints)).To(Equal(1))
-			testutils.ExpectStructsToMatch(&pkConstraint, &resultConstraints[0])
-		})
-		It("creates a fk constraint", func() {
-			constraints, fkConstraints = backup.ProcessConstraints(testTable, []backup.QueryConstraint{fkConstraint})
-			backup.PrintConstraintStatements(buffer, constraints, fkConstraints)
+			constraints := []backup.QueryConstraint{}
+			backup.PrintConstraintStatements(buffer, constraints, conMetadataMap)
 
 			testutils.AssertQueryRuns(connection, "CREATE TABLE constraints_other_table(b text PRIMARY KEY)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE constraints_other_table CASCADE")
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			resultConstraints := backup.GetConstraints(connection, tableOid)
+			resultConstraints := backup.GetConstraints(connection)
 
 			Expect(len(resultConstraints)).To(Equal(1))
-			testutils.ExpectStructsToMatch(&fkConstraint, &resultConstraints[0])
+			testutils.ExpectStructsToMatchExcluding(&pkConstraint, &resultConstraints[0], "Oid")
+		})
+		It("creates a foreign key constraint", func() {
+			constraints := []backup.QueryConstraint{fkConstraint}
+			backup.PrintConstraintStatements(buffer, constraints, conMetadataMap)
+
+			testutils.AssertQueryRuns(connection, "CREATE TABLE constraints_other_table(b text PRIMARY KEY)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE constraints_other_table CASCADE")
+			testutils.AssertQueryRuns(connection, buffer.String())
+
+			resultConstraints := backup.GetConstraints(connection)
+
+			Expect(len(resultConstraints)).To(Equal(2))
+			testutils.ExpectStructsToMatchExcluding(&pkConstraint, &resultConstraints[0], "Oid")
+			testutils.ExpectStructsToMatchExcluding(&fkConstraint, &resultConstraints[1], "Oid")
 		})
 		It("creates a check constraint", func() {
-			constraints, fkConstraints = backup.ProcessConstraints(testTable, []backup.QueryConstraint{checkConstraint})
-			backup.PrintConstraintStatements(buffer, constraints, fkConstraints)
+			constraints := []backup.QueryConstraint{checkConstraint}
+			backup.PrintConstraintStatements(buffer, constraints, conMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			resultConstraints := backup.GetConstraints(connection, tableOid)
+			resultConstraints := backup.GetConstraints(connection)
 
 			Expect(len(resultConstraints)).To(Equal(1))
-			testutils.ExpectStructsToMatch(&checkConstraint, &resultConstraints[0])
+			testutils.ExpectStructsToMatchExcluding(&checkConstraint, &resultConstraints[0], "Oid")
 		})
 		It("creates multiple constraints on one table", func() {
-			constraints, fkConstraints = backup.ProcessConstraints(testTable, []backup.QueryConstraint{checkConstraint, pkConstraint, uniqueConstraint, fkConstraint})
-			backup.PrintConstraintStatements(buffer, constraints, fkConstraints)
+			constraints := []backup.QueryConstraint{checkConstraint, uniqueConstraint, fkConstraint}
+			backup.PrintConstraintStatements(buffer, constraints, conMetadataMap)
 
 			testutils.AssertQueryRuns(connection, "CREATE TABLE constraints_other_table(b text PRIMARY KEY)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE constraints_other_table CASCADE")
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			resultConstraints := backup.GetConstraints(connection, tableOid)
+			resultConstraints := backup.GetConstraints(connection)
 
 			Expect(len(resultConstraints)).To(Equal(4))
-			testutils.ExpectStructsToMatch(&checkConstraint, &resultConstraints[0])
-			testutils.ExpectStructsToMatch(&pkConstraint, &resultConstraints[1])
-			testutils.ExpectStructsToMatch(&uniqueConstraint, &resultConstraints[2])
-			testutils.ExpectStructsToMatch(&fkConstraint, &resultConstraints[3])
+			testutils.ExpectStructsToMatchExcluding(&checkConstraint, &resultConstraints[0], "Oid")
+			testutils.ExpectStructsToMatchExcluding(&pkConstraint, &resultConstraints[1], "Oid")
+			testutils.ExpectStructsToMatchExcluding(&fkConstraint, &resultConstraints[2], "Oid")
+			testutils.ExpectStructsToMatchExcluding(&uniqueConstraint, &resultConstraints[3], "Oid")
 		})
 	})
 	Describe("PrintCreateSequenceStatements", func() {
 		var (
-			ownerMap    map[string]string
-			sequence    utils.Relation
-			sequenceDef backup.Sequence
+			columnOwnerMap      map[string]string
+			sequence            utils.Relation
+			sequenceDef         backup.Sequence
+			sequenceMetadataMap utils.MetadataMap
 		)
 		BeforeEach(func() {
-			sequence = utils.Relation{SchemaName: "public", RelationName: "my_sequence", Owner: "testrole"}
+			sequence = utils.Relation{0, 1, "public", "my_sequence"}
 			sequenceDef = backup.Sequence{Relation: sequence}
-			ownerMap = map[string]string{}
+			columnOwnerMap = map[string]string{}
+			sequenceMetadataMap = utils.MetadataMap{}
 		})
 		It("creates a basic sequence", func() {
 			sequenceDef.QuerySequenceDefinition = backup.QuerySequenceDefinition{Name: "my_sequence", LastVal: 1, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
-			backup.PrintCreateSequenceStatements(buffer, []backup.Sequence{sequenceDef}, ownerMap)
+			backup.PrintCreateSequenceStatements(buffer, []backup.Sequence{sequenceDef}, columnOwnerMap, sequenceMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE my_sequence")
@@ -386,7 +422,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 		It("creates a complex sequence", func() {
 			sequenceDef.QuerySequenceDefinition = backup.QuerySequenceDefinition{Name: "my_sequence", LastVal: 105, Increment: 5, MaxVal: 1000, MinVal: 20, CacheVal: 1, LogCnt: 0, IsCycled: false, IsCalled: true}
-			backup.PrintCreateSequenceStatements(buffer, []backup.Sequence{sequenceDef}, ownerMap)
+			backup.PrintCreateSequenceStatements(buffer, []backup.Sequence{sequenceDef}, columnOwnerMap, sequenceMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE my_sequence")
@@ -400,8 +436,8 @@ var _ = Describe("backup integration create statement tests", func() {
 		It("creates a sequence owned by a table column", func() {
 			sequenceDef.QuerySequenceDefinition = backup.QuerySequenceDefinition{Name: "my_sequence",
 				LastVal: 1, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
-			ownerMap["public.my_sequence"] = "sequence_table.a"
-			backup.PrintCreateSequenceStatements(buffer, []backup.Sequence{sequenceDef}, ownerMap)
+			columnOwnerMap["public.my_sequence"] = "sequence_table.a"
+			backup.PrintCreateSequenceStatements(buffer, []backup.Sequence{sequenceDef}, columnOwnerMap, sequenceMetadataMap)
 
 			//Create table that sequence can be owned by
 			testutils.AssertQueryRuns(connection, "CREATE TABLE sequence_table(a int)")
@@ -416,6 +452,25 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&sequence, &resultSequences[0].Relation, "SchemaOid", "RelationOid")
 			testutils.ExpectStructsToMatch(&sequenceDef.QuerySequenceDefinition, &resultSequences[0].QuerySequenceDefinition)
 		})
+		It("creates a sequence with privileges, owner, and comment", func() {
+			sequenceDef.QuerySequenceDefinition = backup.QuerySequenceDefinition{Name: "my_sequence", LastVal: 1, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
+			sequenceMetadata := utils.ObjectMetadata{[]utils.ACL{utils.DefaultACLWithout("testrole", "SEQUENCE", "UPDATE")}, "testrole", "This is a sequence comment."}
+			sequenceMetadataMap[1] = sequenceMetadata
+			backup.PrintCreateSequenceStatements(buffer, []backup.Sequence{sequenceDef}, columnOwnerMap, sequenceMetadataMap)
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE my_sequence")
+
+			resultSequences := backup.GetAllSequences(connection)
+
+			Expect(len(resultSequences)).To(Equal(1))
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, "relnamespace", "relacl", "relowner", "pg_class")
+			oid := backup.OidFromObjectName(connection, "my_sequence", "relname", "pg_class")
+			resultMetadata := resultMetadataMap[oid]
+			testutils.ExpectStructsToMatchExcluding(&sequence, &resultSequences[0].Relation, "SchemaOid", "RelationOid")
+			testutils.ExpectStructsToMatch(&sequenceDef.QuerySequenceDefinition, &resultSequences[0].QuerySequenceDefinition)
+			testutils.ExpectStructsToMatch(&sequenceMetadata, &resultMetadata)
+		})
 	})
 	Describe("PrintSessionGUCs", func() {
 		It("prints the default session GUCs", func() {
@@ -427,80 +482,139 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.AssertQueryRuns(connection, buffer.String())
 		})
 	})
-	Describe("PrintPostdataCreateStatements", func() {
-		It("creates all indexes for all tables", func() {
-			testTable := utils.BasicRelation("public", "index_table")
-			btree := "\n\nCREATE INDEX simple_table_idx1 ON index_table USING btree (a);"
-			bitmap := "\n\nCREATE INDEX simple_table_idx2 ON index_table USING bitmap (b);\nCOMMENT ON INDEX simple_table_idx2 IS 'this is a index comment';"
-
-			backup.PrintPostdataCreateStatements(buffer, []string{btree, bitmap})
+	Describe("PrintCreateIndexStatements", func() {
+		var (
+			indexNameMap     map[string]bool
+			indexMetadataMap utils.MetadataMap
+		)
+		BeforeEach(func() {
+			indexNameMap = map[string]bool{}
+			indexMetadataMap = utils.MetadataMap{}
+		})
+		It("creates a basic index", func() {
+			indexes := []backup.QuerySimpleDefinition{
+				{0, "index1", "public", "testtable", "CREATE INDEX index1 ON testtable USING btree (i)"},
+			}
+			backup.PrintCreateIndexStatements(buffer, indexes, indexMetadataMap)
 
 			//Create table whose columns we can index
-			testutils.AssertQueryRuns(connection, "CREATE TABLE index_table(a int, b text)")
-			defer testutils.AssertQueryRuns(connection, "DROP TABLE index_table")
-			testTable.RelationOid = testutils.OidFromRelationName(connection, "public.index_table")
+			testutils.AssertQueryRuns(connection, "CREATE TABLE testtable(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE testtable")
 
 			testutils.AssertQueryRuns(connection, buffer.String())
-			resultIndexes := backup.GetIndexesForAllTables(connection, []utils.Relation{testTable})
-			Expect(len(resultIndexes)).To(Equal(2))
-			Expect(resultIndexes[0]).To(Equal(btree))
-			Expect(resultIndexes[1]).To(Equal(bitmap))
+
+			resultIndexes := backup.GetIndexDefinitions(connection, indexNameMap)
+			Expect(len(resultIndexes)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&resultIndexes[0], &indexes[0], "Oid")
 		})
-		It("creates all rules for all tables", func() {
-			insert := "\n\nCREATE RULE double_insert AS ON INSERT TO rule_table1 DO INSERT INTO rule_table2 DEFAULT VALUES;"
-			update := "\n\nCREATE RULE update_notify AS ON UPDATE TO rule_table1 DO NOTIFY rule_table1;\nCOMMENT ON RULE update_notify ON public.rule_table1 IS 'This is a rule comment.';"
+		It("creates an index with a comment", func() {
+			indexes := []backup.QuerySimpleDefinition{
+				{1, "index1", "public", "testtable", "CREATE INDEX index1 ON testtable USING btree (i)"},
+			}
+			indexMetadataMap = testutils.DefaultMetadataMap("INDEX", false, false, true)
+			indexMetadata := indexMetadataMap[1]
+			backup.PrintCreateIndexStatements(buffer, indexes, indexMetadataMap)
 
-			backup.PrintPostdataCreateStatements(buffer, []string{insert, update})
-
-			testutils.AssertQueryRuns(connection, "CREATE TABLE rule_table1(i int)")
-			defer testutils.AssertQueryRuns(connection, "DROP TABLE rule_table1")
-			testutils.AssertQueryRuns(connection, "CREATE TABLE rule_table2(j int)")
-			defer testutils.AssertQueryRuns(connection, "DROP TABLE rule_table2")
-			defer testutils.AssertQueryRuns(connection, "DROP RULE double_insert ON rule_table1")
-			defer testutils.AssertQueryRuns(connection, "DROP RULE update_notify ON rule_table1")
+			//Create table whose columns we can index
+			testutils.AssertQueryRuns(connection, "CREATE TABLE testtable(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE testtable")
 
 			testutils.AssertQueryRuns(connection, buffer.String())
+
+			indexes[0].Oid = backup.OidFromObjectName(connection, "index1", "relname", "pg_class")
+			resultIndexes := backup.GetIndexDefinitions(connection, indexNameMap)
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, "", "indexrelid", "pg_class", "pg_index")
+			resultMetadata := resultMetadataMap[indexes[0].Oid]
+			Expect(len(resultIndexes)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&resultIndexes[0], &indexes[0], "Oid")
+			testutils.ExpectStructsToMatch(&resultMetadata, &indexMetadata)
+		})
+	})
+	Describe("PrintCreateRuleStatements", func() {
+		var (
+			ruleMetadataMap utils.MetadataMap
+		)
+		BeforeEach(func() {
+			ruleMetadataMap = utils.MetadataMap{}
+		})
+		It("creates a basic rule", func() {
+			rules := []backup.QuerySimpleDefinition{
+				{0, "update_notify", "public", "testtable", "CREATE RULE update_notify AS ON UPDATE TO testtable DO NOTIFY testtable;"},
+			}
+			backup.PrintCreateRuleStatements(buffer, rules, ruleMetadataMap)
+
+			testutils.AssertQueryRuns(connection, "CREATE TABLE testtable(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE testtable")
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+
 			resultRules := backup.GetRuleDefinitions(connection)
-			Expect(len(resultRules)).To(Equal(2))
-			Expect(resultRules[0]).To(Equal(insert))
-			Expect(resultRules[1]).To(Equal(update))
+			Expect(len(resultRules)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&resultRules[0], &rules[0], "Oid")
 		})
-		It("creates all triggers for all tables", func() {
-			sync1 := "\n\nCREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON trigger_table1 FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger();"
-			sync2 := "\n\nCREATE TRIGGER sync_trigger_table2 AFTER INSERT OR DELETE OR UPDATE ON trigger_table2 FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger();\nCOMMENT ON TRIGGER sync_trigger_table2 ON public.trigger_table2 IS 'This is a trigger comment.';"
+		It("creates a rule with a comment", func() {
+			rules := []backup.QuerySimpleDefinition{
+				{1, "update_notify", "public", "testtable", "CREATE RULE update_notify AS ON UPDATE TO testtable DO NOTIFY testtable;"},
+			}
+			ruleMetadataMap = testutils.DefaultMetadataMap("RULE", false, false, true)
+			ruleMetadata := ruleMetadataMap[1]
+			backup.PrintCreateRuleStatements(buffer, rules, ruleMetadataMap)
 
-			backup.PrintPostdataCreateStatements(buffer, []string{sync1, sync2})
-
-			testutils.AssertQueryRuns(connection, "CREATE TABLE trigger_table1(i int)")
-			defer testutils.AssertQueryRuns(connection, "DROP TABLE trigger_table1")
-			testutils.AssertQueryRuns(connection, "CREATE TABLE trigger_table2(j int)")
-			defer testutils.AssertQueryRuns(connection, "DROP TABLE trigger_table2")
-			defer testutils.AssertQueryRuns(connection, "DROP TRIGGER sync_trigger_table1 ON trigger_table1")
-			defer testutils.AssertQueryRuns(connection, "DROP TRIGGER sync_trigger_table2 ON trigger_table2")
+			testutils.AssertQueryRuns(connection, "CREATE TABLE testtable(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE testtable")
 
 			testutils.AssertQueryRuns(connection, buffer.String())
-			resultTriggers := backup.GetTriggerDefinitions(connection)
-			Expect(len(resultTriggers)).To(Equal(2))
-			Expect(resultTriggers[0]).To(Equal(sync1))
-			Expect(resultTriggers[1]).To(Equal(sync2))
+
+			rules[0].Oid = backup.OidFromObjectName(connection, "update_notify", "rulename", "pg_rewrite")
+			resultRules := backup.GetRuleDefinitions(connection)
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, "", "oid", "pg_rewrite", "pg_rewrite")
+			resultMetadata := resultMetadataMap[rules[0].Oid]
+			Expect(len(resultRules)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&resultRules[0], &rules[0], "Oid")
+			testutils.ExpectStructsToMatch(&resultMetadata, &ruleMetadata)
 		})
 	})
 	Describe("PrintCreateCastStatements", func() {
-		It("creates a cast", func() {
-			castDef := backup.QueryCastDefinition{SourceType: "text", TargetType: "integer", FunctionSchema: "public",
-				FunctionName: "casttoint", FunctionArgs: "text", CastContext: "a", Comment: ""}
+		var (
+			castMetadataMap utils.MetadataMap
+		)
+		BeforeEach(func() {
+			castMetadataMap = utils.MetadataMap{}
+		})
+		It("prints a basic cast", func() {
+			castDef := backup.QueryCastDefinition{0, "text", "integer", "public", "casttoint", "text", "a"}
 
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION casttoint(text) RETURNS integer STRICT IMMUTABLE LANGUAGE SQL AS 'SELECT cast($1 as integer);'")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION casttoint(text)")
 
-			backup.PrintCreateCastStatements(buffer, []backup.QueryCastDefinition{castDef})
+			backup.PrintCreateCastStatements(buffer, []backup.QueryCastDefinition{castDef}, castMetadataMap)
 			defer testutils.AssertQueryRuns(connection, "DROP CAST (text AS integer)")
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
 			resultCasts := backup.GetCastDefinitions(connection)
 			Expect(len(resultCasts)).To(Equal(1))
-			testutils.ExpectStructsToMatch(&castDef, &resultCasts[0])
+			testutils.ExpectStructsToMatchExcluding(&castDef, &resultCasts[0], "Oid")
+		})
+		It("prints a cast with a comment", func() {
+			castDef := backup.QueryCastDefinition{1, "text", "integer", "public", "casttoint", "text", "a"}
+			castMetadataMap = testutils.DefaultMetadataMap("CAST", false, false, true)
+			castMetadata := castMetadataMap[1]
+
+			testutils.AssertQueryRuns(connection, "CREATE FUNCTION casttoint(text) RETURNS integer STRICT IMMUTABLE LANGUAGE SQL AS 'SELECT cast($1 as integer);'")
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION casttoint(text)")
+
+			backup.PrintCreateCastStatements(buffer, []backup.QueryCastDefinition{castDef}, castMetadataMap)
+			defer testutils.AssertQueryRuns(connection, "DROP CAST (text AS integer)")
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+
+			resultCasts := backup.GetCastDefinitions(connection)
+			Expect(len(resultCasts)).To(Equal(1))
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, "", "oid", "pg_cast", "pg_cast")
+			resultMetadata := resultMetadataMap[resultCasts[0].Oid]
+			testutils.ExpectStructsToMatchExcluding(&castDef, &resultCasts[0], "Oid")
+			testutils.ExpectStructsToMatchExcluding(&resultMetadata, &castMetadata, "Oid")
 		})
 	})
 	Describe("PrintRegularTableCreateStatement", func() {
@@ -543,23 +657,23 @@ var _ = Describe("backup integration create statement tests", func() {
                   DEFAULT SUBPARTITION other_regions  WITH (tablename='rank_1_prt_other_2_prt_other_regions', appendonly=false )
                   )
           )`
-			partTemplateDef = `ALTER TABLE test_table ` + `
+			partTemplateDef = `ALTER TABLE testtable ` + `
 SET SUBPARTITION TEMPLATE  ` + `
           (
-          SUBPARTITION usa VALUES('usa') WITH (tablename='test_table'), ` + `
-          SUBPARTITION asia VALUES('asia') WITH (tablename='test_table'), ` + `
-          SUBPARTITION europe VALUES('europe') WITH (tablename='test_table'), ` + `
-          DEFAULT SUBPARTITION other_regions  WITH (tablename='test_table')
+          SUBPARTITION usa VALUES('usa') WITH (tablename='testtable'), ` + `
+          SUBPARTITION asia VALUES('asia') WITH (tablename='testtable'), ` + `
+          SUBPARTITION europe VALUES('europe') WITH (tablename='testtable'), ` + `
+          DEFAULT SUBPARTITION other_regions  WITH (tablename='testtable')
           )
 `
 		)
 		BeforeEach(func() {
 			extTableEmpty = backup.ExternalTableDefinition{-2, -2, "", "ALL_SEGMENTS", "t", "", "", "", 0, "", "", "UTF-8", false}
-			testTable = utils.BasicRelation("public", "test_table")
+			testTable = utils.BasicRelation("public", "testtable")
 			tableDef = backup.TableDefinition{DistPolicy: "DISTRIBUTED RANDOMLY", ExtTableDef: extTableEmpty}
 		})
 		AfterEach(func() {
-			testutils.AssertQueryRuns(connection, "DROP TABLE public.test_table")
+			testutils.AssertQueryRuns(connection, "DROP TABLE public.testtable")
 		})
 		It("creates a table with no attributes", func() {
 			tableDef.ColumnDefs = []backup.ColumnDefinition{}
@@ -567,7 +681,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
-			testTable.RelationOid = testutils.OidFromRelationName(connection, "public.test_table")
+			testTable.RelationOid = backup.OidFromObjectName(connection, "testtable", "relname", "pg_class")
 			resultTableDef := backup.ConstructDefinitionsForTable(connection, testTable, false)
 			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ExtTableDef")
 		})
@@ -579,7 +693,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
-			testTable.RelationOid = testutils.OidFromRelationName(connection, "public.test_table")
+			testTable.RelationOid = backup.OidFromObjectName(connection, "testtable", "relname", "pg_class")
 			resultTableDef := backup.ConstructDefinitionsForTable(connection, testTable, false)
 			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ExtTableDef")
 		})
@@ -592,7 +706,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
-			testTable.RelationOid = testutils.OidFromRelationName(connection, "public.test_table")
+			testTable.RelationOid = backup.OidFromObjectName(connection, "testtable", "relname", "pg_class")
 			resultTableDef := backup.ConstructDefinitionsForTable(connection, testTable, false)
 			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ExtTableDef")
 		})
@@ -605,7 +719,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
-			testTable.RelationOid = testutils.OidFromRelationName(connection, "public.test_table")
+			testTable.RelationOid = backup.OidFromObjectName(connection, "testtable", "relname", "pg_class")
 			resultTableDef := backup.ConstructDefinitionsForTable(connection, testTable, false)
 			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ExtTableDef")
 		})
@@ -618,7 +732,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
-			testTable.RelationOid = testutils.OidFromRelationName(connection, "public.test_table")
+			testTable.RelationOid = backup.OidFromObjectName(connection, "testtable", "relname", "pg_class")
 			resultTableDef := backup.ConstructDefinitionsForTable(connection, testTable, false)
 			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ExtTableDef")
 		})
@@ -632,7 +746,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
-			testTable.RelationOid = testutils.OidFromRelationName(connection, "public.test_table")
+			testTable.RelationOid = backup.OidFromObjectName(connection, "testtable", "relname", "pg_class")
 			resultTableDef := backup.ConstructDefinitionsForTable(connection, testTable, false)
 			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ExtTableDef")
 		})
@@ -640,24 +754,24 @@ SET SUBPARTITION TEMPLATE  ` + `
 	Describe("PrintPostCreateTableStatements", func() {
 		var (
 			extTableEmpty = backup.ExternalTableDefinition{-2, -2, "", "ALL_SEGMENTS", "t", "", "", "", 0, "", "", "UTF-8", false}
-			testTable     = utils.Relation{SchemaName: "public", RelationName: "test_table", Owner: "testrole"}
+			testTable     = utils.BasicRelation("public", "testtable")
 			tableRow      = backup.ColumnDefinition{1, "i", false, false, false, "integer", "", "", ""}
 			tableDef      = backup.TableDefinition{DistPolicy: "DISTRIBUTED BY (i)", ColumnDefs: []backup.ColumnDefinition{tableRow}, ExtTableDef: extTableEmpty}
 			tableMetadata utils.ObjectMetadata
 		)
 		BeforeEach(func() {
-			testutils.AssertQueryRuns(connection, "CREATE TABLE test_table(i int)")
+			testutils.AssertQueryRuns(connection, "CREATE TABLE testtable(i int)")
 			tableMetadata = utils.ObjectMetadata{Privileges: []utils.ACL{}}
 		})
 		AfterEach(func() {
-			testutils.AssertQueryRuns(connection, "DROP TABLE test_table")
+			testutils.AssertQueryRuns(connection, "DROP TABLE testtable")
 		})
 		It("prints only owner for a table with no comment or column comments", func() {
 			tableMetadata.Owner = "testrole"
 			backup.PrintPostCreateTableStatements(buffer, testTable, tableDef, tableMetadata)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
-			testTable.RelationOid = testutils.OidFromRelationName(connection, "public.test_table")
+			testTable.RelationOid = backup.OidFromObjectName(connection, "testtable", "relname", "pg_class")
 			resultMetadata := backup.GetMetadataForObjectType(connection, "relnamespace", "relacl", "relowner", "pg_class")
 			resultTableMetadata := resultMetadata[testTable.RelationOid]
 			testutils.ExpectStructsToMatch(&tableMetadata, &resultTableMetadata)
@@ -671,7 +785,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			backup.PrintPostCreateTableStatements(buffer, testTable, tableDef, tableMetadata)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
-			testTable.RelationOid = testutils.OidFromRelationName(connection, "public.test_table")
+			testTable.RelationOid = backup.OidFromObjectName(connection, "testtable", "relname", "pg_class")
 			resultTableDef := backup.ConstructDefinitionsForTable(connection, testTable, false)
 			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ExtTableDef")
 			resultMetadata := backup.GetMetadataForObjectType(connection, "relnamespace", "relacl", "relowner", "pg_class")
@@ -690,13 +804,13 @@ SET SUBPARTITION TEMPLATE  ` + `
 				0, backup.FILE, "file://tmp/ext_table_file", "ALL_SEGMENTS",
 				"t", "delimiter '	' null '\\N' escape '\\'", "", "",
 				0, "", "", "UTF8", false}
-			testTable = utils.Relation{SchemaName: "public", RelationName: "test_table", Owner: "testrole"}
+			testTable = utils.BasicRelation("public", "testtable")
 			tableDef = backup.TableDefinition{IsExternal: true}
 			os.Create("/tmp/ext_table_file")
 		})
 		AfterEach(func() {
 			os.Remove("/tmp/ext_table_file")
-			testutils.AssertQueryRuns(connection, "DROP EXTERNAL TABLE test_table")
+			testutils.AssertQueryRuns(connection, "DROP EXTERNAL TABLE testtable")
 		})
 		It("creates a READABLE EXTERNAL table", func() {
 			extTable.Type = backup.READABLE
@@ -707,7 +821,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			testTable.RelationOid = testutils.OidFromRelationName(connection, "public.test_table")
+			testTable.RelationOid = backup.OidFromObjectName(connection, "testtable", "relname", "pg_class")
 			resultTableDef := backup.GetExternalTableDefinition(connection, testTable.RelationOid)
 			resultTableDef.Type, resultTableDef.Protocol = backup.DetermineExternalTableCharacteristics(resultTableDef)
 
@@ -724,7 +838,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			testTable.RelationOid = testutils.OidFromRelationName(connection, "public.test_table")
+			testTable.RelationOid = backup.OidFromObjectName(connection, "testtable", "relname", "pg_class")
 			resultTableDef := backup.GetExternalTableDefinition(connection, testTable.RelationOid)
 			resultTableDef.Type, resultTableDef.Protocol = backup.DetermineExternalTableCharacteristics(resultTableDef)
 
@@ -736,13 +850,16 @@ SET SUBPARTITION TEMPLATE  ` + `
 			1: {"public.write_to_s3", "", false},
 			2: {"public.read_from_s3", "", false},
 		}
-		protocolReadOnly := backup.QueryExtProtocol{"s3_read", "testrole", true, 2, 0, 0, ""}
-		protocolWriteOnly := backup.QueryExtProtocol{"s3_write", "testrole", false, 0, 1, 0, ""}
-		protocolReadWrite := backup.QueryExtProtocol{"s3_read_write", "testrole", false, 2, 1, 0, ""}
-		It("creates a trusted protocol with a read function", func() {
-			externalProtocols := []backup.QueryExtProtocol{protocolReadOnly}
+		protocolReadOnly := backup.QueryExtProtocol{1, "s3_read", "testrole", true, 2, 0, 0}
+		protocolWriteOnly := backup.QueryExtProtocol{1, "s3_write", "testrole", false, 0, 1, 0}
+		protocolReadWrite := backup.QueryExtProtocol{1, "s3_read_write", "testrole", false, 2, 1, 0}
+		emptyMetadataMap := utils.MetadataMap{}
 
-			backup.PrintCreateExternalProtocolStatements(buffer, externalProtocols, funcInfoMap)
+		It("creates a trusted protocol with a read function, privileges, and an owner", func() {
+			externalProtocols := []backup.QueryExtProtocol{protocolReadOnly}
+			protoMetadataMap := testutils.DefaultMetadataMap("PROTOCOL", true, true, false)
+
+			backup.PrintCreateExternalProtocolStatements(buffer, externalProtocols, funcInfoMap, protoMetadataMap)
 
 			testutils.AssertQueryRuns(connection, "CREATE OR REPLACE FUNCTION read_from_s3() RETURNS integer AS '$libdir/gps3ext.so', 's3_import' LANGUAGE C STABLE;")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION read_from_s3()")
@@ -753,12 +870,12 @@ SET SUBPARTITION TEMPLATE  ` + `
 			resultExternalProtocols := backup.GetExternalProtocols(connection)
 
 			Expect(len(resultExternalProtocols)).To(Equal(1))
-			testutils.ExpectStructsToMatchExcluding(&protocolReadOnly, &resultExternalProtocols[0], "ReadFunction")
+			testutils.ExpectStructsToMatchExcluding(&protocolReadOnly, &resultExternalProtocols[0], "Oid", "ReadFunction")
 		})
 		It("creates a protocol with a write function", func() {
 			externalProtocols := []backup.QueryExtProtocol{protocolWriteOnly}
 
-			backup.PrintCreateExternalProtocolStatements(buffer, externalProtocols, funcInfoMap)
+			backup.PrintCreateExternalProtocolStatements(buffer, externalProtocols, funcInfoMap, emptyMetadataMap)
 
 			testutils.AssertQueryRuns(connection, "CREATE OR REPLACE FUNCTION write_to_s3() RETURNS integer AS '$libdir/gps3ext.so', 's3_export' LANGUAGE C STABLE;")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION write_to_s3()")
@@ -769,12 +886,12 @@ SET SUBPARTITION TEMPLATE  ` + `
 			resultExternalProtocols := backup.GetExternalProtocols(connection)
 
 			Expect(len(resultExternalProtocols)).To(Equal(1))
-			testutils.ExpectStructsToMatchExcluding(&protocolWriteOnly, &resultExternalProtocols[0], "WriteFunction")
+			testutils.ExpectStructsToMatchExcluding(&protocolWriteOnly, &resultExternalProtocols[0], "Oid", "WriteFunction")
 		})
 		It("creates a protocol with a read and write function", func() {
 			externalProtocols := []backup.QueryExtProtocol{protocolReadWrite}
 
-			backup.PrintCreateExternalProtocolStatements(buffer, externalProtocols, funcInfoMap)
+			backup.PrintCreateExternalProtocolStatements(buffer, externalProtocols, funcInfoMap, emptyMetadataMap)
 
 			testutils.AssertQueryRuns(connection, "CREATE OR REPLACE FUNCTION read_from_s3() RETURNS integer AS '$libdir/gps3ext.so', 's3_import' LANGUAGE C STABLE;")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION read_from_s3()")
@@ -788,7 +905,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			resultExternalProtocols := backup.GetExternalProtocols(connection)
 
 			Expect(len(resultExternalProtocols)).To(Equal(1))
-			testutils.ExpectStructsToMatchExcluding(&protocolReadWrite, &resultExternalProtocols[0], "ReadFunction", "WriteFunction")
+			testutils.ExpectStructsToMatchExcluding(&protocolReadWrite, &resultExternalProtocols[0], "Oid", "ReadFunction", "WriteFunction")
 		})
 	})
 	Describe("PrintCreateResourceQueueStatements", func() {
@@ -859,7 +976,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, `DROP ROLE "role1"`)
-			role1.Oid = testutils.OidFromRoleName(connection, "role1")
+			role1.Oid = backup.OidFromObjectName(connection, "role1", "rolname", "pg_roles")
 
 			resultRoles := backup.GetRoles(connection)
 			for _, role := range resultRoles {
@@ -910,7 +1027,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, `DROP ROLE "role1"`)
-			role1.Oid = testutils.OidFromRoleName(connection, "role1")
+			role1.Oid = backup.OidFromObjectName(connection, "role1", "rolname", "pg_roles")
 
 			resultRoles := backup.GetRoles(connection)
 			for _, role := range resultRoles {

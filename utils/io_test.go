@@ -167,8 +167,8 @@ var _ = Describe("utils/io tests", func() {
 	})
 	Describe("WriteTableMapFile", func() {
 		testutils.SetDefaultSegmentConfiguration()
-		tableOne := utils.Relation{0, 1234, "public", "foo", "", ""}
-		tableTwo := utils.Relation{0, 2345, "public", "foo|bar", "", ""}
+		tableOne := utils.Relation{0, 1234, "public", "foo"}
+		tableTwo := utils.Relation{0, 2345, "public", "foo|bar"}
 
 		It("writes a map file containing one table", func() {
 			filePath := ""

@@ -156,7 +156,7 @@ func printColumnStatements(predataFile io.Writer, table utils.Relation, columnDe
  * statement for both regular and external tables.
  */
 func PrintPostCreateTableStatements(predataFile io.Writer, table utils.Relation, tableDef TableDefinition, tableMetadata utils.ObjectMetadata) {
-	PrintObjectMetadata(predataFile, tableMetadata, table.ToString(), "TABLE", "", "TABLE")
+	PrintObjectMetadata(predataFile, tableMetadata, table.ToString(), "TABLE")
 
 	for _, att := range tableDef.ColumnDefs {
 		if att.Comment != "" {

@@ -13,7 +13,7 @@ import (
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
-func PrintCreateFunctionStatements(predataFile io.Writer, funcDefs []QueryFunctionDefinition) {
+func PrintCreateFunctionStatements(predataFile io.Writer, funcDefs []QueryFunctionDefinition, funcMetadata utils.MetadataMap) {
 	for _, funcDef := range funcDefs {
 		funcFQN := utils.MakeFQN(funcDef.SchemaName, funcDef.FunctionName)
 		utils.MustPrintf(predataFile, "\n\nCREATE FUNCTION %s(%s) RETURNS ", funcFQN, funcDef.Arguments)
@@ -23,12 +23,8 @@ func PrintCreateFunctionStatements(predataFile io.Writer, funcDefs []QueryFuncti
 		PrintFunctionModifiers(predataFile, funcDef)
 		utils.MustPrintln(predataFile, ";")
 
-		if funcDef.Owner != "" {
-			utils.MustPrintf(predataFile, "\nALTER FUNCTION %s(%s) OWNER TO %s;\n", funcFQN, funcDef.IdentArgs, utils.QuoteIdent(funcDef.Owner))
-		}
-		if funcDef.Comment != "" {
-			utils.MustPrintf(predataFile, "\nCOMMENT ON FUNCTION %s(%s) IS '%s';\n", funcFQN, funcDef.IdentArgs, funcDef.Comment)
-		}
+		nameStr := fmt.Sprintf("%s(%s)", funcFQN, funcDef.IdentArgs)
+		PrintObjectMetadata(predataFile, funcMetadata[funcDef.Oid], nameStr, "FUNCTION")
 	}
 }
 
@@ -86,7 +82,7 @@ func PrintFunctionModifiers(predataFile io.Writer, funcDef QueryFunctionDefiniti
 	}
 }
 
-func PrintCreateAggregateStatements(predataFile io.Writer, aggDefs []QueryAggregateDefinition, funcInfoMap map[uint32]FunctionInfo) {
+func PrintCreateAggregateStatements(predataFile io.Writer, aggDefs []QueryAggregateDefinition, funcInfoMap map[uint32]FunctionInfo, aggMetadata utils.MetadataMap) {
 	for _, aggDef := range aggDefs {
 		aggFQN := utils.MakeFQN(aggDef.SchemaName, aggDef.AggregateName)
 		orderedStr := ""
@@ -96,10 +92,6 @@ func PrintCreateAggregateStatements(predataFile io.Writer, aggDefs []QueryAggreg
 		argumentsStr := "*"
 		if aggDef.Arguments != "" {
 			argumentsStr = aggDef.Arguments
-		}
-		identArgumentsStr := "*"
-		if aggDef.IdentArgs != "" {
-			identArgumentsStr = aggDef.IdentArgs
 		}
 		utils.MustPrintf(predataFile, "\n\nCREATE %sAGGREGATE %s(%s) (\n", orderedStr, aggFQN, argumentsStr)
 
@@ -118,26 +110,25 @@ func PrintCreateAggregateStatements(predataFile io.Writer, aggDefs []QueryAggreg
 		if aggDef.SortOperator != 0 {
 			utils.MustPrintf(predataFile, ",\n\tSORTOP = %s", funcInfoMap[aggDef.SortOperator].QualifiedName)
 		}
-
 		utils.MustPrintln(predataFile, "\n);")
 
-		if aggDef.Owner != "" {
-			utils.MustPrintf(predataFile, "\nALTER AGGREGATE %s(%s) OWNER TO %s;\n", aggFQN, identArgumentsStr, utils.QuoteIdent(aggDef.Owner))
+		identArgumentsStr := "*"
+		if aggDef.IdentArgs != "" {
+			identArgumentsStr = aggDef.IdentArgs
 		}
-		if aggDef.Comment != "" {
-			utils.MustPrintf(predataFile, "\nCOMMENT ON AGGREGATE %s(%s) IS '%s';\n", aggFQN, identArgumentsStr, aggDef.Comment)
-		}
+		aggFQN = fmt.Sprintf("%s(%s)", aggFQN, identArgumentsStr)
+		PrintObjectMetadata(predataFile, aggMetadata[aggDef.Oid], aggFQN, "AGGREGATE")
 	}
 }
 
-func PrintCreateCastStatements(predataFile io.Writer, castDefs []QueryCastDefinition) {
+func PrintCreateCastStatements(predataFile io.Writer, castDefs []QueryCastDefinition, castMetadata utils.MetadataMap) {
 	for _, castDef := range castDefs {
 		/*
 		 * Because we use pg_catalog.format_type() in the query to get the cast definition,
 		 * castDef.SourceType and castDef.TargetType are already quoted appropriately.
 		 */
-		castStr := fmt.Sprintf("CAST (%s AS %s)", castDef.SourceType, castDef.TargetType)
-		utils.MustPrintf(predataFile, "\n\nCREATE %s\n", castStr)
+		castStr := fmt.Sprintf("(%s AS %s)", castDef.SourceType, castDef.TargetType)
+		utils.MustPrintf(predataFile, "\n\nCREATE CAST %s\n", castStr)
 		if castDef.FunctionSchema != "" {
 			funcFQN := fmt.Sprintf("%s.%s", utils.QuoteIdent(castDef.FunctionSchema), utils.QuoteIdent(castDef.FunctionName))
 			utils.MustPrintf(predataFile, "\tWITH FUNCTION %s(%s)", funcFQN, castDef.FunctionArgs)
@@ -151,9 +142,7 @@ func PrintCreateCastStatements(predataFile io.Writer, castDefs []QueryCastDefini
 			utils.MustPrintf(predataFile, "\nAS IMPLICIT")
 		case "e": // Default case, don't print anything else
 		}
-		utils.MustPrintln(predataFile, ";")
-		if castDef.Comment != "" {
-			utils.MustPrintf(predataFile, "\nCOMMENT ON %s IS '%s';\n", castStr, castDef.Comment)
-		}
+		utils.MustPrintf(predataFile, ";")
+		PrintObjectMetadata(predataFile, castMetadata[castDef.Oid], castStr, "CAST")
 	}
 }

@@ -9,7 +9,6 @@ package backup
 import (
 	"fmt"
 	"io"
-	"sort"
 	"strings"
 
 	"github.com/greenplum-db/gpbackup/utils"
@@ -24,129 +23,48 @@ type Sequence struct {
  * Functions to print to the predata file
  */
 
-func PrintObjectMetadata(file io.Writer, obj utils.ObjectMetadata, objectName string, objectType string, commentSuffix string, ownerType string) {
-	objectOwner := utils.QuoteIdent(obj.Owner)
-	if obj.Comment != "" {
-		utils.MustPrintf(file, "\n\nCOMMENT ON %s%s %s IS '%s';\n", objectType, commentSuffix, objectName, obj.Comment)
-	}
-	if obj.Owner != "" {
-		utils.MustPrintf(file, "\n\nALTER %s %s OWNER TO %s;\n", ownerType, objectName, objectOwner)
-	}
-	if len(obj.Privileges) != 0 {
-		utils.MustPrintf(file, "\n\nREVOKE ALL ON %s %s FROM PUBLIC;", objectType, objectName)
-		if obj.Owner != "" {
-			utils.MustPrintf(file, "\nREVOKE ALL ON %s %s FROM %s;", objectType, objectName, objectOwner)
-		}
-		for _, acl := range obj.Privileges {
-			/*
-			 * Determine whether to print "GRANT ALL" instead of granting individual
-			 * privileges.  Information on which privileges exist for a given object
-			 * comes from src/include/utils/acl.h in GPDB.
-			 */
-			hasAllPrivileges := false
-			grantStr := ""
-			switch objectType {
-			case "TABLE":
-				hasAllPrivileges = acl.Select && acl.Insert && acl.Update && acl.Delete && acl.Truncate && acl.References && acl.Trigger
-			}
-			if hasAllPrivileges {
-				grantStr = "ALL"
-			} else {
-				grantList := make([]string, 0)
-				if acl.Select {
-					grantList = append(grantList, "SELECT")
-				}
-				if acl.Insert {
-					grantList = append(grantList, "INSERT")
-				}
-				if acl.Update {
-					grantList = append(grantList, "UPDATE")
-				}
-				if acl.Delete {
-					grantList = append(grantList, "DELETE")
-				}
-				if acl.Truncate {
-					grantList = append(grantList, "TRUNCATE")
-				}
-				if acl.References {
-					grantList = append(grantList, "REFERENCES")
-				}
-				if acl.Trigger {
-					grantList = append(grantList, "TRIGGER")
-				}
-				grantStr = strings.Join(grantList, ",")
-			}
-			if grantStr != "" {
-				utils.MustPrintf(file, "\nGRANT %s ON %s %s TO %s;", grantStr, objectType, objectName, utils.QuoteIdent(acl.Grantee))
-			}
-		}
-	}
-}
-
-/*
- * This function calls per-table functions to get constraints related to each
- * table, then consolidates them in two slices holding all constraints for all
- * tables.  Two slices are needed because FOREIGN KEY constraints must be dumped
- * after PRIMARY KEY constraints, so they're separated out to be handled last.
- */
-func ConstructConstraintsForAllTables(connection *utils.DBConn, tables []utils.Relation) ([]string, []string) {
-	allConstraints := make([]string, 0)
-	allFkConstraints := make([]string, 0)
-	for _, table := range tables {
-		constraintList := GetConstraints(connection, table.RelationOid)
-		tableConstraints, tableFkConstraints := ProcessConstraints(table, constraintList)
-		allConstraints = append(allConstraints, tableConstraints...)
-		allFkConstraints = append(allFkConstraints, tableFkConstraints...)
-	}
-	return allConstraints, allFkConstraints
+func PrintObjectMetadata(file io.Writer, obj utils.ObjectMetadata, objectName string, objectType string, owningTable ...string) {
+	utils.MustPrintf(file, obj.GetCommentStatement(objectName, objectType, owningTable...))
+	utils.MustPrintf(file, obj.GetOwnerStatement(objectName, objectType))
+	utils.MustPrintf(file, obj.GetPrivilegesStatements(objectName, objectType))
 }
 
 /*
  * There's no built-in function to generate constraint definitions like there is for other types of
  * metadata, so this function constructs them.
  */
-func ProcessConstraints(table utils.Relation, constraints []QueryConstraint) ([]string, []string) {
-	alterStr := fmt.Sprintf("\n\nALTER TABLE ONLY %s ADD CONSTRAINT %s %s;", table.ToString(), "%s", "%s")
-	commentStr := fmt.Sprintf("\n\nCOMMENT ON CONSTRAINT %s ON %s IS '%s';", "%s", table.ToString(), "%s")
-	cons := make([]string, 0)
-	fkCons := make([]string, 0)
+func PrintConstraintStatements(predataFile io.Writer, constraints []QueryConstraint, conMetadata utils.MetadataMap) {
+	allConstraints := make([]QueryConstraint, 0)
+	allFkConstraints := make([]QueryConstraint, 0)
+	/*
+	 * Because FOREIGN KEY constraints must be dumped after PRIMARY KEY
+	 * constraints, we separate the two types then concatenate the lists,
+	 * so FOREIGN KEY are guaranteed to be printed last.
+	 */
 	for _, constraint := range constraints {
-		conStr := fmt.Sprintf(alterStr, utils.QuoteIdent(constraint.ConName), constraint.ConDef)
-		if constraint.ConComment != "" {
-			conStr += fmt.Sprintf(commentStr, utils.QuoteIdent(constraint.ConName), constraint.ConComment)
-		}
 		if constraint.ConType == "f" {
-			fkCons = append(fkCons, conStr)
+			allFkConstraints = append(allFkConstraints, constraint)
 		} else {
-			cons = append(cons, conStr)
+			allConstraints = append(allConstraints, constraint)
 		}
 	}
-	return cons, fkCons
-}
+	constraints = append(allConstraints, allFkConstraints...)
 
-func PrintConstraintStatements(predataFile io.Writer, constraints []string, fkConstraints []string) {
-	sort.Strings(constraints)
-	sort.Strings(fkConstraints)
+	alterStr := "\n\nALTER TABLE ONLY %s ADD CONSTRAINT %s %s;\n"
 	for _, constraint := range constraints {
-		utils.MustPrintln(predataFile, constraint)
-	}
-	for _, constraint := range fkConstraints {
-		utils.MustPrintln(predataFile, constraint)
+		conName := utils.QuoteIdent(constraint.ConName)
+		utils.MustPrintf(predataFile, alterStr, constraint.OwningTable, conName, constraint.ConDef)
+		PrintObjectMetadata(predataFile, conMetadata[constraint.Oid], conName, "CONSTRAINT", constraint.OwningTable)
 	}
 }
 
-func PrintCreateSchemaStatements(predataFile io.Writer, schemas []utils.Schema) {
+func PrintCreateSchemaStatements(predataFile io.Writer, schemas []utils.Schema, schemaMetadata utils.MetadataMap) {
 	for _, schema := range schemas {
 		utils.MustPrintln(predataFile)
-		if schema.SchemaName != "public" {
+		if schema.Name != "public" {
 			utils.MustPrintf(predataFile, "\nCREATE SCHEMA %s;", schema.ToString())
 		}
-		if schema.Owner != "" {
-			utils.MustPrintf(predataFile, "\nALTER SCHEMA %s OWNER TO %s;", schema.ToString(), utils.QuoteIdent(schema.Owner))
-		}
-		if schema.Comment != "" {
-			utils.MustPrintf(predataFile, "\nCOMMENT ON SCHEMA %s IS '%s';", schema.ToString(), schema.Comment)
-		}
+		PrintObjectMetadata(predataFile, schemaMetadata[schema.Oid], schema.ToString(), "SCHEMA")
 	}
 }
 
@@ -165,7 +83,7 @@ func GetAllSequences(connection *utils.DBConn) []Sequence {
  * This function is largely derived from the dumpSequence() function in pg_dump.c.  The values of
  * minVal and maxVal come from SEQ_MINVALUE and SEQ_MAXVALUE, defined in include/commands/sequence.h.
  */
-func PrintCreateSequenceStatements(predataFile io.Writer, sequences []Sequence, sequenceOwners map[string]string) {
+func PrintCreateSequenceStatements(predataFile io.Writer, sequences []Sequence, sequenceColumnOwners map[string]string, sequenceMetadata utils.MetadataMap) {
 	maxVal := int64(9223372036854775807)
 	minVal := int64(-9223372036854775807)
 	for _, sequence := range sequences {
@@ -194,21 +112,16 @@ func PrintCreateSequenceStatements(predataFile io.Writer, sequences []Sequence, 
 
 		utils.MustPrintf(predataFile, "\n\nSELECT pg_catalog.setval('%s', %d, %v);\n", seqFQN, sequence.LastVal, sequence.IsCalled)
 
-		if sequence.Owner != "" {
-			utils.MustPrintf(predataFile, "\n\nALTER TABLE %s OWNER TO %s;\n", seqFQN, utils.QuoteIdent(sequence.Owner))
-		}
-		// owningColumn is quoted when the map is constructed in GetSequenceOwnerMap() and doesn't need to be quoted again
-		if owningColumn, hasOwner := sequenceOwners[seqFQN]; hasOwner {
+		// owningColumn is quoted when the map is constructed in GetSequenceColumnOwnerMap() and doesn't need to be quoted again
+		if owningColumn, hasColumnOwner := sequenceColumnOwners[seqFQN]; hasColumnOwner {
 			utils.MustPrintf(predataFile, "\n\nALTER SEQUENCE %s OWNED BY %s;\n", seqFQN, owningColumn)
 		}
-
-		if sequence.Comment != "" {
-			utils.MustPrintf(predataFile, "\n\nCOMMENT ON SEQUENCE %s IS '%s';\n", seqFQN, sequence.Comment)
-		}
+		PrintObjectMetadata(predataFile, sequenceMetadata[sequence.RelationOid], seqFQN, "SEQUENCE")
 	}
 }
 
-func PrintCreateLanguageStatements(predataFile io.Writer, procLangs []QueryProceduralLanguage, funcInfoMap map[uint32]FunctionInfo) {
+func PrintCreateLanguageStatements(predataFile io.Writer, procLangs []QueryProceduralLanguage,
+	funcInfoMap map[uint32]FunctionInfo, procLangMetadata utils.MetadataMap) {
 	for _, procLang := range procLangs {
 		quotedOwner := utils.QuoteIdent(procLang.Owner)
 		quotedLanguage := utils.QuoteIdent(procLang.Name)
@@ -237,27 +150,20 @@ func PrintCreateLanguageStatements(predataFile io.Writer, procLangs []QueryProce
 			validatorInfo := funcInfoMap[procLang.Validator]
 			utils.MustPrintf(predataFile, "\nALTER FUNCTION %s(%s) OWNER TO %s;", validatorInfo.QualifiedName, validatorInfo.Arguments, quotedOwner)
 		}
-		if procLang.Owner != "" {
-			utils.MustPrintf(predataFile, "\nALTER LANGUAGE %s OWNER TO %s;", quotedLanguage, quotedOwner)
-		}
-		if procLang.Comment != "" {
-			utils.MustPrintf(predataFile, "\n\nCOMMENT ON LANGUAGE %s IS '%s';", quotedLanguage, procLang.Comment)
-		}
+		PrintObjectMetadata(predataFile, procLangMetadata[procLang.Oid], utils.QuoteIdent(procLang.Name), "LANGUAGE")
 		utils.MustPrintln(predataFile)
 	}
 }
 
-func PrintCreateViewStatements(predataFile io.Writer, views []QueryViewDefinition) {
+func PrintCreateViewStatements(predataFile io.Writer, views []QueryViewDefinition, viewMetadata utils.MetadataMap) {
 	for _, view := range views {
 		viewFQN := utils.MakeFQN(view.SchemaName, view.ViewName)
 		utils.MustPrintf(predataFile, "\n\nCREATE VIEW %s AS %s\n", viewFQN, view.Definition)
-		if view.Comment != "" {
-			utils.MustPrintf(predataFile, "\nCOMMENT ON VIEW %s IS '%s';\n", viewFQN, view.Comment)
-		}
+		PrintObjectMetadata(predataFile, viewMetadata[view.Oid], viewFQN, "VIEW")
 	}
 }
 
-func PrintCreateExternalProtocolStatements(predataFile io.Writer, protocols []QueryExtProtocol, funcInfoMap map[uint32]FunctionInfo) {
+func PrintCreateExternalProtocolStatements(predataFile io.Writer, protocols []QueryExtProtocol, funcInfoMap map[uint32]FunctionInfo, protoMetadata utils.MetadataMap) {
 	for _, protocol := range protocols {
 
 		hasUserDefinedFunc := false
@@ -290,10 +196,8 @@ func PrintCreateExternalProtocolStatements(predataFile io.Writer, protocols []Qu
 		if protocol.Trusted {
 			utils.MustPrintf(predataFile, "TRUSTED ")
 		}
-		utils.MustPrintf(predataFile, "PROTOCOL %s (%s);", utils.QuoteIdent(protocol.Name), strings.Join(protocolFunctions, ", "))
-
-		if protocol.Owner != "" {
-			utils.MustPrintf(predataFile, "\n\nALTER PROTOCOL %s OWNER TO %s;\n", utils.QuoteIdent(protocol.Name), utils.QuoteIdent(protocol.Owner))
-		}
+		protoFQN := utils.QuoteIdent(protocol.Name)
+		utils.MustPrintf(predataFile, "PROTOCOL %s (%s);\n", protoFQN, strings.Join(protocolFunctions, ", "))
+		PrintObjectMetadata(predataFile, protoMetadata[protocol.Oid], protoFQN, "PROTOCOL")
 	}
 }

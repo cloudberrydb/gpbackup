@@ -32,11 +32,10 @@ SET default_with_oids = %s;
 `, gucs.ClientEncoding, gucs.StdConformingStrings, gucs.DefaultWithOids)
 }
 
-func PrintCreateDatabaseStatement(globalFile io.Writer) {
-	dbname := utils.QuoteIdent(connection.DBName)
-	owner := utils.QuoteIdent(GetDatabaseOwner(connection))
+func PrintCreateDatabaseStatement(globalFile io.Writer, dbname string, dbMetadata utils.ObjectMetadata) {
+	dbname = utils.QuoteIdent(dbname)
 	utils.MustPrintf(globalFile, "\n\nCREATE DATABASE %s;", dbname)
-	utils.MustPrintf(globalFile, "\nALTER DATABASE %s OWNER TO %s;", dbname, utils.QuoteIdent(owner))
+	PrintObjectMetadata(globalFile, dbMetadata, dbname, "DATABASE")
 }
 
 func PrintDatabaseGUCs(globalFile io.Writer, gucs []string, dbname string) {

@@ -31,7 +31,7 @@ func PrintShellTypeStatements(predataFile io.Writer, types []TypeDefinition) {
 	}
 }
 
-func PrintCreateBaseTypeStatements(predataFile io.Writer, types []TypeDefinition) {
+func PrintCreateBaseTypeStatements(predataFile io.Writer, types []TypeDefinition, typeMetadata utils.MetadataMap) {
 	i := 0
 	for i < len(types) {
 		typ := types[i]
@@ -91,18 +91,13 @@ func PrintCreateBaseTypeStatements(predataFile io.Writer, types []TypeDefinition
 				utils.MustPrintf(predataFile, ",\n\tDELIMITER = '%s'", typ.Delimiter)
 			}
 			utils.MustPrintln(predataFile, "\n);")
-			if typ.Comment != "" {
-				utils.MustPrintf(predataFile, "\nCOMMENT ON TYPE %s IS '%s';\n", typeFQN, typ.Comment)
-			}
-			if typ.Owner != "" {
-				utils.MustPrintf(predataFile, "\nALTER TYPE %s OWNER TO %s;\n", typeFQN, typ.Owner)
-			}
+			PrintObjectMetadata(predataFile, typeMetadata[typ.Oid], typeFQN, "TYPE")
 		}
 		i++
 	}
 }
 
-func PrintCreateCompositeAndEnumTypeStatements(predataFile io.Writer, types []TypeDefinition) {
+func PrintCreateCompositeAndEnumTypeStatements(predataFile io.Writer, types []TypeDefinition, typeMetadata utils.MetadataMap) {
 	i := 0
 	for i < len(types) {
 		typ := types[i]
@@ -134,21 +129,11 @@ func PrintCreateCompositeAndEnumTypeStatements(predataFile io.Writer, types []Ty
 			}
 			utils.MustPrintf(predataFile, strings.Join(atts, ",\n"))
 			utils.MustPrintln(predataFile, "\n);")
-			if composite.Comment != "" {
-				utils.MustPrintf(predataFile, "\nCOMMENT ON TYPE %s IS '%s';\n", typeFQN, composite.Comment)
-			}
-			if composite.Owner != "" {
-				utils.MustPrintf(predataFile, "\nALTER TYPE %s OWNER TO %s;\n", typeFQN, utils.QuoteIdent(composite.Owner))
-			}
+			PrintObjectMetadata(predataFile, typeMetadata[typ.Oid], typeFQN, "TYPE")
 		} else if typ.Type == "e" {
 			typeFQN := utils.MakeFQN(typ.TypeSchema, typ.TypeName)
 			utils.MustPrintf(predataFile, "\n\nCREATE TYPE %s AS ENUM (\n\t%s\n);\n", typeFQN, typ.EnumLabels)
-			if typ.Comment != "" {
-				utils.MustPrintf(predataFile, "\nCOMMENT ON TYPE %s IS '%s';\n", typeFQN, typ.Comment)
-			}
-			if typ.Owner != "" {
-				utils.MustPrintf(predataFile, "\nALTER TYPE %s OWNER TO %s;\n", typeFQN, utils.QuoteIdent(typ.Owner))
-			}
+			PrintObjectMetadata(predataFile, typeMetadata[typ.Oid], typeFQN, "TYPE")
 			i++
 
 		} else {

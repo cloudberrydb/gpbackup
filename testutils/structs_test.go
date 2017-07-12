@@ -18,14 +18,14 @@ func TestTestUtils(t *testing.T) {
 var _ = Describe("StructMatchers", func() {
 	Describe("StructMatcher", func() {
 		It("returns no failures for the same structs", func() {
-			schema1 := utils.Schema{0, "test_schema", "", "testrole"}
-			schema2 := utils.Schema{0, "test_schema", "", "testrole"}
+			schema1 := utils.Schema{0, "test_schema"}
+			schema2 := utils.Schema{0, "test_schema"}
 			mismatches := StructMatcher(&schema1, &schema2, false, false)
 			Expect(mismatches).To(BeEmpty())
 		})
 		It("returns mismatches with different structs", func() {
-			schema1 := utils.Schema{0, "test_schema", "", "testrole"}
-			schema2 := utils.Schema{0, "", "", "testrole"}
+			schema1 := utils.Schema{0, "test_schema"}
+			schema2 := utils.Schema{0, ""}
 			mismatches := StructMatcher(&schema1, &schema2, false, false)
 			Expect(mismatches).ToNot(BeEmpty())
 		})
@@ -65,10 +65,10 @@ var _ = Describe("StructMatchers", func() {
 			Expect(mismatches[0]).To(Equal("Mismatch on field Name\nExpected\n    <string>: testrole\nto equal\n    <string>: testrole2"))
 		})
 		It("formats a nice error message for mismatches", func() {
-			schema1 := utils.Schema{0, "test_schema", "", "testrole"}
-			schema2 := utils.Schema{0, "another_schema", "", "testrole"}
+			schema1 := utils.Schema{0, "test_schema"}
+			schema2 := utils.Schema{0, "another_schema"}
 			mismatches := StructMatcher(&schema1, &schema2, false, false)
-			Expect(mismatches).To(Equal([]string{"Mismatch on field SchemaName\nExpected\n    <string>: test_schema\nto equal\n    <string>: another_schema"}))
+			Expect(mismatches).To(Equal([]string{"Mismatch on field Name\nExpected\n    <string>: test_schema\nto equal\n    <string>: another_schema"}))
 		})
 	})
 })

@@ -106,17 +106,13 @@ func backupGlobal(filename string) {
 	PrintSessionGUCs(globalFile, gucs)
 
 	logger.Verbose("Writing CREATE DATABASE statement to global file")
-	PrintCreateDatabaseStatement(globalFile)
+	dbMetadata := GetMetadataForObjectType(connection, "", "datacl", "datdba", "pg_database")
+	dbOid := OidFromObjectName(connection, connection.DBName, "datname", "pg_database")
+	PrintCreateDatabaseStatement(globalFile, connection.DBName, dbMetadata[dbOid])
 
 	logger.Verbose("Writing database GUCs to global file")
 	databaseGucs := GetDatabaseGUCs(connection)
 	PrintDatabaseGUCs(globalFile, databaseGucs, connection.DBName)
-
-	logger.Verbose("Writing database comment to global file")
-	databaseComment := GetDatabaseComment(connection)
-	if databaseComment != "" {
-		utils.MustPrintf(globalFile, "\nCOMMENT ON DATABASE %s IS '%s';\n", connection.DBName, databaseComment)
-	}
 
 	logger.Verbose("Writing CREATE RESOURCE QUEUE statements to global file")
 	resQueues := GetResourceQueues(connection)
@@ -137,60 +133,67 @@ func backupPredata(filename string, tables []utils.Relation, extTableMap map[str
 
 	logger.Verbose("Writing CREATE SCHEMA statements to predata file")
 	schemas := GetAllUserSchemas(connection)
-	PrintCreateSchemaStatements(predataFile, schemas)
+	schemaMetadata := GetMetadataForObjectType(connection, "", "nspacl", "nspowner", "pg_namespace")
+	PrintCreateSchemaStatements(predataFile, schemas, schemaMetadata)
 
 	types := GetTypeDefinitions(connection)
+	typeMetadata := GetMetadataForObjectType(connection, "typnamespace", "", "typowner", "pg_type")
 	logger.Verbose("Writing CREATE TYPE statements for shell types to predata file")
 	PrintShellTypeStatements(predataFile, types)
 
 	funcInfoMap := GetFunctionOidToInfoMap(connection)
 	logger.Verbose("Writing CREATE PROCEDURAL LANGUAGE statements to predata file")
 	procLangs := GetProceduralLanguages(connection)
-	PrintCreateLanguageStatements(predataFile, procLangs, funcInfoMap)
+	procLangMetadata := GetMetadataForObjectType(connection, "", "lanacl", "lanowner", "pg_language")
+	PrintCreateLanguageStatements(predataFile, procLangs, funcInfoMap, procLangMetadata)
 
 	logger.Verbose("Writing CREATE TYPE statements for composite and enum types to predata file")
-	PrintCreateCompositeAndEnumTypeStatements(predataFile, types)
+	PrintCreateCompositeAndEnumTypeStatements(predataFile, types, typeMetadata)
 
 	logger.Verbose("Writing CREATE FUNCTION statements to predata file")
 	funcDefs := GetFunctionDefinitions(connection)
-	PrintCreateFunctionStatements(predataFile, funcDefs)
+	funcMetadata := GetMetadataForObjectType(connection, "pronamespace", "proacl", "proowner", "pg_proc")
+	PrintCreateFunctionStatements(predataFile, funcDefs, funcMetadata)
 
 	logger.Verbose("Writing CREATE TYPE statements for base types to predata file")
-	PrintCreateBaseTypeStatements(predataFile, types)
+	PrintCreateBaseTypeStatements(predataFile, types, typeMetadata)
 
 	logger.Verbose("Writing CREATE PROTOCOL statements to predata file")
 	protocols := GetExternalProtocols(connection)
-	PrintCreateExternalProtocolStatements(predataFile, protocols, funcInfoMap)
+	protoMetadata := GetMetadataForObjectType(connection, "", "ptcacl", "ptcowner", "pg_extprotocol")
+	PrintCreateExternalProtocolStatements(predataFile, protocols, funcInfoMap, protoMetadata)
 
 	logger.Verbose("Writing CREATE AGGREGATE statements to predata file")
 	aggDefs := GetAggregateDefinitions(connection)
-	PrintCreateAggregateStatements(predataFile, aggDefs, funcInfoMap)
+	aggMetadata := GetMetadataForObjectType(connection, "", "", "proowner", "pg_proc")
+	PrintCreateAggregateStatements(predataFile, aggDefs, funcInfoMap, aggMetadata)
 
 	logger.Verbose("Writing CREATE CAST statements to predata file")
 	castDefs := GetCastDefinitions(connection)
-	PrintCreateCastStatements(predataFile, castDefs)
+	castMetadata := GetCommentsForObjectType(connection, "", "oid", "pg_cast", "pg_cast")
+	PrintCreateCastStatements(predataFile, castDefs, castMetadata)
 
 	logger.Verbose("Writing CREATE TABLE statements to predata file")
-	tablesMetadata := GetMetadataForObjectType(connection, "relnamespace", "relacl", "relowner", "pg_class")
+	relationMetadata := GetMetadataForObjectType(connection, "relnamespace", "relacl", "relowner", "pg_class")
 	for _, table := range tables {
 		isExternal := extTableMap[table.ToString()]
 		tableDef := ConstructDefinitionsForTable(connection, table, isExternal)
-		PrintCreateTableStatement(predataFile, table, tableDef, tablesMetadata[table.RelationOid])
+		PrintCreateTableStatement(predataFile, table, tableDef, relationMetadata[table.RelationOid])
 	}
 
 	logger.Verbose("Writing CREATE VIEW statements to predata file")
 	viewDefs := GetViewDefinitions(connection)
-	PrintCreateViewStatements(predataFile, viewDefs)
+	PrintCreateViewStatements(predataFile, viewDefs, relationMetadata)
 
 	logger.Verbose("Writing ADD CONSTRAINT statements to predata file")
-	allConstraints, allFkConstraints := ConstructConstraintsForAllTables(connection, tables)
-	PrintConstraintStatements(predataFile, allConstraints, allFkConstraints)
+	constraints := GetConstraints(connection)
+	conMetadata := GetCommentsForObjectType(connection, "", "oid", "pg_constraint", "pg_constraint")
+	PrintConstraintStatements(predataFile, constraints, conMetadata)
 
 	logger.Verbose("Writing CREATE SEQUENCE statements to predata file")
 	sequenceDefs := GetAllSequences(connection)
-	sequenceOwners := GetSequenceOwnerMap(connection)
-	PrintCreateSequenceStatements(predataFile, sequenceDefs, sequenceOwners)
-
+	sequenceColumnOwners := GetSequenceColumnOwnerMap(connection)
+	PrintCreateSequenceStatements(predataFile, sequenceDefs, sequenceColumnOwners, relationMetadata)
 }
 
 func backupData(tables []utils.Relation, extTableMap map[string]bool) {
@@ -217,16 +220,20 @@ func backupPostdata(filename string, tables []utils.Relation, extTableMap map[st
 	PrintSessionGUCs(postdataFile, gucs)
 
 	logger.Verbose("Writing CREATE INDEX statements to postdata file")
-	indexes := GetIndexesForAllTables(connection, tables)
-	PrintPostdataCreateStatements(postdataFile, indexes)
+	indexNameMap := ConstructImplicitIndexNames(connection)
+	indexes := GetIndexDefinitions(connection, indexNameMap)
+	indexMetadata := GetCommentsForObjectType(connection, "", "indexrelid", "pg_class", "pg_index")
+	PrintCreateIndexStatements(postdataFile, indexes, indexMetadata)
 
 	logger.Verbose("Writing CREATE RULE statements to postdata file")
 	rules := GetRuleDefinitions(connection)
-	PrintPostdataCreateStatements(postdataFile, rules)
+	ruleMetadata := GetCommentsForObjectType(connection, "", "oid", "pg_rewrite", "pg_rewrite")
+	PrintCreateRuleStatements(postdataFile, rules, ruleMetadata)
 
 	logger.Verbose("Writing CREATE TRIGGER statements to postdata file")
 	triggers := GetTriggerDefinitions(connection)
-	PrintPostdataCreateStatements(postdataFile, triggers)
+	triggerMetadata := GetCommentsForObjectType(connection, "", "oid", "pg_trigger", "pg_trigger")
+	PrintCreateTriggerStatements(postdataFile, triggers, triggerMetadata)
 }
 
 func DoTeardown() {
