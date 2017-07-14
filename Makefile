@@ -59,7 +59,8 @@ installdirs :
 		$(MKDIR_P) '$(DESTDIR)$(bindir)'
 
 clean :
-		rm -f $(BACKUP)
+		rm -f $(BIN_DIR)/$(BACKUP)
+		rm -f $(BIN_DIR)/$(RESTORE)
 		rm -rf /tmp/go-build*
 		rm -rf /tmp/ginkgo*
 
