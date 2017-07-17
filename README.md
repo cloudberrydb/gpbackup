@@ -100,7 +100,7 @@ and object type:
 - regtable: regular tables
 - exttable: external tables
 - types: shell, base, composite, and enum types
-- functions: functions and aggregates
+- functions: functions, aggregates, and casts
 - nontable: all other objects
 
 There is also a backup_test package under the backup directory for unit tests that pertain to backup code.
