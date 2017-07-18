@@ -12,14 +12,14 @@ import (
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
-func PrintCreateIndexStatements(postdataFile io.Writer, indexes []QuerySimpleDefinition, indexMetadata utils.MetadataMap) {
+func PrintCreateIndexStatements(postdataFile io.Writer, indexes []QuerySimpleDefinition, indexMetadata MetadataMap) {
 	for _, index := range indexes {
 		utils.MustPrintf(postdataFile, "\n\n%s;", index.Def)
 		PrintObjectMetadata(postdataFile, indexMetadata[index.Oid], index.Name, "INDEX")
 	}
 }
 
-func PrintCreateRuleStatements(postdataFile io.Writer, rules []QuerySimpleDefinition, ruleMetadata utils.MetadataMap) {
+func PrintCreateRuleStatements(postdataFile io.Writer, rules []QuerySimpleDefinition, ruleMetadata MetadataMap) {
 	for _, rule := range rules {
 		utils.MustPrintf(postdataFile, "\n\n%s", rule.Def)
 		tableFQN := utils.MakeFQN(rule.OwningSchema, rule.OwningTable)
@@ -27,7 +27,7 @@ func PrintCreateRuleStatements(postdataFile io.Writer, rules []QuerySimpleDefini
 	}
 }
 
-func PrintCreateTriggerStatements(postdataFile io.Writer, triggers []QuerySimpleDefinition, triggerMetadata utils.MetadataMap) {
+func PrintCreateTriggerStatements(postdataFile io.Writer, triggers []QuerySimpleDefinition, triggerMetadata MetadataMap) {
 	for _, trigger := range triggers {
 		utils.MustPrintf(postdataFile, "\n\n%s;", trigger.Def)
 		tableFQN := utils.MakeFQN(trigger.OwningSchema, trigger.OwningTable)

@@ -1,8 +1,8 @@
 package backup
 
 /*
- * This file contains structs and functions related to dumping regular table
- * (non-external table) metadata on the master.
+ * This file contains structs and functions related to dumping relation
+ * (sequence, table, and view) metadata on the master.
  */
 
 import (
@@ -103,7 +103,7 @@ func ConsolidateColumnInfo(atts []QueryTableAtts, defs []QueryTableDefault) []Co
  * the search_path; this will aid in later filtering to include or exclude certain tables during the
  * backup process, and allows customers to copy just the CREATE TABLE block in order to use it directly.
  */
-func PrintCreateTableStatement(predataFile io.Writer, table utils.Relation, tableDef TableDefinition, tableMetadata utils.ObjectMetadata) {
+func PrintCreateTableStatement(predataFile io.Writer, table utils.Relation, tableDef TableDefinition, tableMetadata ObjectMetadata) {
 	if tableDef.IsExternal {
 		PrintExternalTableCreateStatement(predataFile, table, tableDef)
 	} else {
@@ -155,12 +155,77 @@ func printColumnStatements(predataFile io.Writer, table utils.Relation, columnDe
  * This function prints additional statements that come after the CREATE TABLE
  * statement for both regular and external tables.
  */
-func PrintPostCreateTableStatements(predataFile io.Writer, table utils.Relation, tableDef TableDefinition, tableMetadata utils.ObjectMetadata) {
+func PrintPostCreateTableStatements(predataFile io.Writer, table utils.Relation, tableDef TableDefinition, tableMetadata ObjectMetadata) {
 	PrintObjectMetadata(predataFile, tableMetadata, table.ToString(), "TABLE")
 
 	for _, att := range tableDef.ColumnDefs {
 		if att.Comment != "" {
 			utils.MustPrintf(predataFile, "\n\nCOMMENT ON COLUMN %s.%s IS '%s';\n", table.ToString(), utils.QuoteIdent(att.Name), att.Comment)
 		}
+	}
+}
+
+type Sequence struct {
+	utils.Relation
+	QuerySequenceDefinition
+}
+
+func GetAllSequences(connection *utils.DBConn) []Sequence {
+	sequenceRelations := GetAllSequenceRelations(connection)
+	sequences := make([]Sequence, 0)
+	for _, seqRelation := range sequenceRelations {
+		seqDef := GetSequenceDefinition(connection, seqRelation.ToString())
+		sequence := Sequence{seqRelation, seqDef}
+		sequences = append(sequences, sequence)
+	}
+	return sequences
+}
+
+/*
+ * This function is largely derived from the dumpSequence() function in pg_dump.c.  The values of
+ * minVal and maxVal come from SEQ_MINVALUE and SEQ_MAXVALUE, defined in include/commands/sequence.h.
+ */
+func PrintCreateSequenceStatements(predataFile io.Writer, sequences []Sequence, sequenceColumnOwners map[string]string, sequenceMetadata MetadataMap) {
+	maxVal := int64(9223372036854775807)
+	minVal := int64(-9223372036854775807)
+	for _, sequence := range sequences {
+		seqFQN := sequence.ToString()
+		utils.MustPrintln(predataFile, "\n\nCREATE SEQUENCE", seqFQN)
+		if !sequence.IsCalled {
+			utils.MustPrintln(predataFile, "\tSTART WITH", sequence.LastVal)
+		}
+		utils.MustPrintln(predataFile, "\tINCREMENT BY", sequence.Increment)
+
+		if !((sequence.MaxVal == maxVal && sequence.Increment > 0) || (sequence.MaxVal == -1 && sequence.Increment < 0)) {
+			utils.MustPrintln(predataFile, "\tMAXVALUE", sequence.MaxVal)
+		} else {
+			utils.MustPrintln(predataFile, "\tNO MAXVALUE")
+		}
+		if !((sequence.MinVal == minVal && sequence.Increment < 0) || (sequence.MinVal == 1 && sequence.Increment > 0)) {
+			utils.MustPrintln(predataFile, "\tMINVALUE", sequence.MinVal)
+		} else {
+			utils.MustPrintln(predataFile, "\tNO MINVALUE")
+		}
+		cycleStr := ""
+		if sequence.IsCycled {
+			cycleStr = "\n\tCYCLE"
+		}
+		utils.MustPrintf(predataFile, "\tCACHE %d%s;", sequence.CacheVal, cycleStr)
+
+		utils.MustPrintf(predataFile, "\n\nSELECT pg_catalog.setval('%s', %d, %v);\n", seqFQN, sequence.LastVal, sequence.IsCalled)
+
+		// owningColumn is quoted when the map is constructed in GetSequenceColumnOwnerMap() and doesn't need to be quoted again
+		if owningColumn, hasColumnOwner := sequenceColumnOwners[seqFQN]; hasColumnOwner {
+			utils.MustPrintf(predataFile, "\n\nALTER SEQUENCE %s OWNED BY %s;\n", seqFQN, owningColumn)
+		}
+		PrintObjectMetadata(predataFile, sequenceMetadata[sequence.RelationOid], seqFQN, "SEQUENCE")
+	}
+}
+
+func PrintCreateViewStatements(predataFile io.Writer, views []QueryViewDefinition, viewMetadata MetadataMap) {
+	for _, view := range views {
+		viewFQN := utils.MakeFQN(view.SchemaName, view.ViewName)
+		utils.MustPrintf(predataFile, "\n\nCREATE VIEW %s AS %s\n", viewFQN, view.Definition)
+		PrintObjectMetadata(predataFile, viewMetadata[view.Oid], viewFQN, "VIEW")
 	}
 }

@@ -3,14 +3,13 @@ package backup_test
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 )
 
-var _ = Describe("backup/predata tests", func() {
+var _ = Describe("backup/predata_functions tests", func() {
 	buffer := gbytes.NewBuffer()
 
 	BeforeEach(func() {
@@ -28,10 +27,10 @@ var _ = Describe("backup/predata tests", func() {
 
 		Describe("PrintCreateFunctionStatements", func() {
 			var (
-				funcMetadataMap utils.MetadataMap
+				funcMetadataMap backup.MetadataMap
 			)
 			BeforeEach(func() {
-				funcMetadataMap = utils.MetadataMap{}
+				funcMetadataMap = backup.MetadataMap{}
 			})
 			It("prints a function definition for an internal function without a binary path", func() {
 				backup.PrintCreateFunctionStatements(buffer, funcDefs, funcMetadataMap)
@@ -50,7 +49,7 @@ LANGUAGE internal;
 `)
 			})
 			It("prints a function definition for a function with permissions, an owner, and a comment", func() {
-				funcMetadata := utils.ObjectMetadata{[]utils.ACL{utils.DefaultACLForType("testrole", "FUNCTION")}, "testrole", "This is a function comment."}
+				funcMetadata := backup.ObjectMetadata{[]backup.ACL{testutils.DefaultACLForType("testrole", "FUNCTION")}, "testrole", "This is a function comment."}
 				funcMetadataMap[1] = funcMetadata
 				backup.PrintCreateFunctionStatements(buffer, funcDefs, funcMetadataMap)
 				testutils.ExpectRegexp(buffer, `CREATE FUNCTION public.func_name(integer, integer) RETURNS integer AS
@@ -250,10 +249,10 @@ $_$`)
 			3: {QualifiedName: "public.myffunc", Arguments: "text"},
 			4: {QualifiedName: "public.mysortop", Arguments: "bigint"},
 		}
-		aggMetadataMap := utils.MetadataMap{}
+		aggMetadataMap := backup.MetadataMap{}
 		BeforeEach(func() {
 			aggDefs[0] = aggDefault
-			aggMetadataMap = utils.MetadataMap{}
+			aggMetadataMap = backup.MetadataMap{}
 		})
 
 		It("prints an aggregate definition for an unordered aggregate with no optional specifications", func() {
@@ -328,7 +327,7 @@ $_$`)
 );`)
 		})
 		It("prints an aggregate with owner and comment", func() {
-			aggMetadataMap[1] = utils.ObjectMetadata{Privileges: []utils.ACL{}, Owner: "testrole", Comment: "This is an aggregate comment."}
+			aggMetadataMap[1] = backup.ObjectMetadata{Privileges: []backup.ACL{}, Owner: "testrole", Comment: "This is an aggregate comment."}
 			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcInfoMap, aggMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
@@ -344,7 +343,7 @@ ALTER AGGREGATE public.agg_name(integer, integer) OWNER TO testrole;`)
 		It("prints an aggregate with owner, comment, and no arguments", func() {
 			aggDefs[0].Arguments = ""
 			aggDefs[0].IdentArgs = ""
-			aggMetadataMap[1] = utils.ObjectMetadata{Privileges: []utils.ACL{}, Owner: "testrole", Comment: "This is an aggregate comment."}
+			aggMetadataMap[1] = backup.ObjectMetadata{Privileges: []backup.ACL{}, Owner: "testrole", Comment: "This is an aggregate comment."}
 			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcInfoMap, aggMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE AGGREGATE public.agg_name(*) (
 	SFUNC = public.mysfunc,
@@ -359,7 +358,7 @@ ALTER AGGREGATE public.agg_name(*) OWNER TO testrole;`)
 		})
 	})
 	Describe("PrintCreateCastStatements", func() {
-		emptyMetadataMap := utils.MetadataMap{}
+		emptyMetadataMap := backup.MetadataMap{}
 		It("prints an explicit cast with a function", func() {
 			castDef := backup.QueryCastDefinition{1, "src", "dst", "public", "cast_func", "integer, integer", "e"}
 			backup.PrintCreateCastStatements(buffer, []backup.QueryCastDefinition{castDef}, emptyMetadataMap)

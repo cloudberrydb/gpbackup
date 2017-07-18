@@ -12,7 +12,7 @@ import (
 	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
 
-var _ = Describe("backup/queries tests", func() {
+var _ = Describe("backup/queries_shared tests", func() {
 	var connection *utils.DBConn
 	var mock sqlmock.Sqlmock
 	BeforeEach(func() {

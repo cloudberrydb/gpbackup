@@ -62,10 +62,10 @@ func SetDefaultSegmentConfiguration() {
 }
 
 // objType should be an all-caps string like TABLE, INDEX, etc.
-func DefaultMetadataMap(objType string, hasPrivileges bool, hasOwner bool, hasComment bool) utils.MetadataMap {
-	privileges := []utils.ACL{}
+func DefaultMetadataMap(objType string, hasPrivileges bool, hasOwner bool, hasComment bool) backup.MetadataMap {
+	privileges := []backup.ACL{}
 	if hasPrivileges {
-		privileges = []utils.ACL{utils.DefaultACLForType("testrole", objType)}
+		privileges = []backup.ACL{DefaultACLForType("testrole", objType)}
 	}
 	owner := ""
 	if hasOwner {
@@ -80,13 +80,58 @@ func DefaultMetadataMap(objType string, hasPrivileges bool, hasOwner bool, hasCo
 		}
 		comment = fmt.Sprintf("This is a%s %s comment.", n, strings.ToLower(objType))
 	}
-	return utils.MetadataMap{
+	return backup.MetadataMap{
 		1: {
 			privileges,
 			owner,
 			comment,
 		},
 	}
+}
+
+func DefaultACLForType(grantee string, objType string) backup.ACL {
+	return backup.ACL{
+		Grantee:    grantee,
+		Select:     objType == "PROTOCOL" || objType == "SEQUENCE" || objType == "TABLE" || objType == "VIEW",
+		Insert:     objType == "PROTOCOL" || objType == "TABLE" || objType == "VIEW",
+		Update:     objType == "SEQUENCE" || objType == "TABLE" || objType == "VIEW",
+		Delete:     objType == "TABLE" || objType == "VIEW",
+		Truncate:   objType == "TABLE" || objType == "VIEW",
+		References: objType == "TABLE" || objType == "VIEW",
+		Trigger:    objType == "TABLE" || objType == "VIEW",
+		Usage:      objType == "LANGUAGE" || objType == "SCHEMA" || objType == "SEQUENCE",
+		Execute:    objType == "FUNCTION",
+		Create:     objType == "DATABASE" || objType == "SCHEMA",
+		CreateTemp: objType == "DATABASE",
+		Connect:    objType == "DATABASE",
+	}
+}
+
+func DefaultACLWithout(grantee string, objType string, revoke ...string) backup.ACL {
+	defaultACL := DefaultACLForType(grantee, objType)
+	for _, priv := range revoke {
+		switch priv {
+		case "SELECT":
+			defaultACL.Select = false
+		case "INSERT":
+			defaultACL.Insert = false
+		case "UPDATE":
+			defaultACL.Update = false
+		case "DELETE":
+			defaultACL.Delete = false
+		case "TRUNCATE":
+			defaultACL.Truncate = false
+		case "REFERENCES":
+			defaultACL.References = false
+		case "TRIGGER":
+			defaultACL.Trigger = false
+		case "EXECUTE":
+			defaultACL.Execute = false
+		case "USAGE":
+			defaultACL.Usage = false
+		}
+	}
+	return defaultACL
 }
 
 /*

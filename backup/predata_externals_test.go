@@ -11,7 +11,7 @@ import (
 	"github.com/onsi/gomega/gbytes"
 )
 
-var _ = Describe("backup/predata tests", func() {
+var _ = Describe("backup/predata_externals tests", func() {
 	buffer := gbytes.NewBuffer()
 	testTable := utils.BasicRelation("public", "tablename")
 
@@ -329,6 +329,95 @@ ENCODING 'UTF-8'
 LOG ERRORS
 SEGMENT REJECT LIMIT 2 ROWS`)
 			})
+		})
+	})
+	Describe("PrintExternalProtocolStatements", func() {
+		protocolUntrustedReadWrite := backup.QueryExtProtocol{1, "s3", "testrole", false, 1, 2, 0}
+		protocolUntrustedReadValidator := backup.QueryExtProtocol{1, "s3", "testrole", false, 1, 0, 3}
+		protocolUntrustedWriteOnly := backup.QueryExtProtocol{1, "s3", "testrole", false, 0, 2, 0}
+		protocolTrustedReadWriteValidator := backup.QueryExtProtocol{1, "s3", "testrole", true, 1, 2, 3}
+		protocolUntrustedReadOnly := backup.QueryExtProtocol{1, "s4", "testrole", false, 4, 0, 0}
+		protocolInternal := backup.QueryExtProtocol{1, "gphdfs", "testrole", false, 5, 6, 7}
+		protocolInternalReadWrite := backup.QueryExtProtocol{1, "gphdfs", "testrole", false, 5, 6, 0}
+		funcInfoMap := map[uint32]backup.FunctionInfo{
+			1: {QualifiedName: "public.read_fn_s3", Arguments: ""},
+			2: {QualifiedName: "public.write_fn_s3", Arguments: ""},
+			3: {QualifiedName: "public.validator", Arguments: ""},
+			4: {QualifiedName: "public.read_fn_s4", Arguments: ""},
+			5: {QualifiedName: "pg_catalog.read_internal_fn", Arguments: "", IsInternal: true},
+			6: {QualifiedName: "pg_catalog.write_internal_fn", Arguments: "", IsInternal: true},
+			7: {QualifiedName: "pg_catalog.validate_internal_fn", Arguments: "", IsInternal: true},
+		}
+		emptyMetadataMap := backup.MetadataMap{}
+
+		It("prints untrusted protocol with read and write function", func() {
+			protos := []backup.QueryExtProtocol{protocolUntrustedReadWrite}
+
+			backup.PrintCreateExternalProtocolStatements(buffer, protos, funcInfoMap, emptyMetadataMap)
+			testutils.ExpectRegexp(buffer, `CREATE PROTOCOL s3 (readfunc = public.read_fn_s3, writefunc = public.write_fn_s3);
+`)
+		})
+		It("prints untrusted protocol with read and validator", func() {
+			protos := []backup.QueryExtProtocol{protocolUntrustedReadValidator}
+
+			backup.PrintCreateExternalProtocolStatements(buffer, protos, funcInfoMap, emptyMetadataMap)
+			testutils.ExpectRegexp(buffer, `CREATE PROTOCOL s3 (readfunc = public.read_fn_s3, validatorfunc = public.validator);
+`)
+		})
+		It("prints untrusted protocol with write function only", func() {
+			protos := []backup.QueryExtProtocol{protocolUntrustedWriteOnly}
+
+			backup.PrintCreateExternalProtocolStatements(buffer, protos, funcInfoMap, emptyMetadataMap)
+			testutils.ExpectRegexp(buffer, `CREATE PROTOCOL s3 (writefunc = public.write_fn_s3);
+`)
+		})
+		It("prints trusted protocol with read, write, and validator", func() {
+			protos := []backup.QueryExtProtocol{protocolTrustedReadWriteValidator}
+
+			backup.PrintCreateExternalProtocolStatements(buffer, protos, funcInfoMap, emptyMetadataMap)
+			testutils.ExpectRegexp(buffer, `CREATE TRUSTED PROTOCOL s3 (readfunc = public.read_fn_s3, writefunc = public.write_fn_s3, validatorfunc = public.validator);
+`)
+		})
+		It("prints multiple protocols", func() {
+			protos := []backup.QueryExtProtocol{protocolUntrustedWriteOnly, protocolUntrustedReadOnly}
+
+			backup.PrintCreateExternalProtocolStatements(buffer, protos, funcInfoMap, emptyMetadataMap)
+			testutils.ExpectRegexp(buffer, `CREATE PROTOCOL s3 (writefunc = public.write_fn_s3);
+
+
+CREATE PROTOCOL s4 (readfunc = public.read_fn_s4);
+`)
+		})
+		It("skips printing protocols where all functions are internal", func() {
+			protos := []backup.QueryExtProtocol{protocolInternal, protocolUntrustedReadOnly}
+
+			backup.PrintCreateExternalProtocolStatements(buffer, protos, funcInfoMap, emptyMetadataMap)
+			testutils.NotExpectRegexp(buffer, `CREATE PROTOCOL gphdfs`)
+			testutils.ExpectRegexp(buffer, `CREATE PROTOCOL s4 (readfunc = public.read_fn_s4);
+`)
+		})
+		It("skips printing protocols without validator where all functions are internal", func() {
+			protos := []backup.QueryExtProtocol{protocolInternalReadWrite, protocolUntrustedReadOnly}
+
+			backup.PrintCreateExternalProtocolStatements(buffer, protos, funcInfoMap, emptyMetadataMap)
+			testutils.NotExpectRegexp(buffer, `CREATE PROTOCOL gphdfs`)
+			testutils.ExpectRegexp(buffer, `CREATE PROTOCOL s4 (readfunc = public.read_fn_s4);
+`)
+		})
+		It("prints a protocol with privileges and an owner", func() {
+			protos := []backup.QueryExtProtocol{protocolUntrustedReadWrite}
+			protoMetadataMap := testutils.DefaultMetadataMap("PROTOCOL", true, true, false)
+
+			backup.PrintCreateExternalProtocolStatements(buffer, protos, funcInfoMap, protoMetadataMap)
+			testutils.ExpectRegexp(buffer, `CREATE PROTOCOL s3 (readfunc = public.read_fn_s3, writefunc = public.write_fn_s3);
+
+
+ALTER PROTOCOL s3 OWNER TO testrole;
+
+
+REVOKE ALL ON PROTOCOL s3 FROM PUBLIC;
+REVOKE ALL ON PROTOCOL s3 FROM testrole;
+GRANT ALL ON PROTOCOL s3 TO testrole;`)
 		})
 	})
 })

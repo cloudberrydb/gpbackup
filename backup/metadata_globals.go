@@ -10,8 +10,9 @@ import (
 )
 
 /*
- * Functions to print to the global or postdata file instead of, or in addition
- * to, the predata file.
+ * This file contains structs and functions related to dumping global cluster
+ * metadata on the master that needs to be restored before data is restored,
+ * such as roles and database configuration.
  */
 
 func PrintConnectionString(metadataFile io.Writer, dbname string) {
@@ -32,7 +33,7 @@ SET default_with_oids = %s;
 `, gucs.ClientEncoding, gucs.StdConformingStrings, gucs.DefaultWithOids)
 }
 
-func PrintCreateDatabaseStatement(globalFile io.Writer, dbname string, dbMetadata utils.ObjectMetadata) {
+func PrintCreateDatabaseStatement(globalFile io.Writer, dbname string, dbMetadata ObjectMetadata) {
 	dbname = utils.QuoteIdent(dbname)
 	utils.MustPrintf(globalFile, "\n\nCREATE DATABASE %s;", dbname)
 	PrintObjectMetadata(globalFile, dbMetadata, dbname, "DATABASE")

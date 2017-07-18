@@ -3,13 +3,12 @@ package backup_test
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/gomega/gbytes"
 )
 
-var _ = Describe("backup/global objects tests", func() {
+var _ = Describe("backup/metadata_globals tests", func() {
 	buffer := gbytes.NewBuffer()
 
 	BeforeEach(func() {
@@ -30,7 +29,7 @@ SET default_with_oids = false`)
 	})
 	Describe("PrintCreateDatabaseStatement", func() {
 		It("prints a basic CREATE DATABASE statement", func() {
-			emptyMetadata := utils.ObjectMetadata{Privileges: []utils.ACL{}}
+			emptyMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{}}
 			backup.PrintCreateDatabaseStatement(buffer, "testdb", emptyMetadata)
 			testutils.ExpectRegexp(buffer, `CREATE DATABASE testdb;`)
 		})

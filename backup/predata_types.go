@@ -31,7 +31,7 @@ func PrintShellTypeStatements(predataFile io.Writer, types []TypeDefinition) {
 	}
 }
 
-func PrintCreateBaseTypeStatements(predataFile io.Writer, types []TypeDefinition, typeMetadata utils.MetadataMap) {
+func PrintCreateBaseTypeStatements(predataFile io.Writer, types []TypeDefinition, typeMetadata MetadataMap) {
 	i := 0
 	for i < len(types) {
 		typ := types[i]
@@ -97,7 +97,7 @@ func PrintCreateBaseTypeStatements(predataFile io.Writer, types []TypeDefinition
 	}
 }
 
-func PrintCreateCompositeAndEnumTypeStatements(predataFile io.Writer, types []TypeDefinition, typeMetadata utils.MetadataMap) {
+func PrintCreateCompositeAndEnumTypeStatements(predataFile io.Writer, types []TypeDefinition, typeMetadata MetadataMap) {
 	i := 0
 	for i < len(types) {
 		typ := types[i]

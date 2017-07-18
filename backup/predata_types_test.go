@@ -3,19 +3,18 @@ package backup_test
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/gomega/gbytes"
 )
 
-var _ = Describe("backup/predata tests", func() {
+var _ = Describe("backup/predata_types tests", func() {
 	buffer := gbytes.NewBuffer()
-	typeMetadataMap := utils.MetadataMap{}
+	typeMetadataMap := backup.MetadataMap{}
 
 	BeforeEach(func() {
 		buffer = gbytes.BufferWithBytes([]byte(""))
-		typeMetadataMap = utils.MetadataMap{}
+		typeMetadataMap = backup.MetadataMap{}
 	})
 	Describe("PrintCreateCompositeAndEnumTypeStatements", func() {
 		compOne := backup.TypeDefinition{Oid: 1, TypeSchema: "public", TypeName: "composite_type", Type: "c", AttName: "bar", AttType: "integer"}

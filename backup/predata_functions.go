@@ -2,8 +2,8 @@ package backup
 
 /*
  * This file contains structs and functions related to dumping function
- * metadata, and metadata closely related to functions such as casts, that
- * needs to be restored before data is restored.
+ * metadata, and metadata closely related to functions such as aggregates
+ * and casts, that needs to be restored before data is restored.
  */
 
 import (
@@ -13,7 +13,7 @@ import (
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
-func PrintCreateFunctionStatements(predataFile io.Writer, funcDefs []QueryFunctionDefinition, funcMetadata utils.MetadataMap) {
+func PrintCreateFunctionStatements(predataFile io.Writer, funcDefs []QueryFunctionDefinition, funcMetadata MetadataMap) {
 	for _, funcDef := range funcDefs {
 		funcFQN := utils.MakeFQN(funcDef.SchemaName, funcDef.FunctionName)
 		utils.MustPrintf(predataFile, "\n\nCREATE FUNCTION %s(%s) RETURNS ", funcFQN, funcDef.Arguments)
@@ -82,7 +82,7 @@ func PrintFunctionModifiers(predataFile io.Writer, funcDef QueryFunctionDefiniti
 	}
 }
 
-func PrintCreateAggregateStatements(predataFile io.Writer, aggDefs []QueryAggregateDefinition, funcInfoMap map[uint32]FunctionInfo, aggMetadata utils.MetadataMap) {
+func PrintCreateAggregateStatements(predataFile io.Writer, aggDefs []QueryAggregateDefinition, funcInfoMap map[uint32]FunctionInfo, aggMetadata MetadataMap) {
 	for _, aggDef := range aggDefs {
 		aggFQN := utils.MakeFQN(aggDef.SchemaName, aggDef.AggregateName)
 		orderedStr := ""
@@ -121,7 +121,7 @@ func PrintCreateAggregateStatements(predataFile io.Writer, aggDefs []QueryAggreg
 	}
 }
 
-func PrintCreateCastStatements(predataFile io.Writer, castDefs []QueryCastDefinition, castMetadata utils.MetadataMap) {
+func PrintCreateCastStatements(predataFile io.Writer, castDefs []QueryCastDefinition, castMetadata MetadataMap) {
 	for _, castDef := range castDefs {
 		/*
 		 * Because we use pg_catalog.format_type() in the query to get the cast definition,

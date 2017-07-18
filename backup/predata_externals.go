@@ -1,8 +1,9 @@
 package backup
 
 /*
- * This file contains structs and functions related to dumping external table
- * metadata on the master.
+ * This file contains structs and functions related to dumping metadata on the
+ * master for objects that connect to external data (external tables and external
+ * protocols).
  */
 
 import (
@@ -185,5 +186,44 @@ func PrintExternalTableStatements(predataFile io.Writer, table utils.Relation, e
 				utils.MustPrintf(predataFile, "PERCENT")
 			}
 		}
+	}
+}
+
+func PrintCreateExternalProtocolStatements(predataFile io.Writer, protocols []QueryExtProtocol, funcInfoMap map[uint32]FunctionInfo, protoMetadata MetadataMap) {
+	for _, protocol := range protocols {
+
+		hasUserDefinedFunc := false
+		if function, ok := funcInfoMap[protocol.WriteFunction]; ok && !function.IsInternal {
+			hasUserDefinedFunc = true
+		}
+		if function, ok := funcInfoMap[protocol.ReadFunction]; ok && !function.IsInternal {
+			hasUserDefinedFunc = true
+		}
+		if function, ok := funcInfoMap[protocol.Validator]; ok && !function.IsInternal {
+			hasUserDefinedFunc = true
+		}
+
+		if !hasUserDefinedFunc {
+			continue
+		}
+
+		protocolFunctions := []string{}
+		if protocol.ReadFunction != 0 {
+			protocolFunctions = append(protocolFunctions, fmt.Sprintf("readfunc = %s", funcInfoMap[protocol.ReadFunction].QualifiedName))
+		}
+		if protocol.WriteFunction != 0 {
+			protocolFunctions = append(protocolFunctions, fmt.Sprintf("writefunc = %s", funcInfoMap[protocol.WriteFunction].QualifiedName))
+		}
+		if protocol.Validator != 0 {
+			protocolFunctions = append(protocolFunctions, fmt.Sprintf("validatorfunc = %s", funcInfoMap[protocol.Validator].QualifiedName))
+		}
+
+		utils.MustPrintf(predataFile, "\n\nCREATE ")
+		if protocol.Trusted {
+			utils.MustPrintf(predataFile, "TRUSTED ")
+		}
+		protoFQN := utils.QuoteIdent(protocol.Name)
+		utils.MustPrintf(predataFile, "PROTOCOL %s (%s);\n", protoFQN, strings.Join(protocolFunctions, ", "))
+		PrintObjectMetadata(predataFile, protoMetadata[protocol.Oid], protoFQN, "PROTOCOL")
 	}
 }
