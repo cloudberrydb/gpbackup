@@ -109,4 +109,48 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatch(&resultMetadata, &ruleMetadata)
 		})
 	})
+	Describe("PrintCreateTriggerStatements", func() {
+		var (
+			triggerMetadataMap backup.MetadataMap
+		)
+		BeforeEach(func() {
+			triggerMetadataMap = backup.MetadataMap{}
+		})
+		It("creates a basic trigger", func() {
+			triggers := []backup.QuerySimpleDefinition{
+				{0, "sync_testtable", "public", "testtable", "CREATE TRIGGER sync_testtable AFTER INSERT OR DELETE OR UPDATE ON testtable FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger()"},
+			}
+			backup.PrintCreateTriggerStatements(buffer, triggers, triggerMetadataMap)
+
+			testutils.AssertQueryRuns(connection, "CREATE TABLE testtable(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE testtable")
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+
+			resultTriggers := backup.GetTriggerDefinitions(connection)
+			Expect(len(resultTriggers)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&resultTriggers[0], &triggers[0], "Oid")
+		})
+		It("creates a trigger with a comment", func() {
+			triggers := []backup.QuerySimpleDefinition{
+				{1, "sync_testtable", "public", "testtable", "CREATE TRIGGER sync_testtable AFTER INSERT OR DELETE OR UPDATE ON testtable FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger()"},
+			}
+			triggerMetadataMap = testutils.DefaultMetadataMap("RULE", false, false, true)
+			triggerMetadata := triggerMetadataMap[1]
+			backup.PrintCreateTriggerStatements(buffer, triggers, triggerMetadataMap)
+
+			testutils.AssertQueryRuns(connection, "CREATE TABLE testtable(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE testtable")
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+
+			triggers[0].Oid = backup.OidFromObjectName(connection, "sync_testtable", "tgname", "pg_trigger")
+			resultTriggers := backup.GetTriggerDefinitions(connection)
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, "", "oid", "pg_trigger", "pg_trigger")
+			resultMetadata := resultMetadataMap[triggers[0].Oid]
+			Expect(len(resultTriggers)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&resultTriggers[0], &triggers[0], "Oid")
+			testutils.ExpectStructsToMatch(&resultMetadata, &triggerMetadata)
+		})
+	})
 })
