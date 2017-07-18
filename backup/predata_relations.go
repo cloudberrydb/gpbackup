@@ -19,7 +19,7 @@ type ColumnDefinition struct {
 	NotNull    bool
 	HasDefault bool
 	IsDropped  bool
-	TypName    string
+	TypeName   string
 	Encoding   string
 	Comment    string
 	DefaultVal string
@@ -63,7 +63,7 @@ func ConstructDefinitionsForTable(connection *utils.DBConn, table utils.Relation
  * one struct, instead of performing an expensive join to get everything in
  * a single query.
  */
-func ConsolidateColumnInfo(atts []QueryTableAtts, defs []QueryTableDefault) []ColumnDefinition {
+func ConsolidateColumnInfo(atts []QueryTableAttributes, defs []QueryTableDefault) []ColumnDefinition {
 	colDefs := make([]ColumnDefinition, 0)
 	/*
 	 * The queries to get attributes and defaults ORDER BY oid and then attribute
@@ -72,7 +72,7 @@ func ConsolidateColumnInfo(atts []QueryTableAtts, defs []QueryTableDefault) []Co
 	j := 0
 	for i := range atts {
 		defaultVal := ""
-		if atts[i].AttHasDefault {
+		if atts[i].HasDefault {
 			for j < len(defs) {
 				if atts[i].AttNum == defs[j].AdNum {
 					defaultVal = defs[j].DefaultVal
@@ -83,13 +83,13 @@ func ConsolidateColumnInfo(atts []QueryTableAtts, defs []QueryTableDefault) []Co
 		}
 		colDef := ColumnDefinition{
 			Num:        atts[i].AttNum,
-			Name:       atts[i].AttName,
-			NotNull:    atts[i].AttNotNull,
-			HasDefault: atts[i].AttHasDefault,
-			IsDropped:  atts[i].AttIsDropped,
-			TypName:    atts[i].AttTypName,
-			Encoding:   atts[i].AttEncoding,
-			Comment:    atts[i].AttComment,
+			Name:       atts[i].Name,
+			NotNull:    atts[i].NotNull,
+			HasDefault: atts[i].HasDefault,
+			IsDropped:  atts[i].IsDropped,
+			TypeName:   atts[i].TypeName,
+			Encoding:   atts[i].Encoding,
+			Comment:    atts[i].Comment,
 			DefaultVal: defaultVal,
 		}
 		colDefs = append(colDefs, colDef)
@@ -133,7 +133,7 @@ func printColumnStatements(predataFile io.Writer, table utils.Relation, columnDe
 	lines := make([]string, 0)
 	for _, column := range columnDefs {
 		if !column.IsDropped {
-			line := fmt.Sprintf("\t%s %s", utils.QuoteIdent(column.Name), column.TypName)
+			line := fmt.Sprintf("\t%s %s", utils.QuoteIdent(column.Name), column.TypeName)
 			if column.HasDefault {
 				line += fmt.Sprintf(" DEFAULT %s", column.DefaultVal)
 			}

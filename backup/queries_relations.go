@@ -46,18 +46,18 @@ ORDER BY schemaname, relationname;`
 	return results
 }
 
-type QueryTableAtts struct {
-	AttNum        int
-	AttName       string
-	AttNotNull    bool
-	AttHasDefault bool
-	AttIsDropped  bool
-	AttTypName    string
-	AttEncoding   string
-	AttComment    string
+type QueryTableAttributes struct {
+	AttNum     int
+	Name       string `db:"attname"`
+	NotNull    bool   `db:"attnotnull"`
+	HasDefault bool   `db:"atthasdefault"`
+	IsDropped  bool   `db:"attisdropped"`
+	TypeName   string `db:"atttypname"`
+	Encoding   string `db:"attencoding"`
+	Comment    string `db:"attcomment"`
 }
 
-func GetTableAttributes(connection *utils.DBConn, oid uint32) []QueryTableAtts {
+func GetTableAttributes(connection *utils.DBConn, oid uint32) []QueryTableAttributes {
 	// This query is adapted from the getTableAttrs() function in pg_dump.c.
 	query := fmt.Sprintf(`
 SELECT a.attnum,
@@ -78,7 +78,7 @@ WHERE a.attrelid = %d
 ORDER BY a.attrelid,
 	a.attnum;`, oid)
 
-	results := make([]QueryTableAtts, 0)
+	results := make([]QueryTableAttributes, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results

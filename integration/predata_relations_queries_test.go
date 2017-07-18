@@ -59,9 +59,9 @@ PARTITION BY LIST (gender)
 
 			tableAtts := backup.GetTableAttributes(connection, oid)
 
-			columnA := backup.QueryTableAtts{1, "a", false, false, false, "double precision", "", "att comment"}
-			columnC := backup.QueryTableAtts{3, "c", true, false, false, "text", "", ""}
-			columnD := backup.QueryTableAtts{4, "d", false, true, false, "integer", "", ""}
+			columnA := backup.QueryTableAttributes{1, "a", false, false, false, "double precision", "", "att comment"}
+			columnC := backup.QueryTableAttributes{3, "c", true, false, false, "text", "", ""}
+			columnD := backup.QueryTableAttributes{4, "d", false, true, false, "integer", "", ""}
 
 			Expect(len(tableAtts)).To(Equal(3))
 
@@ -76,8 +76,8 @@ PARTITION BY LIST (gender)
 
 			tableAtts := backup.GetTableAttributes(connection, uint32(oid))
 
-			columnA := backup.QueryTableAtts{1, "a", false, false, false, "double precision", "compresstype=none,blocksize=32768,compresslevel=0", ""}
-			columnB := backup.QueryTableAtts{2, "b", false, false, false, "text", "blocksize=65536,compresstype=none,compresslevel=0", ""}
+			columnA := backup.QueryTableAttributes{1, "a", false, false, false, "double precision", "compresstype=none,blocksize=32768,compresslevel=0", ""}
+			columnB := backup.QueryTableAttributes{2, "b", false, false, false, "text", "blocksize=65536,compresstype=none,compresslevel=0", ""}
 
 			Expect(len(tableAtts)).To(Equal(2))
 

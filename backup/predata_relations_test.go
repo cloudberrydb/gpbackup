@@ -434,18 +434,18 @@ COMMENT ON COLUMN public.tablename.j IS 'This is another column comment.';`)
 		})
 	})
 	Describe("ConsolidateColumnInfo", func() {
-		attsOne := backup.QueryTableAtts{1, "i", false, false, false, "integer", "", ""}
-		attsTwo := backup.QueryTableAtts{2, "j", false, false, false, "integer", "", ""}
-		attsThree := backup.QueryTableAtts{3, "k", false, false, false, "integer", "", ""}
-		attsOneDef := backup.QueryTableAtts{1, "i", false, true, false, "integer", "", ""}
-		attsTwoDef := backup.QueryTableAtts{2, "j", false, true, false, "integer", "", ""}
-		attsThreeDef := backup.QueryTableAtts{3, "k", false, true, false, "integer", "", ""}
+		attsOne := backup.QueryTableAttributes{1, "i", false, false, false, "integer", "", ""}
+		attsTwo := backup.QueryTableAttributes{2, "j", false, false, false, "integer", "", ""}
+		attsThree := backup.QueryTableAttributes{3, "k", false, false, false, "integer", "", ""}
+		attsOneDef := backup.QueryTableAttributes{1, "i", false, true, false, "integer", "", ""}
+		attsTwoDef := backup.QueryTableAttributes{2, "j", false, true, false, "integer", "", ""}
+		attsThreeDef := backup.QueryTableAttributes{3, "k", false, true, false, "integer", "", ""}
 
 		defaultsOne := backup.QueryTableDefault{1, "1"}
 		defaultsTwo := backup.QueryTableDefault{2, "2"}
 		defaultsThree := backup.QueryTableDefault{3, "3"}
 		It("has no DEFAULT columns", func() {
-			atts := []backup.QueryTableAtts{attsOne, attsTwo, attsThree}
+			atts := []backup.QueryTableAttributes{attsOne, attsTwo, attsThree}
 			defaults := []backup.QueryTableDefault{}
 			info := backup.ConsolidateColumnInfo(atts, defaults)
 			Expect(info[0].DefaultVal).To(Equal(""))
@@ -453,7 +453,7 @@ COMMENT ON COLUMN public.tablename.j IS 'This is another column comment.';`)
 			Expect(info[2].DefaultVal).To(Equal(""))
 		})
 		It("has one DEFAULT column (i)", func() {
-			atts := []backup.QueryTableAtts{attsOneDef, attsTwo, attsThree}
+			atts := []backup.QueryTableAttributes{attsOneDef, attsTwo, attsThree}
 			defaults := []backup.QueryTableDefault{defaultsOne}
 			info := backup.ConsolidateColumnInfo(atts, defaults)
 			Expect(info[0].DefaultVal).To(Equal("1"))
@@ -461,7 +461,7 @@ COMMENT ON COLUMN public.tablename.j IS 'This is another column comment.';`)
 			Expect(info[2].DefaultVal).To(Equal(""))
 		})
 		It("has one DEFAULT column (j)", func() {
-			atts := []backup.QueryTableAtts{attsOne, attsTwoDef, attsThree}
+			atts := []backup.QueryTableAttributes{attsOne, attsTwoDef, attsThree}
 			defaults := []backup.QueryTableDefault{defaultsTwo}
 			info := backup.ConsolidateColumnInfo(atts, defaults)
 			Expect(info[0].DefaultVal).To(Equal(""))
@@ -469,7 +469,7 @@ COMMENT ON COLUMN public.tablename.j IS 'This is another column comment.';`)
 			Expect(info[2].DefaultVal).To(Equal(""))
 		})
 		It("has one DEFAULT column (k)", func() {
-			atts := []backup.QueryTableAtts{attsOne, attsTwo, attsThreeDef}
+			atts := []backup.QueryTableAttributes{attsOne, attsTwo, attsThreeDef}
 			defaults := []backup.QueryTableDefault{defaultsThree}
 			info := backup.ConsolidateColumnInfo(atts, defaults)
 			Expect(info[0].DefaultVal).To(Equal(""))
@@ -477,7 +477,7 @@ COMMENT ON COLUMN public.tablename.j IS 'This is another column comment.';`)
 			Expect(info[2].DefaultVal).To(Equal("3"))
 		})
 		It("has two DEFAULT columns (i and j)", func() {
-			atts := []backup.QueryTableAtts{attsOneDef, attsTwoDef, attsThree}
+			atts := []backup.QueryTableAttributes{attsOneDef, attsTwoDef, attsThree}
 			defaults := []backup.QueryTableDefault{defaultsOne, defaultsTwo}
 			info := backup.ConsolidateColumnInfo(atts, defaults)
 			Expect(info[0].DefaultVal).To(Equal("1"))
@@ -485,7 +485,7 @@ COMMENT ON COLUMN public.tablename.j IS 'This is another column comment.';`)
 			Expect(info[2].DefaultVal).To(Equal(""))
 		})
 		It("has two DEFAULT columns (j and k)", func() {
-			atts := []backup.QueryTableAtts{attsOne, attsTwoDef, attsThreeDef}
+			atts := []backup.QueryTableAttributes{attsOne, attsTwoDef, attsThreeDef}
 			defaults := []backup.QueryTableDefault{defaultsTwo, defaultsThree}
 			info := backup.ConsolidateColumnInfo(atts, defaults)
 			Expect(info[0].DefaultVal).To(Equal(""))
@@ -493,7 +493,7 @@ COMMENT ON COLUMN public.tablename.j IS 'This is another column comment.';`)
 			Expect(info[2].DefaultVal).To(Equal("3"))
 		})
 		It("has two DEFAULT columns (i and k)", func() {
-			atts := []backup.QueryTableAtts{attsOneDef, attsTwo, attsThreeDef}
+			atts := []backup.QueryTableAttributes{attsOneDef, attsTwo, attsThreeDef}
 			defaults := []backup.QueryTableDefault{defaultsOne, defaultsThree}
 			info := backup.ConsolidateColumnInfo(atts, defaults)
 			Expect(info[0].DefaultVal).To(Equal("1"))
@@ -501,7 +501,7 @@ COMMENT ON COLUMN public.tablename.j IS 'This is another column comment.';`)
 			Expect(info[2].DefaultVal).To(Equal("3"))
 		})
 		It("has all DEFAULT columns", func() {
-			atts := []backup.QueryTableAtts{attsOneDef, attsTwoDef, attsThreeDef}
+			atts := []backup.QueryTableAttributes{attsOneDef, attsTwoDef, attsThreeDef}
 			defaults := []backup.QueryTableDefault{defaultsOne, defaultsTwo, defaultsThree}
 			info := backup.ConsolidateColumnInfo(atts, defaults)
 			Expect(info[0].DefaultVal).To(Equal("1"))
