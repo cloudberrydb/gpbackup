@@ -22,19 +22,31 @@ type ObjectMetadata struct {
 }
 
 type ACL struct {
-	Grantee    string
-	Select     bool
-	Insert     bool
-	Update     bool
-	Delete     bool
-	Truncate   bool
-	References bool
-	Trigger    bool
-	Usage      bool
-	Execute    bool
-	Create     bool
-	CreateTemp bool
-	Connect    bool
+	Grantee             string
+	Select              bool
+	SelectWithGrant     bool
+	Insert              bool
+	InsertWithGrant     bool
+	Update              bool
+	UpdateWithGrant     bool
+	Delete              bool
+	DeleteWithGrant     bool
+	Truncate            bool
+	TruncateWithGrant   bool
+	References          bool
+	ReferencesWithGrant bool
+	Trigger             bool
+	TriggerWithGrant    bool
+	Usage               bool
+	UsageWithGrant      bool
+	Execute             bool
+	ExecuteWithGrant    bool
+	Create              bool
+	CreateWithGrant     bool
+	Temporary           bool
+	TemporaryWithGrant  bool
+	Connect             bool
+	ConnectWithGrant    bool
 }
 
 type MetadataMap map[uint32]ObjectMetadata
@@ -46,7 +58,7 @@ func PrintObjectMetadata(file io.Writer, obj ObjectMetadata, objectName string, 
 }
 
 func ParseACL(aclStr string) *ACL {
-	aclRegex := regexp.MustCompile(`^(?:\"(.*)\"|(.*))=([a-zA-Z]*)/(?:\"(.*)\"|(.*))$`)
+	aclRegex := regexp.MustCompile(`^(?:\"(.*)\"|(.*))=([a-zA-Z\*]*)/(?:\"(.*)\"|(.*))$`)
 	grantee := ""
 	acl := ACL{}
 	if matches := aclRegex.FindStringSubmatch(aclStr); len(matches) != 0 {
@@ -58,6 +70,7 @@ func ParseACL(aclStr string) *ACL {
 			grantee = "" // Empty string indicates privileges granted to PUBLIC
 		}
 		permStr := matches[3]
+		var lastChar rune
 		for _, char := range permStr {
 			switch char {
 			case 'a':
@@ -81,10 +94,50 @@ func ParseACL(aclStr string) *ACL {
 			case 'C':
 				acl.Create = true
 			case 'T':
-				acl.CreateTemp = true
+				acl.Temporary = true
 			case 'c':
 				acl.Connect = true
+			case '*':
+				switch lastChar {
+				case 'a':
+					acl.Insert = false
+					acl.InsertWithGrant = true
+				case 'r':
+					acl.Select = false
+					acl.SelectWithGrant = true
+				case 'w':
+					acl.Update = false
+					acl.UpdateWithGrant = true
+				case 'd':
+					acl.Delete = false
+					acl.DeleteWithGrant = true
+				case 'D':
+					acl.Truncate = false
+					acl.TruncateWithGrant = true
+				case 'x':
+					acl.References = false
+					acl.ReferencesWithGrant = true
+				case 't':
+					acl.Trigger = false
+					acl.TriggerWithGrant = true
+				case 'X':
+					acl.Execute = false
+					acl.ExecuteWithGrant = true
+				case 'U':
+					acl.Usage = false
+					acl.UsageWithGrant = true
+				case 'C':
+					acl.Create = false
+					acl.CreateWithGrant = true
+				case 'T':
+					acl.Temporary = false
+					acl.TemporaryWithGrant = true
+				case 'c':
+					acl.Connect = false
+					acl.ConnectWithGrant = true
+				}
 			}
+			lastChar = char
 		}
 		acl.Grantee = grantee
 		return &acl
@@ -110,7 +163,9 @@ func (obj ObjectMetadata) GetPrivilegesStatements(objectName string, objectType 
 			 * comes from src/include/utils/acl.h in GPDB.
 			 */
 			hasAllPrivileges := false
-			grantStr := ""
+			hasAllPrivilegesWithGrant := false
+			privStr := ""
+			privWithGrantStr := ""
 			grantee := ""
 			if acl.Grantee == "" {
 				grantee = "PUBLIC"
@@ -119,57 +174,121 @@ func (obj ObjectMetadata) GetPrivilegesStatements(objectName string, objectType 
 			}
 			switch objectType {
 			case "DATABASE":
-				hasAllPrivileges = acl.Create && acl.CreateTemp && acl.Connect
+				hasAllPrivileges = acl.Create && acl.Temporary && acl.Connect
+				hasAllPrivilegesWithGrant = acl.CreateWithGrant && acl.TemporaryWithGrant && acl.ConnectWithGrant
 			case "FUNCTION":
 				hasAllPrivileges = acl.Execute
+				hasAllPrivilegesWithGrant = acl.ExecuteWithGrant
 			case "LANGUAGE":
 				hasAllPrivileges = acl.Usage
+				hasAllPrivilegesWithGrant = acl.UsageWithGrant
 			case "PROTOCOL":
 				hasAllPrivileges = acl.Select && acl.Insert
+				hasAllPrivilegesWithGrant = acl.SelectWithGrant && acl.InsertWithGrant
 			case "SCHEMA":
 				hasAllPrivileges = acl.Usage && acl.Create
+				hasAllPrivilegesWithGrant = acl.UsageWithGrant && acl.CreateWithGrant
 			case "SEQUENCE":
 				hasAllPrivileges = acl.Select && acl.Update && acl.Usage
+				hasAllPrivilegesWithGrant = acl.SelectWithGrant && acl.UpdateWithGrant && acl.UsageWithGrant
 			case "TABLE":
 				hasAllPrivileges = acl.Select && acl.Insert && acl.Update && acl.Delete && acl.Truncate && acl.References && acl.Trigger
+				hasAllPrivilegesWithGrant = acl.SelectWithGrant && acl.InsertWithGrant && acl.UpdateWithGrant && acl.DeleteWithGrant &&
+					acl.TruncateWithGrant && acl.ReferencesWithGrant && acl.TriggerWithGrant
 			case "VIEW":
 				hasAllPrivileges = acl.Select && acl.Insert && acl.Update && acl.Delete && acl.Truncate && acl.References && acl.Trigger
+				hasAllPrivilegesWithGrant = acl.SelectWithGrant && acl.InsertWithGrant && acl.UpdateWithGrant && acl.DeleteWithGrant &&
+					acl.TruncateWithGrant && acl.ReferencesWithGrant && acl.TriggerWithGrant
 			}
 			if hasAllPrivileges {
-				grantStr = "ALL"
+				privStr = "ALL"
 			} else {
-				grantList := make([]string, 0)
+				privList := make([]string, 0)
 				if acl.Select {
-					grantList = append(grantList, "SELECT")
+					privList = append(privList, "SELECT")
 				}
 				if acl.Insert {
-					grantList = append(grantList, "INSERT")
+					privList = append(privList, "INSERT")
 				}
 				if acl.Update {
-					grantList = append(grantList, "UPDATE")
+					privList = append(privList, "UPDATE")
 				}
 				if acl.Delete {
-					grantList = append(grantList, "DELETE")
+					privList = append(privList, "DELETE")
 				}
 				if acl.Truncate {
-					grantList = append(grantList, "TRUNCATE")
+					privList = append(privList, "TRUNCATE")
 				}
 				if acl.References {
-					grantList = append(grantList, "REFERENCES")
+					privList = append(privList, "REFERENCES")
 				}
 				if acl.Trigger {
-					grantList = append(grantList, "TRIGGER")
+					privList = append(privList, "TRIGGER")
 				}
 				if acl.Execute {
-					grantList = append(grantList, "EXECUTE")
+					privList = append(privList, "EXECUTE")
 				}
 				if acl.Usage {
-					grantList = append(grantList, "USAGE")
+					privList = append(privList, "USAGE")
 				}
-				grantStr = strings.Join(grantList, ",")
+				if acl.Create {
+					privList = append(privList, "CREATE")
+				}
+				if acl.Temporary {
+					privList = append(privList, "TEMPORARY")
+				}
+				if acl.Connect {
+					privList = append(privList, "CONNECT")
+				}
+				privStr = strings.Join(privList, ",")
 			}
-			if grantStr != "" {
-				statements = append(statements, fmt.Sprintf("GRANT %s ON %s%s TO %s;", grantStr, typeStr, objectName, grantee))
+			if hasAllPrivilegesWithGrant {
+				privWithGrantStr = "ALL"
+			} else {
+				privWithGrantList := make([]string, 0)
+				if acl.SelectWithGrant {
+					privWithGrantList = append(privWithGrantList, "SELECT")
+				}
+				if acl.InsertWithGrant {
+					privWithGrantList = append(privWithGrantList, "INSERT")
+				}
+				if acl.UpdateWithGrant {
+					privWithGrantList = append(privWithGrantList, "UPDATE")
+				}
+				if acl.DeleteWithGrant {
+					privWithGrantList = append(privWithGrantList, "DELETE")
+				}
+				if acl.TruncateWithGrant {
+					privWithGrantList = append(privWithGrantList, "TRUNCATE")
+				}
+				if acl.ReferencesWithGrant {
+					privWithGrantList = append(privWithGrantList, "REFERENCES")
+				}
+				if acl.TriggerWithGrant {
+					privWithGrantList = append(privWithGrantList, "TRIGGER")
+				}
+				if acl.ExecuteWithGrant {
+					privWithGrantList = append(privWithGrantList, "EXECUTE")
+				}
+				if acl.UsageWithGrant {
+					privWithGrantList = append(privWithGrantList, "USAGE")
+				}
+				if acl.CreateWithGrant {
+					privWithGrantList = append(privWithGrantList, "CREATE")
+				}
+				if acl.TemporaryWithGrant {
+					privWithGrantList = append(privWithGrantList, "TEMPORARY")
+				}
+				if acl.ConnectWithGrant {
+					privWithGrantList = append(privWithGrantList, "CONNECT")
+				}
+				privWithGrantStr = strings.Join(privWithGrantList, ",")
+			}
+			if privStr != "" {
+				statements = append(statements, fmt.Sprintf("GRANT %s ON %s%s TO %s;", privStr, typeStr, objectName, grantee))
+			}
+			if privWithGrantStr != "" {
+				statements = append(statements, fmt.Sprintf("GRANT %s ON %s%s TO %s WITH GRANT OPTION;", privWithGrantStr, typeStr, objectName, grantee))
 			}
 		}
 	}

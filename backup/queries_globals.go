@@ -11,6 +11,23 @@ import (
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
+type QueryDatabaseName struct {
+	Oid  uint32
+	Name string `db:"datname"`
+}
+
+func GetDatabaseNames(connection *utils.DBConn) []QueryDatabaseName {
+	query := `
+SELECT
+	oid,
+	datname
+FROM pg_database;`
+
+	results := make([]QueryDatabaseName, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
+}
 func GetDatabaseGUCs(connection *utils.DBConn) []string {
 	query := fmt.Sprintf(`
 SELECT ('SET ' || option_name || ' TO ' || option_value) AS string
@@ -32,7 +49,6 @@ type QueryResourceQueue struct {
 }
 
 func GetResourceQueues(connection *utils.DBConn) []QueryResourceQueue {
-	results := make([]QueryResourceQueue, 0)
 	/*
 	 * maxcost and mincost are represented as real types in the database, but we round to two decimals
 	 * and cast them as text for more consistent formatting. pg_dumpall does this as well.
@@ -57,6 +73,7 @@ FROM
 		ON r.oid = memory_capability.resqueueid
 	LEFT JOIN pg_shdescription descriptions ON r.oid = descriptions.objoid;
 `
+	results := make([]QueryResourceQueue, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results

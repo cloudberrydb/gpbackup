@@ -102,8 +102,26 @@ func DefaultACLForType(grantee string, objType string) backup.ACL {
 		Usage:      objType == "LANGUAGE" || objType == "SCHEMA" || objType == "SEQUENCE",
 		Execute:    objType == "FUNCTION",
 		Create:     objType == "DATABASE" || objType == "SCHEMA",
-		CreateTemp: objType == "DATABASE",
+		Temporary:  objType == "DATABASE",
 		Connect:    objType == "DATABASE",
+	}
+}
+
+func DefaultACLForTypeWithGrant(grantee string, objType string) backup.ACL {
+	return backup.ACL{
+		Grantee:             grantee,
+		SelectWithGrant:     objType == "PROTOCOL" || objType == "SEQUENCE" || objType == "TABLE" || objType == "VIEW",
+		InsertWithGrant:     objType == "PROTOCOL" || objType == "TABLE" || objType == "VIEW",
+		UpdateWithGrant:     objType == "SEQUENCE" || objType == "TABLE" || objType == "VIEW",
+		DeleteWithGrant:     objType == "TABLE" || objType == "VIEW",
+		TruncateWithGrant:   objType == "TABLE" || objType == "VIEW",
+		ReferencesWithGrant: objType == "TABLE" || objType == "VIEW",
+		TriggerWithGrant:    objType == "TABLE" || objType == "VIEW",
+		UsageWithGrant:      objType == "LANGUAGE" || objType == "SCHEMA" || objType == "SEQUENCE",
+		ExecuteWithGrant:    objType == "FUNCTION",
+		CreateWithGrant:     objType == "DATABASE" || objType == "SCHEMA",
+		TemporaryWithGrant:  objType == "DATABASE",
+		ConnectWithGrant:    objType == "DATABASE",
 	}
 }
 
@@ -129,6 +147,45 @@ func DefaultACLWithout(grantee string, objType string, revoke ...string) backup.
 			defaultACL.Execute = false
 		case "USAGE":
 			defaultACL.Usage = false
+		case "CREATE":
+			defaultACL.Create = false
+		case "TEMPORARY":
+			defaultACL.Temporary = false
+		case "CONNECT":
+			defaultACL.Connect = false
+		}
+	}
+	return defaultACL
+}
+
+func DefaultACLWithGrantWithout(grantee string, objType string, revoke ...string) backup.ACL {
+	defaultACL := DefaultACLForTypeWithGrant(grantee, objType)
+	for _, priv := range revoke {
+		switch priv {
+		case "SELECT":
+			defaultACL.SelectWithGrant = false
+		case "INSERT":
+			defaultACL.InsertWithGrant = false
+		case "UPDATE":
+			defaultACL.UpdateWithGrant = false
+		case "DELETE":
+			defaultACL.DeleteWithGrant = false
+		case "TRUNCATE":
+			defaultACL.TruncateWithGrant = false
+		case "REFERENCES":
+			defaultACL.ReferencesWithGrant = false
+		case "TRIGGER":
+			defaultACL.TriggerWithGrant = false
+		case "EXECUTE":
+			defaultACL.ExecuteWithGrant = false
+		case "USAGE":
+			defaultACL.UsageWithGrant = false
+		case "CREATE":
+			defaultACL.CreateWithGrant = false
+		case "TEMPORARY":
+			defaultACL.TemporaryWithGrant = false
+		case "CONNECT":
+			defaultACL.ConnectWithGrant = false
 		}
 	}
 	return defaultACL

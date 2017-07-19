@@ -106,9 +106,9 @@ func backupGlobal(filename string) {
 	PrintSessionGUCs(globalFile, gucs)
 
 	logger.Verbose("Writing CREATE DATABASE statement to global file")
+	dbnames := GetDatabaseNames(connection)
 	dbMetadata := GetMetadataForObjectType(connection, "", "datacl", "datdba", "pg_database")
-	dbOid := OidFromObjectName(connection, connection.DBName, "datname", "pg_database")
-	PrintCreateDatabaseStatement(globalFile, connection.DBName, dbMetadata[dbOid])
+	PrintCreateDatabaseStatement(globalFile, connection.DBName, dbnames, dbMetadata)
 
 	logger.Verbose("Writing database GUCs to global file")
 	databaseGucs := GetDatabaseGUCs(connection)

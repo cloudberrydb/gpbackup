@@ -45,8 +45,8 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "REVOKE ALL ON DATABASE testdb FROM anothertestRole")
 			testutils.AssertQueryRuns(connection, "COMMENT ON DATABASE testdb IS 'This is a database comment.'")
 			expectedMetadata := backup.ObjectMetadata{[]backup.ACL{
-				{Grantee: "", CreateTemp: true, Connect: true},
-				{Grantee: "anothertestrole", Create: true, CreateTemp: true, Connect: true},
+				{Grantee: "", Temporary: true, Connect: true},
+				{Grantee: "anothertestrole", Create: true, Temporary: true, Connect: true},
 			}, "anothertestrole", "This is a database comment."}
 
 			resultMetadataMap := backup.GetMetadataForObjectType(connection, "", "datacl", "datdba", "pg_database")

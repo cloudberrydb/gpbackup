@@ -33,10 +33,12 @@ SET default_with_oids = %s;
 `, gucs.ClientEncoding, gucs.StdConformingStrings, gucs.DefaultWithOids)
 }
 
-func PrintCreateDatabaseStatement(globalFile io.Writer, dbname string, dbMetadata ObjectMetadata) {
+func PrintCreateDatabaseStatement(globalFile io.Writer, dbname string, allDBs []QueryDatabaseName, dbMetadata MetadataMap) {
 	dbname = utils.QuoteIdent(dbname)
 	utils.MustPrintf(globalFile, "\n\nCREATE DATABASE %s;", dbname)
-	PrintObjectMetadata(globalFile, dbMetadata, dbname, "DATABASE")
+	for _, db := range allDBs {
+		PrintObjectMetadata(globalFile, dbMetadata[db.Oid], db.Name, "DATABASE")
+	}
 }
 
 func PrintDatabaseGUCs(globalFile io.Writer, gucs []string, dbname string) {

@@ -19,7 +19,12 @@ var _ = Describe("backup/predata_shared tests", func() {
 		hasMostPrivileges := testutils.DefaultACLForType("testrole", "TABLE")
 		hasMostPrivileges.Trigger = false
 		hasSinglePrivilege := backup.ACL{Grantee: "", Trigger: true}
+		hasAllPrivilegesWithGrant := testutils.DefaultACLForTypeWithGrant("anothertestrole", "TABLE")
+		hasMostPrivilegesWithGrant := testutils.DefaultACLForTypeWithGrant("testrole", "TABLE")
+		hasMostPrivilegesWithGrant.TriggerWithGrant = false
+		hasSinglePrivilegeWithGrant := backup.ACL{Grantee: "", TriggerWithGrant: true}
 		privileges := []backup.ACL{hasAllPrivileges, hasMostPrivileges, hasSinglePrivilege}
+		privilegesWithGrant := []backup.ACL{hasAllPrivilegesWithGrant, hasMostPrivilegesWithGrant, hasSinglePrivilegeWithGrant}
 		It("prints a block with a table comment", func() {
 			tableMetadata := backup.ObjectMetadata{Comment: "This is a table comment."}
 			backup.PrintObjectMetadata(buffer, tableMetadata, "public.tablename", "TABLE")
@@ -43,6 +48,25 @@ REVOKE ALL ON TABLE public.tablename FROM PUBLIC;
 GRANT ALL ON TABLE public.tablename TO anothertestrole;
 GRANT SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES ON TABLE public.tablename TO testrole;
 GRANT TRIGGER ON TABLE public.tablename TO PUBLIC;`)
+		})
+		It("prints a block of REVOKE and GRANT statements WITH GRANT OPTION", func() {
+			tableMetadata := backup.ObjectMetadata{Privileges: privilegesWithGrant}
+			backup.PrintObjectMetadata(buffer, tableMetadata, "public.tablename", "TABLE")
+			testutils.ExpectRegexp(buffer, `
+
+REVOKE ALL ON TABLE public.tablename FROM PUBLIC;
+GRANT ALL ON TABLE public.tablename TO anothertestrole WITH GRANT OPTION;
+GRANT SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES ON TABLE public.tablename TO testrole WITH GRANT OPTION;
+GRANT TRIGGER ON TABLE public.tablename TO PUBLIC WITH GRANT OPTION;`)
+		})
+		It("prints a block of REVOKE and GRANT statements, some with WITH GRANT OPTION, some without", func() {
+			tableMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{hasAllPrivileges, hasMostPrivilegesWithGrant}}
+			backup.PrintObjectMetadata(buffer, tableMetadata, "public.tablename", "TABLE")
+			testutils.ExpectRegexp(buffer, `
+
+REVOKE ALL ON TABLE public.tablename FROM PUBLIC;
+GRANT ALL ON TABLE public.tablename TO anothertestrole;
+GRANT SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES ON TABLE public.tablename TO testrole WITH GRANT OPTION;`)
 		})
 		It("prints both an ALTER TABLE ... OWNER TO statement and a table comment", func() {
 			tableMetadata := backup.ObjectMetadata{Comment: "This is a table comment.", Owner: "testrole"}

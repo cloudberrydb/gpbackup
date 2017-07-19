@@ -29,13 +29,15 @@ SET default_with_oids = false`)
 	})
 	Describe("PrintCreateDatabaseStatement", func() {
 		It("prints a basic CREATE DATABASE statement", func() {
-			emptyMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{}}
-			backup.PrintCreateDatabaseStatement(buffer, "testdb", emptyMetadata)
+			dbs := []backup.QueryDatabaseName{}
+			emptyMetadataMap := backup.MetadataMap{}
+			backup.PrintCreateDatabaseStatement(buffer, "testdb", dbs, emptyMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE DATABASE testdb;`)
 		})
 		It("prints a CREATE DATABASE statement with privileges, an owner, and a comment", func() {
-			dbMetadata := testutils.DefaultMetadataMap("DATABASE", true, true, true)[1]
-			backup.PrintCreateDatabaseStatement(buffer, "testdb", dbMetadata)
+			dbs := []backup.QueryDatabaseName{{1, "testdb"}, {2, "otherdb"}}
+			dbMetadataMap := testutils.DefaultMetadataMap("DATABASE", true, true, true)
+			backup.PrintCreateDatabaseStatement(buffer, "testdb", dbs, dbMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE DATABASE testdb;
 
 COMMENT ON DATABASE testdb IS 'This is a database comment.';
@@ -47,6 +49,26 @@ ALTER DATABASE testdb OWNER TO testrole;
 REVOKE ALL ON DATABASE testdb FROM PUBLIC;
 REVOKE ALL ON DATABASE testdb FROM testrole;
 GRANT ALL ON DATABASE testdb TO testrole;`)
+		})
+		It("prints a CREATE DATABASE statement with privileges for testdb and only prints privileges for otherdb", func() {
+			dbs := []backup.QueryDatabaseName{{1, "testdb"}, {2, "otherdb"}}
+			dbMetadataMap := testutils.DefaultMetadataMap("DATABASE", true, true, true)
+			dbMetadataMap[2] = backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "testrole", Create: true}}}
+			backup.PrintCreateDatabaseStatement(buffer, "testdb", dbs, dbMetadataMap)
+			testutils.ExpectRegexp(buffer, `CREATE DATABASE testdb;
+
+COMMENT ON DATABASE testdb IS 'This is a database comment.';
+
+
+ALTER DATABASE testdb OWNER TO testrole;
+
+
+REVOKE ALL ON DATABASE testdb FROM PUBLIC;
+REVOKE ALL ON DATABASE testdb FROM testrole;
+GRANT ALL ON DATABASE testdb TO testrole;
+
+REVOKE ALL ON DATABASE otherdb FROM PUBLIC;
+GRANT CREATE ON DATABASE otherdb TO testrole;`)
 		})
 	})
 	Describe("PrintDatabaseGUCs", func() {
