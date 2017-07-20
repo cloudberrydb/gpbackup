@@ -90,7 +90,6 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION base_fn_in(cstring) RETURNS base_type AS 'boolin' LANGUAGE internal")
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION base_fn_out(base_type) RETURNS cstring AS 'boolout' LANGUAGE internal")
 			testutils.AssertQueryRuns(connection, "CREATE TYPE base_type(INPUT=base_fn_in, OUTPUT=base_fn_out, INTERNALLENGTH=8, PASSEDBYVALUE, ALIGNMENT=char, STORAGE=plain, DEFAULT=0, ELEMENT=integer, DELIMITER=';')")
-			testutils.AssertQueryRuns(connection, "COMMENT ON TYPE base_type IS 'this is a type comment'")
 
 			results := backup.GetTypeDefinitions(connection)
 
@@ -116,7 +115,6 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION base_fn_in(cstring) RETURNS base_type AS 'boolin' LANGUAGE internal")
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION base_fn_out(base_type) RETURNS cstring AS 'boolout' LANGUAGE internal")
 			testutils.AssertQueryRuns(connection, "CREATE TYPE base_type(INPUT=base_fn_in, OUTPUT=base_fn_out, INTERNALLENGTH=8, PASSEDBYVALUE, ALIGNMENT=char, STORAGE=plain, DEFAULT=0, ELEMENT=integer, DELIMITER=';')")
-			testutils.AssertQueryRuns(connection, "COMMENT ON TYPE base_type IS 'this is a type comment'")
 			testutils.AssertQueryRuns(connection, "CREATE TYPE enum_type AS ENUM ('label1','label2','label3')")
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE enum_type")
 
@@ -139,6 +137,20 @@ var _ = Describe("backup integration tests", func() {
 			results := backup.GetTypeDefinitions(connection)
 
 			Expect(len(results)).To(Equal(0))
+		})
+		It("returns a slice for a domain type", func() {
+			domainType := backup.TypeDefinition{
+				Oid: 1, Type: "d", TypeSchema: "public", TypeName: "domain1", AttName: "", AttType: "", Input: "domain_in", Output: "numeric_out",
+				Receive: "domain_recv", Send: "numeric_send", ModIn: "-", ModOut: "-", InternalLength: -1, IsPassedByValue: false,
+				Alignment: "i", Storage: "m", DefaultVal: "4", Element: "-", Delimiter: ",", EnumLabels: "", BaseType: "numeric",
+			}
+			testutils.AssertQueryRuns(connection, "CREATE DOMAIN domain1 AS numeric DEFAULT 4")
+			defer testutils.AssertQueryRuns(connection, "DROP DOMAIN domain1")
+
+			results := backup.GetTypeDefinitions(connection)
+
+			Expect(len(results)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&results[0], &domainType, "Oid")
 		})
 	})
 })

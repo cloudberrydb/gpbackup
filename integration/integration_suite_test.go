@@ -33,10 +33,10 @@ var _ = BeforeSuite(func() {
 	connection.Connect()
 	// We can't use AssertQueryRuns since if a role already exists it will error
 	connection.Exec("CREATE ROLE testrole SUPERUSER")
-	connection.Exec("CREATE ROLE gpadmin SUPERUSER")
+	connection.Exec("CREATE ROLE anothertestrole SUPERUSER")
 	testutils.AssertQueryRuns(connection, "SET ROLE testrole")
-	testutils.AssertQueryRuns(connection, "ALTER DATABASE testdb OWNER TO gpadmin")
-	testutils.AssertQueryRuns(connection, "ALTER SCHEMA public OWNER TO gpadmin")
+	testutils.AssertQueryRuns(connection, "ALTER DATABASE testdb OWNER TO anothertestrole")
+	testutils.AssertQueryRuns(connection, "ALTER SCHEMA public OWNER TO anothertestrole")
 	testutils.AssertQueryRuns(connection, "DROP PROTOCOL IF EXISTS gphdfs")
 })
 
@@ -47,4 +47,9 @@ var _ = AfterSuite(func() {
 		err := exec.Command("dropdb", "testdb").Run()
 		Expect(err).To(BeNil())
 	}
+	connection1 := utils.NewDBConn("template1")
+	connection1.Connect()
+	testutils.AssertQueryRuns(connection1, "DROP ROLE testrole")
+	testutils.AssertQueryRuns(connection1, "DROP ROLE anothertestrole")
+	connection1.Close()
 })

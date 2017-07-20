@@ -90,17 +90,17 @@ CREATE TYPE public.enum_type AS ENUM (
 	})
 	Describe("PrintCreateBaseTypeStatements", func() {
 		baseSimple := backup.TypeDefinition{1, "public", "base_type", "b", "", "", "input_fn", "output_fn",
-			"-", "-", "-", "-", -1, false, "c", "p", "", "-", "", ""}
+			"-", "-", "-", "-", -1, false, "c", "p", "", "-", "", "", "", false}
 		basePartial := backup.TypeDefinition{1, "public", "base_type", "b", "", "", "input_fn", "output_fn",
-			"receive_fn", "send_fn", "modin_fn", "modout_fn", -1, false, "c", "p", "42", "int4", ",", ""}
+			"receive_fn", "send_fn", "modin_fn", "modout_fn", -1, false, "c", "p", "42", "int4", ",", "", "", false}
 		baseFull := backup.TypeDefinition{1, "public", "base_type", "b", "", "", "input_fn", "output_fn",
-			"receive_fn", "send_fn", "modin_fn", "modout_fn", 16, true, "s", "e", "42", "int4", ",", ""}
+			"receive_fn", "send_fn", "modin_fn", "modout_fn", 16, true, "s", "e", "42", "int4", ",", "", "", false}
 		basePermOne := backup.TypeDefinition{1, "public", "base_type", "b", "", "", "input_fn", "output_fn",
-			"-", "-", "-", "-", -1, false, "d", "m", "", "-", "", ""}
+			"-", "-", "-", "-", -1, false, "d", "m", "", "-", "", "", "", false}
 		basePermTwo := backup.TypeDefinition{1, "public", "base_type", "b", "", "", "input_fn", "output_fn",
-			"-", "-", "-", "-", -1, false, "i", "x", "", "-", "", ""}
+			"-", "-", "-", "-", -1, false, "i", "x", "", "-", "", "", "", false}
 		baseCommentOwner := backup.TypeDefinition{1, "public", "base_type", "b", "", "", "input_fn", "output_fn",
-			"-", "-", "-", "-", -1, false, "c", "p", "", "-", "", ""}
+			"-", "-", "-", "-", -1, false, "c", "p", "", "-", "", "", "", false}
 
 		It("prints a base type with no optional arguments", func() {
 			backup.PrintCreateBaseTypeStatements(buffer, []backup.TypeDefinition{baseSimple}, typeMetadataMap)
@@ -167,18 +167,46 @@ CREATE TYPE public.enum_type AS ENUM (
 );`)
 		})
 	})
-	Describe("PrintShellTypeStatements", func() {
+	Describe("PrintCreateShellTypeStatements", func() {
 		baseOne := backup.TypeDefinition{1, "public", "base_type1", "b", "", "", "input_fn", "output_fn",
-			"-", "-", "-", "-", -1, false, "c", "p", "", "-", "", ""}
+			"-", "-", "-", "-", -1, false, "c", "p", "", "-", "", "", "", false}
 		baseTwo := backup.TypeDefinition{1, "public", "base_type2", "b", "", "", "input_fn", "output_fn",
-			"-", "-", "-", "-", -1, false, "c", "p", "", "-", "", ""}
+			"-", "-", "-", "-", -1, false, "c", "p", "", "-", "", "", "", false}
 		compOne := backup.TypeDefinition{Oid: 1, TypeSchema: "public", TypeName: "composite_type1", Type: "c", AttName: "bar", AttType: "integer"}
 		compTwo := backup.TypeDefinition{Oid: 1, TypeSchema: "public", TypeName: "composite_type2", Type: "c", AttName: "bar", AttType: "integer"}
 		enumOne := backup.TypeDefinition{Oid: 1, TypeSchema: "public", TypeName: "enum_type", Type: "e", EnumLabels: "'bar',\n\t'baz',\n\t'foo'"}
 		It("prints shell type for only a base type", func() {
-			backup.PrintShellTypeStatements(buffer, []backup.TypeDefinition{baseOne, baseTwo, compOne, compTwo, enumOne})
+			backup.PrintCreateShellTypeStatements(buffer, []backup.TypeDefinition{baseOne, baseTwo, compOne, compTwo, enumOne})
 			testutils.ExpectRegexp(buffer, `CREATE TYPE public.base_type1;
 CREATE TYPE public.base_type2;`)
+		})
+	})
+	Describe("PrintCreateDomainStatements", func() {
+		emptyMetadataMap := backup.MetadataMap{}
+		domainOne := testutils.DefaultTypeDefinition("d", "domain1")
+		domainOne.DefaultVal = "4"
+		domainOne.BaseType = "numeric"
+		domainOne.NotNull = true
+		domainTwo := testutils.DefaultTypeDefinition("d", "domain2")
+		domainTwo.BaseType = "varchar"
+		baseOne := testutils.DefaultTypeDefinition("b", "base_type1")
+		compOne := testutils.DefaultTypeDefinition("c", "composite_type1")
+		enumOne := testutils.DefaultTypeDefinition("e", "enum_type")
+		It("prints domain types", func() {
+			backup.PrintCreateDomainStatements(buffer, []backup.TypeDefinition{domainOne, domainTwo, baseOne, compOne, enumOne}, emptyMetadataMap)
+			testutils.ExpectRegexp(buffer, `CREATE DOMAIN public.domain1 AS numeric DEFAULT 4 NOT NULL;
+CREATE DOMAIN public.domain2 AS varchar;`)
+		})
+		It("prints a composite type with comment and owner", func() {
+			typeMetadataMap = testutils.DefaultMetadataMap("DOMAIN", false, true, true)
+			backup.PrintCreateDomainStatements(buffer, []backup.TypeDefinition{domainTwo}, typeMetadataMap)
+			testutils.ExpectRegexp(buffer, `CREATE DOMAIN public.domain2 AS varchar;
+
+
+COMMENT ON DOMAIN public.domain2 IS 'This is a domain comment.';
+
+
+ALTER DOMAIN public.domain2 OWNER TO testrole;`)
 		})
 	})
 })

@@ -122,10 +122,10 @@ PARTITION BY LIST (gender)
 	})
 	Describe("GetConstraints", func() {
 		var (
-			uniqueConstraint = backup.QueryConstraint{0, "uniq2", "u", "UNIQUE (a, b)", "public.constraints_table"}
-			fkConstraint     = backup.QueryConstraint{0, "fk1", "f", "FOREIGN KEY (b) REFERENCES constraints_table(b)", "public.constraints_other_table"}
-			pkConstraint     = backup.QueryConstraint{0, "pk1", "p", "PRIMARY KEY (b)", "public.constraints_table"}
-			checkConstraint  = backup.QueryConstraint{0, "check1", "c", "CHECK (a <> 42)", "public.constraints_table"}
+			uniqueConstraint = backup.QueryConstraint{0, "uniq2", "u", "UNIQUE (a, b)", "public.constraints_table", false}
+			fkConstraint     = backup.QueryConstraint{0, "fk1", "f", "FOREIGN KEY (b) REFERENCES constraints_table(b)", "public.constraints_other_table", false}
+			pkConstraint     = backup.QueryConstraint{0, "pk1", "p", "PRIMARY KEY (b)", "public.constraints_table", false}
+			checkConstraint  = backup.QueryConstraint{0, "check1", "c", "CHECK (a <> 42)", "public.constraints_table", false}
 		)
 		Context("No constraints", func() {
 			It("returns an empty constraint array for a table with no constraints", func() {

@@ -34,11 +34,15 @@ func PrintConstraintStatements(predataFile io.Writer, constraints []QueryConstra
 	}
 	constraints = append(allConstraints, allFkConstraints...)
 
-	alterStr := "\n\nALTER TABLE ONLY %s ADD CONSTRAINT %s %s;\n"
+	alterStr := "\n\nALTER %s %s ADD CONSTRAINT %s %s;\n"
 	for _, constraint := range constraints {
+		objStr := "TABLE ONLY"
+		if constraint.IsDomainConstraint {
+			objStr = "DOMAIN"
+		}
 		conName := utils.QuoteIdent(constraint.ConName)
-		utils.MustPrintf(predataFile, alterStr, constraint.OwningTable, conName, constraint.ConDef)
-		PrintObjectMetadata(predataFile, conMetadata[constraint.Oid], conName, "CONSTRAINT", constraint.OwningTable)
+		utils.MustPrintf(predataFile, alterStr, objStr, constraint.OwningObject, conName, constraint.ConDef)
+		PrintObjectMetadata(predataFile, conMetadata[constraint.Oid], conName, "CONSTRAINT", constraint.OwningObject)
 	}
 }
 

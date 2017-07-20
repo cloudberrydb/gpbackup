@@ -28,9 +28,7 @@ import (
 
 var (
 	// A list of schemas we don't ever want to dump, formatted for use in a WHERE clause
-	nonUserSchemaFilterClause = `nspname NOT LIKE 'pg_temp_%'
-AND nspname NOT LIKE 'pg_toast%'
-AND nspname NOT IN ('gp_toolkit', 'information_schema', 'pg_aoseg', 'pg_bitmapindex', 'pg_catalog')`
+	nonUserSchemaFilterClause = `nspname NOT LIKE 'pg_temp_%' AND nspname NOT LIKE 'pg_toast%' AND nspname NOT IN ('gp_toolkit', 'information_schema', 'pg_aoseg', 'pg_bitmapindex', 'pg_catalog')`
 )
 
 type QueryOid struct {

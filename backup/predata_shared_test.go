@@ -15,7 +15,7 @@ var _ = Describe("backup/predata_shared tests", func() {
 		buffer = gbytes.BufferWithBytes([]byte(""))
 	})
 	Describe("PrintObjectMetadata", func() {
-		hasAllPrivileges := testutils.DefaultACLForType("gpadmin", "TABLE")
+		hasAllPrivileges := testutils.DefaultACLForType("anothertestrole", "TABLE")
 		hasMostPrivileges := testutils.DefaultACLForType("testrole", "TABLE")
 		hasMostPrivileges.Trigger = false
 		hasSinglePrivilege := backup.ACL{Grantee: "", Trigger: true}
@@ -40,7 +40,7 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 			testutils.ExpectRegexp(buffer, `
 
 REVOKE ALL ON TABLE public.tablename FROM PUBLIC;
-GRANT ALL ON TABLE public.tablename TO gpadmin;
+GRANT ALL ON TABLE public.tablename TO anothertestrole;
 GRANT SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES ON TABLE public.tablename TO testrole;
 GRANT TRIGGER ON TABLE public.tablename TO PUBLIC;`)
 		})
@@ -64,7 +64,7 @@ ALTER TABLE public.tablename OWNER TO testrole;
 
 REVOKE ALL ON TABLE public.tablename FROM PUBLIC;
 REVOKE ALL ON TABLE public.tablename FROM testrole;
-GRANT ALL ON TABLE public.tablename TO gpadmin;
+GRANT ALL ON TABLE public.tablename TO anothertestrole;
 GRANT SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES ON TABLE public.tablename TO testrole;
 GRANT TRIGGER ON TABLE public.tablename TO PUBLIC;`)
 		})
@@ -77,7 +77,7 @@ COMMENT ON TABLE public.tablename IS 'This is a table comment.';
 
 
 REVOKE ALL ON TABLE public.tablename FROM PUBLIC;
-GRANT ALL ON TABLE public.tablename TO gpadmin;
+GRANT ALL ON TABLE public.tablename TO anothertestrole;
 GRANT SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES ON TABLE public.tablename TO testrole;
 GRANT TRIGGER ON TABLE public.tablename TO PUBLIC;`)
 		})
@@ -94,7 +94,7 @@ ALTER TABLE public.tablename OWNER TO testrole;
 
 REVOKE ALL ON TABLE public.tablename FROM PUBLIC;
 REVOKE ALL ON TABLE public.tablename FROM testrole;
-GRANT ALL ON TABLE public.tablename TO gpadmin;
+GRANT ALL ON TABLE public.tablename TO anothertestrole;
 GRANT SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES ON TABLE public.tablename TO testrole;
 GRANT TRIGGER ON TABLE public.tablename TO PUBLIC;`)
 		})

@@ -22,7 +22,7 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "REVOKE ALL ON TABLE bar FROM testrole")
 			testutils.AssertQueryRuns(connection, "CREATE TABLE baz(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE baz")
-			testutils.AssertQueryRuns(connection, "GRANT ALL ON TABLE baz TO gpadmin")
+			testutils.AssertQueryRuns(connection, "GRANT ALL ON TABLE baz TO anothertestrole")
 
 			resultMetadataMap := backup.GetMetadataForObjectType(connection, "relnamespace", "relacl", "relowner", "pg_class")
 
@@ -31,7 +31,7 @@ var _ = Describe("backup integration tests", func() {
 			bazOid := backup.OidFromObjectName(connection, "baz", "relname", "pg_class")
 			expectedFoo := backup.ObjectMetadata{Privileges: []backup.ACL{testutils.DefaultACLWithout("testrole", "TABLE", "DELETE")}, Owner: "testrole"}
 			expectedBar := backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "GRANTEE"}}, Owner: "testrole"}
-			expectedBaz := backup.ObjectMetadata{Privileges: []backup.ACL{testutils.DefaultACLForType("gpadmin", "TABLE"), testutils.DefaultACLForType("testrole", "TABLE")}, Owner: "testrole"}
+			expectedBaz := backup.ObjectMetadata{Privileges: []backup.ACL{testutils.DefaultACLForType("anothertestrole", "TABLE"), testutils.DefaultACLForType("testrole", "TABLE")}, Owner: "testrole"}
 			Expect(len(resultMetadataMap)).To(Equal(3))
 			resultFoo := resultMetadataMap[fooOid]
 			resultBar := resultMetadataMap[barOid]
@@ -41,12 +41,13 @@ var _ = Describe("backup integration tests", func() {
 			testutils.ExpectStructsToMatch(&resultBaz, &expectedBaz)
 		})
 		It("returns a slice of default metadata for a database", func() {
-			testutils.AssertQueryRuns(connection, "GRANT ALL ON DATABASE testdb TO gpadmin")
+			testutils.AssertQueryRuns(connection, "GRANT ALL ON DATABASE testdb TO anothertestrole")
+			defer testutils.AssertQueryRuns(connection, "REVOKE ALL ON DATABASE testdb FROM anothertestRole")
 			testutils.AssertQueryRuns(connection, "COMMENT ON DATABASE testdb IS 'This is a database comment.'")
 			expectedMetadata := backup.ObjectMetadata{[]backup.ACL{
-				{Grantee: "gpadmin", Create: true, CreateTemp: true, Connect: true},
 				{Grantee: "", CreateTemp: true, Connect: true},
-			}, "gpadmin", "This is a database comment."}
+				{Grantee: "anothertestrole", Create: true, CreateTemp: true, Connect: true},
+			}, "anothertestrole", "This is a database comment."}
 
 			resultMetadataMap := backup.GetMetadataForObjectType(connection, "", "datacl", "datdba", "pg_database")
 
@@ -54,6 +55,7 @@ var _ = Describe("backup integration tests", func() {
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 		})
+
 		It("returns a slice of default metadata for a table", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE testtable(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE testtable")
@@ -170,6 +172,18 @@ LANGUAGE SQL`)
 
 			oid := backup.OidFromObjectName(connection, "testtype", "typname", "pg_type")
 			expectedMetadata := testutils.DefaultMetadataMap("TYPE", false, true, true)[1]
+			resultMetadata := resultMetadataMap[oid]
+			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
+		})
+		It("returns a slice of default metadata for a domain", func() {
+			testutils.AssertQueryRuns(connection, `CREATE DOMAIN domain_type AS numeric`)
+			defer testutils.AssertQueryRuns(connection, "DROP TYPE domain_type")
+			testutils.AssertQueryRuns(connection, "COMMENT ON DOMAIN domain_type IS 'This is a domain comment.'")
+
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, "typnamespace", "", "typowner", "pg_type")
+
+			oid := backup.OidFromObjectName(connection, "domain_type", "typname", "pg_type")
+			expectedMetadata := testutils.DefaultMetadataMap("DOMAIN", false, true, true)[1]
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 		})

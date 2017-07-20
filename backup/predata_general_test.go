@@ -16,12 +16,12 @@ var _ = Describe("backup/predata_general tests", func() {
 		buffer = gbytes.BufferWithBytes([]byte(""))
 	})
 	Describe("PrintConstraintStatements", func() {
-		uniqueOne := backup.QueryConstraint{1, "tablename_i_key", "u", "UNIQUE (i)", "public.tablename"}
-		uniqueTwo := backup.QueryConstraint{0, "tablename_j_key", "u", "UNIQUE (j)", "public.tablename"}
-		primarySingle := backup.QueryConstraint{0, "tablename_pkey", "p", "PRIMARY KEY (i)", "public.tablename"}
-		primaryComposite := backup.QueryConstraint{0, "tablename_pkey", "p", "PRIMARY KEY (i, j)", "public.tablename"}
-		foreignOne := backup.QueryConstraint{0, "tablename_i_fkey", "f", "FOREIGN KEY (i) REFERENCES other_tablename(a)", "public.tablename"}
-		foreignTwo := backup.QueryConstraint{0, "tablename_j_fkey", "f", "FOREIGN KEY (j) REFERENCES other_tablename(b)", "public.tablename"}
+		uniqueOne := backup.QueryConstraint{1, "tablename_i_key", "u", "UNIQUE (i)", "public.tablename", false}
+		uniqueTwo := backup.QueryConstraint{0, "tablename_j_key", "u", "UNIQUE (j)", "public.tablename", false}
+		primarySingle := backup.QueryConstraint{0, "tablename_pkey", "p", "PRIMARY KEY (i)", "public.tablename", false}
+		primaryComposite := backup.QueryConstraint{0, "tablename_pkey", "p", "PRIMARY KEY (i, j)", "public.tablename", false}
+		foreignOne := backup.QueryConstraint{0, "tablename_i_fkey", "f", "FOREIGN KEY (i) REFERENCES other_tablename(a)", "public.tablename", false}
+		foreignTwo := backup.QueryConstraint{0, "tablename_j_fkey", "f", "FOREIGN KEY (j) REFERENCES other_tablename(b)", "public.tablename", false}
 		emptyMetadataMap := backup.MetadataMap{}
 
 		Context("No constraints", func() {
@@ -164,6 +164,15 @@ ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_pkey PRIMARY KEY (i, 
 
 
 ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_fkey FOREIGN KEY (i) REFERENCES other_tablename(a);
+`)
+			})
+			It("prints ADD CONSTRAINT statement for domain check constraint", func() {
+				domainCheckConstraint := backup.QueryConstraint{0, "check1", "c", "CHECK (VALUE <> 42::numeric)", "public.domain1", true}
+				constraints := []backup.QueryConstraint{domainCheckConstraint}
+				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
+				testutils.ExpectRegexp(buffer, `
+
+ALTER DOMAIN public.domain1 ADD CONSTRAINT check1 CHECK (VALUE <> 42::numeric);
 `)
 			})
 		})

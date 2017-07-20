@@ -134,6 +134,11 @@ func DefaultACLWithout(grantee string, objType string, revoke ...string) backup.
 	return defaultACL
 }
 
+func DefaultTypeDefinition(typeType string, typeName string) backup.TypeDefinition {
+	return backup.TypeDefinition{1, "public", typeName, typeType, "", "", "", "",
+		"-", "-", "-", "-", -1, false, "c", "p", "", "-", "", "", "", false}
+}
+
 /*
  * Wrapper functions around gomega operators for ease of use in tests
  */

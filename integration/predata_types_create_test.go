@@ -24,6 +24,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			compositeTypeAtt1 backup.TypeDefinition
 			compositeTypeAtt2 backup.TypeDefinition
 			enumType          backup.TypeDefinition
+			domainType        backup.TypeDefinition
 			types             []backup.TypeDefinition
 			typeMetadataMap   backup.MetadataMap
 		)
@@ -44,12 +45,23 @@ var _ = Describe("backup integration create statement tests", func() {
 			}
 			enumType = backup.TypeDefinition{
 				Type: "e", TypeSchema: "public", TypeName: "enum_type", EnumLabels: "'enum_labels'"}
-			types = []backup.TypeDefinition{shellType, baseType, compositeTypeAtt1, compositeTypeAtt2, enumType}
+			domainType = testutils.DefaultTypeDefinition("d", "domain_type")
+			domainType.BaseType = "numeric"
+			domainType.Alignment = "i"
+			domainType.Storage = "m"
+			domainType.Delimiter = ","
+			domainType.Input = "domain_in"
+			domainType.Output = "numeric_out"
+			domainType.Receive = "domain_recv"
+			domainType.Send = "numeric_send"
+			domainType.DefaultVal = "5"
+			domainType.NotNull = true
+			types = []backup.TypeDefinition{shellType, baseType, compositeTypeAtt1, compositeTypeAtt2, enumType, domainType}
 			typeMetadataMap = backup.MetadataMap{}
 		})
 
 		It("creates shell types for base and shell types only", func() {
-			backup.PrintShellTypeStatements(buffer, types)
+			backup.PrintCreateShellTypeStatements(buffer, types)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE shell_type")
@@ -92,6 +104,17 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			Expect(len(resultTypes)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&baseType, &resultTypes[0], "Oid")
+		})
+		It("creates domain types", func() {
+			backup.PrintCreateDomainStatements(buffer, types, typeMetadataMap)
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, "DROP TYPE domain_type")
+
+			resultTypes := backup.GetTypeDefinitions(connection)
+
+			Expect(len(resultTypes)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&domainType, &resultTypes[0], "Oid")
 		})
 	})
 })

@@ -43,7 +43,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			backup.PrintCreateSchemaStatements(buffer, schemas, schemaMetadata)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
-			defer testutils.AssertQueryRuns(connection, "ALTER SCHEMA public OWNER TO gpadmin")
+			defer testutils.AssertQueryRuns(connection, "ALTER SCHEMA public OWNER TO anothertestrole")
 			defer testutils.AssertQueryRuns(connection, "COMMENT ON SCHEMA public IS 'standard public schema'")
 
 			resultSchemas := backup.GetAllUserSchemas(connection)
@@ -96,10 +96,10 @@ var _ = Describe("backup integration create statement tests", func() {
 		)
 		BeforeEach(func() {
 			testTable = utils.BasicRelation("public", "testtable")
-			uniqueConstraint = backup.QueryConstraint{0, "uniq2", "u", "UNIQUE (a, b)", "public.testtable"}
-			pkConstraint = backup.QueryConstraint{0, "constraints_other_table_pkey", "p", "PRIMARY KEY (b)", "public.constraints_other_table"}
-			fkConstraint = backup.QueryConstraint{0, "fk1", "f", "FOREIGN KEY (b) REFERENCES constraints_other_table(b)", "public.testtable"}
-			checkConstraint = backup.QueryConstraint{0, "check1", "c", "CHECK (a <> 42)", "public.testtable"}
+			uniqueConstraint = backup.QueryConstraint{0, "uniq2", "u", "UNIQUE (a, b)", "public.testtable", false}
+			pkConstraint = backup.QueryConstraint{0, "constraints_other_table_pkey", "p", "PRIMARY KEY (b)", "public.constraints_other_table", false}
+			fkConstraint = backup.QueryConstraint{0, "fk1", "f", "FOREIGN KEY (b) REFERENCES constraints_other_table(b)", "public.testtable", false}
+			checkConstraint = backup.QueryConstraint{0, "check1", "c", "CHECK (a <> 42)", "public.testtable", false}
 			testutils.AssertQueryRuns(connection, "CREATE TABLE public.testtable(a int, b text) DISTRIBUTED BY (b)")
 			tableOid = backup.OidFromObjectName(connection, "testtable", "relname", "pg_class")
 			conMetadataMap = backup.MetadataMap{}
@@ -171,6 +171,20 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&pkConstraint, &resultConstraints[1], "Oid")
 			testutils.ExpectStructsToMatchExcluding(&fkConstraint, &resultConstraints[2], "Oid")
 			testutils.ExpectStructsToMatchExcluding(&uniqueConstraint, &resultConstraints[3], "Oid")
+		})
+		It("creates a check constraint on a domain", func() {
+			testutils.AssertQueryRuns(connection, "CREATE DOMAIN domain1 AS numeric")
+			defer testutils.AssertQueryRuns(connection, "DROP DOMAIN domain1")
+			domainCheckConstraint := backup.QueryConstraint{0, "check1", "c", "CHECK (VALUE <> 42::numeric)", "public.domain1", true}
+			constraints := []backup.QueryConstraint{domainCheckConstraint}
+			backup.PrintConstraintStatements(buffer, constraints, conMetadataMap)
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+
+			resultConstraints := backup.GetConstraints(connection)
+
+			Expect(len(resultConstraints)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&domainCheckConstraint, &resultConstraints[0], "Oid")
 		})
 	})
 	Describe("PrintSessionGUCs", func() {

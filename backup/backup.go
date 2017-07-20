@@ -139,7 +139,10 @@ func backupPredata(filename string, tables []utils.Relation, extTableMap map[str
 	types := GetTypeDefinitions(connection)
 	typeMetadata := GetMetadataForObjectType(connection, "typnamespace", "", "typowner", "pg_type")
 	logger.Verbose("Writing CREATE TYPE statements for shell types to predata file")
-	PrintShellTypeStatements(predataFile, types)
+	PrintCreateShellTypeStatements(predataFile, types)
+
+	logger.Verbose("Writing CREATE DOMAIN statements to predata file")
+	PrintCreateDomainStatements(predataFile, types, typeMetadata)
 
 	funcInfoMap := GetFunctionOidToInfoMap(connection)
 	logger.Verbose("Writing CREATE PROCEDURAL LANGUAGE statements to predata file")

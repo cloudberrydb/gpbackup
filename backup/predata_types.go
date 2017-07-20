@@ -21,12 +21,30 @@ import (
  * Because only base types are dependent on functions, we only need to print
  * shell type statements for base types.
  */
-func PrintShellTypeStatements(predataFile io.Writer, types []TypeDefinition) {
+func PrintCreateShellTypeStatements(predataFile io.Writer, types []TypeDefinition) {
 	utils.MustPrintln(predataFile, "\n")
 	for _, typ := range types {
 		if typ.Type == "b" || typ.Type == "p" {
 			typeFQN := utils.MakeFQN(typ.TypeSchema, typ.TypeName)
 			utils.MustPrintf(predataFile, "CREATE TYPE %s;\n", typeFQN)
+		}
+	}
+}
+
+func PrintCreateDomainStatements(predataFile io.Writer, types []TypeDefinition, typeMetadata MetadataMap) {
+	utils.MustPrintln(predataFile, "\n")
+	for _, typ := range types {
+		if typ.Type == "d" {
+			typeFQN := utils.MakeFQN(typ.TypeSchema, typ.TypeName)
+			utils.MustPrintf(predataFile, "CREATE DOMAIN %s AS %s", typeFQN, typ.BaseType)
+			if typ.DefaultVal != "" {
+				utils.MustPrintf(predataFile, " DEFAULT %s", typ.DefaultVal)
+			}
+			if typ.NotNull {
+				utils.MustPrintf(predataFile, " NOT NULL")
+			}
+			utils.MustPrintln(predataFile, ";")
+			PrintObjectMetadata(predataFile, typeMetadata[typ.Oid], typeFQN, "DOMAIN")
 		}
 	}
 }

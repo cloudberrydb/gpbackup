@@ -36,11 +36,12 @@ ORDER BY name;`, nonUserSchemaFilterClause)
 }
 
 type QueryConstraint struct {
-	Oid         uint32
-	ConName     string
-	ConType     string
-	ConDef      string
-	OwningTable string
+	Oid                uint32
+	ConName            string
+	ConType            string
+	ConDef             string
+	OwningObject       string
+	IsDomainConstraint bool
 }
 
 func GetConstraints(connection *utils.DBConn) []QueryConstraint {
@@ -51,12 +52,21 @@ SELECT
 	conname,
 	contype,
 	pg_get_constraintdef(c.oid, TRUE) AS condef,
-	quote_ident(n.nspname) || '.' || quote_ident(t.relname) AS owningtable
+	CASE
+		WHEN r.relname IS NULL THEN quote_ident(n.nspname) || '.' ||quote_ident(t.typname)
+		ELSE  quote_ident(n.nspname) || '.' || quote_ident(r.relname)
+	END AS owningobject,
+	CASE
+		WHEN r.relname IS NULL THEN 't'
+		ELSE 'f'
+	END AS isdomainconstraint
 FROM pg_constraint c
-JOIN pg_class t
-	ON c.conrelid = t.oid
+LEFT JOIN pg_class r
+	ON c.conrelid = r.oid
+LEFT JOIN pg_type t
+	ON c.contypid = t.oid
 JOIN pg_namespace n
-	ON n.oid = t.relnamespace
+	ON n.oid = c.connamespace
 WHERE %s
 ORDER BY conname;`, nonUserSchemaFilterClause)
 
