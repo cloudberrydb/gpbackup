@@ -7,6 +7,7 @@ package backup
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/greenplum-db/gpbackup/utils"
 
@@ -79,7 +80,7 @@ SELECT
 	coalesce(%sobj_description(o.oid, '%s'), '') AS comment
 FROM %s o
 %s
-ORDER BY o.oid, privileges;
+ORDER BY o.oid;
 `, aclStr, ownerField, sh, catalogTable, catalogTable, schemaStr)
 
 	results := make([]QueryObjectMetadata, 0)
@@ -94,7 +95,7 @@ ORDER BY o.oid, privileges;
 		for _, result := range results {
 			if result.Oid != currentOid {
 				if currentOid != 0 {
-					metadataMap[currentOid] = metadata
+					metadataMap[currentOid] = sortACLs(metadata)
 				}
 				currentOid = result.Oid
 				metadata = ObjectMetadata{}
@@ -107,9 +108,16 @@ ORDER BY o.oid, privileges;
 				metadata.Privileges = append(metadata.Privileges, *privileges)
 			}
 		}
-		metadataMap[currentOid] = metadata
+		metadataMap[currentOid] = sortACLs(metadata)
 	}
 	return metadataMap
+}
+
+func sortACLs(metadata ObjectMetadata) ObjectMetadata {
+	sort.Slice(metadata.Privileges, func(i, j int) bool {
+		return metadata.Privileges[i].Grantee < metadata.Privileges[j].Grantee
+	})
+	return metadata
 }
 
 func GetCommentsForObjectType(connection *utils.DBConn, schemaField string, oidField string, commentTable string, catalogTable string) MetadataMap {
