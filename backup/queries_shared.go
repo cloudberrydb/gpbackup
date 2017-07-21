@@ -120,18 +120,34 @@ func sortACLs(metadata ObjectMetadata) ObjectMetadata {
 	return metadata
 }
 
-func GetCommentsForObjectType(connection *utils.DBConn, schemaField string, oidField string, commentTable string, catalogTable string) MetadataMap {
-	schemaStr := ""
-	if schemaField != "" {
-		schemaStr = fmt.Sprintf(`JOIN pg_namespace n ON o.%s = n.oid
-WHERE %s`, schemaField, nonUserSchemaFilterClause)
+var (
+	ResQueueParams = CommentQueryParams{OidField: "oid", CommentTable: "pg_resqueue", CatalogTable: "pg_resqueue", Shared: true}
+	CastParams     = CommentQueryParams{OidField: "oid", CommentTable: "pg_cast", CatalogTable: "pg_cast", Shared: false}
+	ConParams      = CommentQueryParams{OidField: "oid", CommentTable: "pg_constraint", CatalogTable: "pg_constraint", Shared: false}
+	IndexParams    = CommentQueryParams{OidField: "indexrelid", CommentTable: "pg_class", CatalogTable: "pg_index", Shared: false}
+	RuleParams     = CommentQueryParams{OidField: "oid", CommentTable: "pg_rewrite", CatalogTable: "pg_rewrite", Shared: false}
+	TriggerParams  = CommentQueryParams{OidField: "oid", CommentTable: "pg_trigger", CatalogTable: "pg_trigger", Shared: false}
+)
+
+type CommentQueryParams struct {
+	SchemaField  string
+	OidField     string
+	CommentTable string
+	CatalogTable string
+	Shared       bool
+}
+
+func GetCommentsForObjectType(connection *utils.DBConn, params CommentQueryParams) MetadataMap {
+	descFunc := "obj_description"
+	if params.Shared {
+		descFunc = "shobj_description"
 	}
 	query := fmt.Sprintf(`
 SELECT
 	o.%s AS oid,
-	coalesce(obj_description(o.%s, '%s'), '') AS comment
-FROM %s o
-%s;`, oidField, oidField, commentTable, catalogTable, schemaStr)
+	coalesce(%s(o.%s, '%s'), '') AS comment
+FROM %s o;
+`, params.OidField, descFunc, params.OidField, params.CommentTable, params.CatalogTable)
 
 	results := make([]QueryObjectMetadata, 0)
 	err := connection.Select(&results, query)

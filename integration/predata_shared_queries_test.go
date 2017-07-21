@@ -204,7 +204,7 @@ LANGUAGE SQL`)
 	})
 	Describe("GetCommentsForObjectType", func() {
 		It("returns a slice of default metadata for an index", func() {
-			resultMetadataMap := backup.GetCommentsForObjectType(connection, "", "indexrelid", "pg_class", "pg_index")
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.IndexParams)
 			numIndexes := len(resultMetadataMap)
 
 			testutils.AssertQueryRuns(connection, `CREATE TABLE testtable(i int)`)
@@ -212,7 +212,7 @@ LANGUAGE SQL`)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE testtable")
 			testutils.AssertQueryRuns(connection, "COMMENT ON INDEX testindex IS 'This is an index comment.'")
 
-			resultMetadataMap = backup.GetCommentsForObjectType(connection, "", "indexrelid", "pg_class", "pg_index")
+			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.IndexParams)
 
 			oid := backup.OidFromObjectName(connection, "testindex", "relname", "pg_class")
 			expectedMetadataMap := testutils.DefaultMetadataMap("INDEX", false, false, true)
@@ -223,7 +223,7 @@ LANGUAGE SQL`)
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 		})
 		It("returns a slice of default metadata for a rule", func() {
-			resultMetadataMap := backup.GetCommentsForObjectType(connection, "", "oid", "pg_rewrite", "pg_rewrite")
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.RuleParams)
 			numRules := len(resultMetadataMap)
 
 			testutils.AssertQueryRuns(connection, `CREATE TABLE testtable(i int)`)
@@ -231,7 +231,7 @@ LANGUAGE SQL`)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE testtable")
 			testutils.AssertQueryRuns(connection, "COMMENT ON RULE update_notify IS 'This is a rule comment.'")
 
-			resultMetadataMap = backup.GetCommentsForObjectType(connection, "", "oid", "pg_rewrite", "pg_rewrite")
+			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.RuleParams)
 
 			oid := backup.OidFromObjectName(connection, "update_notify", "rulename", "pg_rewrite")
 			expectedMetadataMap := testutils.DefaultMetadataMap("RULE", false, false, true)
@@ -242,7 +242,7 @@ LANGUAGE SQL`)
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 		})
 		It("returns a slice of default metadata for a trigger", func() {
-			resultMetadataMap := backup.GetCommentsForObjectType(connection, "", "oid", "pg_trigger", "pg_trigger")
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TriggerParams)
 			numTriggers := len(resultMetadataMap)
 
 			testutils.AssertQueryRuns(connection, `CREATE TABLE testtable(i int)`)
@@ -250,7 +250,7 @@ LANGUAGE SQL`)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE testtable")
 			testutils.AssertQueryRuns(connection, "COMMENT ON TRIGGER sync_testtable ON public.testtable IS 'This is a trigger comment.'")
 
-			resultMetadataMap = backup.GetCommentsForObjectType(connection, "", "oid", "pg_trigger", "pg_trigger")
+			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.TriggerParams)
 
 			oid := backup.OidFromObjectName(connection, "sync_testtable", "tgname", "pg_trigger")
 			expectedMetadataMap := testutils.DefaultMetadataMap("TRIGGER", false, false, true)
@@ -261,7 +261,7 @@ LANGUAGE SQL`)
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 		})
 		It("returns a slice of default metadata for a cast", func() {
-			resultMetadataMap := backup.GetCommentsForObjectType(connection, "", "oid", "pg_cast", "pg_cast")
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.CastParams)
 			numCasts := len(resultMetadataMap)
 
 			testutils.AssertQueryRuns(connection, `CREATE FUNCTION casttoint(text) RETURNS integer STRICT IMMUTABLE LANGUAGE SQL AS 'SELECT cast($1 as integer);'`)
@@ -269,7 +269,7 @@ LANGUAGE SQL`)
 			testutils.AssertQueryRuns(connection, "CREATE CAST (text AS int) WITH FUNCTION casttoint(text) AS ASSIGNMENT;")
 			testutils.AssertQueryRuns(connection, "COMMENT ON CAST (text AS int) IS 'This is a cast comment.'")
 
-			resultMetadataMap = backup.GetCommentsForObjectType(connection, "", "oid", "pg_cast", "pg_cast")
+			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.CastParams)
 
 			textOid := backup.OidFromObjectName(connection, "text", "typname", "pg_type")
 			intOid := backup.OidFromObjectName(connection, "int4", "typname", "pg_type")
@@ -282,17 +282,35 @@ LANGUAGE SQL`)
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 		})
 		It("returns a slice of default metadata for a constraint", func() {
-			resultMetadataMap := backup.GetCommentsForObjectType(connection, "", "oid", "pg_constraint", "pg_constraint")
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.ConParams)
 			numConstraints := len(resultMetadataMap)
 
 			testutils.AssertQueryRuns(connection, `CREATE TABLE testtable(i int UNIQUE)`)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE testtable")
 			testutils.AssertQueryRuns(connection, "COMMENT ON CONSTRAINT testtable_i_key ON public.testtable IS 'This is a constraint comment.'")
 
-			resultMetadataMap = backup.GetCommentsForObjectType(connection, "", "oid", "pg_constraint", "pg_constraint")
+			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.ConParams)
 
 			oid := backup.OidFromObjectName(connection, "testtable_i_key", "conname", "pg_constraint")
 			expectedMetadataMap := testutils.DefaultMetadataMap("CONSTRAINT", false, false, true)
+			expectedMetadata := expectedMetadataMap[1]
+
+			Expect(len(resultMetadataMap)).To(Equal(numConstraints + 1))
+			resultMetadata := resultMetadataMap[oid]
+			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
+		})
+		It("returns a slice of default metadata for a resource queue", func() {
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.ResQueueParams)
+			numConstraints := len(resultMetadataMap)
+
+			testutils.AssertQueryRuns(connection, `CREATE RESOURCE QUEUE res_queue WITH (MAX_COST=32.8);`)
+			defer testutils.AssertQueryRuns(connection, "DROP RESOURCE QUEUE res_queue")
+			testutils.AssertQueryRuns(connection, "COMMENT ON RESOURCE QUEUE res_queue IS 'This is a resource queue comment.'")
+
+			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.ResQueueParams)
+
+			oid := backup.OidFromObjectName(connection, "res_queue", "rsqname", "pg_resqueue")
+			expectedMetadataMap := testutils.DefaultMetadataMap("RESOURCE QUEUE", false, false, true)
 			expectedMetadata := expectedMetadataMap[1]
 
 			Expect(len(resultMetadataMap)).To(Equal(numConstraints + 1))

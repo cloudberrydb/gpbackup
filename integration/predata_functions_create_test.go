@@ -172,7 +172,7 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			resultCasts := backup.GetCastDefinitions(connection)
 			Expect(len(resultCasts)).To(Equal(1))
-			resultMetadataMap := backup.GetCommentsForObjectType(connection, "", "oid", "pg_cast", "pg_cast")
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.CastParams)
 			resultMetadata := resultMetadataMap[resultCasts[0].Oid]
 			testutils.ExpectStructsToMatchExcluding(&castDef, &resultCasts[0], "Oid")
 			testutils.ExpectStructsToMatchExcluding(&resultMetadata, &castMetadata, "Oid")

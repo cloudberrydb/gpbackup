@@ -93,44 +93,46 @@ ALTER DATABASE testdb SET gp_default_storage_options TO 'appendonly=true,blocksi
 		})
 	})
 	Describe("PrintCreateResourceQueueStatements", func() {
+		var emptyResQueueMetadata = map[uint32]backup.ObjectMetadata{}
 		It("prints resource queues", func() {
-			someQueue := backup.QueryResourceQueue{"some_queue", 1, "-1.00", false, "0.00", "medium", "-1", ""}
-			maxCostQueue := backup.QueryResourceQueue{"someMaxCostQueue", -1, "99.9", true, "0.00", "medium", "-1", ""}
+			someQueue := backup.QueryResourceQueue{1, "some_queue", 1, "-1.00", false, "0.00", "medium", "-1"}
+			maxCostQueue := backup.QueryResourceQueue{1, "someMaxCostQueue", -1, "99.9", true, "0.00", "medium", "-1"}
 			resQueues := []backup.QueryResourceQueue{someQueue, maxCostQueue}
 
-			backup.PrintCreateResourceQueueStatements(buffer, resQueues)
+			backup.PrintCreateResourceQueueStatements(buffer, resQueues, emptyResQueueMetadata)
 			testutils.ExpectRegexp(buffer, `CREATE RESOURCE QUEUE some_queue WITH (ACTIVE_STATEMENTS=1);
 
 CREATE RESOURCE QUEUE "someMaxCostQueue" WITH (MAX_COST=99.9, COST_OVERCOMMIT=TRUE);`)
 		})
 		It("prints a resource queue with active statements and max cost", func() {
-			someActiveMaxCostQueue := backup.QueryResourceQueue{"someActiveMaxCostQueue", 5, "62.03", false, "0.00", "medium", "-1", ""}
+			someActiveMaxCostQueue := backup.QueryResourceQueue{1, "someActiveMaxCostQueue", 5, "62.03", false, "0.00", "medium", "-1"}
 			resQueues := []backup.QueryResourceQueue{someActiveMaxCostQueue}
 
-			backup.PrintCreateResourceQueueStatements(buffer, resQueues)
+			backup.PrintCreateResourceQueueStatements(buffer, resQueues, emptyResQueueMetadata)
 			testutils.ExpectRegexp(buffer, `CREATE RESOURCE QUEUE "someActiveMaxCostQueue" WITH (ACTIVE_STATEMENTS=5, MAX_COST=62.03);`)
 		})
 		It("prints a resource queue with active statements and max cost", func() {
-			everythingQueue := backup.QueryResourceQueue{"everythingQueue", 7, "32.80", true, "1.34", "low", "2GB", ""}
+			everythingQueue := backup.QueryResourceQueue{1, "everythingQueue", 7, "32.80", true, "1.34", "low", "2GB"}
 			resQueues := []backup.QueryResourceQueue{everythingQueue}
 
-			backup.PrintCreateResourceQueueStatements(buffer, resQueues)
+			backup.PrintCreateResourceQueueStatements(buffer, resQueues, emptyResQueueMetadata)
 			testutils.ExpectRegexp(buffer, `CREATE RESOURCE QUEUE "everythingQueue" WITH (ACTIVE_STATEMENTS=7, MAX_COST=32.80, COST_OVERCOMMIT=TRUE, MIN_COST=1.34, PRIORITY=LOW, MEMORY_LIMIT='2GB');`)
 		})
 		It("prints a resource queue with a comment", func() {
-			commentQueue := backup.QueryResourceQueue{"commentQueue", 1, "-1.00", false, "0.00", "medium", "-1", "this is a comment on a resource queue"}
+			commentQueue := backup.QueryResourceQueue{1, "commentQueue", 1, "-1.00", false, "0.00", "medium", "-1"}
 			resQueues := []backup.QueryResourceQueue{commentQueue}
+			resQueueMetadata := testutils.DefaultMetadataMap("RESOURCE QUEUE", false, false, true)
 
-			backup.PrintCreateResourceQueueStatements(buffer, resQueues)
+			backup.PrintCreateResourceQueueStatements(buffer, resQueues, resQueueMetadata)
 			testutils.ExpectRegexp(buffer, `CREATE RESOURCE QUEUE "commentQueue" WITH (ACTIVE_STATEMENTS=1);
 
-COMMENT ON RESOURCE QUEUE "commentQueue" IS 'this is a comment on a resource queue'`)
+COMMENT ON RESOURCE QUEUE "commentQueue" IS 'This is a resource queue comment.'`)
 		})
 		It("prints ALTER statement for pg_default resource queue", func() {
-			pg_default := backup.QueryResourceQueue{"pg_default", 1, "-1.00", false, "0.00", "medium", "-1", ""}
+			pg_default := backup.QueryResourceQueue{1, "pg_default", 1, "-1.00", false, "0.00", "medium", "-1"}
 			resQueues := []backup.QueryResourceQueue{pg_default}
 
-			backup.PrintCreateResourceQueueStatements(buffer, resQueues)
+			backup.PrintCreateResourceQueueStatements(buffer, resQueues, emptyResQueueMetadata)
 			testutils.ExpectRegexp(buffer, `ALTER RESOURCE QUEUE pg_default WITH (ACTIVE_STATEMENTS=1);`)
 		})
 	})

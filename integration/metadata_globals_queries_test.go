@@ -43,12 +43,12 @@ var _ = Describe("backup integration tests", func() {
 
 			results := backup.GetResourceQueues(connection)
 
-			statementsQueue := backup.QueryResourceQueue{"statementsQueue", 7, "-1.00", false, "0.00", "medium", "-1", ""}
+			statementsQueue := backup.QueryResourceQueue{1, "statementsQueue", 7, "-1.00", false, "0.00", "medium", "-1"}
 
 			//Since resource queues are global, we can't be sure this is the only one
 			for _, resultQueue := range results {
 				if resultQueue.Name == "statementsQueue" {
-					testutils.ExpectStructsToMatch(&statementsQueue, &resultQueue)
+					testutils.ExpectStructsToMatchExcluding(&statementsQueue, &resultQueue, "Oid")
 					return
 				}
 			}
@@ -60,32 +60,31 @@ var _ = Describe("backup integration tests", func() {
 
 			results := backup.GetResourceQueues(connection)
 
-			maxCostQueue := backup.QueryResourceQueue{"maxCostQueue", -1, "32.80", false, "0.00", "medium", "-1", ""}
+			maxCostQueue := backup.QueryResourceQueue{1, "maxCostQueue", -1, "32.80", false, "0.00", "medium", "-1"}
 
 			for _, resultQueue := range results {
 				if resultQueue.Name == "maxCostQueue" {
-					testutils.ExpectStructsToMatch(&maxCostQueue, &resultQueue)
+					testutils.ExpectStructsToMatchExcluding(&maxCostQueue, &resultQueue, "Oid")
 					return
 				}
 			}
 			Fail("Resource queue 'maxCostQueue' was not found.")
 		})
 		It("returns a slice for a resource queue with everything", func() {
-			testutils.AssertQueryRuns(connection, `CREATE RESOURCE QUEUE "commentQueue" WITH (ACTIVE_STATEMENTS=7, MAX_COST=3e+4, COST_OVERCOMMIT=TRUE, MIN_COST=22.53, PRIORITY=LOW, MEMORY_LIMIT='2GB');`)
-			defer testutils.AssertQueryRuns(connection, `DROP RESOURCE QUEUE "commentQueue"`)
-			testutils.AssertQueryRuns(connection, `COMMENT ON RESOURCE QUEUE "commentQueue" IS 'this is a resource queue comment'`)
+			testutils.AssertQueryRuns(connection, `CREATE RESOURCE QUEUE "everyQueue" WITH (ACTIVE_STATEMENTS=7, MAX_COST=3e+4, COST_OVERCOMMIT=TRUE, MIN_COST=22.53, PRIORITY=LOW, MEMORY_LIMIT='2GB');`)
+			defer testutils.AssertQueryRuns(connection, `DROP RESOURCE QUEUE "everyQueue"`)
 
 			results := backup.GetResourceQueues(connection)
 
-			commentQueue := backup.QueryResourceQueue{"commentQueue", 7, "30000.00", true, "22.53", "low", "2GB", "this is a resource queue comment"}
+			everyQueue := backup.QueryResourceQueue{1, "everyQueue", 7, "30000.00", true, "22.53", "low", "2GB"}
 
 			for _, resultQueue := range results {
-				if resultQueue.Name == "commentQueue" {
-					testutils.ExpectStructsToMatch(&commentQueue, &resultQueue)
+				if resultQueue.Name == "everyQueue" {
+					testutils.ExpectStructsToMatchExcluding(&everyQueue, &resultQueue, "Oid")
 					return
 				}
 			}
-			Fail("Resource queue 'commentsQueue' was not found.")
+			Fail("Resource queue 'everyQueue' was not found.")
 		})
 
 	})

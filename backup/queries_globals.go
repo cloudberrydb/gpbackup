@@ -38,6 +38,7 @@ FROM pg_options_to_table(
 }
 
 type QueryResourceQueue struct {
+	Oid              uint32
 	Name             string
 	ActiveStatements int
 	MaxCost          string
@@ -45,7 +46,6 @@ type QueryResourceQueue struct {
 	MinCost          string
 	Priority         string
 	MemoryLimit      string
-	Comment          string
 }
 
 func GetResourceQueues(connection *utils.DBConn) []QueryResourceQueue {
@@ -55,14 +55,14 @@ func GetResourceQueues(connection *utils.DBConn) []QueryResourceQueue {
 	 */
 	query := `
 SELECT
+	r.oid,
 	rsqname AS name,
 	rsqcountlimit AS activestatements,
 	ROUND(rsqcostlimit::numeric, 2)::text AS maxcost,
 	rsqovercommit AS costovercommit,
 	ROUND(rsqignorecostlimit::numeric, 2)::text AS mincost,
 	priority_capability.ressetting::text AS priority,
-	memory_capability.ressetting::text AS memorylimit,
-	coalesce(descriptions.description, '') AS comment
+	memory_capability.ressetting::text AS memorylimit
 FROM
 	pg_resqueue r
 		JOIN
@@ -70,8 +70,7 @@ FROM
 		ON r.oid = priority_capability.resqueueid
 	JOIN
 		(SELECT resqueueid, ressetting FROM pg_resqueuecapability WHERE restypid = 6) memory_capability
-		ON r.oid = memory_capability.resqueueid
-	LEFT JOIN pg_shdescription descriptions ON r.oid = descriptions.objoid;
+		ON r.oid = memory_capability.resqueueid;
 `
 	results := make([]QueryResourceQueue, 0)
 	err := connection.Select(&results, query)

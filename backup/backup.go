@@ -116,7 +116,8 @@ func backupGlobal(filename string) {
 
 	logger.Verbose("Writing CREATE RESOURCE QUEUE statements to global file")
 	resQueues := GetResourceQueues(connection)
-	PrintCreateResourceQueueStatements(globalFile, resQueues)
+	resQueueMetadata := GetCommentsForObjectType(connection, ResQueueParams)
+	PrintCreateResourceQueueStatements(globalFile, resQueues, resQueueMetadata)
 
 	logger.Verbose("Writing CREATE ROLE statements to global file")
 	roles := GetRoles(connection)
@@ -173,7 +174,7 @@ func backupPredata(filename string, tables []utils.Relation, extTableMap map[str
 
 	logger.Verbose("Writing CREATE CAST statements to predata file")
 	castDefs := GetCastDefinitions(connection)
-	castMetadata := GetCommentsForObjectType(connection, "", "oid", "pg_cast", "pg_cast")
+	castMetadata := GetCommentsForObjectType(connection, CastParams)
 	PrintCreateCastStatements(predataFile, castDefs, castMetadata)
 
 	logger.Verbose("Writing CREATE TABLE statements to predata file")
@@ -190,7 +191,7 @@ func backupPredata(filename string, tables []utils.Relation, extTableMap map[str
 
 	logger.Verbose("Writing ADD CONSTRAINT statements to predata file")
 	constraints := GetConstraints(connection)
-	conMetadata := GetCommentsForObjectType(connection, "", "oid", "pg_constraint", "pg_constraint")
+	conMetadata := GetCommentsForObjectType(connection, ConParams)
 	PrintConstraintStatements(predataFile, constraints, conMetadata)
 
 	logger.Verbose("Writing CREATE SEQUENCE statements to predata file")
@@ -225,17 +226,17 @@ func backupPostdata(filename string, tables []utils.Relation, extTableMap map[st
 	logger.Verbose("Writing CREATE INDEX statements to postdata file")
 	indexNameMap := ConstructImplicitIndexNames(connection)
 	indexes := GetIndexDefinitions(connection, indexNameMap)
-	indexMetadata := GetCommentsForObjectType(connection, "", "indexrelid", "pg_class", "pg_index")
+	indexMetadata := GetCommentsForObjectType(connection, IndexParams)
 	PrintCreateIndexStatements(postdataFile, indexes, indexMetadata)
 
 	logger.Verbose("Writing CREATE RULE statements to postdata file")
 	rules := GetRuleDefinitions(connection)
-	ruleMetadata := GetCommentsForObjectType(connection, "", "oid", "pg_rewrite", "pg_rewrite")
+	ruleMetadata := GetCommentsForObjectType(connection, RuleParams)
 	PrintCreateRuleStatements(postdataFile, rules, ruleMetadata)
 
 	logger.Verbose("Writing CREATE TRIGGER statements to postdata file")
 	triggers := GetTriggerDefinitions(connection)
-	triggerMetadata := GetCommentsForObjectType(connection, "", "oid", "pg_trigger", "pg_trigger")
+	triggerMetadata := GetCommentsForObjectType(connection, TriggerParams)
 	PrintCreateTriggerStatements(postdataFile, triggers, triggerMetadata)
 }
 

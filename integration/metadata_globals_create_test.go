@@ -19,9 +19,11 @@ var _ = Describe("backup integration create statement tests", func() {
 	})
 	Describe("PrintCreateResourceQueueStatements", func() {
 		It("creates a basic resource queue with a comment", func() {
-			basicQueue := backup.QueryResourceQueue{"basicQueue", -1, "32.80", false, "0.00", "medium", "-1", "this is a resource queue comment"}
+			basicQueue := backup.QueryResourceQueue{1, "basicQueue", -1, "32.80", false, "0.00", "medium", "-1"}
+			resQueueMetadataMap := testutils.DefaultMetadataMap("RESOURCE QUEUE", false, false, true)
+			resQueueMetadata := resQueueMetadataMap[1]
 
-			backup.PrintCreateResourceQueueStatements(buffer, []backup.QueryResourceQueue{basicQueue})
+			backup.PrintCreateResourceQueueStatements(buffer, []backup.QueryResourceQueue{basicQueue}, resQueueMetadataMap)
 
 			// CREATE RESOURCE QUEUE statements can not be part of a multi-command statement, so
 			// feed the CREATE RESOURCE QUEUE and COMMENT ON statements separately.
@@ -31,18 +33,23 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.AssertQueryRuns(connection, hunks[1])
 
 			resultResourceQueues := backup.GetResourceQueues(connection)
+			resQueueOid := backup.OidFromObjectName(connection, "basicQueue", "rsqname", "pg_resqueue")
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.ResQueueParams)
+			resultMetadata := resultMetadataMap[resQueueOid]
+			testutils.ExpectStructsToMatch(&resultMetadata, &resQueueMetadata)
 
 			for _, resultQueue := range resultResourceQueues {
 				if resultQueue.Name == "basicQueue" {
-					testutils.ExpectStructsToMatch(&basicQueue, &resultQueue)
+					testutils.ExpectStructsToMatchExcluding(&basicQueue, &resultQueue, "Oid")
 					return
 				}
 			}
 		})
 		It("creates a resource queue with all attributes", func() {
-			everythingQueue := backup.QueryResourceQueue{"everythingQueue", 7, "32.80", true, "22.80", "low", "2GB", ""}
+			everythingQueue := backup.QueryResourceQueue{1, "everythingQueue", 7, "32.80", true, "22.80", "low", "2GB"}
+			emptyMetadataMap := map[uint32]backup.ObjectMetadata{}
 
-			backup.PrintCreateResourceQueueStatements(buffer, []backup.QueryResourceQueue{everythingQueue})
+			backup.PrintCreateResourceQueueStatements(buffer, []backup.QueryResourceQueue{everythingQueue}, emptyMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, `DROP RESOURCE QUEUE "everythingQueue"`)
@@ -51,7 +58,7 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			for _, resultQueue := range resultResourceQueues {
 				if resultQueue.Name == "everythingQueue" {
-					testutils.ExpectStructsToMatch(&everythingQueue, &resultQueue)
+					testutils.ExpectStructsToMatchExcluding(&everythingQueue, &resultQueue, "Oid")
 					return
 				}
 			}

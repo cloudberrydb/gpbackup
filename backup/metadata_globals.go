@@ -47,7 +47,7 @@ func PrintDatabaseGUCs(globalFile io.Writer, gucs []string, dbname string) {
 	}
 }
 
-func PrintCreateResourceQueueStatements(globalFile io.Writer, resQueues []QueryResourceQueue) {
+func PrintCreateResourceQueueStatements(globalFile io.Writer, resQueues []QueryResourceQueue, resQueueMetadata MetadataMap) {
 	for _, resQueue := range resQueues {
 		attributes := []string{}
 		if resQueue.ActiveStatements != -1 {
@@ -77,10 +77,7 @@ func PrintCreateResourceQueueStatements(globalFile io.Writer, resQueues []QueryR
 			action = "ALTER"
 		}
 		utils.MustPrintf(globalFile, "\n\n%s RESOURCE QUEUE %s WITH (%s);", action, utils.QuoteIdent(resQueue.Name), strings.Join(attributes, ", "))
-
-		if resQueue.Comment != "" {
-			utils.MustPrintf(globalFile, "\n\nCOMMENT ON RESOURCE QUEUE %s IS '%s';", utils.QuoteIdent(resQueue.Name), resQueue.Comment)
-		}
+		PrintObjectMetadata(globalFile, resQueueMetadata[resQueue.Oid], utils.QuoteIdent(resQueue.Name), "RESOURCE QUEUE")
 	}
 }
 
