@@ -56,7 +56,7 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			indexes[0].Oid = backup.OidFromObjectName(connection, "index1", "relname", "pg_class")
+			indexes[0].Oid = backup.OidFromObjectName(connection, "index1", backup.IndexParams)
 			resultIndexes := backup.GetIndexDefinitions(connection, indexNameMap)
 			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.IndexParams)
 			resultMetadata := resultMetadataMap[indexes[0].Oid]
@@ -100,7 +100,7 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			rules[0].Oid = backup.OidFromObjectName(connection, "update_notify", "rulename", "pg_rewrite")
+			rules[0].Oid = backup.OidFromObjectName(connection, "update_notify", backup.RuleParams)
 			resultRules := backup.GetRuleDefinitions(connection)
 			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.RuleParams)
 			resultMetadata := resultMetadataMap[rules[0].Oid]
@@ -144,7 +144,7 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			triggers[0].Oid = backup.OidFromObjectName(connection, "sync_testtable", "tgname", "pg_trigger")
+			triggers[0].Oid = backup.OidFromObjectName(connection, "sync_testtable", backup.TriggerParams)
 			resultTriggers := backup.GetTriggerDefinitions(connection)
 			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TriggerParams)
 			resultMetadata := resultMetadataMap[triggers[0].Oid]

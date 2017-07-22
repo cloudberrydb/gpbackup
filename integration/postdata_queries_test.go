@@ -58,8 +58,8 @@ var _ = Describe("backup integration tests", func() {
 				"CREATE INDEX simple_table_idx2 ON simple_table USING btree (j)"}
 
 			results := backup.GetIndexDefinitions(connection, indexNameMap)
-			results[0].Oid = backup.OidFromObjectName(connection, "simple_table_idx1", "relname", "pg_class")
-			results[1].Oid = backup.OidFromObjectName(connection, "simple_table_idx2", "relname", "pg_class")
+			results[0].Oid = backup.OidFromObjectName(connection, "simple_table_idx1", backup.IndexParams)
+			results[1].Oid = backup.OidFromObjectName(connection, "simple_table_idx2", backup.IndexParams)
 
 			Expect(len(results)).To(Equal(2))
 			testutils.ExpectStructsToMatchExcluding(&index1, &results[0], "Oid")

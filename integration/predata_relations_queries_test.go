@@ -55,7 +55,7 @@ PARTITION BY LIST (gender)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE atttable")
 			testutils.AssertQueryRuns(connection, "COMMENT ON COLUMN atttable.a IS 'att comment'")
 			testutils.AssertQueryRuns(connection, "ALTER TABLE atttable DROP COLUMN b")
-			oid := backup.OidFromObjectName(connection, "atttable", "relname", "pg_class")
+			oid := backup.OidFromObjectName(connection, "atttable", backup.RelationParams)
 
 			tableAtts := backup.GetTableAttributes(connection, oid)
 
@@ -72,7 +72,7 @@ PARTITION BY LIST (gender)
 		It("returns table attributes including encoding for a column oriented table", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE co_atttable(a float, b text ENCODING(blocksize=65536)) WITH (appendonly=true, orientation=column)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE co_atttable")
-			oid := backup.OidFromObjectName(connection, "co_atttable", "relname", "pg_class")
+			oid := backup.OidFromObjectName(connection, "co_atttable", backup.RelationParams)
 
 			tableAtts := backup.GetTableAttributes(connection, uint32(oid))
 
@@ -87,7 +87,7 @@ PARTITION BY LIST (gender)
 		It("returns an empty attribute array for a table with no columns", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE nocol_atttable()")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE nocol_atttable")
-			oid := backup.OidFromObjectName(connection, "nocol_atttable", "relname", "pg_class")
+			oid := backup.OidFromObjectName(connection, "nocol_atttable", backup.RelationParams)
 
 			tableAtts := backup.GetTableAttributes(connection, uint32(oid))
 
@@ -98,7 +98,7 @@ PARTITION BY LIST (gender)
 		It("only returns defaults for columns that have them", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE default_table(a text DEFAULT('default text'), b float, c int DEFAULT(5))")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE default_table")
-			oid := backup.OidFromObjectName(connection, "default_table", "relname", "pg_class")
+			oid := backup.OidFromObjectName(connection, "default_table", backup.RelationParams)
 
 			defaults := backup.GetTableDefaults(connection, oid)
 
@@ -113,7 +113,7 @@ PARTITION BY LIST (gender)
 		It("returns an empty default array for a table with no defaults", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE nodefault_table(a text, b float, c int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE nodefault_table")
-			oid := backup.OidFromObjectName(connection, "nodefault_table", "relname", "pg_class")
+			oid := backup.OidFromObjectName(connection, "nodefault_table", backup.RelationParams)
 
 			defaults := backup.GetTableDefaults(connection, oid)
 
@@ -212,7 +212,7 @@ PARTITION BY LIST (gender)
 		It("returns distribution policy info for a table DISTRIBUTED RANDOMLY", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE dist_random(a int, b text) DISTRIBUTED RANDOMLY")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE dist_random")
-			oid := backup.OidFromObjectName(connection, "dist_random", "relname", "pg_class")
+			oid := backup.OidFromObjectName(connection, "dist_random", backup.RelationParams)
 
 			distPolicy := backup.GetDistributionPolicy(connection, oid)
 
@@ -221,7 +221,7 @@ PARTITION BY LIST (gender)
 		It("returns distribution policy info for a table DISTRIBUTED BY one column", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE dist_one(a int, b text) DISTRIBUTED BY (a)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE dist_one")
-			oid := backup.OidFromObjectName(connection, "dist_one", "relname", "pg_class")
+			oid := backup.OidFromObjectName(connection, "dist_one", backup.RelationParams)
 
 			distPolicy := backup.GetDistributionPolicy(connection, oid)
 
@@ -230,7 +230,7 @@ PARTITION BY LIST (gender)
 		It("returns distribution policy info for a table DISTRIBUTED BY two columns", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE dist_two(a int, b text) DISTRIBUTED BY (a, b)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE dist_two")
-			oid := backup.OidFromObjectName(connection, "dist_two", "relname", "pg_class")
+			oid := backup.OidFromObjectName(connection, "dist_two", backup.RelationParams)
 
 			distPolicy := backup.GetDistributionPolicy(connection, oid)
 
@@ -241,7 +241,7 @@ PARTITION BY LIST (gender)
 		It("returns empty string when no partition exists", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
-			oid := backup.OidFromObjectName(connection, "simple_table", "relname", "pg_class")
+			oid := backup.OidFromObjectName(connection, "simple_table", backup.RelationParams)
 
 			result := backup.GetPartitionDefinition(connection, oid)
 
@@ -257,7 +257,7 @@ PARTITION BY LIST (gender)
   DEFAULT PARTITION other );
 			`)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE part_table")
-			oid := backup.OidFromObjectName(connection, "part_table", "relname", "pg_class")
+			oid := backup.OidFromObjectName(connection, "part_table", backup.RelationParams)
 
 			result := backup.GetPartitionDefinition(connection, oid)
 
@@ -275,7 +275,7 @@ PARTITION BY LIST (gender)
 		It("returns empty string when no partition definition template exists", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
-			oid := backup.OidFromObjectName(connection, "simple_table", "relname", "pg_class")
+			oid := backup.OidFromObjectName(connection, "simple_table", backup.RelationParams)
 
 			result := backup.GetPartitionTemplateDefinition(connection, oid)
 
@@ -295,7 +295,7 @@ PARTITION BY LIST (gender)
     END (date '2014-04-01') EXCLUSIVE
     EVERY (INTERVAL '1 month') ) `)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE part_table")
-			oid := backup.OidFromObjectName(connection, "part_table", "relname", "pg_class")
+			oid := backup.OidFromObjectName(connection, "part_table", backup.RelationParams)
 
 			result := backup.GetPartitionTemplateDefinition(connection, oid)
 
@@ -317,7 +317,7 @@ SET SUBPARTITION TEMPLATE
 		It("returns an empty string when no table storage options exist ", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
-			oid := backup.OidFromObjectName(connection, "simple_table", "relname", "pg_class")
+			oid := backup.OidFromObjectName(connection, "simple_table", backup.RelationParams)
 
 			result := backup.GetStorageOptions(connection, oid)
 
@@ -326,7 +326,7 @@ SET SUBPARTITION TEMPLATE
 		It("returns a value for storage options of a table ", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE ao_table(i int) with (appendonly=true)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE ao_table")
-			oid := backup.OidFromObjectName(connection, "ao_table", "relname", "pg_class")
+			oid := backup.OidFromObjectName(connection, "ao_table", backup.RelationParams)
 
 			result := backup.GetStorageOptions(connection, oid)
 

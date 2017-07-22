@@ -33,7 +33,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.AssertQueryRuns(connection, hunks[1])
 
 			resultResourceQueues := backup.GetResourceQueues(connection)
-			resQueueOid := backup.OidFromObjectName(connection, "basicQueue", "rsqname", "pg_resqueue")
+			resQueueOid := backup.OidFromObjectName(connection, "basicQueue", backup.ResQueueParams)
 			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.ResQueueParams)
 			resultMetadata := resultMetadataMap[resQueueOid]
 			testutils.ExpectStructsToMatch(&resultMetadata, &resQueueMetadata)
@@ -92,7 +92,7 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, `DROP ROLE "role1"`)
-			role1.Oid = backup.OidFromObjectName(connection, "role1", "rolname", "pg_roles")
+			role1.Oid = backup.OidFromObjectName(connection, "role1", backup.RoleParams)
 
 			resultRoles := backup.GetRoles(connection)
 			for _, role := range resultRoles {
@@ -143,7 +143,7 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, `DROP ROLE "role1"`)
-			role1.Oid = backup.OidFromObjectName(connection, "role1", "rolname", "pg_roles")
+			role1.Oid = backup.OidFromObjectName(connection, "role1", backup.RoleParams)
 
 			resultRoles := backup.GetRoles(connection)
 			for _, role := range resultRoles {

@@ -44,7 +44,7 @@ FORMAT 'TEXT' ( DELIMITER '|' NULL ' ')`)
 LOCATION ('file://tmp/myfile.txt')
 FORMAT 'TEXT'`)
 			defer testutils.AssertQueryRuns(connection, "DROP EXTERNAL TABLE ext_table")
-			oid := backup.OidFromObjectName(connection, "ext_table", "relname", "pg_class")
+			oid := backup.OidFromObjectName(connection, "ext_table", backup.RelationParams)
 
 			result := backup.GetExternalTableDefinition(connection, oid)
 
@@ -65,7 +65,7 @@ LOG ERRORS
 SEGMENT REJECT LIMIT 10 PERCENT
 `)
 			defer testutils.AssertQueryRuns(connection, "DROP EXTERNAL TABLE ext_table")
-			oid := backup.OidFromObjectName(connection, "ext_table", "relname", "pg_class")
+			oid := backup.OidFromObjectName(connection, "ext_table", backup.RelationParams)
 
 			result := backup.GetExternalTableDefinition(connection, oid)
 
@@ -88,8 +88,8 @@ SEGMENT REJECT LIMIT 10 PERCENT
 			testutils.AssertQueryRuns(connection, "CREATE PROTOCOL s3 (writefunc = write_to_s3, readfunc = read_from_s3);")
 			defer testutils.AssertQueryRuns(connection, "DROP PROTOCOL s3")
 
-			readFunctionOid := backup.OidFromObjectName(connection, "read_from_s3", "proname", "pg_proc")
-			writeFunctionOid := backup.OidFromObjectName(connection, "write_to_s3", "proname", "pg_proc")
+			readFunctionOid := backup.OidFromObjectName(connection, "read_from_s3", backup.FunctionParams)
+			writeFunctionOid := backup.OidFromObjectName(connection, "write_to_s3", backup.FunctionParams)
 
 			results := backup.GetExternalProtocols(connection)
 

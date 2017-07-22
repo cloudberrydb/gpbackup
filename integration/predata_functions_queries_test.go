@@ -80,8 +80,8 @@ CREATE AGGREGATE agg_prefunc(numeric, numeric) (
 `)
 			defer testutils.AssertQueryRuns(connection, "DROP AGGREGATE agg_prefunc(numeric, numeric)")
 
-			transitionOid := backup.OidFromObjectName(connection, "mysfunc_accum", "proname", "pg_proc")
-			prelimOid := backup.OidFromObjectName(connection, "mypre_accum", "proname", "pg_proc")
+			transitionOid := backup.OidFromObjectName(connection, "mysfunc_accum", backup.FunctionParams)
+			prelimOid := backup.OidFromObjectName(connection, "mypre_accum", backup.FunctionParams)
 
 			result := backup.GetAggregateDefinitions(connection)
 
@@ -105,7 +105,7 @@ LANGUAGE SQL`)
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION add(integer, integer)")
 
 			result = backup.GetFunctionOidToInfoMap(connection)
-			oid := backup.OidFromObjectName(connection, "add", "proname", "pg_proc")
+			oid := backup.OidFromObjectName(connection, "add", backup.FunctionParams)
 			Expect(len(result)).To(Equal(initialLength + 1))
 			Expect(result[oid].QualifiedName).To(Equal("public.add"))
 			Expect(result[oid].Arguments).To(Equal("integer, integer"))
@@ -114,7 +114,7 @@ LANGUAGE SQL`)
 		It("returns a map containing an internal function", func() {
 			result := backup.GetFunctionOidToInfoMap(connection)
 
-			oid := backup.OidFromObjectName(connection, "boolin", "proname", "pg_proc")
+			oid := backup.OidFromObjectName(connection, "boolin", backup.FunctionParams)
 			Expect(result[oid].QualifiedName).To(Equal("pg_catalog.boolin"))
 			Expect(result[oid].IsInternal).To(BeTrue())
 		})

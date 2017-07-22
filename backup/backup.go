@@ -107,7 +107,7 @@ func backupGlobal(filename string) {
 
 	logger.Verbose("Writing CREATE DATABASE statement to global file")
 	dbnames := GetDatabaseNames(connection)
-	dbMetadata := GetMetadataForObjectType(connection, "", "datacl", "datdba", "pg_database")
+	dbMetadata := GetMetadataForObjectType(connection, DatabaseParams)
 	PrintCreateDatabaseStatement(globalFile, connection.DBName, dbnames, dbMetadata)
 
 	logger.Verbose("Writing database GUCs to global file")
@@ -134,11 +134,11 @@ func backupPredata(filename string, tables []utils.Relation, extTableMap map[str
 
 	logger.Verbose("Writing CREATE SCHEMA statements to predata file")
 	schemas := GetAllUserSchemas(connection)
-	schemaMetadata := GetMetadataForObjectType(connection, "", "nspacl", "nspowner", "pg_namespace")
+	schemaMetadata := GetMetadataForObjectType(connection, SchemaParams)
 	PrintCreateSchemaStatements(predataFile, schemas, schemaMetadata)
 
 	types := GetTypeDefinitions(connection)
-	typeMetadata := GetMetadataForObjectType(connection, "typnamespace", "", "typowner", "pg_type")
+	typeMetadata := GetMetadataForObjectType(connection, TypeParams)
 	logger.Verbose("Writing CREATE TYPE statements for shell types to predata file")
 	PrintCreateShellTypeStatements(predataFile, types)
 
@@ -148,7 +148,7 @@ func backupPredata(filename string, tables []utils.Relation, extTableMap map[str
 	funcInfoMap := GetFunctionOidToInfoMap(connection)
 	logger.Verbose("Writing CREATE PROCEDURAL LANGUAGE statements to predata file")
 	procLangs := GetProceduralLanguages(connection)
-	procLangMetadata := GetMetadataForObjectType(connection, "", "lanacl", "lanowner", "pg_language")
+	procLangMetadata := GetMetadataForObjectType(connection, ProcLangParams)
 	PrintCreateLanguageStatements(predataFile, procLangs, funcInfoMap, procLangMetadata)
 
 	logger.Verbose("Writing CREATE TYPE statements for composite and enum types to predata file")
@@ -156,7 +156,7 @@ func backupPredata(filename string, tables []utils.Relation, extTableMap map[str
 
 	logger.Verbose("Writing CREATE FUNCTION statements to predata file")
 	funcDefs := GetFunctionDefinitions(connection)
-	funcMetadata := GetMetadataForObjectType(connection, "pronamespace", "proacl", "proowner", "pg_proc")
+	funcMetadata := GetMetadataForObjectType(connection, FunctionParams)
 	PrintCreateFunctionStatements(predataFile, funcDefs, funcMetadata)
 
 	logger.Verbose("Writing CREATE TYPE statements for base types to predata file")
@@ -164,12 +164,12 @@ func backupPredata(filename string, tables []utils.Relation, extTableMap map[str
 
 	logger.Verbose("Writing CREATE PROTOCOL statements to predata file")
 	protocols := GetExternalProtocols(connection)
-	protoMetadata := GetMetadataForObjectType(connection, "", "ptcacl", "ptcowner", "pg_extprotocol")
+	protoMetadata := GetMetadataForObjectType(connection, ProtocolParams)
 	PrintCreateExternalProtocolStatements(predataFile, protocols, funcInfoMap, protoMetadata)
 
 	logger.Verbose("Writing CREATE AGGREGATE statements to predata file")
 	aggDefs := GetAggregateDefinitions(connection)
-	aggMetadata := GetMetadataForObjectType(connection, "", "", "proowner", "pg_proc")
+	aggMetadata := GetMetadataForObjectType(connection, AggregateParams)
 	PrintCreateAggregateStatements(predataFile, aggDefs, funcInfoMap, aggMetadata)
 
 	logger.Verbose("Writing CREATE CAST statements to predata file")
@@ -178,7 +178,7 @@ func backupPredata(filename string, tables []utils.Relation, extTableMap map[str
 	PrintCreateCastStatements(predataFile, castDefs, castMetadata)
 
 	logger.Verbose("Writing CREATE TABLE statements to predata file")
-	relationMetadata := GetMetadataForObjectType(connection, "relnamespace", "relacl", "relowner", "pg_class")
+	relationMetadata := GetMetadataForObjectType(connection, RelationParams)
 	for _, table := range tables {
 		isExternal := extTableMap[table.ToString()]
 		tableDef := ConstructDefinitionsForTable(connection, table, isExternal)

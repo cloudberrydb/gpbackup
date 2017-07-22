@@ -95,7 +95,7 @@ var _ = Describe("backup integration tests", func() {
 
 			results := backup.GetRoles(connection)
 
-			roleOid := backup.OidFromObjectName(connection, "role1", "rolname", "pg_roles")
+			roleOid := backup.OidFromObjectName(connection, "role1", backup.RoleParams)
 			expectedRole := backup.QueryRole{
 				Oid:             roleOid,
 				Name:            "role1",
@@ -142,7 +142,7 @@ CREATEEXTTABLE (protocol='gphdfs', type='writable')`)
 
 			results := backup.GetRoles(connection)
 
-			roleOid := backup.OidFromObjectName(connection, "role1", "rolname", "pg_roles")
+			roleOid := backup.OidFromObjectName(connection, "role1", backup.RoleParams)
 			expectedRole := backup.QueryRole{
 				Oid:             roleOid,
 				Name:            "role1",

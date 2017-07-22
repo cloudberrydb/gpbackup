@@ -27,17 +27,49 @@ import (
  * package (especially Table and Schema) are intended for more general use.
  */
 
+type MetadataQueryParams struct {
+	NameField    string
+	SchemaField  string
+	OidField     string
+	ACLField     string
+	OwnerField   string
+	OidTable     string
+	CommentTable string
+	CatalogTable string
+	Shared       bool
+}
+
 var (
 	// A list of schemas we don't ever want to dump, formatted for use in a WHERE clause
 	nonUserSchemaFilterClause = `nspname NOT LIKE 'pg_temp_%' AND nspname NOT LIKE 'pg_toast%' AND nspname NOT IN ('gp_toolkit', 'information_schema', 'pg_aoseg', 'pg_bitmapindex', 'pg_catalog')`
+
+	RoleParams      = MetadataQueryParams{NameField: "rolname", CatalogTable: "pg_roles"}
+	DatabaseParams  = MetadataQueryParams{NameField: "datname", ACLField: "datacl", OwnerField: "datdba", CatalogTable: "pg_database", Shared: true}
+	SchemaParams    = MetadataQueryParams{NameField: "nspname", ACLField: "nspacl", OwnerField: "nspowner", CatalogTable: "pg_namespace"}
+	TypeParams      = MetadataQueryParams{NameField: "typname", SchemaField: "typnamespace", OwnerField: "typowner", CatalogTable: "pg_type"}
+	ProcLangParams  = MetadataQueryParams{NameField: "lanname", ACLField: "lanacl", OwnerField: "lanowner", CatalogTable: "pg_language"}
+	FunctionParams  = MetadataQueryParams{NameField: "proname", SchemaField: "pronamespace", ACLField: "proacl", OwnerField: "proowner", CatalogTable: "pg_proc"}
+	ProtocolParams  = MetadataQueryParams{NameField: "ptcname", ACLField: "ptcacl", OwnerField: "ptcowner", CatalogTable: "pg_extprotocol"}
+	AggregateParams = MetadataQueryParams{NameField: "proname", OwnerField: "proowner", CatalogTable: "pg_proc"}
+	RelationParams  = MetadataQueryParams{NameField: "relname", SchemaField: "relnamespace", ACLField: "relacl", OwnerField: "relowner", CatalogTable: "pg_class"}
+	ResQueueParams  = MetadataQueryParams{NameField: "rsqname", OidField: "oid", CatalogTable: "pg_resqueue", Shared: true}
+	CastParams      = MetadataQueryParams{NameField: "typname", OidField: "oid", OidTable: "pg_type", CatalogTable: "pg_cast"}
+	ConParams       = MetadataQueryParams{NameField: "conname", OidField: "oid", CatalogTable: "pg_constraint"}
+	IndexParams     = MetadataQueryParams{NameField: "relname", OidField: "indexrelid", OidTable: "pg_class", CommentTable: "pg_class", CatalogTable: "pg_index"}
+	RuleParams      = MetadataQueryParams{NameField: "rulename", OidField: "oid", CatalogTable: "pg_rewrite"}
+	TriggerParams   = MetadataQueryParams{NameField: "tgname", OidField: "oid", CatalogTable: "pg_trigger"}
 )
 
 type QueryOid struct {
 	Oid uint32
 }
 
-func OidFromObjectName(dbconn *utils.DBConn, name string, nameField string, catalogTable string) uint32 {
-	query := fmt.Sprintf("SELECT oid FROM %s WHERE %s ='%s'", catalogTable, nameField, name)
+func OidFromObjectName(dbconn *utils.DBConn, name string, params MetadataQueryParams) uint32 {
+	catalogTable := params.CatalogTable
+	if params.OidTable != "" {
+		catalogTable = params.OidTable
+	}
+	query := fmt.Sprintf("SELECT oid FROM %s WHERE %s ='%s'", catalogTable, params.NameField, name)
 	result := QueryOid{}
 	err := dbconn.Get(&result, query)
 	utils.CheckError(err)
@@ -51,37 +83,37 @@ type QueryObjectMetadata struct {
 	Comment    string
 }
 
-func GetMetadataForObjectType(connection *utils.DBConn, schemaField string, aclField string, ownerField string, catalogTable string) MetadataMap {
+func GetMetadataForObjectType(connection *utils.DBConn, params MetadataQueryParams) MetadataMap {
 	schemaStr := ""
-	if schemaField != "" {
+	if params.SchemaField != "" {
 		schemaStr = fmt.Sprintf(`JOIN pg_namespace n ON o.%s = n.oid
-WHERE %s`, schemaField, nonUserSchemaFilterClause)
+WHERE %s`, params.SchemaField, nonUserSchemaFilterClause)
 	}
 	aclStr := ""
-	if aclField != "" {
+	if params.ACLField != "" {
 		aclStr = fmt.Sprintf(`CASE
 		WHEN o.%s IS NULL THEN ''
 		WHEN array_length(o.%s, 1) = 0 THEN 'GRANTEE=/GRANTOR'
 		ELSE unnest(o.%s)::text
 	END
-`, aclField, aclField, aclField)
+`, params.ACLField, params.ACLField, params.ACLField)
 	} else {
 		aclStr = "''"
 	}
-	sh := ""
-	if catalogTable == "pg_database" {
-		sh = "sh"
+	descFunc := "obj_description"
+	if params.Shared {
+		descFunc = "shobj_description"
 	}
 	query := fmt.Sprintf(`
 SELECT
 	o.oid,
 	%s AS privileges,
 	pg_get_userbyid(o.%s) AS owner,
-	coalesce(%sobj_description(o.oid, '%s'), '') AS comment
+	coalesce(%s(o.oid, '%s'), '') AS comment
 FROM %s o
 %s
 ORDER BY o.oid;
-`, aclStr, ownerField, sh, catalogTable, catalogTable, schemaStr)
+`, aclStr, params.OwnerField, descFunc, params.CatalogTable, params.CatalogTable, schemaStr)
 
 	results := make([]QueryObjectMetadata, 0)
 	err := connection.Select(&results, query)
@@ -120,34 +152,21 @@ func sortACLs(metadata ObjectMetadata) ObjectMetadata {
 	return metadata
 }
 
-var (
-	ResQueueParams = CommentQueryParams{OidField: "oid", CommentTable: "pg_resqueue", CatalogTable: "pg_resqueue", Shared: true}
-	CastParams     = CommentQueryParams{OidField: "oid", CommentTable: "pg_cast", CatalogTable: "pg_cast", Shared: false}
-	ConParams      = CommentQueryParams{OidField: "oid", CommentTable: "pg_constraint", CatalogTable: "pg_constraint", Shared: false}
-	IndexParams    = CommentQueryParams{OidField: "indexrelid", CommentTable: "pg_class", CatalogTable: "pg_index", Shared: false}
-	RuleParams     = CommentQueryParams{OidField: "oid", CommentTable: "pg_rewrite", CatalogTable: "pg_rewrite", Shared: false}
-	TriggerParams  = CommentQueryParams{OidField: "oid", CommentTable: "pg_trigger", CatalogTable: "pg_trigger", Shared: false}
-)
-
-type CommentQueryParams struct {
-	SchemaField  string
-	OidField     string
-	CommentTable string
-	CatalogTable string
-	Shared       bool
-}
-
-func GetCommentsForObjectType(connection *utils.DBConn, params CommentQueryParams) MetadataMap {
+func GetCommentsForObjectType(connection *utils.DBConn, params MetadataQueryParams) MetadataMap {
 	descFunc := "obj_description"
 	if params.Shared {
 		descFunc = "shobj_description"
+	}
+	commentTable := params.CatalogTable
+	if params.CommentTable != "" {
+		commentTable = params.CommentTable
 	}
 	query := fmt.Sprintf(`
 SELECT
 	o.%s AS oid,
 	coalesce(%s(o.%s, '%s'), '') AS comment
 FROM %s o;
-`, params.OidField, descFunc, params.OidField, params.CommentTable, params.CatalogTable)
+`, params.OidField, descFunc, params.OidField, commentTable, params.CatalogTable)
 
 	results := make([]QueryObjectMetadata, 0)
 	err := connection.Select(&results, query)
