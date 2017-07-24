@@ -88,22 +88,21 @@ type TimeConstraint struct {
 
 type QueryRole struct {
 	Oid             uint32
-	Name            string
-	Super           bool
-	Inherit         bool
-	CreateRole      bool
-	CreateDB        bool
-	CanLogin        bool
-	ConnectionLimit int
+	Name            string `db:"rolname"`
+	Super           bool   `db:"rolsuper"`
+	Inherit         bool   `db:"rolinherit"`
+	CreateRole      bool   `db:"rolcreaterole"`
+	CreateDB        bool   `db:"rolcreatedb"`
+	CanLogin        bool   `db:"rolcanlogin"`
+	ConnectionLimit int    `db:"rolconnlimit"`
 	Password        string
 	ValidUntil      string
-	Comment         string
 	ResQueue        string
-	Createrextgpfd  bool
-	Createrexthttp  bool
-	Createwextgpfd  bool
-	Createrexthdfs  bool
-	Createwexthdfs  bool
+	Createrextgpfd  bool `db:"rolcreaterexthttp"`
+	Createrexthttp  bool `db:"rolcreaterextgpfd"`
+	Createwextgpfd  bool `db:"rolcreatewextgpfd"`
+	Createrexthdfs  bool `db:"rolcreaterexthdfs"`
+	Createwexthdfs  bool `db:"rolcreatewexthdfs"`
 	TimeConstraints []TimeConstraint
 }
 
@@ -116,23 +115,22 @@ func GetRoles(connection *utils.DBConn) []QueryRole {
 	roles := make([]QueryRole, 0)
 	query := `
 SELECT
-	oid AS oid,
-	rolname AS name,
-	rolsuper AS super,
-	rolinherit AS inherit,
-	rolcreaterole AS createrole,
-	rolcreatedb AS createdb,
-	rolcanlogin AS  canlogin,
-	rolconnlimit AS connectionlimit,
+	oid,
+	rolname,
+	rolsuper,
+	rolinherit,
+	rolcreaterole,
+	rolcreatedb,
+	rolcanlogin,
+	rolconnlimit,
 	coalesce(rolpassword, '') AS password,
 	coalesce(timezone('UTC', rolvaliduntil) || '-00', '') AS validuntil,
-	coalesce(shobj_description(oid, 'pg_authid'), '') AS comment,
 	(SELECT rsqname FROM pg_resqueue WHERE pg_resqueue.oid = rolresqueue) AS resqueue,
-	rolcreaterexthttp AS createrexthttp,
-	rolcreaterextgpfd AS createrextgpfd,
-	rolcreatewextgpfd AS createwextgpfd,
-	rolcreaterexthdfs AS createrexthdfs,
-	rolcreatewexthdfs AS createwexthdfs
+	rolcreaterexthttp,
+	rolcreaterextgpfd,
+	rolcreatewextgpfd,
+	rolcreaterexthdfs,
+	rolcreatewexthdfs
 FROM
 	pg_authid`
 	err := connection.Select(&roles, query)
@@ -173,4 +171,26 @@ FROM
 	}
 
 	return constraintsByRole
+}
+
+type QueryRoleMember struct {
+	Role    string
+	Member  string
+	Grantor string
+	IsAdmin bool
+}
+
+func GetRoleMembers(connection *utils.DBConn) []QueryRoleMember {
+	roleMembers := make([]QueryRoleMember, 0)
+	query := `
+SELECT
+	pg_get_userbyid(roleid) AS role,
+	pg_get_userbyid(member) AS member,
+	pg_get_userbyid(grantor) AS grantor,
+	admin_option as isadmin
+FROM pg_auth_members
+ORDER BY roleid, member;`
+	err := connection.Select(&roleMembers, query)
+	utils.CheckError(err)
+	return roleMembers
 }

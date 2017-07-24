@@ -107,7 +107,6 @@ var _ = Describe("backup integration tests", func() {
 				ConnectionLimit: -1,
 				Password:        "",
 				ValidUntil:      "",
-				Comment:         "",
 				ResQueue:        "pg_default",
 				Createrexthttp:  false,
 				Createrextgpfd:  false,
@@ -154,7 +153,6 @@ CREATEEXTTABLE (protocol='gphdfs', type='writable')`)
 				ConnectionLimit: 4,
 				Password:        "md5a8b2c77dfeba4705f29c094592eb3369",
 				ValidUntil:      "2099-01-01 08:00:00-00",
-				Comment:         "this is a role comment",
 				ResQueue:        "pg_default",
 				Createrexthttp:  true,
 				Createrextgpfd:  true,
@@ -185,6 +183,44 @@ CREATEEXTTABLE (protocol='gphdfs', type='writable')`)
 				}
 			}
 			Fail("Role 'role1' was not found")
+		})
+	})
+	Describe("GetRoleMembers", func() {
+		BeforeEach(func() {
+			testutils.AssertQueryRuns(connection, `CREATE ROLE usergroup`)
+			testutils.AssertQueryRuns(connection, `CREATE ROLE testuser`)
+		})
+		AfterEach(func() {
+			defer testutils.AssertQueryRuns(connection, `DROP ROLE usergroup`)
+			defer testutils.AssertQueryRuns(connection, `DROP ROLE testuser`)
+		})
+		It("returns a role without ADMIN OPTION", func() {
+			testutils.AssertQueryRuns(connection, "GRANT usergroup TO testuser")
+			expectedRoleMember := backup.QueryRoleMember{"usergroup", "testuser", "testrole", false}
+
+			roleMembers := backup.GetRoleMembers(connection)
+
+			for _, roleMember := range roleMembers {
+				if roleMember.Role == "usergroup" {
+					testutils.ExpectStructsToMatch(&expectedRoleMember, &roleMember)
+					return
+				}
+			}
+			Fail("Role 'testuser' is not a member of role 'usergroup'")
+		})
+		It("returns a role WITH ADMIN OPTION", func() {
+			testutils.AssertQueryRuns(connection, "GRANT usergroup TO testuser WITH ADMIN OPTION GRANTED BY testrole")
+			expectedRoleMember := backup.QueryRoleMember{"usergroup", "testuser", "testrole", true}
+
+			roleMembers := backup.GetRoleMembers(connection)
+
+			for _, roleMember := range roleMembers {
+				if roleMember.Role == "usergroup" {
+					testutils.ExpectStructsToMatch(&expectedRoleMember, &roleMember)
+					return
+				}
+			}
+			Fail("Role 'testuser' is not a member of role 'usergroup'")
 		})
 	})
 })

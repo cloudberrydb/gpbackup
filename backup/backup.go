@@ -121,7 +121,12 @@ func backupGlobal(filename string) {
 
 	logger.Verbose("Writing CREATE ROLE statements to global file")
 	roles := GetRoles(connection)
-	PrintCreateRoleStatements(globalFile, roles)
+	roleMetadata := GetCommentsForObjectType(connection, RoleParams)
+	PrintCreateRoleStatements(globalFile, roles, roleMetadata)
+
+	logger.Verbose("Writing GRANT ROLE statements to global file")
+	roleMembers := GetRoleMembers(connection)
+	PrintRoleMembershipStatements(globalFile, roleMembers)
 }
 
 func backupPredata(filename string, tables []utils.Relation, extTableMap map[string]bool) {

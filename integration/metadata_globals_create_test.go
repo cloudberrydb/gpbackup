@@ -8,6 +8,7 @@ import (
 	"github.com/greenplum-db/gpbackup/testutils"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("backup integration create statement tests", func() {
@@ -78,7 +79,6 @@ var _ = Describe("backup integration create statement tests", func() {
 				ConnectionLimit: -1,
 				Password:        "",
 				ValidUntil:      "",
-				Comment:         "",
 				ResQueue:        "pg_default",
 				Createrexthttp:  false,
 				Createrextgpfd:  false,
@@ -87,8 +87,9 @@ var _ = Describe("backup integration create statement tests", func() {
 				Createwexthdfs:  false,
 				TimeConstraints: nil,
 			}
+			emptyMetadataMap := backup.MetadataMap{}
 
-			backup.PrintCreateRoleStatements(buffer, []backup.QueryRole{role1})
+			backup.PrintCreateRoleStatements(buffer, []backup.QueryRole{role1}, emptyMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, `DROP ROLE "role1"`)
@@ -105,7 +106,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 		It("creates a role with all attributes", func() {
 			role1 := backup.QueryRole{
-				Oid:             0,
+				Oid:             1,
 				Name:            "role1",
 				Super:           false,
 				Inherit:         true,
@@ -115,7 +116,6 @@ var _ = Describe("backup integration create statement tests", func() {
 				ConnectionLimit: 4,
 				Password:        "md5a8b2c77dfeba4705f29c094592eb3369",
 				ValidUntil:      "2099-01-01 08:00:00-00",
-				Comment:         "this is a role comment",
 				ResQueue:        "pg_default",
 				Createrexthttp:  true,
 				Createrextgpfd:  true,
@@ -138,8 +138,9 @@ var _ = Describe("backup integration create statement tests", func() {
 					},
 				},
 			}
+			metadataMap := testutils.DefaultMetadataMap("ROLE", false, false, true)
 
-			backup.PrintCreateRoleStatements(buffer, []backup.QueryRole{role1})
+			backup.PrintCreateRoleStatements(buffer, []backup.QueryRole{role1}, metadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, `DROP ROLE "role1"`)
@@ -153,6 +154,50 @@ var _ = Describe("backup integration create statement tests", func() {
 				}
 			}
 			Fail("Role 'role1' was not found")
+		})
+	})
+	Describe("PrintRoleMembershipStatements", func() {
+		BeforeEach(func() {
+			testutils.AssertQueryRuns(connection, `CREATE ROLE usergroup`)
+			testutils.AssertQueryRuns(connection, `CREATE ROLE testuser`)
+		})
+		AfterEach(func() {
+			defer testutils.AssertQueryRuns(connection, `DROP ROLE usergroup`)
+			defer testutils.AssertQueryRuns(connection, `DROP ROLE testuser`)
+		})
+		It("grants a role without ADMIN OPTION", func() {
+			numRoleMembers := len(backup.GetRoleMembers(connection))
+			expectedRoleMember := backup.QueryRoleMember{"usergroup", "testuser", "testrole", false}
+			backup.PrintRoleMembershipStatements(buffer, []backup.QueryRoleMember{expectedRoleMember})
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+
+			resultRoleMembers := backup.GetRoleMembers(connection)
+			Expect(len(resultRoleMembers)).To(Equal(numRoleMembers + 1))
+			for _, roleMember := range resultRoleMembers {
+				if roleMember.Role == "usergroup" {
+					testutils.ExpectStructsToMatch(&expectedRoleMember, &roleMember)
+					return
+				}
+			}
+			Fail("Role 'testuser' is not a member of role 'usergroup'")
+		})
+		It("grants a role WITH ADMIN OPTION", func() {
+			numRoleMembers := len(backup.GetRoleMembers(connection))
+			expectedRoleMember := backup.QueryRoleMember{"usergroup", "testuser", "testrole", true}
+			backup.PrintRoleMembershipStatements(buffer, []backup.QueryRoleMember{expectedRoleMember})
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+
+			resultRoleMembers := backup.GetRoleMembers(connection)
+			Expect(len(resultRoleMembers)).To(Equal(numRoleMembers + 1))
+			for _, roleMember := range resultRoleMembers {
+				if roleMember.Role == "usergroup" {
+					testutils.ExpectStructsToMatch(&expectedRoleMember, &roleMember)
+					return
+				}
+			}
+			Fail("Role 'testuser' is not a member of role 'usergroup'")
 		})
 	})
 })

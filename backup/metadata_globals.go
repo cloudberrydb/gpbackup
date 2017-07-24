@@ -81,8 +81,9 @@ func PrintCreateResourceQueueStatements(globalFile io.Writer, resQueues []QueryR
 	}
 }
 
-func PrintCreateRoleStatements(globalFile io.Writer, roles []QueryRole) {
+func PrintCreateRoleStatements(globalFile io.Writer, roles []QueryRole, roleMetadata MetadataMap) {
 	for _, role := range roles {
+		quotedName := utils.QuoteIdent(role.Name)
 		attrs := []string{}
 
 		if role.Super {
@@ -151,17 +152,24 @@ func PrintCreateRoleStatements(globalFile io.Writer, roles []QueryRole) {
 		utils.MustPrintf(globalFile, `
 
 CREATE ROLE %s;
-
-ALTER ROLE %s WITH %s;`, utils.QuoteIdent(role.Name), utils.QuoteIdent(role.Name), strings.Join(attrs, " "))
+ALTER ROLE %s WITH %s;`, quotedName, quotedName, strings.Join(attrs, " "))
 
 		if len(role.TimeConstraints) != 0 {
 			for _, timeConstraint := range role.TimeConstraints {
-				utils.MustPrintf(globalFile, "\n\nALTER ROLE %s DENY BETWEEN DAY %d TIME '%s' AND DAY %d TIME '%s';", utils.QuoteIdent(role.Name), timeConstraint.StartDay, timeConstraint.StartTime, timeConstraint.EndDay, timeConstraint.EndTime)
+				utils.MustPrintf(globalFile, "\nALTER ROLE %s DENY BETWEEN DAY %d TIME '%s' AND DAY %d TIME '%s';", quotedName, timeConstraint.StartDay, timeConstraint.StartTime, timeConstraint.EndDay, timeConstraint.EndTime)
 			}
 		}
+		PrintObjectMetadata(globalFile, roleMetadata[role.Oid], quotedName, "ROLE")
+	}
+}
 
-		if role.Comment != "" {
-			utils.MustPrintf(globalFile, "\n\nCOMMENT ON ROLE %s IS '%s';", utils.QuoteIdent(role.Name), role.Comment)
+func PrintRoleMembershipStatements(globalFile io.Writer, roleMembers []QueryRoleMember) {
+	utils.MustPrintln(globalFile, "\n")
+	for _, roleMember := range roleMembers {
+		utils.MustPrintf(globalFile, "\nGRANT %s TO %s", roleMember.Role, roleMember.Member)
+		if roleMember.IsAdmin {
+			utils.MustPrintf(globalFile, " WITH ADMIN OPTION")
 		}
+		utils.MustPrintf(globalFile, " GRANTED BY %s;", roleMember.Grantor)
 	}
 }

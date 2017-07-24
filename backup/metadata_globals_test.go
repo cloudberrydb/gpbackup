@@ -136,8 +136,9 @@ COMMENT ON RESOURCE QUEUE "commentQueue" IS 'This is a resource queue comment.'`
 			testutils.ExpectRegexp(buffer, `ALTER RESOURCE QUEUE pg_default WITH (ACTIVE_STATEMENTS=1);`)
 		})
 	})
-	Describe("PrintRoleStatements", func() {
+	Describe("PrintCreateRoleStatements", func() {
 		testrole1 := backup.QueryRole{
+			Oid:             1,
 			Name:            "testrole1",
 			Super:           false,
 			Inherit:         false,
@@ -147,7 +148,6 @@ COMMENT ON RESOURCE QUEUE "commentQueue" IS 'This is a resource queue comment.'`
 			ConnectionLimit: -1,
 			Password:        "",
 			ValidUntil:      "",
-			Comment:         "",
 			ResQueue:        "pg_default",
 			Createrexthttp:  false,
 			Createrextgpfd:  false,
@@ -158,6 +158,7 @@ COMMENT ON RESOURCE QUEUE "commentQueue" IS 'This is a resource queue comment.'`
 		}
 
 		testrole2 := backup.QueryRole{
+			Oid:             1,
 			Name:            "testRole2",
 			Super:           true,
 			Inherit:         true,
@@ -167,7 +168,6 @@ COMMENT ON RESOURCE QUEUE "commentQueue" IS 'This is a resource queue comment.'`
 			ConnectionLimit: 4,
 			Password:        "md5a8b2c77dfeba4705f29c094592eb3369",
 			ValidUntil:      "2099-01-01 00:00:00-08",
-			Comment:         "this is a role comment",
 			ResQueue:        "testQueue",
 			Createrexthttp:  true,
 			Createrextgpfd:  true,
@@ -189,38 +189,53 @@ COMMENT ON RESOURCE QUEUE "commentQueue" IS 'This is a resource queue comment.'`
 			},
 		}
 		It("prints basic role", func() {
-
-			backup.PrintCreateRoleStatements(buffer, []backup.QueryRole{testrole1})
-
-			testutils.ExpectRegexp(buffer, `CREATE ROLE testrole1;
-
-ALTER ROLE testrole1 WITH NOSUPERUSER NOINHERIT NOCREATEROLE NOCREATEDB NOLOGIN RESOURCE QUEUE pg_default;`)
-		})
-		It("prints roles with non-defaults", func() {
-
-			backup.PrintCreateRoleStatements(buffer, []backup.QueryRole{testrole2})
-
-			testutils.ExpectRegexp(buffer, `CREATE ROLE "testRole2";
-
-ALTER ROLE "testRole2" WITH SUPERUSER INHERIT CREATEROLE CREATEDB LOGIN CONNECTION LIMIT 4 PASSWORD 'md5a8b2c77dfeba4705f29c094592eb3369' VALID UNTIL '2099-01-01 00:00:00-08' RESOURCE QUEUE "testQueue" CREATEEXTTABLE (protocol='http') CREATEEXTTABLE (protocol='gpfdist', type='readable') CREATEEXTTABLE (protocol='gpfdist', type='writable') CREATEEXTTABLE (protocol='gphdfs', type='readable') CREATEEXTTABLE (protocol='gphdfs', type='writable');
-
-ALTER ROLE "testRole2" DENY BETWEEN DAY 0 TIME '13:30:00' AND DAY 3 TIME '14:30:00';
-
-ALTER ROLE "testRole2" DENY BETWEEN DAY 5 TIME '00:00:00' AND DAY 5 TIME '24:00:00';
-
-COMMENT ON ROLE "testRole2" IS 'this is a role comment';`)
-		})
-		It("prints multiple roles", func() {
-
-			backup.PrintCreateRoleStatements(buffer, []backup.QueryRole{testrole1, testrole1})
+			roleMetadataMap := testutils.DefaultMetadataMap("ROLE", false, false, true)
+			backup.PrintCreateRoleStatements(buffer, []backup.QueryRole{testrole1}, roleMetadataMap)
 
 			testutils.ExpectRegexp(buffer, `CREATE ROLE testrole1;
-
 ALTER ROLE testrole1 WITH NOSUPERUSER NOINHERIT NOCREATEROLE NOCREATEDB NOLOGIN RESOURCE QUEUE pg_default;
 
-CREATE ROLE testrole1;
+COMMENT ON ROLE testrole1 IS 'This is a role comment.';`)
+		})
+		It("prints roles with non-defaults", func() {
+			roleMetadataMap := testutils.DefaultMetadataMap("ROLE", false, false, true)
+			backup.PrintCreateRoleStatements(buffer, []backup.QueryRole{testrole2}, roleMetadataMap)
 
-ALTER ROLE testrole1 WITH NOSUPERUSER NOINHERIT NOCREATEROLE NOCREATEDB NOLOGIN RESOURCE QUEUE pg_default;`)
+			testutils.ExpectRegexp(buffer, `CREATE ROLE "testRole2";
+ALTER ROLE "testRole2" WITH SUPERUSER INHERIT CREATEROLE CREATEDB LOGIN CONNECTION LIMIT 4 PASSWORD 'md5a8b2c77dfeba4705f29c094592eb3369' VALID UNTIL '2099-01-01 00:00:00-08' RESOURCE QUEUE "testQueue" CREATEEXTTABLE (protocol='http') CREATEEXTTABLE (protocol='gpfdist', type='readable') CREATEEXTTABLE (protocol='gpfdist', type='writable') CREATEEXTTABLE (protocol='gphdfs', type='readable') CREATEEXTTABLE (protocol='gphdfs', type='writable');
+ALTER ROLE "testRole2" DENY BETWEEN DAY 0 TIME '13:30:00' AND DAY 3 TIME '14:30:00';
+ALTER ROLE "testRole2" DENY BETWEEN DAY 5 TIME '00:00:00' AND DAY 5 TIME '24:00:00';
+
+COMMENT ON ROLE "testRole2" IS 'This is a role comment.';`)
+		})
+		It("prints multiple roles", func() {
+			emptyMetadataMap := backup.MetadataMap{}
+			backup.PrintCreateRoleStatements(buffer, []backup.QueryRole{testrole1, testrole2}, emptyMetadataMap)
+
+			testutils.ExpectRegexp(buffer, `CREATE ROLE testrole1;
+ALTER ROLE testrole1 WITH NOSUPERUSER NOINHERIT NOCREATEROLE NOCREATEDB NOLOGIN RESOURCE QUEUE pg_default;
+
+CREATE ROLE "testRole2";
+ALTER ROLE "testRole2" WITH SUPERUSER INHERIT CREATEROLE CREATEDB LOGIN CONNECTION LIMIT 4 PASSWORD 'md5a8b2c77dfeba4705f29c094592eb3369' VALID UNTIL '2099-01-01 00:00:00-08' RESOURCE QUEUE "testQueue" CREATEEXTTABLE (protocol='http') CREATEEXTTABLE (protocol='gpfdist', type='readable') CREATEEXTTABLE (protocol='gpfdist', type='writable') CREATEEXTTABLE (protocol='gphdfs', type='readable') CREATEEXTTABLE (protocol='gphdfs', type='writable');
+ALTER ROLE "testRole2" DENY BETWEEN DAY 0 TIME '13:30:00' AND DAY 3 TIME '14:30:00';
+ALTER ROLE "testRole2" DENY BETWEEN DAY 5 TIME '00:00:00' AND DAY 5 TIME '24:00:00';`)
+		})
+	})
+	Describe("PrintRoleMembershipStatements", func() {
+		roleWith := backup.QueryRoleMember{"group", "rolewith", "grantor", true}
+		roleWithout := backup.QueryRoleMember{"group", "rolewithout", "grantor", false}
+		It("prints a role without ADMIN OPTION", func() {
+			backup.PrintRoleMembershipStatements(buffer, []backup.QueryRoleMember{roleWithout})
+			testutils.ExpectRegexp(buffer, `GRANT group TO rolewithout GRANTED BY grantor;`)
+		})
+		It("prints a role WITH ADMIN OPTION", func() {
+			backup.PrintRoleMembershipStatements(buffer, []backup.QueryRoleMember{roleWith})
+			testutils.ExpectRegexp(buffer, `GRANT group TO rolewith WITH ADMIN OPTION GRANTED BY grantor;`)
+		})
+		It("prints multiple roles", func() {
+			backup.PrintRoleMembershipStatements(buffer, []backup.QueryRoleMember{roleWith, roleWithout})
+			testutils.ExpectRegexp(buffer, `GRANT group TO rolewith WITH ADMIN OPTION GRANTED BY grantor;
+GRANT group TO rolewithout GRANTED BY grantor;`)
 		})
 	})
 })

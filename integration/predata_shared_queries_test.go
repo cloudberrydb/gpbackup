@@ -301,7 +301,7 @@ LANGUAGE SQL`)
 		})
 		It("returns a slice of default metadata for a resource queue", func() {
 			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.ResQueueParams)
-			numConstraints := len(resultMetadataMap)
+			numResQueues := len(resultMetadataMap)
 
 			testutils.AssertQueryRuns(connection, `CREATE RESOURCE QUEUE res_queue WITH (MAX_COST=32.8);`)
 			defer testutils.AssertQueryRuns(connection, "DROP RESOURCE QUEUE res_queue")
@@ -313,7 +313,25 @@ LANGUAGE SQL`)
 			expectedMetadataMap := testutils.DefaultMetadataMap("RESOURCE QUEUE", false, false, true)
 			expectedMetadata := expectedMetadataMap[1]
 
-			Expect(len(resultMetadataMap)).To(Equal(numConstraints + 1))
+			Expect(len(resultMetadataMap)).To(Equal(numResQueues + 1))
+			resultMetadata := resultMetadataMap[oid]
+			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
+		})
+		It("returns a slice of default metadata for a role", func() {
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.RoleParams)
+			numRoles := len(resultMetadataMap)
+
+			testutils.AssertQueryRuns(connection, `CREATE ROLE testuser`)
+			defer testutils.AssertQueryRuns(connection, "DROP ROLE testuser")
+			testutils.AssertQueryRuns(connection, "COMMENT ON ROLE testuser IS 'This is a role comment.'")
+
+			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.RoleParams)
+
+			oid := backup.OidFromObjectName(connection, "testuser", backup.RoleParams)
+			expectedMetadataMap := testutils.DefaultMetadataMap("ROLE", false, false, true)
+			expectedMetadata := expectedMetadataMap[1]
+
+			Expect(len(resultMetadataMap)).To(Equal(numRoles + 1))
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 		})
