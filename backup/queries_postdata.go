@@ -53,28 +53,32 @@ AND i.indisprimary = 'f';
  * statements can require it.
  */
 type QuerySimpleDefinition struct {
-	Oid          uint32
-	Name         string
-	OwningSchema string
-	OwningTable  string
-	Def          string
+	Oid            uint32
+	Name           string
+	OwningSchema   string
+	OwningTable    string
+	TablespaceName string
+	Def            string
 }
 
 func GetIndexDefinitions(connection *utils.DBConn, indexNameMap map[string]bool) []QuerySimpleDefinition {
 	query := fmt.Sprintf(`
 SELECT
 	i.indexrelid AS oid,
-	t.relname AS name,
+	c.relname AS name,
 	n.nspname AS owningschema,
-	c.relname AS owningtable,
+	t.relname AS owningtable,
+	coalesce(s.spcname, '') AS tablespacename,
 	pg_get_indexdef(i.indexrelid) AS def
 FROM pg_index i
 JOIN pg_class c
-	ON (c.oid = i.indrelid)
+	ON (c.oid = i.indexrelid)
 JOIN pg_namespace n
 	ON (c.relnamespace = n.oid)
 JOIN pg_class t
-	ON (t.oid = i.indexrelid)
+	ON (t.oid = i.indrelid)
+LEFT JOIN pg_tablespace s
+	ON (c.reltablespace = s.oid)
 WHERE %s
 AND i.indisprimary = 'f'
 ORDER BY name;`, nonUserSchemaFilterClause)
@@ -104,6 +108,7 @@ SELECT
 	r.rulename AS name,
 	n.nspname AS owningschema,
 	c.relname AS owningtable,
+	'' AS tablespacename,
 	pg_get_ruledef(r.oid) AS def
 FROM pg_rewrite r
 JOIN pg_class c
@@ -127,6 +132,7 @@ SELECT
 	t.tgname AS name,
 	n.nspname AS owningschema,
 	c.relname AS owningtable,
+	'' AS tablespacename,
 	pg_get_triggerdef(t.oid) AS def
 FROM pg_trigger t
 JOIN pg_class c

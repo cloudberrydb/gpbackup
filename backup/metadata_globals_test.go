@@ -29,15 +29,15 @@ SET default_with_oids = false`)
 	})
 	Describe("PrintCreateDatabaseStatement", func() {
 		It("prints a basic CREATE DATABASE statement", func() {
-			dbs := []backup.QueryDatabaseName{}
+			dbs := []backup.QueryDatabaseName{{1, "testdb", "pg_default"}}
 			emptyMetadataMap := backup.MetadataMap{}
-			backup.PrintCreateDatabaseStatement(buffer, "testdb", dbs, emptyMetadataMap)
+			backup.PrintCreateDatabaseStatement(buffer, "testdb", dbs, emptyMetadataMap, false)
 			testutils.ExpectRegexp(buffer, `CREATE DATABASE testdb;`)
 		})
 		It("prints a CREATE DATABASE statement with privileges, an owner, and a comment", func() {
-			dbs := []backup.QueryDatabaseName{{1, "testdb"}, {2, "otherdb"}}
+			dbs := []backup.QueryDatabaseName{{1, "testdb", "pg_default"}, {2, "otherdb", "pg_default"}}
 			dbMetadataMap := testutils.DefaultMetadataMap("DATABASE", true, true, true)
-			backup.PrintCreateDatabaseStatement(buffer, "testdb", dbs, dbMetadataMap)
+			backup.PrintCreateDatabaseStatement(buffer, "testdb", dbs, dbMetadataMap, false)
 			testutils.ExpectRegexp(buffer, `CREATE DATABASE testdb;
 
 COMMENT ON DATABASE testdb IS 'This is a database comment.';
@@ -51,10 +51,10 @@ REVOKE ALL ON DATABASE testdb FROM testrole;
 GRANT ALL ON DATABASE testdb TO testrole;`)
 		})
 		It("prints a CREATE DATABASE statement with privileges for testdb and only prints privileges for otherdb", func() {
-			dbs := []backup.QueryDatabaseName{{1, "testdb"}, {2, "otherdb"}}
+			dbs := []backup.QueryDatabaseName{{1, "testdb", "pg_default"}, {2, "otherdb", "pg_default"}}
 			dbMetadataMap := testutils.DefaultMetadataMap("DATABASE", true, true, true)
 			dbMetadataMap[2] = backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "testrole", Create: true}}}
-			backup.PrintCreateDatabaseStatement(buffer, "testdb", dbs, dbMetadataMap)
+			backup.PrintCreateDatabaseStatement(buffer, "testdb", dbs, dbMetadataMap, true)
 			testutils.ExpectRegexp(buffer, `CREATE DATABASE testdb;
 
 COMMENT ON DATABASE testdb IS 'This is a database comment.';
@@ -69,6 +69,12 @@ GRANT ALL ON DATABASE testdb TO testrole;
 
 REVOKE ALL ON DATABASE otherdb FROM PUBLIC;
 GRANT CREATE ON DATABASE otherdb TO testrole;`)
+		})
+		It("prints a CREATE DATABASE statement with a TABLESPACE", func() {
+			dbs := []backup.QueryDatabaseName{{1, "testdb", "test_tablespace"}}
+			emptyMetadataMap := backup.MetadataMap{}
+			backup.PrintCreateDatabaseStatement(buffer, "testdb", dbs, emptyMetadataMap, false)
+			testutils.ExpectRegexp(buffer, `CREATE DATABASE testdb TABLESPACE test_tablespace;`)
 		})
 	})
 	Describe("PrintDatabaseGUCs", func() {

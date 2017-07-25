@@ -15,6 +15,9 @@ import (
 func PrintCreateIndexStatements(postdataFile io.Writer, indexes []QuerySimpleDefinition, indexMetadata MetadataMap) {
 	for _, index := range indexes {
 		utils.MustPrintf(postdataFile, "\n\n%s;", index.Def)
+		if index.TablespaceName != "" {
+			utils.MustPrintf(postdataFile, "\nALTER INDEX %s SET TABLESPACE %s;", index.Name, index.TablespaceName)
+		}
 		PrintObjectMetadata(postdataFile, indexMetadata[index.Oid], index.Name, "INDEX")
 	}
 }

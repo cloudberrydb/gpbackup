@@ -90,7 +90,7 @@ var _ = Describe("backup/predata_externals tests", func() {
 		var tableDef backup.TableDefinition
 		var extTableDef backup.ExternalTableDefinition
 		BeforeEach(func() {
-			tableDef = backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, colDefsEmpty, true, extTableEmpty}
+			tableDef = backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", colDefsEmpty, true, extTableEmpty}
 			extTableDef = extTableEmpty
 		})
 

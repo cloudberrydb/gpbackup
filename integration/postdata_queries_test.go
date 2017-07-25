@@ -52,16 +52,17 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE INDEX simple_table_idx2 ON simple_table(j)")
 			defer testutils.AssertQueryRuns(connection, "DROP INDEX simple_table_idx2")
 
-			index1 := backup.QuerySimpleDefinition{0, "simple_table_idx1", "public", "simple_table",
+			index1 := backup.QuerySimpleDefinition{0, "simple_table_idx1", "public", "simple_table", "",
 				"CREATE INDEX simple_table_idx1 ON simple_table USING btree (i)"}
-			index2 := backup.QuerySimpleDefinition{1, "simple_table_idx2", "public", "simple_table",
+			index2 := backup.QuerySimpleDefinition{1, "simple_table_idx2", "public", "simple_table", "",
 				"CREATE INDEX simple_table_idx2 ON simple_table USING btree (j)"}
 
 			results := backup.GetIndexDefinitions(connection, indexNameMap)
+
+			Expect(len(results)).To(Equal(2))
 			results[0].Oid = backup.OidFromObjectName(connection, "simple_table_idx1", backup.IndexParams)
 			results[1].Oid = backup.OidFromObjectName(connection, "simple_table_idx2", backup.IndexParams)
 
-			Expect(len(results)).To(Equal(2))
 			testutils.ExpectStructsToMatchExcluding(&index1, &results[0], "Oid")
 			testutils.ExpectStructsToMatchExcluding(&index2, &results[1], "Oid")
 		})
@@ -74,9 +75,9 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP INDEX simple_table_idx2")
 			indexNameMap["public.simple_table_i_key"] = true
 
-			index1 := backup.QuerySimpleDefinition{0, "simple_table_idx1", "public", "simple_table",
+			index1 := backup.QuerySimpleDefinition{0, "simple_table_idx1", "public", "simple_table", "",
 				"CREATE INDEX simple_table_idx1 ON simple_table USING btree (i)"}
-			index2 := backup.QuerySimpleDefinition{1, "simple_table_idx2", "public", "simple_table",
+			index2 := backup.QuerySimpleDefinition{1, "simple_table_idx2", "public", "simple_table", "",
 				"CREATE INDEX simple_table_idx2 ON simple_table USING btree (j)"}
 
 			results := backup.GetIndexDefinitions(connection, indexNameMap)
@@ -84,6 +85,24 @@ var _ = Describe("backup integration tests", func() {
 			Expect(len(results)).To(Equal(2))
 			testutils.ExpectStructsToMatchExcluding(&index1, &results[0], "Oid")
 			testutils.ExpectStructsToMatchExcluding(&index2, &results[1], "Oid")
+		})
+		It("returns a slice containing an index in a non-default tablespace", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLESPACE test_tablespace FILESPACE test_filespace")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")
+			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int, j int, k int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
+			testutils.AssertQueryRuns(connection, "CREATE INDEX simple_table_idx ON simple_table(i) TABLESPACE test_tablespace")
+			defer testutils.AssertQueryRuns(connection, "DROP INDEX simple_table_idx")
+
+			index1 := backup.QuerySimpleDefinition{0, "simple_table_idx", "public", "simple_table", "test_tablespace",
+				"CREATE INDEX simple_table_idx ON simple_table USING btree (i)"}
+
+			results := backup.GetIndexDefinitions(connection, indexNameMap)
+
+			Expect(len(results)).To(Equal(1))
+			results[0].Oid = backup.OidFromObjectName(connection, "simple_table_idx", backup.IndexParams)
+
+			testutils.ExpectStructsToMatchExcluding(&index1, &results[0], "Oid")
 		})
 	})
 	Describe("GetRuleDefinitions", func() {
@@ -103,9 +122,9 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP RULE update_notify ON rule_table1")
 			testutils.AssertQueryRuns(connection, "COMMENT ON RULE update_notify ON rule_table1 IS 'This is a rule comment.'")
 
-			rule1 := backup.QuerySimpleDefinition{0, "double_insert", "public", "rule_table1",
+			rule1 := backup.QuerySimpleDefinition{0, "double_insert", "public", "rule_table1", "",
 				"CREATE RULE double_insert AS ON INSERT TO rule_table1 DO INSERT INTO rule_table2 DEFAULT VALUES;"}
-			rule2 := backup.QuerySimpleDefinition{1, "update_notify", "public", "rule_table1",
+			rule2 := backup.QuerySimpleDefinition{1, "update_notify", "public", "rule_table1", "",
 				"CREATE RULE update_notify AS ON UPDATE TO rule_table1 DO NOTIFY rule_table1;"}
 
 			results := backup.GetRuleDefinitions(connection)
@@ -132,10 +151,10 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP TRIGGER sync_trigger_table2 ON trigger_table2")
 			testutils.AssertQueryRuns(connection, "COMMENT ON TRIGGER sync_trigger_table2 ON trigger_table2 IS 'This is a trigger comment.'")
 
-			trigger1 := backup.QuerySimpleDefinition{0, "sync_trigger_table1", "public", "trigger_table1",
+			trigger1 := backup.QuerySimpleDefinition{0, "sync_trigger_table1", "public", "trigger_table1", "",
 				"CREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON trigger_table1 FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger()",
 			}
-			trigger2 := backup.QuerySimpleDefinition{1, "sync_trigger_table2", "public", "trigger_table2",
+			trigger2 := backup.QuerySimpleDefinition{1, "sync_trigger_table2", "public", "trigger_table2", "",
 				"CREATE TRIGGER sync_trigger_table2 AFTER INSERT OR DELETE OR UPDATE ON trigger_table2 FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger()",
 			}
 

@@ -153,3 +153,13 @@ FROM pg_class
 WHERE oid = %d AND reloptions IS NOT NULL;`, oid)
 	return SelectString(connection, query)
 }
+
+func GetTablespaceName(connection *utils.DBConn, oid uint32) string {
+	query := fmt.Sprintf(`
+SELECT ts.spcname AS string
+FROM pg_class c
+JOIN pg_tablespace ts
+ON ts.oid = c.reltablespace
+WHERE c.oid = %d;`, oid)
+	return SelectString(connection, query)
+}

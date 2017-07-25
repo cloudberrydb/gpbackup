@@ -74,7 +74,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			tableDef = backup.TableDefinition{DistPolicy: "DISTRIBUTED RANDOMLY", ExtTableDef: extTableEmpty}
 		})
 		AfterEach(func() {
-			testutils.AssertQueryRuns(connection, "DROP TABLE public.testtable")
+			testutils.AssertQueryRuns(connection, "DROP TABLE IF EXISTS public.testtable")
 		})
 		It("creates a table with no attributes", func() {
 			tableDef.ColumnDefs = []backup.ColumnDefinition{}
@@ -148,6 +148,21 @@ SET SUBPARTITION TEMPLATE  ` + `
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			testTable.RelationOid = backup.OidFromObjectName(connection, "testtable", backup.RelationParams)
+			resultTableDef := backup.ConstructDefinitionsForTable(connection, testTable, false)
+			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ExtTableDef")
+		})
+		It("creates a table with a non-default tablespace", func() {
+			testTable = utils.BasicRelation("public", "testtable2")
+			tableDef.ColumnDefs = []backup.ColumnDefinition{}
+			testutils.AssertQueryRuns(connection, "CREATE TABLESPACE test_tablespace FILESPACE test_filespace")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")
+			tableDef.TablespaceName = "test_tablespace"
+
+			backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE testtable2")
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			testTable.RelationOid = backup.OidFromObjectName(connection, "testtable2", backup.RelationParams)
 			resultTableDef := backup.ConstructDefinitionsForTable(connection, testTable, false)
 			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ExtTableDef")
 		})

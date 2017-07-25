@@ -12,16 +12,20 @@ import (
 )
 
 type QueryDatabaseName struct {
-	Oid  uint32
-	Name string `db:"datname"`
+	Oid            uint32
+	DatabaseName   string `db:"datname"`
+	TablespaceName string `db:"spcname"`
 }
 
 func GetDatabaseNames(connection *utils.DBConn) []QueryDatabaseName {
 	query := `
 SELECT
-	oid,
-	datname
-FROM pg_database;`
+	d.oid,
+	d.datname,
+	t.spcname
+FROM pg_database d
+JOIN pg_tablespace t
+ON d.dattablespace = t.oid;`
 
 	results := make([]QueryDatabaseName, 0)
 	err := connection.Select(&results, query)

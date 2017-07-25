@@ -53,7 +53,7 @@ SET SUBPARTITION TEMPLATE
 	noMetadata := backup.ObjectMetadata{}
 
 	Describe("PrintCreateTableStatement", func() {
-		tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, colDefsEmpty, false, extTableEmpty}
+		tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", colDefsEmpty, false, extTableEmpty}
 		It("calls PrintRegularTableCreateStatement for a regular table", func() {
 			tableDef.IsExternal = false
 			backup.PrintCreateTableStatement(buffer, testTable, tableDef, noMetadata)
@@ -84,7 +84,7 @@ ENCODING 'UTF-8';`)
 		Context("No special table attributes", func() {
 			It("prints a CREATE TABLE block with one line", func() {
 				col := []backup.ColumnDefinition{rowOne}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i integer
@@ -92,7 +92,7 @@ ENCODING 'UTF-8';`)
 			})
 			It("prints a CREATE TABLE block with one line per attribute", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i integer,
@@ -100,14 +100,14 @@ ENCODING 'UTF-8';`)
 ) DISTRIBUTED RANDOMLY;`)
 			})
 			It("prints a CREATE TABLE block with no attributes", func() {
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, colDefsEmpty, false, extTableEmpty}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", colDefsEmpty, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 ) DISTRIBUTED RANDOMLY;`)
 			})
 			It("prints a CREATE TABLE block without a dropped attribute", func() {
 				col := []backup.ColumnDefinition{rowOne, rowDropped}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i integer
@@ -117,7 +117,7 @@ ENCODING 'UTF-8';`)
 		Context("One special table attribute", func() {
 			It("prints a CREATE TABLE block where one line has the given ENCODING and the other has the default ENCODING", func() {
 				col := []backup.ColumnDefinition{rowOneEncoding, rowTwoEncoding}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i integer ENCODING (compresstype=none,blocksize=32768,compresslevel=0),
@@ -126,7 +126,7 @@ ENCODING 'UTF-8';`)
 			})
 			It("prints a CREATE TABLE block where one line contains NOT NULL", func() {
 				col := []backup.ColumnDefinition{rowOne, rowNotNull}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i integer,
@@ -135,7 +135,7 @@ ENCODING 'UTF-8';`)
 			})
 			It("prints a CREATE TABLE block where one line contains DEFAULT", func() {
 				col := []backup.ColumnDefinition{rowOneDef, rowTwo}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i integer DEFAULT 42,
@@ -144,7 +144,7 @@ ENCODING 'UTF-8';`)
 			})
 			It("prints a CREATE TABLE block where both lines contain DEFAULT", func() {
 				col := []backup.ColumnDefinition{rowOneDef, rowTwoDef}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i integer DEFAULT 42,
@@ -155,7 +155,7 @@ ENCODING 'UTF-8';`)
 		Context("Multiple special table attributes on one column", func() {
 			It("prints a CREATE TABLE block where one line contains both NOT NULL and ENCODING", func() {
 				col := []backup.ColumnDefinition{rowOneEncoding, rowEncodingNotNull}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i integer ENCODING (compresstype=none,blocksize=32768,compresslevel=0),
@@ -164,7 +164,7 @@ ENCODING 'UTF-8';`)
 			})
 			It("prints a CREATE TABLE block where one line contains both DEFAULT and NOT NULL", func() {
 				col := []backup.ColumnDefinition{rowOne, rowNotNullDef}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i integer,
@@ -173,7 +173,7 @@ ENCODING 'UTF-8';`)
 			})
 			It("prints a CREATE TABLE block where one line contains both DEFAULT and ENCODING", func() {
 				col := []backup.ColumnDefinition{rowOneEncoding, rowTwoEncodingDef}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i integer ENCODING (compresstype=none,blocksize=32768,compresslevel=0),
@@ -182,7 +182,7 @@ ENCODING 'UTF-8';`)
 			})
 			It("prints a CREATE TABLE block where one line contains all three of DEFAULT, NOT NULL, and ENCODING", func() {
 				col := []backup.ColumnDefinition{rowOneEncoding, rowEncodingNotNullDef}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i integer ENCODING (compresstype=none,blocksize=32768,compresslevel=0),
@@ -193,7 +193,7 @@ ENCODING 'UTF-8';`)
 		Context("Table qualities (distribution keys and storage options)", func() {
 			It("has a single-column distribution key", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distSingle, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
+				tableDef := backup.TableDefinition{distSingle, partDefEmpty, partTemplateDefEmpty, heapOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i integer,
@@ -202,7 +202,7 @@ ENCODING 'UTF-8';`)
 			})
 			It("has a multiple-column composite distribution key", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distComposite, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
+				tableDef := backup.TableDefinition{distComposite, partDefEmpty, partTemplateDefEmpty, heapOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i integer,
@@ -211,7 +211,7 @@ ENCODING 'UTF-8';`)
 			})
 			It("is an append-optimized table", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, aoOpts, col, false, extTableEmpty}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, aoOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i integer,
@@ -220,7 +220,7 @@ ENCODING 'UTF-8';`)
 			})
 			It("is an append-optimized table with a single-column distribution key", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distSingle, partDefEmpty, partTemplateDefEmpty, aoOpts, col, false, extTableEmpty}
+				tableDef := backup.TableDefinition{distSingle, partDefEmpty, partTemplateDefEmpty, aoOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i integer,
@@ -229,7 +229,7 @@ ENCODING 'UTF-8';`)
 			})
 			It("is an append-optimized table with a two-column composite distribution key", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distComposite, partDefEmpty, partTemplateDefEmpty, aoOpts, col, false, extTableEmpty}
+				tableDef := backup.TableDefinition{distComposite, partDefEmpty, partTemplateDefEmpty, aoOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i integer,
@@ -238,7 +238,7 @@ ENCODING 'UTF-8';`)
 			})
 			It("is an append-optimized column-oriented table", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, coOpts, col, false, extTableEmpty}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, coOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i integer,
@@ -247,7 +247,7 @@ ENCODING 'UTF-8';`)
 			})
 			It("is an append-optimized column-oriented table with a single-column distribution key", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distSingle, partDefEmpty, partTemplateDefEmpty, coOpts, col, false, extTableEmpty}
+				tableDef := backup.TableDefinition{distSingle, partDefEmpty, partTemplateDefEmpty, coOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i integer,
@@ -256,7 +256,7 @@ ENCODING 'UTF-8';`)
 			})
 			It("is an append-optimized column-oriented table with a two-column composite distribution key", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distComposite, partDefEmpty, partTemplateDefEmpty, coOpts, col, false, extTableEmpty}
+				tableDef := backup.TableDefinition{distComposite, partDefEmpty, partTemplateDefEmpty, coOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i integer,
@@ -265,7 +265,7 @@ ENCODING 'UTF-8';`)
 			})
 			It("is a heap table with a fill factor", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapFillOpts, col, false, extTableEmpty}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapFillOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i integer,
@@ -274,7 +274,7 @@ ENCODING 'UTF-8';`)
 			})
 			It("is a heap table with a fill factor and a single-column distribution key", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distSingle, partDefEmpty, partTemplateDefEmpty, heapFillOpts, col, false, extTableEmpty}
+				tableDef := backup.TableDefinition{distSingle, partDefEmpty, partTemplateDefEmpty, heapFillOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i integer,
@@ -283,7 +283,7 @@ ENCODING 'UTF-8';`)
 			})
 			It("is a heap table with a fill factor and a multiple-column composite distribution key", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distComposite, partDefEmpty, partTemplateDefEmpty, heapFillOpts, col, false, extTableEmpty}
+				tableDef := backup.TableDefinition{distComposite, partDefEmpty, partTemplateDefEmpty, heapFillOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i integer,
@@ -292,7 +292,7 @@ ENCODING 'UTF-8';`)
 			})
 			It("is an append-optimized column-oriented table with complex storage options", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, coManyOpts, col, false, extTableEmpty}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, coManyOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i integer,
@@ -301,7 +301,7 @@ ENCODING 'UTF-8';`)
 			})
 			It("is an append-optimized column-oriented table with complex storage options and a single-column distribution key", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distSingle, partDefEmpty, partTemplateDefEmpty, coManyOpts, col, false, extTableEmpty}
+				tableDef := backup.TableDefinition{distSingle, partDefEmpty, partTemplateDefEmpty, coManyOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i integer,
@@ -310,7 +310,7 @@ ENCODING 'UTF-8';`)
 			})
 			It("is an append-optimized column-oriented table with complex storage options and a two-column composite distribution key", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distComposite, partDefEmpty, partTemplateDefEmpty, coManyOpts, col, false, extTableEmpty}
+				tableDef := backup.TableDefinition{distComposite, partDefEmpty, partTemplateDefEmpty, coManyOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i integer,
@@ -321,7 +321,7 @@ ENCODING 'UTF-8';`)
 		Context("Table partitioning", func() {
 			It("is a partition table with table attributes", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distRandom, partDef, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
+				tableDef := backup.TableDefinition{distRandom, partDef, partTemplateDefEmpty, heapOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i integer,
@@ -335,7 +335,7 @@ ENCODING 'UTF-8';`)
 			})
 			It("is a partition table with no table attributes", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distRandom, partDef, partTemplateDefEmpty, coOpts, col, false, extTableEmpty}
+				tableDef := backup.TableDefinition{distRandom, partDef, partTemplateDefEmpty, coOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i integer,
@@ -349,7 +349,7 @@ ENCODING 'UTF-8';`)
 			})
 			It("is a partition table with subpartitions and table attributes", func() {
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
-				tableDef := backup.TableDefinition{distRandom, partDef, partTemplateDef, heapOpts, col, false, extTableEmpty}
+				tableDef := backup.TableDefinition{distRandom, partDef, partTemplateDef, heapOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
 	i integer,
@@ -371,6 +371,14 @@ SET SUBPARTITION TEMPLATE
 `)
 			})
 		})
+		Context("Tablespaces", func() {
+			It("prints a CREATE TABLE block with a TABLESPACE clause", func() {
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "test_tablespace", colDefsEmpty, false, extTableEmpty}
+				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
+				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
+) TABLESPACE test_tablespace DISTRIBUTED RANDOMLY;`)
+			})
+		})
 	})
 	Describe("PrintPostCreateTableStatements", func() {
 		testTable := utils.BasicRelation("public", "tablename")
@@ -379,7 +387,7 @@ SET SUBPARTITION TEMPLATE
 
 		It("prints a block with a table comment", func() {
 			col := []backup.ColumnDefinition{rowOne}
-			tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
+			tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", col, false, extTableEmpty}
 			tableMetadata := backup.ObjectMetadata{Comment: "This is a table comment."}
 			backup.PrintPostCreateTableStatements(buffer, testTable, tableDef, tableMetadata)
 			testutils.ExpectRegexp(buffer, `
@@ -388,7 +396,7 @@ COMMENT ON TABLE public.tablename IS 'This is a table comment.';`)
 		})
 		It("prints a block with a single column comment", func() {
 			col := []backup.ColumnDefinition{rowCommentOne}
-			tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
+			tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", col, false, extTableEmpty}
 			backup.PrintPostCreateTableStatements(buffer, testTable, tableDef, noMetadata)
 			testutils.ExpectRegexp(buffer, `
 
@@ -396,7 +404,7 @@ COMMENT ON COLUMN public.tablename.i IS 'This is a column comment.';`)
 		})
 		It("prints a block with multiple column comments", func() {
 			col := []backup.ColumnDefinition{rowCommentOne, rowCommentTwo}
-			tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
+			tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", col, false, extTableEmpty}
 			backup.PrintPostCreateTableStatements(buffer, testTable, tableDef, noMetadata)
 			testutils.ExpectRegexp(buffer, `
 
@@ -407,7 +415,7 @@ COMMENT ON COLUMN public.tablename.j IS 'This is another column comment.';`)
 		})
 		It("prints an ALTER TABLE ... OWNER TO statement to set the table owner", func() {
 			col := []backup.ColumnDefinition{rowOne}
-			tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
+			tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", col, false, extTableEmpty}
 			tableMetadata := backup.ObjectMetadata{Owner: "testrole"}
 			backup.PrintPostCreateTableStatements(buffer, testTable, tableDef, tableMetadata)
 			testutils.ExpectRegexp(buffer, `
@@ -416,7 +424,7 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 		})
 		It("prints both an ALTER TABLE ... OWNER TO statement and comments", func() {
 			col := []backup.ColumnDefinition{rowCommentOne, rowCommentTwo}
-			tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, col, false, extTableEmpty}
+			tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", col, false, extTableEmpty}
 			tableMetadata := backup.ObjectMetadata{Owner: "testrole", Comment: "This is a table comment."}
 			backup.PrintPostCreateTableStatements(buffer, testTable, tableDef, tableMetadata)
 			testutils.ExpectRegexp(buffer, `

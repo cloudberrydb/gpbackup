@@ -13,11 +13,12 @@ var (
 )
 
 var ( // Command-line flags
-	dbname  = flag.String("dbname", "", "The database to be backed up")
-	debug   = flag.Bool("debug", false, "Print verbose and debug log messages")
-	dumpDir = flag.String("dumpdir", "", "The directory to which all dump files will be written")
-	quiet   = flag.Bool("quiet", false, "Suppress non-warning, non-error log messages")
-	verbose = flag.Bool("verbose", false, "Print verbose log messages")
+	dbname      = flag.String("dbname", "", "The database to be backed up")
+	debug       = flag.Bool("debug", false, "Print verbose and debug log messages")
+	dumpDir     = flag.String("dumpdir", "", "The directory to which all dump files will be written")
+	quiet       = flag.Bool("quiet", false, "Suppress non-warning, non-error log messages")
+	verbose     = flag.Bool("verbose", false, "Print verbose log messages")
+	dumpGlobals = flag.Bool("globals", false, "Dump global metadata")
 )
 
 // This function handles setup that can be done before parsing flags.
@@ -105,10 +106,15 @@ func backupGlobal(filename string) {
 	gucs := GetSessionGUCs(connection)
 	PrintSessionGUCs(globalFile, gucs)
 
+	logger.Verbose("Writing CREATE TABLESPACE statements to global file")
+	tablespaces := GetTablespaces(connection)
+	tablespaceMetadata := GetMetadataForObjectType(connection, TablespaceParams)
+	PrintCreateTablespaceStatements(globalFile, tablespaces, tablespaceMetadata)
+
 	logger.Verbose("Writing CREATE DATABASE statement to global file")
 	dbnames := GetDatabaseNames(connection)
 	dbMetadata := GetMetadataForObjectType(connection, DatabaseParams)
-	PrintCreateDatabaseStatement(globalFile, connection.DBName, dbnames, dbMetadata)
+	PrintCreateDatabaseStatement(globalFile, connection.DBName, dbnames, dbMetadata, *dumpGlobals)
 
 	logger.Verbose("Writing database GUCs to global file")
 	databaseGucs := GetDatabaseGUCs(connection)
@@ -127,11 +133,6 @@ func backupGlobal(filename string) {
 	logger.Verbose("Writing GRANT ROLE statements to global file")
 	roleMembers := GetRoleMembers(connection)
 	PrintRoleMembershipStatements(globalFile, roleMembers)
-
-	logger.Verbose("Writing CREATE TABLESPACE statements to global file")
-	tablespaces := GetTablespaces(connection)
-	tablespaceMetadata := GetMetadataForObjectType(connection, TablespaceParams)
-	PrintCreateTablespaceStatements(globalFile, tablespaces, tablespaceMetadata)
 }
 
 func backupPredata(filename string, tables []utils.Relation, extTableMap map[string]bool) {

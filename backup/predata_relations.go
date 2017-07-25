@@ -30,6 +30,7 @@ type TableDefinition struct {
 	PartDef         string
 	PartTemplateDef string
 	StorageOpts     string
+	TablespaceName  string
 	ColumnDefs      []ColumnDefinition
 	IsExternal      bool
 	ExtTableDef     ExternalTableDefinition
@@ -48,13 +49,14 @@ func ConstructDefinitionsForTable(connection *utils.DBConn, table utils.Relation
 	partitionDef := GetPartitionDefinition(connection, table.RelationOid)
 	partTemplateDef := GetPartitionTemplateDefinition(connection, table.RelationOid)
 	storageOptions := GetStorageOptions(connection, table.RelationOid)
+	tablespaceName := GetTablespaceName(connection, table.RelationOid)
 
 	columnDefs := ConsolidateColumnInfo(tableAttributes, tableDefaults)
 	var extTableDef ExternalTableDefinition
 	if isExternal {
 		extTableDef = GetExternalTableDefinition(connection, table.RelationOid)
 	}
-	tableDef := TableDefinition{distributionPolicy, partitionDef, partTemplateDef, storageOptions, columnDefs, isExternal, extTableDef}
+	tableDef := TableDefinition{distributionPolicy, partitionDef, partTemplateDef, storageOptions, tablespaceName, columnDefs, isExternal, extTableDef}
 	return tableDef
 }
 
@@ -118,6 +120,9 @@ func PrintRegularTableCreateStatement(predataFile io.Writer, table utils.Relatio
 	utils.MustPrintf(predataFile, ") ")
 	if tableDef.StorageOpts != "" {
 		utils.MustPrintf(predataFile, "WITH (%s) ", tableDef.StorageOpts)
+	}
+	if tableDef.TablespaceName != "" {
+		utils.MustPrintf(predataFile, "TABLESPACE %s ", tableDef.TablespaceName)
 	}
 	utils.MustPrintf(predataFile, "%s", tableDef.DistPolicy)
 	if tableDef.PartDef != "" {
