@@ -115,7 +115,7 @@ func PrintCreateBaseTypeStatements(predataFile io.Writer, types []TypeDefinition
 	}
 }
 
-func PrintCreateCompositeAndEnumTypeStatements(predataFile io.Writer, types []TypeDefinition, typeMetadata MetadataMap) {
+func PrintCreateCompositeTypeStatements(predataFile io.Writer, types []TypeDefinition, typeMetadata MetadataMap) {
 	i := 0
 	for i < len(types) {
 		typ := types[i]
@@ -148,14 +148,18 @@ func PrintCreateCompositeAndEnumTypeStatements(predataFile io.Writer, types []Ty
 			utils.MustPrintf(predataFile, strings.Join(atts, ",\n"))
 			utils.MustPrintln(predataFile, "\n);")
 			PrintObjectMetadata(predataFile, typeMetadata[typ.Oid], typeFQN, "TYPE")
-		} else if typ.Type == "e" {
+		} else {
+			i++
+		}
+	}
+}
+
+func PrintCreateEnumTypeStatements(predataFile io.Writer, types []TypeDefinition, typeMetadata MetadataMap) {
+	for _, typ := range types {
+		if typ.Type == "e" {
 			typeFQN := utils.MakeFQN(typ.TypeSchema, typ.TypeName)
 			utils.MustPrintf(predataFile, "\n\nCREATE TYPE %s AS ENUM (\n\t%s\n);\n", typeFQN, typ.EnumLabels)
 			PrintObjectMetadata(predataFile, typeMetadata[typ.Oid], typeFQN, "TYPE")
-			i++
-
-		} else {
-			i++
 		}
 	}
 }

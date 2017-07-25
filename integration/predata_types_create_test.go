@@ -74,19 +74,29 @@ var _ = Describe("backup integration create statement tests", func() {
 			Expect(resultTypes[1].TypeName).To(Equal("shell_type"))
 		})
 
-		It("creates composite and enum types", func() {
-			backup.PrintCreateCompositeAndEnumTypeStatements(buffer, types, typeMetadataMap)
+		It("creates composite types", func() {
+			backup.PrintCreateCompositeTypeStatements(buffer, types, typeMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE composite_type")
+
+			resultTypes := backup.GetTypeDefinitions(connection)
+
+			Expect(len(resultTypes)).To(Equal(2))
+			testutils.ExpectStructsToMatchIncluding(&compositeTypeAtt1, &resultTypes[0], "Type", "TypeSchema", "TypeName", "Comment", "Owner", "AttName", "AttType")
+			testutils.ExpectStructsToMatchIncluding(&compositeTypeAtt2, &resultTypes[1], "Type", "TypeSchema", "TypeName", "Comment", "Owner", "AttName", "AttType")
+		})
+
+		It("creates enum types", func() {
+			backup.PrintCreateEnumTypeStatements(buffer, types, typeMetadataMap)
+
+			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE enum_type")
 
 			resultTypes := backup.GetTypeDefinitions(connection)
 
-			Expect(len(resultTypes)).To(Equal(3))
-			testutils.ExpectStructsToMatchIncluding(&compositeTypeAtt1, &resultTypes[0], "Type", "TypeSchema", "TypeName", "Comment", "Owner", "AttName", "AttType")
-			testutils.ExpectStructsToMatchIncluding(&compositeTypeAtt2, &resultTypes[1], "Type", "TypeSchema", "TypeName", "Comment", "Owner", "AttName", "AttType")
-			testutils.ExpectStructsToMatchIncluding(&enumType, &resultTypes[2], "Type", "TypeSchema", "TypeName", "Comment", "Owner", "EnumLabels")
+			Expect(len(resultTypes)).To(Equal(1))
+			testutils.ExpectStructsToMatchIncluding(&enumType, &resultTypes[0], "Type", "TypeSchema", "TypeName", "Comment", "Owner", "EnumLabels")
 		})
 
 		It("creates base types", func() {

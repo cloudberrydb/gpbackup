@@ -16,43 +16,12 @@ var _ = Describe("backup/predata_types tests", func() {
 		buffer = gbytes.BufferWithBytes([]byte(""))
 		typeMetadataMap = backup.MetadataMap{}
 	})
-	Describe("PrintCreateCompositeAndEnumTypeStatements", func() {
-		compOne := backup.TypeDefinition{Oid: 1, TypeSchema: "public", TypeName: "composite_type", Type: "c", AttName: "bar", AttType: "integer"}
-		compTwo := backup.TypeDefinition{Oid: 1, TypeSchema: "public", TypeName: "composite_type", Type: "c", AttName: "baz", AttType: "text"}
-		compThree := backup.TypeDefinition{Oid: 1, TypeSchema: "public", TypeName: "composite_type", Type: "c", AttName: "foo", AttType: "float"}
+	Describe("PrintCreateEnumTypeStatements", func() {
 		enumOne := backup.TypeDefinition{Oid: 1, TypeSchema: "public", TypeName: "enum_type", Type: "e", EnumLabels: "'bar',\n\t'baz',\n\t'foo'"}
 		enumTwo := backup.TypeDefinition{Oid: 1, TypeSchema: "public", TypeName: "enum_type", Type: "e", EnumLabels: "'bar',\n\t'baz',\n\t'foo'"}
 
-		It("prints a composite type with one attribute", func() {
-			backup.PrintCreateCompositeAndEnumTypeStatements(buffer, []backup.TypeDefinition{compOne}, typeMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE TYPE public.composite_type AS (
-	bar integer
-);`)
-		})
-		It("prints a composite type with multiple attributes", func() {
-			backup.PrintCreateCompositeAndEnumTypeStatements(buffer, []backup.TypeDefinition{compOne, compTwo, compThree}, typeMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE TYPE public.composite_type AS (
-	bar integer,
-	baz text,
-	foo float
-);`)
-		})
-		It("prints a composite type with comment and owner", func() {
-			typeMetadataMap = testutils.DefaultMetadataMap("TYPE", false, true, true)
-			backup.PrintCreateCompositeAndEnumTypeStatements(buffer, []backup.TypeDefinition{compOne, compThree}, typeMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE TYPE public.composite_type AS (
-	bar integer,
-	foo float
-);
-
-
-COMMENT ON TYPE public.composite_type IS 'This is a type comment.';
-
-
-ALTER TYPE public.composite_type OWNER TO testrole;`)
-		})
 		It("prints an enum type with multiple attributes", func() {
-			backup.PrintCreateCompositeAndEnumTypeStatements(buffer, []backup.TypeDefinition{enumOne}, typeMetadataMap)
+			backup.PrintCreateEnumTypeStatements(buffer, []backup.TypeDefinition{enumOne}, typeMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE TYPE public.enum_type AS ENUM (
 	'bar',
 	'baz',
@@ -61,7 +30,7 @@ ALTER TYPE public.composite_type OWNER TO testrole;`)
 		})
 		It("prints an enum type with comment and owner", func() {
 			typeMetadataMap = testutils.DefaultMetadataMap("TYPE", false, true, true)
-			backup.PrintCreateCompositeAndEnumTypeStatements(buffer, []backup.TypeDefinition{enumTwo}, typeMetadataMap)
+			backup.PrintCreateEnumTypeStatements(buffer, []backup.TypeDefinition{enumTwo}, typeMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE TYPE public.enum_type AS ENUM (
 	'bar',
 	'baz',
@@ -74,18 +43,39 @@ COMMENT ON TYPE public.enum_type IS 'This is a type comment.';
 
 ALTER TYPE public.enum_type OWNER TO testrole;`)
 		})
-		It("prints both an enum type and a composite type", func() {
-			backup.PrintCreateCompositeAndEnumTypeStatements(buffer, []backup.TypeDefinition{compOne, enumOne}, typeMetadataMap)
+	})
+	Describe("PrintCreateCompositeTypeStatements", func() {
+		compOne := backup.TypeDefinition{Oid: 1, TypeSchema: "public", TypeName: "composite_type", Type: "c", AttName: "bar", AttType: "integer"}
+		compTwo := backup.TypeDefinition{Oid: 1, TypeSchema: "public", TypeName: "composite_type", Type: "c", AttName: "baz", AttType: "text"}
+		compThree := backup.TypeDefinition{Oid: 1, TypeSchema: "public", TypeName: "composite_type", Type: "c", AttName: "foo", AttType: "float"}
+
+		It("prints a composite type with one attribute", func() {
+			backup.PrintCreateCompositeTypeStatements(buffer, []backup.TypeDefinition{compOne}, typeMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE TYPE public.composite_type AS (
 	bar integer
+);`)
+		})
+		It("prints a composite type with multiple attributes", func() {
+			backup.PrintCreateCompositeTypeStatements(buffer, []backup.TypeDefinition{compOne, compTwo, compThree}, typeMetadataMap)
+			testutils.ExpectRegexp(buffer, `CREATE TYPE public.composite_type AS (
+	bar integer,
+	baz text,
+	foo float
+);`)
+		})
+		It("prints a composite type with comment and owner", func() {
+			typeMetadataMap = testutils.DefaultMetadataMap("TYPE", false, true, true)
+			backup.PrintCreateCompositeTypeStatements(buffer, []backup.TypeDefinition{compOne, compThree}, typeMetadataMap)
+			testutils.ExpectRegexp(buffer, `CREATE TYPE public.composite_type AS (
+	bar integer,
+	foo float
 );
 
 
-CREATE TYPE public.enum_type AS ENUM (
-	'bar',
-	'baz',
-	'foo'
-);`)
+COMMENT ON TYPE public.composite_type IS 'This is a type comment.';
+
+
+ALTER TYPE public.composite_type OWNER TO testrole;`)
 		})
 	})
 	Describe("PrintCreateBaseTypeStatements", func() {

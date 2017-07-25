@@ -162,8 +162,11 @@ func backupPredata(filename string, tables []utils.Relation, extTableMap map[str
 	procLangMetadata := GetMetadataForObjectType(connection, ProcLangParams)
 	PrintCreateLanguageStatements(predataFile, procLangs, funcInfoMap, procLangMetadata)
 
-	logger.Verbose("Writing CREATE TYPE statements for composite and enum types to predata file")
-	PrintCreateCompositeAndEnumTypeStatements(predataFile, types, typeMetadata)
+	logger.Verbose("Writing CREATE TYPE statements for enum types to predata file")
+	PrintCreateEnumTypeStatements(predataFile, types, typeMetadata)
+
+	logger.Verbose("Writing CREATE TYPE statements for composite types to predata file")
+	PrintCreateCompositeTypeStatements(predataFile, types, typeMetadata)
 
 	logger.Verbose("Writing CREATE FUNCTION statements to predata file")
 	funcDefs := GetFunctionDefinitions(connection)
