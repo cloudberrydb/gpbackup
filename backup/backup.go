@@ -191,13 +191,22 @@ func backupPredata(filename string, tables []utils.Relation, extTableMap map[str
 	castMetadata := GetCommentsForObjectType(connection, CastParams)
 	PrintCreateCastStatements(predataFile, castDefs, castMetadata)
 
-	logger.Verbose("Writing CREATE TABLE statements to predata file")
 	relationMetadata := GetMetadataForObjectType(connection, RelationParams)
+
+	logger.Verbose("Writing CREATE SEQUENCE statements to predata file")
+	sequenceDefs := GetAllSequences(connection)
+	PrintCreateSequenceStatements(predataFile, sequenceDefs, relationMetadata)
+
+	logger.Verbose("Writing CREATE TABLE statements to predata file")
 	for _, table := range tables {
 		isExternal := extTableMap[table.ToString()]
 		tableDef := ConstructDefinitionsForTable(connection, table, isExternal)
 		PrintCreateTableStatement(predataFile, table, tableDef, relationMetadata[table.RelationOid])
 	}
+
+	logger.Verbose("Writing ALTER SEQUENCE statements to predata file")
+	sequenceColumnOwners := GetSequenceColumnOwnerMap(connection)
+	PrintAlterSequenceStatements(predataFile, sequenceDefs, sequenceColumnOwners)
 
 	logger.Verbose("Writing CREATE VIEW statements to predata file")
 	viewDefs := GetViewDefinitions(connection)
@@ -207,11 +216,6 @@ func backupPredata(filename string, tables []utils.Relation, extTableMap map[str
 	constraints := GetConstraints(connection)
 	conMetadata := GetCommentsForObjectType(connection, ConParams)
 	PrintConstraintStatements(predataFile, constraints, conMetadata)
-
-	logger.Verbose("Writing CREATE SEQUENCE statements to predata file")
-	sequenceDefs := GetAllSequences(connection)
-	sequenceColumnOwners := GetSequenceColumnOwnerMap(connection)
-	PrintCreateSequenceStatements(predataFile, sequenceDefs, sequenceColumnOwners, relationMetadata)
 }
 
 func backupData(tables []utils.Relation, extTableMap map[string]bool) {

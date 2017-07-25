@@ -527,14 +527,12 @@ COMMENT ON COLUMN public.tablename.j IS 'This is another column comment.';`)
 		seqMinNeg := backup.Sequence{baseSequence, backup.QuerySequenceDefinition{"seq_name", 7, -1, -1, -100, 5, 42, false, true}}
 		seqCycle := backup.Sequence{baseSequence, backup.QuerySequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, true, true}}
 		seqStart := backup.Sequence{baseSequence, backup.QuerySequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, false}}
-		emptyColumnOwnerMap := make(map[string]string, 0)
-		columnOwnerMap := map[string]string{"public.seq_name": "tablename.col_one"}
 		emptySequenceMetadataMap := backup.MetadataMap{}
 		sequenceMetadataMap := testutils.DefaultMetadataMap("SEQUENCE", true, true, true)
 
 		It("can print a sequence with all default options", func() {
 			sequences := []backup.Sequence{seqDefault}
-			backup.PrintCreateSequenceStatements(buffer, sequences, emptyColumnOwnerMap, emptySequenceMetadataMap)
+			backup.PrintCreateSequenceStatements(buffer, sequences, emptySequenceMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE SEQUENCE public.seq_name
 	INCREMENT BY 1
 	NO MAXVALUE
@@ -545,7 +543,7 @@ SELECT pg_catalog.setval('public.seq_name', 7, true);`)
 		})
 		It("can print a decreasing sequence", func() {
 			sequences := []backup.Sequence{seqNegIncr}
-			backup.PrintCreateSequenceStatements(buffer, sequences, emptyColumnOwnerMap, emptySequenceMetadataMap)
+			backup.PrintCreateSequenceStatements(buffer, sequences, emptySequenceMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE SEQUENCE public.seq_name
 	INCREMENT BY -1
 	NO MAXVALUE
@@ -556,7 +554,7 @@ SELECT pg_catalog.setval('public.seq_name', 7, true);`)
 		})
 		It("can print an increasing sequence with a maximum value", func() {
 			sequences := []backup.Sequence{seqMaxPos}
-			backup.PrintCreateSequenceStatements(buffer, sequences, emptyColumnOwnerMap, emptySequenceMetadataMap)
+			backup.PrintCreateSequenceStatements(buffer, sequences, emptySequenceMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE SEQUENCE public.seq_name
 	INCREMENT BY 1
 	MAXVALUE 100
@@ -567,7 +565,7 @@ SELECT pg_catalog.setval('public.seq_name', 7, true);`)
 		})
 		It("can print an increasing sequence with a minimum value", func() {
 			sequences := []backup.Sequence{seqMinPos}
-			backup.PrintCreateSequenceStatements(buffer, sequences, emptyColumnOwnerMap, emptySequenceMetadataMap)
+			backup.PrintCreateSequenceStatements(buffer, sequences, emptySequenceMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE SEQUENCE public.seq_name
 	INCREMENT BY 1
 	NO MAXVALUE
@@ -578,7 +576,7 @@ SELECT pg_catalog.setval('public.seq_name', 7, true);`)
 		})
 		It("can print a decreasing sequence with a maximum value", func() {
 			sequences := []backup.Sequence{seqMaxNeg}
-			backup.PrintCreateSequenceStatements(buffer, sequences, emptyColumnOwnerMap, emptySequenceMetadataMap)
+			backup.PrintCreateSequenceStatements(buffer, sequences, emptySequenceMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE SEQUENCE public.seq_name
 	INCREMENT BY -1
 	MAXVALUE -10
@@ -589,7 +587,7 @@ SELECT pg_catalog.setval('public.seq_name', 7, true);`)
 		})
 		It("can print a decreasing sequence with a minimum value", func() {
 			sequences := []backup.Sequence{seqMinNeg}
-			backup.PrintCreateSequenceStatements(buffer, sequences, emptyColumnOwnerMap, emptySequenceMetadataMap)
+			backup.PrintCreateSequenceStatements(buffer, sequences, emptySequenceMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE SEQUENCE public.seq_name
 	INCREMENT BY -1
 	NO MAXVALUE
@@ -600,7 +598,7 @@ SELECT pg_catalog.setval('public.seq_name', 7, true);`)
 		})
 		It("can print a sequence that cycles", func() {
 			sequences := []backup.Sequence{seqCycle}
-			backup.PrintCreateSequenceStatements(buffer, sequences, emptyColumnOwnerMap, emptySequenceMetadataMap)
+			backup.PrintCreateSequenceStatements(buffer, sequences, emptySequenceMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE SEQUENCE public.seq_name
 	INCREMENT BY 1
 	NO MAXVALUE
@@ -612,7 +610,7 @@ SELECT pg_catalog.setval('public.seq_name', 7, true);`)
 		})
 		It("can print a sequence with a start value", func() {
 			sequences := []backup.Sequence{seqStart}
-			backup.PrintCreateSequenceStatements(buffer, sequences, emptyColumnOwnerMap, emptySequenceMetadataMap)
+			backup.PrintCreateSequenceStatements(buffer, sequences, emptySequenceMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE SEQUENCE public.seq_name
 	START WITH 7
 	INCREMENT BY 1
@@ -624,7 +622,7 @@ SELECT pg_catalog.setval('public.seq_name', 7, false);`)
 		})
 		It("can print a sequence with privileges, an owner, and a comment", func() {
 			sequences := []backup.Sequence{seqDefault}
-			backup.PrintCreateSequenceStatements(buffer, sequences, emptyColumnOwnerMap, sequenceMetadataMap)
+			backup.PrintCreateSequenceStatements(buffer, sequences, sequenceMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE SEQUENCE public.seq_name
 	INCREMENT BY 1
 	NO MAXVALUE
@@ -632,45 +630,6 @@ SELECT pg_catalog.setval('public.seq_name', 7, false);`)
 	CACHE 5;
 
 SELECT pg_catalog.setval('public.seq_name', 7, true);
-
-
-COMMENT ON SEQUENCE public.seq_name IS 'This is a sequence comment.';
-
-
-ALTER TABLE public.seq_name OWNER TO testrole;
-
-
-REVOKE ALL ON SEQUENCE public.seq_name FROM PUBLIC;
-REVOKE ALL ON SEQUENCE public.seq_name FROM testrole;
-GRANT ALL ON SEQUENCE public.seq_name TO testrole;`)
-		})
-		It("can print a sequence with an owning column", func() {
-			sequences := []backup.Sequence{seqDefault}
-			backup.PrintCreateSequenceStatements(buffer, sequences, columnOwnerMap, emptySequenceMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE SEQUENCE public.seq_name
-	INCREMENT BY 1
-	NO MAXVALUE
-	NO MINVALUE
-	CACHE 5;
-
-SELECT pg_catalog.setval('public.seq_name', 7, true);
-
-
-ALTER SEQUENCE public.seq_name OWNED BY tablename.col_one;`)
-		})
-		It("can print a sequence with privileges, an owner, a comment, and an owning column", func() {
-			sequences := []backup.Sequence{seqDefault}
-			backup.PrintCreateSequenceStatements(buffer, sequences, columnOwnerMap, sequenceMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE SEQUENCE public.seq_name
-	INCREMENT BY 1
-	NO MAXVALUE
-	NO MINVALUE
-	CACHE 5;
-
-SELECT pg_catalog.setval('public.seq_name', 7, true);
-
-
-ALTER SEQUENCE public.seq_name OWNED BY tablename.col_one;
 
 
 COMMENT ON SEQUENCE public.seq_name IS 'This is a sequence comment.';
@@ -712,6 +671,22 @@ COMMENT ON VIEW shamwow.shazam IS 'This is a view comment.';
 REVOKE ALL ON shamwow.shazam FROM PUBLIC;
 REVOKE ALL ON shamwow.shazam FROM testrole;
 GRANT ALL ON shamwow.shazam TO testrole;`)
+		})
+	})
+	Describe("PrintAlterSequenceStatements", func() {
+		baseSequence := utils.Relation{0, 1, "public", "seq_name"}
+		seqDefault := backup.Sequence{baseSequence, backup.QuerySequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, true}}
+		emptyColumnOwnerMap := make(map[string]string, 0)
+		columnOwnerMap := map[string]string{"public.seq_name": "tablename.col_one"}
+		It("prints nothing for a sequence without an owning column", func() {
+			sequences := []backup.Sequence{seqDefault}
+			backup.PrintAlterSequenceStatements(buffer, sequences, emptyColumnOwnerMap)
+			testutils.NotExpectRegexp(buffer, `ALTER SEQUENCE`)
+		})
+		It("can print an ALTER SEQUENCE statement for a sequence with an owning column", func() {
+			sequences := []backup.Sequence{seqDefault}
+			backup.PrintAlterSequenceStatements(buffer, sequences, columnOwnerMap)
+			testutils.ExpectRegexp(buffer, `ALTER SEQUENCE public.seq_name OWNED BY tablename.col_one;`)
 		})
 	})
 })

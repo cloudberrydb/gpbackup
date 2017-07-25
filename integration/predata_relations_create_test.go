@@ -232,7 +232,6 @@ SET SUBPARTITION TEMPLATE  ` + `
 	})
 	Describe("PrintCreateSequenceStatements", func() {
 		var (
-			columnOwnerMap      map[string]string
 			sequence            utils.Relation
 			sequenceDef         backup.Sequence
 			sequenceMetadataMap backup.MetadataMap
@@ -240,12 +239,11 @@ SET SUBPARTITION TEMPLATE  ` + `
 		BeforeEach(func() {
 			sequence = utils.Relation{0, 1, "public", "my_sequence"}
 			sequenceDef = backup.Sequence{Relation: sequence}
-			columnOwnerMap = map[string]string{}
 			sequenceMetadataMap = backup.MetadataMap{}
 		})
 		It("creates a basic sequence", func() {
 			sequenceDef.QuerySequenceDefinition = backup.QuerySequenceDefinition{Name: "my_sequence", LastVal: 1, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
-			backup.PrintCreateSequenceStatements(buffer, []backup.Sequence{sequenceDef}, columnOwnerMap, sequenceMetadataMap)
+			backup.PrintCreateSequenceStatements(buffer, []backup.Sequence{sequenceDef}, sequenceMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE my_sequence")
@@ -258,26 +256,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 		})
 		It("creates a complex sequence", func() {
 			sequenceDef.QuerySequenceDefinition = backup.QuerySequenceDefinition{Name: "my_sequence", LastVal: 105, Increment: 5, MaxVal: 1000, MinVal: 20, CacheVal: 1, LogCnt: 0, IsCycled: false, IsCalled: true}
-			backup.PrintCreateSequenceStatements(buffer, []backup.Sequence{sequenceDef}, columnOwnerMap, sequenceMetadataMap)
-
-			testutils.AssertQueryRuns(connection, buffer.String())
-			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE my_sequence")
-
-			resultSequences := backup.GetAllSequences(connection)
-
-			Expect(len(resultSequences)).To(Equal(1))
-			testutils.ExpectStructsToMatchExcluding(&sequence, &resultSequences[0].Relation, "SchemaOid", "RelationOid")
-			testutils.ExpectStructsToMatch(&sequenceDef.QuerySequenceDefinition, &resultSequences[0].QuerySequenceDefinition)
-		})
-		It("creates a sequence owned by a table column", func() {
-			sequenceDef.QuerySequenceDefinition = backup.QuerySequenceDefinition{Name: "my_sequence",
-				LastVal: 1, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
-			columnOwnerMap["public.my_sequence"] = "sequence_table.a"
-			backup.PrintCreateSequenceStatements(buffer, []backup.Sequence{sequenceDef}, columnOwnerMap, sequenceMetadataMap)
-
-			//Create table that sequence can be owned by
-			testutils.AssertQueryRuns(connection, "CREATE TABLE sequence_table(a int)")
-			defer testutils.AssertQueryRuns(connection, "DROP TABLE sequence_table")
+			backup.PrintCreateSequenceStatements(buffer, []backup.Sequence{sequenceDef}, sequenceMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE my_sequence")
@@ -292,7 +271,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			sequenceDef.QuerySequenceDefinition = backup.QuerySequenceDefinition{Name: "my_sequence", LastVal: 1, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
 			sequenceMetadata := backup.ObjectMetadata{[]backup.ACL{testutils.DefaultACLWithout("testrole", "SEQUENCE", "UPDATE")}, "testrole", "This is a sequence comment."}
 			sequenceMetadataMap[1] = sequenceMetadata
-			backup.PrintCreateSequenceStatements(buffer, []backup.Sequence{sequenceDef}, columnOwnerMap, sequenceMetadataMap)
+			backup.PrintCreateSequenceStatements(buffer, []backup.Sequence{sequenceDef}, sequenceMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE my_sequence")
@@ -306,6 +285,28 @@ SET SUBPARTITION TEMPLATE  ` + `
 			testutils.ExpectStructsToMatchExcluding(&sequence, &resultSequences[0].Relation, "SchemaOid", "RelationOid")
 			testutils.ExpectStructsToMatch(&sequenceDef.QuerySequenceDefinition, &resultSequences[0].QuerySequenceDefinition)
 			testutils.ExpectStructsToMatch(&sequenceMetadata, &resultMetadata)
+		})
+	})
+	Describe("PrintAlterSequenceStatements", func() {
+		It("creates a sequence owned by a table column", func() {
+			sequenceDef := backup.Sequence{Relation: utils.Relation{0, 1, "public", "my_sequence"}}
+			columnOwnerMap := map[string]string{"public.my_sequence": "sequence_table.a"}
+
+			sequenceDef.QuerySequenceDefinition = backup.QuerySequenceDefinition{Name: "my_sequence",
+				LastVal: 1, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
+			backup.PrintCreateSequenceStatements(buffer, []backup.Sequence{sequenceDef}, backup.MetadataMap{})
+			backup.PrintAlterSequenceStatements(buffer, []backup.Sequence{sequenceDef}, columnOwnerMap)
+
+			//Create table that sequence can be owned by
+			testutils.AssertQueryRuns(connection, "CREATE TABLE sequence_table(a int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE sequence_table")
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE my_sequence")
+
+			sequenceOwners := backup.GetSequenceColumnOwnerMap(connection)
+			Expect(len(sequenceOwners)).To(Equal(1))
+			Expect(sequenceOwners["public.my_sequence"]).To(Equal("sequence_table.a"))
 		})
 	})
 })
