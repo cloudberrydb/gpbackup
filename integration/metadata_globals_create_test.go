@@ -200,4 +200,48 @@ var _ = Describe("backup integration create statement tests", func() {
 			Fail("Role 'testuser' is not a member of role 'usergroup'")
 		})
 	})
+	Describe("PrintCreateTablespaceStatements", func() {
+		expectedTablespace := backup.QueryTablespace{1, "test_tablespace", "test_filespace"}
+		It("creates a basic tablespace", func() {
+			numTablespaces := len(backup.GetTablespaces(connection))
+			emptyMetadataMap := backup.MetadataMap{}
+			backup.PrintCreateTablespaceStatements(buffer, []backup.QueryTablespace{expectedTablespace}, emptyMetadataMap)
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")
+
+			resultTablespaces := backup.GetTablespaces(connection)
+			Expect(len(resultTablespaces)).To(Equal(numTablespaces + 1))
+			for _, tablespace := range resultTablespaces {
+				if tablespace.Tablespace == "test_tablespace" {
+					testutils.ExpectStructsToMatchExcluding(&expectedTablespace, &tablespace, "Oid")
+					return
+				}
+			}
+			Fail("Tablespace 'test_tablespace' was not created")
+		})
+		It("creates a tablespace with permissions, an owner, and a comment", func() {
+			numTablespaces := len(backup.GetTablespaces(connection))
+			tablespaceMetadataMap := testutils.DefaultMetadataMap("TABLESPACE", true, true, true)
+			tablespaceMetadata := tablespaceMetadataMap[1]
+			backup.PrintCreateTablespaceStatements(buffer, []backup.QueryTablespace{expectedTablespace}, tablespaceMetadataMap)
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")
+
+			resultTablespaces := backup.GetTablespaces(connection)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TablespaceParams)
+			oid := backup.OidFromObjectName(connection, "test_tablespace", backup.TablespaceParams)
+			resultMetadata := resultMetadataMap[oid]
+			testutils.ExpectStructsToMatchExcluding(&tablespaceMetadata, &resultMetadata, "Oid")
+			Expect(len(resultTablespaces)).To(Equal(numTablespaces + 1))
+			for _, tablespace := range resultTablespaces {
+				if tablespace.Tablespace == "test_tablespace" {
+					testutils.ExpectStructsToMatchExcluding(&expectedTablespace, &tablespace, "Oid")
+					return
+				}
+			}
+			Fail("Tablespace 'test_tablespace' was not created")
+		})
+	})
 })

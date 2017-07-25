@@ -150,15 +150,16 @@ type QuerySegConfig struct {
 }
 
 func GetSegmentConfiguration(connection *DBConn) []QuerySegConfig {
-	query := `SELECT
-content,
-hostname,
-fselocation as datadir
-FROM pg_catalog.gp_segment_configuration
-JOIN pg_catalog.pg_filespace_entry
-ON (dbid = fsedbid)
-WHERE role = 'p'
-ORDER BY content;`
+	query := `
+SELECT
+	s.content,
+	s.hostname,
+	e.fselocation as datadir
+FROM gp_segment_configuration s
+JOIN pg_filespace_entry e ON s.dbid = e.fsedbid
+JOIN pg_filespace f ON e.fsefsoid = f.oid
+WHERE s.role = 'p' AND f.fsname = 'pg_system'
+ORDER BY s.content;`
 
 	results := make([]QuerySegConfig, 0)
 	err := connection.Select(&results, query)

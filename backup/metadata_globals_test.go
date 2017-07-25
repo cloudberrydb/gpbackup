@@ -238,4 +238,27 @@ ALTER ROLE "testRole2" DENY BETWEEN DAY 5 TIME '00:00:00' AND DAY 5 TIME '24:00:
 GRANT group TO rolewithout GRANTED BY grantor;`)
 		})
 	})
+	Describe("PrintCreateTablespaceStatements", func() {
+		expectedTablespace := backup.QueryTablespace{1, "test_tablespace", "test_filespace"}
+		It("prints a basic tablespace", func() {
+			emptyMetadataMap := backup.MetadataMap{}
+			backup.PrintCreateTablespaceStatements(buffer, []backup.QueryTablespace{expectedTablespace}, emptyMetadataMap)
+			testutils.ExpectRegexp(buffer, `CREATE TABLESPACE test_tablespace FILESPACE test_filespace;`)
+		})
+		It("prints a tablespace with privileges, an owner, and a comment", func() {
+			tablespaceMetadataMap := testutils.DefaultMetadataMap("TABLESPACE", true, true, true)
+			backup.PrintCreateTablespaceStatements(buffer, []backup.QueryTablespace{expectedTablespace}, tablespaceMetadataMap)
+			testutils.ExpectRegexp(buffer, `CREATE TABLESPACE test_tablespace FILESPACE test_filespace;
+
+COMMENT ON TABLESPACE test_tablespace IS 'This is a tablespace comment.';
+
+
+ALTER TABLESPACE test_tablespace OWNER TO testrole;
+
+
+REVOKE ALL ON TABLESPACE test_tablespace FROM PUBLIC;
+REVOKE ALL ON TABLESPACE test_tablespace FROM testrole;
+GRANT ALL ON TABLESPACE test_tablespace TO testrole;`)
+		})
+	})
 })

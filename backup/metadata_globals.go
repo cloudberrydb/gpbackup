@@ -173,3 +173,10 @@ func PrintRoleMembershipStatements(globalFile io.Writer, roleMembers []QueryRole
 		utils.MustPrintf(globalFile, " GRANTED BY %s;", roleMember.Grantor)
 	}
 }
+
+func PrintCreateTablespaceStatements(globalFile io.Writer, tablespaces []QueryTablespace, tablespaceMetadata MetadataMap) {
+	for _, tablespace := range tablespaces {
+		utils.MustPrintf(globalFile, "\n\nCREATE TABLESPACE %s FILESPACE %s;", tablespace.Tablespace, tablespace.Filespace)
+		PrintObjectMetadata(globalFile, tablespaceMetadata[tablespace.Oid], tablespace.Tablespace, "TABLESPACE")
+	}
+}

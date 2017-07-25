@@ -127,6 +127,11 @@ func backupGlobal(filename string) {
 	logger.Verbose("Writing GRANT ROLE statements to global file")
 	roleMembers := GetRoleMembers(connection)
 	PrintRoleMembershipStatements(globalFile, roleMembers)
+
+	logger.Verbose("Writing CREATE TABLESPACE statements to global file")
+	tablespaces := GetTablespaces(connection)
+	tablespaceMetadata := GetMetadataForObjectType(connection, TablespaceParams)
+	PrintCreateTablespaceStatements(globalFile, tablespaces, tablespaceMetadata)
 }
 
 func backupPredata(filename string, tables []utils.Relation, extTableMap map[string]bool) {

@@ -112,7 +112,6 @@ type QueryRole struct {
  * in the timestamp.
  */
 func GetRoles(connection *utils.DBConn) []QueryRole {
-	roles := make([]QueryRole, 0)
 	query := `
 SELECT
 	oid,
@@ -133,6 +132,8 @@ SELECT
 	rolcreatewexthdfs
 FROM
 	pg_authid`
+
+	roles := make([]QueryRole, 0)
 	err := connection.Select(&roles, query)
 	utils.CheckError(err)
 
@@ -181,7 +182,6 @@ type QueryRoleMember struct {
 }
 
 func GetRoleMembers(connection *utils.DBConn) []QueryRoleMember {
-	roleMembers := make([]QueryRoleMember, 0)
 	query := `
 SELECT
 	pg_get_userbyid(roleid) AS role,
@@ -190,7 +190,32 @@ SELECT
 	admin_option as isadmin
 FROM pg_auth_members
 ORDER BY roleid, member;`
-	err := connection.Select(&roleMembers, query)
+
+	results := make([]QueryRoleMember, 0)
+	err := connection.Select(&results, query)
 	utils.CheckError(err)
-	return roleMembers
+	return results
+}
+
+type QueryTablespace struct {
+	Oid        uint32
+	Tablespace string
+	Filespace  string
+}
+
+func GetTablespaces(connection *utils.DBConn) []QueryTablespace {
+	query := `
+SELECT
+	t.oid,
+	quote_ident(spcname) AS tablespace,
+	quote_ident(fsname) AS filespace
+FROM pg_tablespace t
+JOIN pg_filespace f
+ON t.spcfsoid = f.oid
+WHERE fsname != 'pg_system';`
+
+	results := make([]QueryTablespace, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
 }

@@ -1,10 +1,12 @@
 package integration
 
 import (
+	"fmt"
 	"testing"
 
 	"os/exec"
 
+	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
 	"github.com/greenplum-db/gpbackup/utils"
 
@@ -38,10 +40,12 @@ var _ = BeforeSuite(func() {
 	testutils.AssertQueryRuns(connection, "ALTER DATABASE testdb OWNER TO anothertestrole")
 	testutils.AssertQueryRuns(connection, "ALTER SCHEMA public OWNER TO anothertestrole")
 	testutils.AssertQueryRuns(connection, "DROP PROTOCOL IF EXISTS gphdfs")
+	setupTestFilespace()
 })
 
 var _ = AfterSuite(func() {
 	gexec.CleanupBuildArtifacts()
+	destroyTestFilespace()
 	if connection != nil {
 		connection.Close()
 		err := exec.Command("dropdb", "testdb").Run()
@@ -53,3 +57,39 @@ var _ = AfterSuite(func() {
 	testutils.AssertQueryRuns(connection1, "DROP ROLE anothertestrole")
 	connection1.Close()
 })
+
+func setupTestFilespace() {
+	utils.DirectoryMustExist("/tmp/test_filespace")
+	// Construct a filespace config like the one that gpfilespace generates
+	filespaceConfigQuery := `COPY (SELECT hostname || ':' || dbid || ':/tmp/test_filespace/' || preferred_role || content FROM gp_segment_configuration AS subselect) TO '/tmp/temp_filespace_config';`
+	testutils.AssertQueryRuns(connection, filespaceConfigQuery)
+	out, err := exec.Command("sh", "-c", "echo \"filespace:test_filespace\" > /tmp/filespace_config").CombinedOutput()
+	if err != nil {
+		Fail(fmt.Sprintf("Cannot create test filespace configuration: %s: %s", out, err.Error()))
+	}
+	out, err = exec.Command("sh", "-c", "cat /tmp/temp_filespace_config >> /tmp/filespace_config").CombinedOutput()
+	if err != nil {
+		Fail(fmt.Sprintf("Cannot finalize test filespace configuration: %s: %s", out, err.Error()))
+	}
+	// Create the filespace and verify it was created successfully
+	out, err = exec.Command("sh", "-c", "gpfilespace --config /tmp/filespace_config").CombinedOutput()
+	if err != nil {
+		Fail(fmt.Sprintf("Cannot create test filespace: %s: %s", out, err.Error()))
+	}
+	filespaceName := backup.SelectString(connection, "SELECT fsname AS string FROM pg_filespace WHERE fsname = 'test_filespace';")
+	if filespaceName != "test_filespace" {
+		Fail("Filespace test_filespace was not successfully created")
+	}
+}
+
+func destroyTestFilespace() {
+	filespaceName := backup.SelectString(connection, "SELECT fsname AS string FROM pg_filespace WHERE fsname = 'test_filespace';")
+	if filespaceName != "test_filespace" {
+		return
+	}
+	testutils.AssertQueryRuns(connection, "DROP FILESPACE test_filespace")
+	out, err := exec.Command("sh", "-c", "rm -rf /tmp/test_filespace /tmp/filespace_config /tmp/temp_filespace_config").CombinedOutput()
+	if err != nil {
+		Fail(fmt.Sprintf("Could not remove test filespace directory and configuration files: %s: %s", out, err.Error()))
+	}
+}

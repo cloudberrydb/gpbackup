@@ -223,4 +223,21 @@ CREATEEXTTABLE (protocol='gphdfs', type='writable')`)
 			Fail("Role 'testuser' is not a member of role 'usergroup'")
 		})
 	})
+	Describe("GetTablespaces", func() {
+		It("returns a tablespace", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLESPACE test_tablespace FILESPACE test_filespace")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")
+			expectedTablespace := backup.QueryTablespace{0, "test_tablespace", "test_filespace"}
+
+			resultTablespaces := backup.GetTablespaces(connection)
+
+			for _, tablespace := range resultTablespaces {
+				if tablespace.Tablespace == "test_tablespace" {
+					testutils.ExpectStructsToMatchExcluding(&expectedTablespace, &tablespace, "Oid")
+					return
+				}
+			}
+			Fail("Tablespace 'test_tablespace' was not created")
+		})
+	})
 })

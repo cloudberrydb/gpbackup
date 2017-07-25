@@ -195,6 +195,9 @@ func (obj ObjectMetadata) GetPrivilegesStatements(objectName string, objectType 
 				hasAllPrivileges = acl.Select && acl.Insert && acl.Update && acl.Delete && acl.Truncate && acl.References && acl.Trigger
 				hasAllPrivilegesWithGrant = acl.SelectWithGrant && acl.InsertWithGrant && acl.UpdateWithGrant && acl.DeleteWithGrant &&
 					acl.TruncateWithGrant && acl.ReferencesWithGrant && acl.TriggerWithGrant
+			case "TABLESPACE":
+				hasAllPrivileges = acl.Create
+				hasAllPrivilegesWithGrant = acl.CreateWithGrant
 			case "VIEW":
 				hasAllPrivileges = acl.Select && acl.Insert && acl.Update && acl.Delete && acl.Truncate && acl.References && acl.Trigger
 				hasAllPrivilegesWithGrant = acl.SelectWithGrant && acl.InsertWithGrant && acl.UpdateWithGrant && acl.DeleteWithGrant &&

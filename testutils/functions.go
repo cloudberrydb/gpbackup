@@ -101,7 +101,7 @@ func DefaultACLForType(grantee string, objType string) backup.ACL {
 		Trigger:    objType == "TABLE" || objType == "VIEW",
 		Usage:      objType == "LANGUAGE" || objType == "SCHEMA" || objType == "SEQUENCE",
 		Execute:    objType == "FUNCTION",
-		Create:     objType == "DATABASE" || objType == "SCHEMA",
+		Create:     objType == "DATABASE" || objType == "SCHEMA" || objType == "TABLESPACE",
 		Temporary:  objType == "DATABASE",
 		Connect:    objType == "DATABASE",
 	}
@@ -119,7 +119,7 @@ func DefaultACLForTypeWithGrant(grantee string, objType string) backup.ACL {
 		TriggerWithGrant:    objType == "TABLE" || objType == "VIEW",
 		UsageWithGrant:      objType == "LANGUAGE" || objType == "SCHEMA" || objType == "SEQUENCE",
 		ExecuteWithGrant:    objType == "FUNCTION",
-		CreateWithGrant:     objType == "DATABASE" || objType == "SCHEMA",
+		CreateWithGrant:     objType == "DATABASE" || objType == "SCHEMA" || objType == "TABLESPACE",
 		TemporaryWithGrant:  objType == "DATABASE",
 		ConnectWithGrant:    objType == "DATABASE",
 	}

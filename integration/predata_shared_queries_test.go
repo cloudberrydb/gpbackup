@@ -201,6 +201,19 @@ LANGUAGE SQL`)
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 		})
+		It("returns a slice of default metadata for a tablespace", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLESPACE test_tablespace FILESPACE test_filespace")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")
+			testutils.AssertQueryRuns(connection, "COMMENT ON TABLESPACE test_tablespace IS 'This is a tablespace comment.'")
+			testutils.AssertQueryRuns(connection, "GRANT ALL ON TABLESPACE test_tablespace TO testrole")
+
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TablespaceParams)
+
+			oid := backup.OidFromObjectName(connection, "test_tablespace", backup.TablespaceParams)
+			expectedMetadata := testutils.DefaultMetadataMap("TABLESPACE", true, true, true)[1]
+			resultMetadata := resultMetadataMap[oid]
+			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
+		})
 	})
 	Describe("GetCommentsForObjectType", func() {
 		It("returns a slice of default metadata for an index", func() {
