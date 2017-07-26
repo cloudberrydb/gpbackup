@@ -163,3 +163,34 @@ ON ts.oid = c.reltablespace
 WHERE c.oid = %d;`, oid)
 	return SelectString(connection, query)
 }
+
+type QueryDependency struct {
+	Object           uint32
+	ReferencedObject string
+}
+
+func ConstructTableDependencies(connection *utils.DBConn, tables []utils.Relation) []utils.Relation {
+	query := `
+SELECT
+	objid AS object,
+	quote_ident(n.nspname) || '.' || quote_ident(p.relname) AS referencedobject 
+FROM pg_depend d
+JOIN pg_class p
+	ON d.refobjid = p.oid AND p.relkind = 'r'
+JOIN pg_namespace n
+	ON p.relnamespace = n.oid
+JOIN pg_class c
+	ON d.objid = c.oid AND c.relkind = 'r';`
+
+	results := make([]QueryDependency, 0)
+	dependencyMap := make(map[uint32][]string, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	for _, dependency := range results {
+		dependencyMap[dependency.Object] = append(dependencyMap[dependency.Object], dependency.ReferencedObject)
+	}
+	for i := 0; i < len(tables); i++ {
+		tables[i].DependsUpon = dependencyMap[tables[i].RelationOid]
+	}
+	return tables
+}

@@ -126,7 +126,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP AGGREGATE agg_prefunc(numeric, numeric)")
 
-			oid := backup.OidFromObjectName(connection, "agg_prefunc", backup.AggregateParams)
+			oid := backup.OidFromObjectName(connection, "", "agg_prefunc", backup.AggregateParams)
 			resultAggregates := backup.GetAggregateDefinitions(connection)
 			Expect(len(resultAggregates)).To(Equal(1))
 			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.AggregateParams)

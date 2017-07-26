@@ -26,9 +26,9 @@ var _ = Describe("backup integration tests", func() {
 
 			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.RelationParams)
 
-			fooOid := backup.OidFromObjectName(connection, "foo", backup.RelationParams)
-			barOid := backup.OidFromObjectName(connection, "bar", backup.RelationParams)
-			bazOid := backup.OidFromObjectName(connection, "baz", backup.RelationParams)
+			fooOid := backup.OidFromObjectName(connection, "public", "foo", backup.RelationParams)
+			barOid := backup.OidFromObjectName(connection, "public", "bar", backup.RelationParams)
+			bazOid := backup.OidFromObjectName(connection, "public", "baz", backup.RelationParams)
 			expectedFoo := backup.ObjectMetadata{Privileges: []backup.ACL{testutils.DefaultACLWithout("testrole", "TABLE", "DELETE")}, Owner: "testrole"}
 			expectedBar := backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "GRANTEE"}}, Owner: "testrole"}
 			expectedBaz := backup.ObjectMetadata{Privileges: []backup.ACL{testutils.DefaultACLForType("anothertestrole", "TABLE"), testutils.DefaultACLForType("testrole", "TABLE")}, Owner: "testrole"}
@@ -51,7 +51,7 @@ var _ = Describe("backup integration tests", func() {
 
 			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.DatabaseParams)
 
-			oid := backup.OidFromObjectName(connection, "testdb", backup.DatabaseParams)
+			oid := backup.OidFromObjectName(connection, "", "testdb", backup.DatabaseParams)
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 		})
@@ -64,7 +64,7 @@ var _ = Describe("backup integration tests", func() {
 
 			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.RelationParams)
 
-			oid := backup.OidFromObjectName(connection, "testtable", backup.RelationParams)
+			oid := backup.OidFromObjectName(connection, "public", "testtable", backup.RelationParams)
 			expectedMetadata := testutils.DefaultMetadataMap("TABLE", true, true, true)[1]
 			Expect(len(resultMetadataMap)).To(Equal(1))
 			resultMetadata := resultMetadataMap[oid]
@@ -78,7 +78,7 @@ var _ = Describe("backup integration tests", func() {
 
 			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.RelationParams)
 
-			oid := backup.OidFromObjectName(connection, "testsequence", backup.RelationParams)
+			oid := backup.OidFromObjectName(connection, "public", "testsequence", backup.RelationParams)
 			expectedMetadata := testutils.DefaultMetadataMap("SEQUENCE", true, true, true)[1]
 			Expect(len(resultMetadataMap)).To(Equal(1))
 			resultMetadata := resultMetadataMap[oid]
@@ -95,7 +95,7 @@ LANGUAGE SQL`)
 
 			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.FunctionParams)
 
-			oid := backup.OidFromObjectName(connection, "add", backup.FunctionParams)
+			oid := backup.OidFromObjectName(connection, "public", "add", backup.FunctionParams)
 			expectedMetadata := testutils.DefaultMetadataMap("FUNCTION", true, true, true)[1]
 			Expect(len(resultMetadataMap)).To(Equal(1))
 			resultMetadata := resultMetadataMap[oid]
@@ -109,7 +109,7 @@ LANGUAGE SQL`)
 
 			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.RelationParams)
 
-			oid := backup.OidFromObjectName(connection, "testview", backup.RelationParams)
+			oid := backup.OidFromObjectName(connection, "public", "testview", backup.RelationParams)
 			expectedMetadata := testutils.DefaultMetadataMap("VIEW", true, true, true)[1]
 			Expect(len(resultMetadataMap)).To(Equal(1))
 			resultMetadata := resultMetadataMap[oid]
@@ -123,7 +123,7 @@ LANGUAGE SQL`)
 
 			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.SchemaParams)
 
-			oid := backup.OidFromObjectName(connection, "testschema", backup.SchemaParams)
+			oid := backup.OidFromObjectName(connection, "", "testschema", backup.SchemaParams)
 			expectedMetadata := testutils.DefaultMetadataMap("SCHEMA", true, true, true)[1]
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
@@ -158,7 +158,7 @@ LANGUAGE SQL`)
 
 			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.AggregateParams)
 
-			oid := backup.OidFromObjectName(connection, "agg_prefunc", backup.AggregateParams)
+			oid := backup.OidFromObjectName(connection, "", "agg_prefunc", backup.AggregateParams)
 			expectedMetadata := testutils.DefaultMetadataMap("AGGREGATE", false, true, true)[1]
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
@@ -170,7 +170,7 @@ LANGUAGE SQL`)
 
 			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TypeParams)
 
-			oid := backup.OidFromObjectName(connection, "testtype", backup.TypeParams)
+			oid := backup.OidFromObjectName(connection, "", "testtype", backup.TypeParams)
 			expectedMetadata := testutils.DefaultMetadataMap("TYPE", false, true, true)[1]
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
@@ -182,7 +182,7 @@ LANGUAGE SQL`)
 
 			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TypeParams)
 
-			oid := backup.OidFromObjectName(connection, "domain_type", backup.TypeParams)
+			oid := backup.OidFromObjectName(connection, "", "domain_type", backup.TypeParams)
 			expectedMetadata := testutils.DefaultMetadataMap("DOMAIN", false, true, true)[1]
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
@@ -196,7 +196,7 @@ LANGUAGE SQL`)
 
 			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.ProtocolParams)
 
-			oid := backup.OidFromObjectName(connection, "s3_read", backup.ProtocolParams)
+			oid := backup.OidFromObjectName(connection, "", "s3_read", backup.ProtocolParams)
 			expectedMetadata := testutils.DefaultMetadataMap("PROTOCOL", true, true, false)[1]
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
@@ -209,7 +209,7 @@ LANGUAGE SQL`)
 
 			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TablespaceParams)
 
-			oid := backup.OidFromObjectName(connection, "test_tablespace", backup.TablespaceParams)
+			oid := backup.OidFromObjectName(connection, "", "test_tablespace", backup.TablespaceParams)
 			expectedMetadata := testutils.DefaultMetadataMap("TABLESPACE", true, true, true)[1]
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
@@ -227,7 +227,7 @@ LANGUAGE SQL`)
 
 			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.IndexParams)
 
-			oid := backup.OidFromObjectName(connection, "testindex", backup.IndexParams)
+			oid := backup.OidFromObjectName(connection, "", "testindex", backup.IndexParams)
 			expectedMetadataMap := testutils.DefaultMetadataMap("INDEX", false, false, true)
 			expectedMetadata := expectedMetadataMap[1]
 
@@ -246,7 +246,7 @@ LANGUAGE SQL`)
 
 			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.RuleParams)
 
-			oid := backup.OidFromObjectName(connection, "update_notify", backup.RuleParams)
+			oid := backup.OidFromObjectName(connection, "", "update_notify", backup.RuleParams)
 			expectedMetadataMap := testutils.DefaultMetadataMap("RULE", false, false, true)
 			expectedMetadata := expectedMetadataMap[1]
 
@@ -265,7 +265,7 @@ LANGUAGE SQL`)
 
 			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.TriggerParams)
 
-			oid := backup.OidFromObjectName(connection, "sync_testtable", backup.TriggerParams)
+			oid := backup.OidFromObjectName(connection, "", "sync_testtable", backup.TriggerParams)
 			expectedMetadataMap := testutils.DefaultMetadataMap("TRIGGER", false, false, true)
 			expectedMetadata := expectedMetadataMap[1]
 
@@ -284,8 +284,8 @@ LANGUAGE SQL`)
 
 			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.CastParams)
 
-			textOid := backup.OidFromObjectName(connection, "text", backup.CastParams)
-			intOid := backup.OidFromObjectName(connection, "int4", backup.CastParams)
+			textOid := backup.OidFromObjectName(connection, "", "text", backup.CastParams)
+			intOid := backup.OidFromObjectName(connection, "", "int4", backup.CastParams)
 			oid := testutils.OidFromCast(connection, textOid, intOid)
 			expectedMetadataMap := testutils.DefaultMetadataMap("CAST", false, false, true)
 			expectedMetadata := expectedMetadataMap[1]
@@ -304,7 +304,7 @@ LANGUAGE SQL`)
 
 			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.ConParams)
 
-			oid := backup.OidFromObjectName(connection, "testtable_i_key", backup.ConParams)
+			oid := backup.OidFromObjectName(connection, "", "testtable_i_key", backup.ConParams)
 			expectedMetadataMap := testutils.DefaultMetadataMap("CONSTRAINT", false, false, true)
 			expectedMetadata := expectedMetadataMap[1]
 
@@ -322,7 +322,7 @@ LANGUAGE SQL`)
 
 			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.ResQueueParams)
 
-			oid := backup.OidFromObjectName(connection, "res_queue", backup.ResQueueParams)
+			oid := backup.OidFromObjectName(connection, "", "res_queue", backup.ResQueueParams)
 			expectedMetadataMap := testutils.DefaultMetadataMap("RESOURCE QUEUE", false, false, true)
 			expectedMetadata := expectedMetadataMap[1]
 
@@ -340,7 +340,7 @@ LANGUAGE SQL`)
 
 			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.RoleParams)
 
-			oid := backup.OidFromObjectName(connection, "testuser", backup.RoleParams)
+			oid := backup.OidFromObjectName(connection, "", "testuser", backup.RoleParams)
 			expectedMetadataMap := testutils.DefaultMetadataMap("ROLE", false, false, true)
 			expectedMetadata := expectedMetadataMap[1]
 

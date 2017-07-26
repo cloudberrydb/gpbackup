@@ -32,13 +32,13 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE LANGUAGE plperl")
 			defer testutils.AssertQueryRuns(connection, "DROP LANGUAGE plperl")
 
-			pgsqlHandlerOid := backup.OidFromObjectName(connection, "plpgsql_call_handler", backup.FunctionParams)
-			pgsqlInlineOid := backup.OidFromObjectName(connection, "plpgsql_inline_handler", backup.FunctionParams)
-			pgsqlValidatorOid := backup.OidFromObjectName(connection, "plpgsql_validator", backup.FunctionParams)
+			pgsqlHandlerOid := backup.OidFromObjectName(connection, "pg_catalog", "plpgsql_call_handler", backup.FunctionParams)
+			pgsqlInlineOid := backup.OidFromObjectName(connection, "pg_catalog", "plpgsql_inline_handler", backup.FunctionParams)
+			pgsqlValidatorOid := backup.OidFromObjectName(connection, "pg_catalog", "plpgsql_validator", backup.FunctionParams)
 
-			perlHandlerOid := backup.OidFromObjectName(connection, "plperl_call_handler", backup.FunctionParams)
-			perlInlineOid := backup.OidFromObjectName(connection, "plperl_inline_handler", backup.FunctionParams)
-			perlValidatorOid := backup.OidFromObjectName(connection, "plperl_validator", backup.FunctionParams)
+			perlHandlerOid := backup.OidFromObjectName(connection, "pg_catalog", "plperl_call_handler", backup.FunctionParams)
+			perlInlineOid := backup.OidFromObjectName(connection, "pg_catalog", "plperl_inline_handler", backup.FunctionParams)
+			perlValidatorOid := backup.OidFromObjectName(connection, "pg_catalog", "plperl_validator", backup.FunctionParams)
 
 			expectedPlpgsqlInfo := backup.QueryProceduralLanguage{0, "plpgsql", "testrole", true, true, pgsqlHandlerOid, pgsqlInlineOid, pgsqlValidatorOid}
 			expectedPlperlInfo := backup.QueryProceduralLanguage{1, "plperl", "testrole", true, true, perlHandlerOid, perlInlineOid, perlValidatorOid}

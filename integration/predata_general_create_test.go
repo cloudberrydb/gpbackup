@@ -76,7 +76,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			resultProcLangs := backup.GetProceduralLanguages(connection)
 			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.ProcLangParams)
 
-			plperlInfo.Oid = backup.OidFromObjectName(connection, "plperl", backup.ProcLangParams)
+			plperlInfo.Oid = backup.OidFromObjectName(connection, "", "plperl", backup.ProcLangParams)
 			Expect(len(resultProcLangs)).To(Equal(2))
 			resultMetadata := resultMetadataMap[plperlInfo.Oid]
 			testutils.ExpectStructsToMatchIncluding(&plpgsqlInfo, &resultProcLangs[0], "IsPl", "PlTrusted")
@@ -101,7 +101,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			fkConstraint = backup.QueryConstraint{0, "fk1", "f", "FOREIGN KEY (b) REFERENCES constraints_other_table(b)", "public.testtable", false}
 			checkConstraint = backup.QueryConstraint{0, "check1", "c", "CHECK (a <> 42)", "public.testtable", false}
 			testutils.AssertQueryRuns(connection, "CREATE TABLE public.testtable(a int, b text) DISTRIBUTED BY (b)")
-			tableOid = backup.OidFromObjectName(connection, "testtable", backup.RelationParams)
+			tableOid = backup.OidFromObjectName(connection, "public", "testtable", backup.RelationParams)
 			conMetadataMap = backup.MetadataMap{}
 		})
 		AfterEach(func() {

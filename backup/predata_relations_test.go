@@ -379,6 +379,30 @@ SET SUBPARTITION TEMPLATE
 ) TABLESPACE test_tablespace DISTRIBUTED RANDOMLY;`)
 			})
 		})
+		Context("Inheritance", func() {
+			AfterEach(func() {
+				testTable.DependsUpon = []string{}
+			})
+			It("prints a CREATE TABLE block with a single-inheritance INHERITS clause", func() {
+				testTable.DependsUpon = []string{"public.parent"}
+				col := []backup.ColumnDefinition{rowOne}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", col, false, extTableEmpty}
+				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
+				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
+	i integer
+) INHERITS (public.parent) DISTRIBUTED RANDOMLY;`)
+			})
+			It("prints a CREATE TABLE block with a multiple-inheritance INHERITS clause", func() {
+				testTable.DependsUpon = []string{"public.parent_one", "public.parent_two"}
+				col := []backup.ColumnDefinition{rowOne, rowTwo}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", col, false, extTableEmpty}
+				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
+				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
+	i integer,
+	j character varying(20)
+) INHERITS (public.parent_one, public.parent_two) DISTRIBUTED RANDOMLY;`)
+			})
+		})
 	})
 	Describe("PrintPostCreateTableStatements", func() {
 		testTable := utils.BasicRelation("public", "tablename")
@@ -518,7 +542,7 @@ COMMENT ON COLUMN public.tablename.j IS 'This is another column comment.';`)
 		})
 	})
 	Describe("PrintCreateSequenceStatements", func() {
-		baseSequence := utils.Relation{0, 1, "public", "seq_name"}
+		baseSequence := utils.Relation{0, 1, "public", "seq_name", []string{}}
 		seqDefault := backup.Sequence{baseSequence, backup.QuerySequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, true}}
 		seqNegIncr := backup.Sequence{baseSequence, backup.QuerySequenceDefinition{"seq_name", 7, -1, -1, -9223372036854775807, 5, 42, false, true}}
 		seqMaxPos := backup.Sequence{baseSequence, backup.QuerySequenceDefinition{"seq_name", 7, 1, 100, 1, 5, 42, false, true}}
@@ -674,7 +698,7 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 		})
 	})
 	Describe("PrintAlterSequenceStatements", func() {
-		baseSequence := utils.Relation{0, 1, "public", "seq_name"}
+		baseSequence := utils.BasicRelation("public", "seq_name")
 		seqDefault := backup.Sequence{baseSequence, backup.QuerySequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, true}}
 		emptyColumnOwnerMap := make(map[string]string, 0)
 		columnOwnerMap := map[string]string{"public.seq_name": "tablename.col_one"}

@@ -40,6 +40,7 @@ type Relation struct {
 	RelationOid  uint32
 	SchemaName   string
 	RelationName string
+	DependsUpon  []string
 }
 
 /*
@@ -157,14 +158,18 @@ func (slice Relations) Len() int {
 	return len(slice)
 }
 
+/*
+ * Dependencies are sorted before tables that depend on them.  We return false
+ * for all comparisons and true by default to ensure that the entire list is
+ * traversed.
+ */
 func (slice Relations) Less(i int, j int) bool {
-	if slice[i].SchemaName < slice[j].SchemaName {
-		return true
+	for _, dependencyFQN := range slice[i].DependsUpon {
+		if slice[j].ToString() == dependencyFQN {
+			return false
+		}
 	}
-	if slice[i].RelationName < slice[j].RelationName {
-		return true
-	}
-	return false
+	return true
 }
 
 func (slice Relations) Swap(i int, j int) {

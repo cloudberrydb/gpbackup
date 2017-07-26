@@ -65,12 +65,16 @@ type QueryOid struct {
 	Oid uint32
 }
 
-func OidFromObjectName(dbconn *utils.DBConn, name string, params MetadataQueryParams) uint32 {
+func OidFromObjectName(dbconn *utils.DBConn, schemaName string, objectName string, params MetadataQueryParams) uint32 {
 	catalogTable := params.CatalogTable
 	if params.OidTable != "" {
 		catalogTable = params.OidTable
 	}
-	query := fmt.Sprintf("SELECT oid FROM %s WHERE %s ='%s'", catalogTable, params.NameField, name)
+	schemaStr := ""
+	if schemaName != "" {
+		schemaStr = fmt.Sprintf(" AND %s = (SELECT oid FROM pg_namespace WHERE nspname = '%s')", params.SchemaField, schemaName)
+	}
+	query := fmt.Sprintf("SELECT oid FROM %s WHERE %s ='%s'%s", catalogTable, params.NameField, objectName, schemaStr)
 	result := QueryOid{}
 	err := dbconn.Get(&result, query)
 	utils.CheckError(err)

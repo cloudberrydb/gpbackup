@@ -153,11 +153,11 @@ var _ = Describe("utils/table tests", func() {
 		})
 	})
 	Describe("GetUniqueSchemas", func() {
-		alphabeticalAFoo := utils.Relation{1, 0, "otherschema", "foo"}
-		alphabeticalABar := utils.Relation{1, 0, "otherschema", "bar"}
+		alphabeticalAFoo := utils.Relation{1, 0, "otherschema", "foo", []string{}}
+		alphabeticalABar := utils.Relation{1, 0, "otherschema", "bar", []string{}}
 		schemaOther := utils.Schema{2, "otherschema"}
-		alphabeticalBFoo := utils.Relation{2, 0, "public", "foo"}
-		alphabeticalBBar := utils.Relation{2, 0, "public", "bar"}
+		alphabeticalBFoo := utils.Relation{2, 0, "public", "foo", []string{}}
+		alphabeticalBBar := utils.Relation{2, 0, "public", "bar", []string{}}
 		schemaPublic := utils.Schema{1, "public"}
 		schemas := []utils.Schema{schemaOther, schemaPublic}
 
@@ -175,6 +175,34 @@ var _ = Describe("utils/table tests", func() {
 			tables := []utils.Relation{}
 			uniqueSchemas := utils.GetUniqueSchemas(schemas, tables)
 			Expect(uniqueSchemas).To(Equal([]utils.Schema{}))
+		})
+	})
+	Describe("Relations.Less", func() {
+		It("returns false if relation i is a child of relation j", func() {
+			tableI := utils.BasicRelation("public", "i")
+			tableI.DependsUpon = []string{"public.j"}
+			tableJ := utils.BasicRelation("public", "j")
+			var relations utils.Relations
+			relations = []utils.Relation{tableI, tableJ}
+			result := relations.Less(0, 1)
+			Expect(result).To(BeFalse())
+		})
+		It("returns true if relation j is a child of relation i", func() {
+			tableI := utils.BasicRelation("public", "i")
+			tableJ := utils.BasicRelation("public", "j")
+			tableJ.DependsUpon = []string{"public.i"}
+			var relations utils.Relations
+			relations = []utils.Relation{tableI, tableJ}
+			result := relations.Less(0, 1)
+			Expect(result).To(BeTrue())
+		})
+		It("returns true if neither relation i nor relation j depends on one another", func() {
+			tableI := utils.BasicRelation("public", "i")
+			tableJ := utils.BasicRelation("public", "j")
+			var relations utils.Relations
+			relations = []utils.Relation{tableI, tableJ}
+			result := relations.Less(0, 1)
+			Expect(result).To(BeTrue())
 		})
 	})
 })

@@ -201,6 +201,8 @@ func backupPredata(filename string, tables []utils.Relation, extTableMap map[str
 	PrintCreateSequenceStatements(predataFile, sequenceDefs, relationMetadata)
 
 	logger.Verbose("Writing CREATE TABLE statements to predata file")
+	tables = ConstructTableDependencies(connection, tables)
+	utils.SortRelations(tables)
 	for _, table := range tables {
 		isExternal := extTableMap[table.ToString()]
 		tableDef := ConstructDefinitionsForTable(connection, table, isExternal)

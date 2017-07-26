@@ -118,6 +118,10 @@ func PrintRegularTableCreateStatement(predataFile io.Writer, table utils.Relatio
 	utils.MustPrintf(predataFile, "\n\nCREATE TABLE %s (\n", table.ToString())
 	printColumnStatements(predataFile, table, tableDef.ColumnDefs)
 	utils.MustPrintf(predataFile, ") ")
+	if len(table.DependsUpon) != 0 {
+		dependencyList := strings.Join(table.DependsUpon, ", ")
+		utils.MustPrintf(predataFile, "INHERITS (%s) ", dependencyList)
+	}
 	if tableDef.StorageOpts != "" {
 		utils.MustPrintf(predataFile, "WITH (%s) ", tableDef.StorageOpts)
 	}
