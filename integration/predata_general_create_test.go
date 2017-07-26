@@ -195,5 +195,27 @@ var _ = Describe("backup integration create statement tests", func() {
 			//We just want to check that these queries run successfully, no setup required
 			testutils.AssertQueryRuns(connection, buffer.String())
 		})
+
+	})
+	Describe("PrintCreateOperatorStatements", func() {
+		It("creates operator", func() {
+			testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
+			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
+
+			testutils.AssertQueryRuns(connection, "CREATE FUNCTION testschema.\"testFunc\"(path,path) RETURNS path AS 'SELECT $1' LANGUAGE SQL IMMUTABLE")
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION testschema.\"testFunc\"(path,path)")
+
+			operator := backup.QueryOperator{0, "testschema", "##", "testschema.\"testFunc\"", "path", "path", "0", "0", "-", "-", false, false}
+			operators := []backup.QueryOperator{operator}
+
+			backup.PrintCreateOperatorStatements(buffer, operators, backup.MetadataMap{})
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR testschema.##(path, path)")
+
+			resultOperators := backup.GetOperators(connection)
+			Expect(len(resultOperators)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&operator, &resultOperators[0], "Oid")
+		})
 	})
 })

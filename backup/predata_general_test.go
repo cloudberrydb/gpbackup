@@ -291,4 +291,75 @@ REVOKE ALL ON LANGUAGE plpythonu FROM testrole;
 GRANT ALL ON LANGUAGE plpythonu TO testrole;`)
 		})
 	})
+	Describe("PrintCreateOperatorStatements", func() {
+		It("prints a basic operator", func() {
+			operator := backup.QueryOperator{0, "public", "##", "path_inter", "path", "path", "0", "0", "-", "-", false, false}
+
+			backup.PrintCreateOperatorStatements(buffer, []backup.QueryOperator{operator}, backup.MetadataMap{})
+
+			testutils.ExpectRegexp(buffer, `CREATE OPERATOR public.## (
+	PROCEDURE = path_inter,
+	LEFTARG = path,
+	RIGHTARG = path
+);`)
+		})
+		It("prints a full-featured operator", func() {
+			operator := backup.QueryOperator{1, "testschema", "##", "path_inter", "path", "path", "testschema.##", "testschema.###", "eqsel(internal,oid,internal,integer)", "eqjoinsel(internal,oid,internal,smallint)", true, true}
+
+			metadataMap := testutils.DefaultMetadataMap("OPERATOR", false, true, true)
+
+			backup.PrintCreateOperatorStatements(buffer, []backup.QueryOperator{operator}, metadataMap)
+
+			testutils.ExpectRegexp(buffer, `CREATE OPERATOR testschema.## (
+	PROCEDURE = path_inter,
+	LEFTARG = path,
+	RIGHTARG = path,
+	COMMUTATOR = OPERATOR(testschema.##),
+	NEGATOR = OPERATOR(testschema.###),
+	RESTRICT = eqsel(internal,oid,internal,integer),
+	JOIN = eqjoinsel(internal,oid,internal,smallint),
+	HASHES,
+	MERGES
+);
+
+COMMENT ON OPERATOR testschema.## (path, path) IS 'This is an operator comment.';
+
+
+ALTER OPERATOR testschema.## (path, path) OWNER TO testrole;`)
+		})
+		It("prints an operator with only a left argument", func() {
+			operator := backup.QueryOperator{1, "public", "##", "path_inter", "path", "-", "0", "0", "-", "-", false, false}
+
+			metadataMap := testutils.DefaultMetadataMap("OPERATOR", false, true, true)
+
+			backup.PrintCreateOperatorStatements(buffer, []backup.QueryOperator{operator}, metadataMap)
+
+			testutils.ExpectRegexp(buffer, `CREATE OPERATOR public.## (
+	PROCEDURE = path_inter,
+	LEFTARG = path
+);
+
+COMMENT ON OPERATOR public.## (path, NONE) IS 'This is an operator comment.';
+
+
+ALTER OPERATOR public.## (path, NONE) OWNER TO testrole;`)
+		})
+		It("prints an operator with only a right argument", func() {
+			operator := backup.QueryOperator{1, "public", "##", "path_inter", "-", "path", "0", "0", "-", "-", false, false}
+
+			metadataMap := testutils.DefaultMetadataMap("OPERATOR", false, true, true)
+
+			backup.PrintCreateOperatorStatements(buffer, []backup.QueryOperator{operator}, metadataMap)
+
+			testutils.ExpectRegexp(buffer, `CREATE OPERATOR public.## (
+	PROCEDURE = path_inter,
+	RIGHTARG = path
+);
+
+COMMENT ON OPERATOR public.## (NONE, path) IS 'This is an operator comment.';
+
+
+ALTER OPERATOR public.## (NONE, path) OWNER TO testrole;`)
+		})
+	})
 })

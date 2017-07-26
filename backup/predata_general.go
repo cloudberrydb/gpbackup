@@ -8,7 +8,9 @@ package backup
  */
 
 import (
+	"fmt"
 	"io"
+	"strings"
 
 	"github.com/greenplum-db/gpbackup/utils"
 )
@@ -115,5 +117,50 @@ func PrintCreateLanguageStatements(predataFile io.Writer, procLangs []QueryProce
 		}
 		PrintObjectMetadata(predataFile, procLangMetadata[procLang.Oid], utils.QuoteIdent(procLang.Name), "LANGUAGE")
 		utils.MustPrintln(predataFile)
+	}
+}
+
+func PrintCreateOperatorStatements(predataFile io.Writer, operators []QueryOperator, operatorMetadata MetadataMap) {
+	for _, operator := range operators {
+		// We do not use MakeFQN here as the operator cannot be quoted
+		schema := utils.QuoteIdent(operator.SchemaName)
+		operatorFQN := fmt.Sprintf("%s.%s", schema, operator.Name)
+		optionalFields := make([]string, 0)
+		leftArg := "NONE"
+		rightArg := "NONE"
+		if operator.LeftArgType != "-" {
+			leftArg = utils.QuoteIdent(operator.LeftArgType)
+			optionalFields = append(optionalFields, fmt.Sprintf("LEFTARG = %s", leftArg))
+		}
+		if operator.RightArgType != "-" {
+			rightArg = utils.QuoteIdent(operator.RightArgType)
+			optionalFields = append(optionalFields, fmt.Sprintf("RIGHTARG = %s", rightArg))
+		}
+		if operator.CommutatorOp != "0" {
+			optionalFields = append(optionalFields, fmt.Sprintf("COMMUTATOR = OPERATOR(%s)", operator.CommutatorOp))
+		}
+		if operator.NegatorOp != "0" {
+			optionalFields = append(optionalFields, fmt.Sprintf("NEGATOR = OPERATOR(%s)", operator.NegatorOp))
+		}
+		if operator.RestrictFunction != "-" {
+			optionalFields = append(optionalFields, fmt.Sprintf("RESTRICT = %s", operator.RestrictFunction))
+		}
+		if operator.JoinFunction != "-" {
+			optionalFields = append(optionalFields, fmt.Sprintf("JOIN = %s", operator.JoinFunction))
+		}
+		if operator.CanHash {
+			optionalFields = append(optionalFields, "HASHES")
+		}
+		if operator.CanMerge {
+			optionalFields = append(optionalFields, "MERGES")
+		}
+		utils.MustPrintf(predataFile, `
+
+CREATE OPERATOR %s (
+	PROCEDURE = %s,
+	%s
+);`, operatorFQN, operator.ProcedureName, strings.Join(optionalFields, ",\n\t"))
+		operatorStr := fmt.Sprintf("%s (%s, %s)", operatorFQN, leftArg, rightArg)
+		PrintObjectMetadata(predataFile, operatorMetadata[operator.Oid], operatorStr, "OPERATOR")
 	}
 }

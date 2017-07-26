@@ -49,4 +49,46 @@ var _ = Describe("backup integration tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&expectedPlperlInfo, &resultProcLangs[1], "Oid", "Owner")
 		})
 	})
+	Describe("GetOperators", func() {
+		It("returns a slice of operators", func() {
+			testutils.AssertQueryRuns(connection, "CREATE OPERATOR ## (LEFTARG = bigint, PROCEDURE = numeric_fac)")
+			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR ## (bigint, NONE)")
+
+			expectedOperator := backup.QueryOperator{0, "public", "##", "numeric_fac", "bigint", "-", "0", "0", "-", "-", false, false}
+
+			results := backup.GetOperators(connection)
+
+			Expect(len(results)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&expectedOperator, &results[0], "Oid")
+		})
+		It("returns a slice of operators with a full-featured operator", func() {
+			testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
+			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
+
+			testutils.AssertQueryRuns(connection, "CREATE FUNCTION testschema.\"testFunc\"(path,path) RETURNS path AS 'SELECT $1' LANGUAGE SQL IMMUTABLE")
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION testschema.\"testFunc\"(path,path)")
+
+			testutils.AssertQueryRuns(connection, `
+			CREATE OPERATOR testschema.## (
+				LEFTARG = path,
+				RIGHTARG = path,
+				PROCEDURE = testschema."testFunc",
+				COMMUTATOR = OPERATOR(testschema.##),
+				NEGATOR = OPERATOR(public.###),
+				RESTRICT = eqsel,
+				JOIN = eqjoinsel,
+				HASHES,
+				MERGES
+			)`)
+			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR testschema.## (path, path)")
+			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR ### (path, path)")
+
+			expectedOperator := backup.QueryOperator{0, "testschema", "##", "testschema.\"testFunc\"", "path", "path", "testschema.##", "###", "eqsel", "eqjoinsel", true, true}
+
+			results := backup.GetOperators(connection)
+
+			Expect(len(results)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&expectedOperator, &results[0], "Oid")
+		})
+	})
 })

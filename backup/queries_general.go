@@ -226,3 +226,42 @@ FROM pg_extprotocol p;
 	utils.CheckError(err)
 	return results
 }
+
+type QueryOperator struct {
+	Oid              uint32
+	SchemaName       string
+	Name             string
+	ProcedureName    string
+	LeftArgType      string
+	RightArgType     string
+	CommutatorOp     string
+	NegatorOp        string
+	RestrictFunction string
+	JoinFunction     string
+	CanHash          bool
+	CanMerge         bool
+}
+
+func GetOperators(connection *utils.DBConn) []QueryOperator {
+	results := make([]QueryOperator, 0)
+	query := fmt.Sprintf(`
+SELECT
+	o.oid,
+	n.nspname AS schemaname,
+	oprname AS name,
+	oprcode AS procedurename,
+	oprleft::regtype AS leftargtype,
+	oprright::regtype AS rightargtype,
+	oprcom::regoper AS commutatorop,
+	oprnegate::regoper AS negatorop,
+	oprrest AS restrictfunction,
+	oprjoin AS joinfunction,
+	oprcanmerge AS canmerge,
+	oprcanhash AS canhash
+FROM pg_operator o
+JOIN pg_namespace n on n.oid = o.oprnamespace
+WHERE %s AND oprcode != 0`, nonUserSchemaFilterClause)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
+}

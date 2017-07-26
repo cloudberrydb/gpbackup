@@ -214,6 +214,19 @@ LANGUAGE SQL`)
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 		})
+		It("returns a slice of default metadata for an operator", func() {
+			testutils.AssertQueryRuns(connection, "CREATE OPERATOR #### (LEFTARG = bigint, PROCEDURE = numeric_fac)")
+			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR #### (bigint, NONE)")
+
+			testutils.AssertQueryRuns(connection, "COMMENT ON OPERATOR public.#### (bigint, NONE) IS 'This is an operator comment.'")
+
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.OperatorParams)
+
+			oid := backup.OidFromObjectName(connection, "", "####", backup.OperatorParams)
+			expectedMetadata := testutils.DefaultMetadataMap("OPERATOR", false, true, true)[1]
+			resultMetadata := resultMetadataMap[oid]
+			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
+		})
 	})
 	Describe("GetCommentsForObjectType", func() {
 		It("returns a slice of default metadata for an index", func() {
