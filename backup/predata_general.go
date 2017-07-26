@@ -56,6 +56,33 @@ func PrintCreateSchemaStatements(predataFile io.Writer, schemas []utils.Schema, 
 	}
 }
 
+/*
+ * This function separates out functions related to procedural languages from
+ * any other functions, so that language-related functions can be dumped before
+ * the languages themselves and we can avoid sorting languages and functions
+ * together to resolve dependencies.
+ */
+func ExtractLanguageFunctions(funcDefs []QueryFunctionDefinition, procLangs []QueryProceduralLanguage) ([]QueryFunctionDefinition, []QueryFunctionDefinition) {
+	isLangFuncMap := make(map[uint32]bool, 0)
+	for _, procLang := range procLangs {
+		for _, funcDef := range funcDefs {
+			isLangFuncMap[funcDef.Oid] = (funcDef.Oid == procLang.Handler ||
+				funcDef.Oid == procLang.Inline ||
+				funcDef.Oid == procLang.Validator)
+		}
+	}
+	langFuncs := make([]QueryFunctionDefinition, 0)
+	otherFuncs := make([]QueryFunctionDefinition, 0)
+	for _, funcDef := range funcDefs {
+		if isLangFuncMap[funcDef.Oid] {
+			langFuncs = append(langFuncs, funcDef)
+		} else {
+			otherFuncs = append(otherFuncs, funcDef)
+		}
+	}
+	return langFuncs, otherFuncs
+}
+
 func PrintCreateLanguageStatements(predataFile io.Writer, procLangs []QueryProceduralLanguage,
 	funcInfoMap map[uint32]FunctionInfo, procLangMetadata MetadataMap) {
 	for _, procLang := range procLangs {

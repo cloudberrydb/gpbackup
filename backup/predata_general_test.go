@@ -6,6 +6,7 @@ import (
 	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 )
 
@@ -201,6 +202,34 @@ ALTER SCHEMA schemaname OWNER TO testrole;
 REVOKE ALL ON SCHEMA schemaname FROM PUBLIC;
 REVOKE ALL ON SCHEMA schemaname FROM testrole;
 GRANT ALL ON SCHEMA schemaname TO testrole;`)
+		})
+	})
+	Describe("ExtractLanguageFunctions", func() {
+		customLang := backup.QueryProceduralLanguage{1, "custom_language", "testrole", true, true, 3, 4, 5}
+		procLangs := []backup.QueryProceduralLanguage{customLang}
+		langFunc := backup.QueryFunctionDefinition{Oid: 3, FunctionName: "custom_handler"}
+		nonLangFunc := backup.QueryFunctionDefinition{Oid: 2, FunctionName: "random_function"}
+		It("handles a case where all functions are language-associated functions", func() {
+			funcDefs := []backup.QueryFunctionDefinition{langFunc}
+			langFuncs, otherFuncs := backup.ExtractLanguageFunctions(funcDefs, procLangs)
+			Expect(len(langFuncs)).To(Equal(1))
+			Expect(len(otherFuncs)).To(Equal(0))
+			Expect(langFuncs[0].FunctionName).To(Equal("custom_handler"))
+		})
+		It("handles a case where no functions are language-associated functions", func() {
+			funcDefs := []backup.QueryFunctionDefinition{nonLangFunc}
+			langFuncs, otherFuncs := backup.ExtractLanguageFunctions(funcDefs, procLangs)
+			Expect(len(langFuncs)).To(Equal(0))
+			Expect(len(otherFuncs)).To(Equal(1))
+			Expect(otherFuncs[0].FunctionName).To(Equal("random_function"))
+		})
+		It("handles a case where some functions are language-associated functions", func() {
+			funcDefs := []backup.QueryFunctionDefinition{langFunc, nonLangFunc}
+			langFuncs, otherFuncs := backup.ExtractLanguageFunctions(funcDefs, procLangs)
+			Expect(len(langFuncs)).To(Equal(1))
+			Expect(len(otherFuncs)).To(Equal(1))
+			Expect(langFuncs[0].FunctionName).To(Equal("custom_handler"))
+			Expect(otherFuncs[0].FunctionName).To(Equal("random_function"))
 		})
 	})
 	Describe("PrintCreateLanguageStatements", func() {

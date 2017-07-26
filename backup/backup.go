@@ -156,9 +156,14 @@ func backupPredata(filename string, tables []utils.Relation, extTableMap map[str
 	logger.Verbose("Writing CREATE DOMAIN statements to predata file")
 	PrintCreateDomainStatements(predataFile, types, typeMetadata)
 
+	funcDefs := GetFunctionDefinitions(connection)
 	funcInfoMap := GetFunctionOidToInfoMap(connection)
+	funcMetadata := GetMetadataForObjectType(connection, FunctionParams)
+
 	logger.Verbose("Writing CREATE PROCEDURAL LANGUAGE statements to predata file")
 	procLangs := GetProceduralLanguages(connection)
+	langFuncs, otherFuncs := ExtractLanguageFunctions(funcDefs, procLangs)
+	PrintCreateFunctionStatements(predataFile, langFuncs, funcMetadata)
 	procLangMetadata := GetMetadataForObjectType(connection, ProcLangParams)
 	PrintCreateLanguageStatements(predataFile, procLangs, funcInfoMap, procLangMetadata)
 
@@ -169,9 +174,7 @@ func backupPredata(filename string, tables []utils.Relation, extTableMap map[str
 	PrintCreateCompositeTypeStatements(predataFile, types, typeMetadata)
 
 	logger.Verbose("Writing CREATE FUNCTION statements to predata file")
-	funcDefs := GetFunctionDefinitions(connection)
-	funcMetadata := GetMetadataForObjectType(connection, FunctionParams)
-	PrintCreateFunctionStatements(predataFile, funcDefs, funcMetadata)
+	PrintCreateFunctionStatements(predataFile, otherFuncs, funcMetadata)
 
 	logger.Verbose("Writing CREATE TYPE statements for base types to predata file")
 	PrintCreateBaseTypeStatements(predataFile, types, typeMetadata)
