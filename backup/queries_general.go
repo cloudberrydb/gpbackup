@@ -15,7 +15,7 @@ import (
  * Queries requiring their own structs
  */
 
-func GetAllUserSchemas(connection *utils.DBConn) []utils.Schema {
+func GetAllUserSchemas(connection *utils.DBConn) []Schema {
 	/*
 	 * This query is constructed from scratch, but the list of schemas to exclude
 	 * is copied from gpcrondump so that gpbackup exhibits similar behavior regarding
@@ -28,7 +28,7 @@ SELECT
 FROM pg_namespace
 WHERE %s
 ORDER BY name;`, nonUserSchemaFilterClause)
-	results := make([]utils.Schema, 0)
+	results := make([]Schema, 0)
 
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
@@ -76,7 +76,7 @@ ORDER BY conname;`, nonUserSchemaFilterClause)
 	return results
 }
 
-func GetAllSequenceRelations(connection *utils.DBConn) []utils.Relation {
+func GetAllSequenceRelations(connection *utils.DBConn) []Relation {
 	query := `SELECT
 	n.oid AS schemaoid,
 	c.oid AS relationoid,
@@ -88,7 +88,7 @@ LEFT JOIN pg_namespace n
 WHERE relkind = 'S'
 ORDER BY schemaname, relationname;`
 
-	results := make([]utils.Relation, 0)
+	results := make([]Relation, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results
@@ -143,8 +143,8 @@ WHERE s.relkind = 'S';`
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	for _, seqOwner := range results {
-		seqFQN := utils.MakeFQN(seqOwner.SchemaName, seqOwner.SequenceName)
-		columnFQN := utils.MakeFQN(seqOwner.TableName, seqOwner.ColumnName)
+		seqFQN := MakeFQN(seqOwner.SchemaName, seqOwner.SequenceName)
+		columnFQN := MakeFQN(seqOwner.TableName, seqOwner.ColumnName)
 		sequenceOwners[seqFQN] = columnFQN
 	}
 	return sequenceOwners
@@ -194,30 +194,6 @@ SELECT
 FROM pg_language l
 WHERE l.lanispl='t';
 `
-	err := connection.Select(&results, query)
-	utils.CheckError(err)
-	return results
-}
-
-type QueryViewDefinition struct {
-	Oid        uint32
-	SchemaName string
-	ViewName   string
-	Definition string
-}
-
-func GetViewDefinitions(connection *utils.DBConn) []QueryViewDefinition {
-	results := make([]QueryViewDefinition, 0)
-
-	query := fmt.Sprintf(`
-SELECT
-	c.oid,
-	n.nspname AS schemaname,
-	c.relname AS viewname,
-	pg_get_viewdef(c.oid) AS definition
-FROM pg_class c
-LEFT JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE c.relkind = 'v'::"char" AND %s;`, nonUserSchemaFilterClause)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results

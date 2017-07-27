@@ -31,7 +31,7 @@ AND relstorage = 'x' AND (c.relnamespace > 16384
 OR n.nspname = 'public')
 ORDER BY schemaname, relationname;`
 
-	results := make([]utils.Relation, 0)
+	results := make([]Relation, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	for _, table := range results {

@@ -44,7 +44,7 @@ type ExternalTableDefinition struct {
 	Writable        bool
 }
 
-func PrintExternalTableCreateStatement(predataFile io.Writer, table utils.Relation, tableDef TableDefinition) {
+func PrintExternalTableCreateStatement(predataFile io.Writer, table Relation, tableDef TableDefinition) {
 	tableTypeStrMap := map[int]string{
 		READABLE:     "READABLE EXTERNAL",
 		READABLE_WEB: "READABLE EXTERNAL WEB",
@@ -106,7 +106,7 @@ func DetermineExternalTableCharacteristics(extTableDef ExternalTableDefinition) 
 	return tableType, tableProtocol
 }
 
-func PrintExternalTableStatements(predataFile io.Writer, table utils.Relation, extTableDef ExternalTableDefinition) {
+func PrintExternalTableStatements(predataFile io.Writer, table Relation, extTableDef ExternalTableDefinition) {
 	if extTableDef.Type != WRITABLE_WEB {
 		if extTableDef.Location != "" {
 			locations := make([]string, 0)

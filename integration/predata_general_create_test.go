@@ -5,7 +5,6 @@ import (
 
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -20,7 +19,7 @@ var _ = Describe("backup integration create statement tests", func() {
 	})
 	Describe("PrintCreateSchemaStatements", func() {
 		It("creates a non public schema", func() {
-			schemas := []utils.Schema{{0, "test_schema"}}
+			schemas := []backup.Schema{{0, "test_schema"}}
 			schemaMetadata := testutils.DefaultMetadataMap("SCHEMA", true, true, true)
 
 			backup.PrintCreateSchemaStatements(buffer, schemas, schemaMetadata)
@@ -37,7 +36,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 
 		It("modifies the public schema", func() {
-			schemas := []utils.Schema{{2200, "public"}}
+			schemas := []backup.Schema{{2200, "public"}}
 			schemaMetadata := testutils.DefaultMetadataMap("SCHEMA", true, true, true)
 
 			backup.PrintCreateSchemaStatements(buffer, schemas, schemaMetadata)
@@ -86,7 +85,7 @@ var _ = Describe("backup integration create statement tests", func() {
 	})
 	Describe("PrintConstraintStatements", func() {
 		var (
-			testTable        utils.Relation
+			testTable        backup.Relation
 			tableOid         uint32
 			uniqueConstraint backup.QueryConstraint
 			pkConstraint     backup.QueryConstraint
@@ -95,7 +94,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			conMetadataMap   backup.MetadataMap
 		)
 		BeforeEach(func() {
-			testTable = utils.BasicRelation("public", "testtable")
+			testTable = backup.BasicRelation("public", "testtable")
 			uniqueConstraint = backup.QueryConstraint{0, "uniq2", "u", "UNIQUE (a, b)", "public.testtable", false}
 			pkConstraint = backup.QueryConstraint{0, "constraints_other_table_pkey", "p", "PRIMARY KEY (b)", "public.constraints_other_table", false}
 			fkConstraint = backup.QueryConstraint{0, "fk1", "f", "FOREIGN KEY (b) REFERENCES constraints_other_table(b)", "public.testtable", false}

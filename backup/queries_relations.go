@@ -12,7 +12,7 @@ import (
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
-func GetAllUserTables(connection *utils.DBConn) []utils.Relation {
+func GetAllUserTables(connection *utils.DBConn) []Relation {
 	// This query is adapted from the getTables() function in pg_dump.c.
 	query := `
 SELECT
@@ -39,7 +39,7 @@ AND (c.relnamespace > 16384
 OR n.nspname = 'public')
 ORDER BY schemaname, relationname;`
 
-	results := make([]utils.Relation, 0)
+	results := make([]Relation, 0)
 
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
@@ -169,7 +169,7 @@ type QueryDependency struct {
 	ReferencedObject string
 }
 
-func ConstructTableDependencies(connection *utils.DBConn, tables []utils.Relation) []utils.Relation {
+func ConstructTableDependencies(connection *utils.DBConn, tables []Relation) []Relation {
 	query := `
 SELECT
 	objid AS object,
@@ -193,4 +193,28 @@ JOIN pg_class c
 		tables[i].DependsUpon = dependencyMap[tables[i].RelationOid]
 	}
 	return tables
+}
+
+type QueryViewDefinition struct {
+	Oid        uint32
+	SchemaName string
+	ViewName   string
+	Definition string
+}
+
+func GetViewDefinitions(connection *utils.DBConn) []QueryViewDefinition {
+	results := make([]QueryViewDefinition, 0)
+
+	query := fmt.Sprintf(`
+SELECT
+	c.oid,
+	n.nspname AS schemaname,
+	c.relname AS viewname,
+	pg_get_viewdef(c.oid) AS definition
+FROM pg_class c
+LEFT JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relkind = 'v'::"char" AND %s;`, nonUserSchemaFilterClause)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
 }

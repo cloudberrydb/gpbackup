@@ -46,7 +46,7 @@ func PrintConstraintStatements(predataFile io.Writer, constraints []QueryConstra
 	}
 }
 
-func PrintCreateSchemaStatements(predataFile io.Writer, schemas []utils.Schema, schemaMetadata MetadataMap) {
+func PrintCreateSchemaStatements(predataFile io.Writer, schemas []Schema, schemaMetadata MetadataMap) {
 	for _, schema := range schemas {
 		utils.MustPrintln(predataFile)
 		if schema.Name != "public" {

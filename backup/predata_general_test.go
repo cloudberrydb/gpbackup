@@ -3,7 +3,6 @@ package backup_test
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -180,14 +179,14 @@ ALTER DOMAIN public.domain1 ADD CONSTRAINT check1 CHECK (VALUE <> 42::numeric);
 	})
 	Describe("PrintCreateSchemaStatements", func() {
 		It("can print a basic schema", func() {
-			schemas := []utils.Schema{{0, "schemaname"}}
+			schemas := []backup.Schema{{0, "schemaname"}}
 			emptyMetadataMap := backup.MetadataMap{}
 
 			backup.PrintCreateSchemaStatements(buffer, schemas, emptyMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE SCHEMA schemaname;`)
 		})
 		It("can print a schema with privileges, an owner, and a comment", func() {
-			schemas := []utils.Schema{{1, "schemaname"}}
+			schemas := []backup.Schema{{1, "schemaname"}}
 			schemaMetadataMap := testutils.DefaultMetadataMap("SCHEMA", true, true, true)
 
 			backup.PrintCreateSchemaStatements(buffer, schemas, schemaMetadataMap)

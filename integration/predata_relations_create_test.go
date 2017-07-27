@@ -5,7 +5,6 @@ import (
 
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -21,7 +20,7 @@ var _ = Describe("backup integration create statement tests", func() {
 	Describe("PrintRegularTableCreateStatement", func() {
 		var (
 			extTableEmpty backup.ExternalTableDefinition
-			testTable     utils.Relation
+			testTable     backup.Relation
 			tableDef      backup.TableDefinition
 			/*
 			 * We need to construct partitionDef and partTemplateDef piecemeal like this,
@@ -70,7 +69,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 		)
 		BeforeEach(func() {
 			extTableEmpty = backup.ExternalTableDefinition{-2, -2, "", "ALL_SEGMENTS", "t", "", "", "", 0, "", "", "UTF-8", false}
-			testTable = utils.BasicRelation("public", "testtable")
+			testTable = backup.BasicRelation("public", "testtable")
 			tableDef = backup.TableDefinition{DistPolicy: "DISTRIBUTED RANDOMLY", ExtTableDef: extTableEmpty}
 		})
 		AfterEach(func() {
@@ -153,7 +152,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ExtTableDef")
 		})
 		It("creates a table with a non-default tablespace", func() {
-			testTable = utils.BasicRelation("public", "testtable2")
+			testTable = backup.BasicRelation("public", "testtable2")
 			tableDef.ColumnDefs = []backup.ColumnDefinition{}
 			testutils.AssertQueryRuns(connection, "CREATE TABLESPACE test_tablespace FILESPACE test_filespace")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")
@@ -178,7 +177,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE public.testtable")
 			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.RelationParams)
-			tables := []utils.Relation{testTable}
+			tables := []backup.Relation{testTable}
 			tables = backup.ConstructTableDependencies(connection, tables)
 
 			Expect(len(tables)).To(Equal(1))
@@ -198,7 +197,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE public.testtable")
 			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.RelationParams)
-			tables := []utils.Relation{testTable}
+			tables := []backup.Relation{testTable}
 			tables = backup.ConstructTableDependencies(connection, tables)
 
 			Expect(len(tables)).To(Equal(1))
@@ -210,7 +209,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 	Describe("PrintPostCreateTableStatements", func() {
 		var (
 			extTableEmpty = backup.ExternalTableDefinition{-2, -2, "", "ALL_SEGMENTS", "t", "", "", "", 0, "", "", "UTF-8", false}
-			testTable     = utils.BasicRelation("public", "testtable")
+			testTable     = backup.BasicRelation("public", "testtable")
 			tableRow      = backup.ColumnDefinition{1, "i", false, false, false, "integer", "", "", ""}
 			tableDef      = backup.TableDefinition{DistPolicy: "DISTRIBUTED BY (i)", ColumnDefs: []backup.ColumnDefinition{tableRow}, ExtTableDef: extTableEmpty}
 			tableMetadata backup.ObjectMetadata
@@ -272,12 +271,12 @@ SET SUBPARTITION TEMPLATE  ` + `
 	})
 	Describe("PrintCreateSequenceStatements", func() {
 		var (
-			sequence            utils.Relation
+			sequence            backup.Relation
 			sequenceDef         backup.Sequence
 			sequenceMetadataMap backup.MetadataMap
 		)
 		BeforeEach(func() {
-			sequence = utils.Relation{0, 1, "public", "my_sequence", nil}
+			sequence = backup.Relation{0, 1, "public", "my_sequence", nil}
 			sequenceDef = backup.Sequence{Relation: sequence}
 			sequenceMetadataMap = backup.MetadataMap{}
 		})
@@ -329,7 +328,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 	})
 	Describe("PrintAlterSequenceStatements", func() {
 		It("creates a sequence owned by a table column", func() {
-			sequenceDef := backup.Sequence{Relation: utils.Relation{0, 1, "public", "my_sequence", nil}}
+			sequenceDef := backup.Sequence{Relation: backup.Relation{0, 1, "public", "my_sequence", nil}}
 			columnOwnerMap := map[string]string{"public.my_sequence": "sequence_table.a"}
 
 			sequenceDef.QuerySequenceDefinition = backup.QuerySequenceDefinition{Name: "my_sequence",

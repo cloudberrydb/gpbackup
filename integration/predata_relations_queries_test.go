@@ -3,7 +3,6 @@ package integration
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -23,8 +22,8 @@ var _ = Describe("backup integration tests", func() {
 
 			tables := backup.GetAllUserTables(connection)
 
-			tableFoo := utils.BasicRelation("public", "foo")
-			tableTestTable := utils.BasicRelation("testschema", "testtable")
+			tableFoo := backup.BasicRelation("public", "foo")
+			tableTestTable := backup.BasicRelation("testschema", "testtable")
 
 			Expect(len(tables)).To(Equal(2))
 			testutils.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "RelationOid")
@@ -43,7 +42,7 @@ PARTITION BY LIST (gender)
 
 			tables := backup.GetAllUserTables(connection)
 
-			tableRank := utils.BasicRelation("public", "rank")
+			tableRank := backup.BasicRelation("public", "rank")
 
 			Expect(len(tables)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&tableRank, &tables[0], "SchemaOid", "RelationOid")
@@ -345,8 +344,8 @@ SET SUBPARTITION TEMPLATE
 
 			sequences := backup.GetAllSequenceRelations(connection)
 
-			mySequence := utils.BasicRelation("public", "my_sequence")
-			mySequence2 := utils.BasicRelation("testschema", "my_sequence2")
+			mySequence := backup.BasicRelation("public", "my_sequence")
+			mySequence2 := backup.BasicRelation("testschema", "my_sequence2")
 
 			Expect(len(sequences)).To(Equal(2))
 			testutils.ExpectStructsToMatchExcluding(&mySequence, &sequences[0], "SchemaOid", "RelationOid")
@@ -404,9 +403,9 @@ SET SUBPARTITION TEMPLATE
 			testutils.AssertQueryRuns(connection, "CREATE SEQUENCE seq_two START 7")
 			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE seq_two")
 
-			seqOneRelation := utils.BasicRelation("public", "seq_one")
+			seqOneRelation := backup.BasicRelation("public", "seq_one")
 			seqOneDef := backup.QuerySequenceDefinition{Name: "seq_one", LastVal: 3, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
-			seqTwoRelation := utils.BasicRelation("public", "seq_two")
+			seqTwoRelation := backup.BasicRelation("public", "seq_two")
 			seqTwoDef := backup.QuerySequenceDefinition{Name: "seq_two", LastVal: 7, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
 
 			results := backup.GetAllSequences(connection)
@@ -448,9 +447,9 @@ CYCLE`)
 		})
 	})
 	Describe("GetTableDependencies", func() {
-		child := utils.BasicRelation("public", "child")
-		childOne := utils.BasicRelation("public", "child_one")
-		childTwo := utils.BasicRelation("public", "child_two")
+		child := backup.BasicRelation("public", "child")
+		childOne := backup.BasicRelation("public", "child_one")
+		childTwo := backup.BasicRelation("public", "child_two")
 		It("returns a correct map if there is one table dependent on one table", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE parent(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE parent")
@@ -458,7 +457,7 @@ CYCLE`)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE child")
 
 			child.RelationOid = backup.OidFromObjectName(connection, "public", "child", backup.RelationParams)
-			tables := []utils.Relation{child}
+			tables := []backup.Relation{child}
 
 			tables = backup.ConstructTableDependencies(connection, tables)
 
@@ -476,7 +475,7 @@ CYCLE`)
 
 			childOne.RelationOid = backup.OidFromObjectName(connection, "public", "child_one", backup.RelationParams)
 			childTwo.RelationOid = backup.OidFromObjectName(connection, "public", "child_two", backup.RelationParams)
-			tables := []utils.Relation{childOne, childTwo}
+			tables := []backup.Relation{childOne, childTwo}
 
 			tables = backup.ConstructTableDependencies(connection, tables)
 
@@ -495,7 +494,7 @@ CYCLE`)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE child")
 
 			child.RelationOid = backup.OidFromObjectName(connection, "public", "child", backup.RelationParams)
-			tables := []utils.Relation{child}
+			tables := []backup.Relation{child}
 
 			tables = backup.ConstructTableDependencies(connection, tables)
 
@@ -505,7 +504,7 @@ CYCLE`)
 			Expect(tables[0].DependsUpon[1]).To(Equal("public.parent_two"))
 		})
 		It("returns a correct map if there are no table dependencies", func() {
-			tables := []utils.Relation{}
+			tables := []backup.Relation{}
 			tables = backup.ConstructTableDependencies(connection, tables)
 			Expect(len(tables)).To(Equal(0))
 		})

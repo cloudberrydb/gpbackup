@@ -27,6 +27,151 @@ import (
  * package (especially Table and Schema) are intended for more general use.
  */
 
+/*
+ * Generic functions and structs relating to schemas and relations.
+ */
+type Schema struct {
+	Oid  uint32
+	Name string
+}
+
+func (s Schema) ToString() string {
+	return utils.QuoteIdent(s.Name)
+}
+
+func SchemaFromString(name string) Schema {
+	var schema string
+	var matches []string
+	if matches = utils.QuotedIdentifier.FindStringSubmatch(name); len(matches) != 0 {
+		schema = utils.ReplacerUnescape.Replace(matches[1])
+	} else if matches = utils.UnquotedIdentifier.FindStringSubmatch(name); len(matches) != 0 {
+		schema = utils.ReplacerUnescape.Replace(matches[1])
+	} else {
+		logger.Fatal(errors.Errorf("\"%s\" is not a valid identifier", name), "")
+	}
+	return Schema{0, schema}
+}
+
+type Relation struct {
+	SchemaOid    uint32
+	RelationOid  uint32
+	SchemaName   string
+	RelationName string
+	DependsUpon  []string
+}
+
+/*
+ * This function prints a table in fully-qualified schema.table format, with
+ * everything quoted and escaped appropriately.
+ */
+func (t Relation) ToString() string {
+	return MakeFQN(t.SchemaName, t.RelationName)
+}
+
+/* Parse an appropriately-escaped schema.table string into a Relation.  The Relation's
+ * Oid fields are left at 0, and will need to be filled in with the real values
+ * if the Relation is to be used in any Get[Something]() function in queries.go.
+ */
+func RelationFromString(name string) Relation {
+	var schema, table string
+	var matches []string
+	if matches = utils.QuotedOrUnquotedString.FindStringSubmatch(name); len(matches) != 0 {
+		if matches[1] != "" { // schema was quoted
+			schema = utils.ReplacerUnescape.Replace(matches[1])
+		} else { // schema wasn't quoted
+			schema = utils.ReplacerUnescape.Replace(matches[2])
+		}
+		if matches[3] != "" { // table was quoted
+			table = utils.ReplacerUnescape.Replace(matches[3])
+		} else { // table wasn't quoted
+			table = utils.ReplacerUnescape.Replace(matches[4])
+		}
+	} else {
+		logger.Fatal(errors.Errorf("\"%s\" is not a valid fully-qualified table expression", name), "")
+	}
+	return BasicRelation(schema, table)
+}
+
+func BasicRelation(schema string, relation string) Relation {
+	return Relation{
+		SchemaOid:    0,
+		SchemaName:   schema,
+		RelationOid:  0,
+		RelationName: relation,
+	}
+}
+
+type Schemas []Schema
+
+func (slice Schemas) Len() int {
+	return len(slice)
+}
+
+func (slice Schemas) Less(i int, j int) bool {
+	return slice[i].Name < slice[j].Name
+}
+
+func (slice Schemas) Swap(i int, j int) {
+	slice[i], slice[j] = slice[j], slice[i]
+}
+
+func SortSchemas(objects Schemas) {
+	sort.Sort(objects)
+}
+
+/*
+ * Given a list of Relations, this function returns a sorted list of their Schemas.
+ * It assumes that the Relation list is sorted by schema and then by table, so it
+ * doesn't need to do any sorting itself.
+ */
+func GetUniqueSchemas(schemas []Schema, tables []Relation) []Schema {
+	currentSchemaOid := uint32(0)
+	uniqueSchemas := make([]Schema, 0)
+	schemaMap := make(map[uint32]Schema, 0)
+	for _, schema := range schemas {
+		schemaMap[schema.Oid] = schema
+	}
+	for _, table := range tables {
+		if table.SchemaOid != currentSchemaOid {
+			currentSchemaOid = table.SchemaOid
+			uniqueSchemas = append(uniqueSchemas, schemaMap[currentSchemaOid])
+		}
+	}
+	return uniqueSchemas
+}
+
+type Relations []Relation
+
+func (slice Relations) Len() int {
+	return len(slice)
+}
+
+/*
+ * Dependencies are sorted before tables that depend on them.  We return false
+ * for all comparisons and true by default to ensure that the entire list is
+ * traversed.
+ */
+func (slice Relations) Less(i int, j int) bool {
+	for _, dependencyFQN := range slice[i].DependsUpon {
+		if slice[j].ToString() == dependencyFQN {
+			return false
+		}
+	}
+	return true
+}
+
+func (slice Relations) Swap(i int, j int) {
+	slice[i], slice[j] = slice[j], slice[i]
+}
+
+func SortRelations(tables Relations) {
+	sort.Sort(tables)
+}
+
+/*
+ * Structs and functions relating to generic metadata handling.
+ */
+
 type MetadataQueryParams struct {
 	NameField    string
 	SchemaField  string

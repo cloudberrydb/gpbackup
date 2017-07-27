@@ -135,7 +135,7 @@ func backupGlobal(filename string) {
 	PrintRoleMembershipStatements(globalFile, roleMembers)
 }
 
-func backupPredata(filename string, tables []utils.Relation, extTableMap map[string]bool) {
+func backupPredata(filename string, tables []Relation, extTableMap map[string]bool) {
 	predataFile := utils.MustOpenFile(filename)
 	PrintConnectionString(predataFile, connection.DBName)
 
@@ -202,7 +202,7 @@ func backupPredata(filename string, tables []utils.Relation, extTableMap map[str
 
 	logger.Verbose("Writing CREATE TABLE statements to predata file")
 	tables = ConstructTableDependencies(connection, tables)
-	utils.SortRelations(tables)
+	SortRelations(tables)
 	for _, table := range tables {
 		isExternal := extTableMap[table.ToString()]
 		tableDef := ConstructDefinitionsForTable(connection, table, isExternal)
@@ -214,8 +214,8 @@ func backupPredata(filename string, tables []utils.Relation, extTableMap map[str
 	PrintAlterSequenceStatements(predataFile, sequenceDefs, sequenceColumnOwners)
 
 	logger.Verbose("Writing CREATE VIEW statements to predata file")
-	viewDefs := GetViewDefinitions(connection)
-	PrintCreateViewStatements(predataFile, viewDefs, relationMetadata)
+	views := GetViewDefinitions(connection)
+	PrintCreateViewStatements(predataFile, views, relationMetadata)
 
 	logger.Verbose("Writing ADD CONSTRAINT statements to predata file")
 	constraints := GetConstraints(connection)
@@ -223,7 +223,7 @@ func backupPredata(filename string, tables []utils.Relation, extTableMap map[str
 	PrintConstraintStatements(predataFile, constraints, conMetadata)
 }
 
-func backupData(tables []utils.Relation, extTableMap map[string]bool) {
+func backupData(tables []Relation, extTableMap map[string]bool) {
 	for _, table := range tables {
 		isExternal := extTableMap[table.ToString()]
 		if !isExternal {
@@ -238,7 +238,7 @@ func backupData(tables []utils.Relation, extTableMap map[string]bool) {
 	WriteTableMapFile(tables)
 }
 
-func backupPostdata(filename string, tables []utils.Relation, extTableMap map[string]bool) {
+func backupPostdata(filename string, tables []Relation, extTableMap map[string]bool) {
 	postdataFile := utils.MustOpenFile(filename)
 	PrintConnectionString(postdataFile, connection.DBName)
 

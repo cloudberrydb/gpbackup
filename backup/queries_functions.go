@@ -142,7 +142,7 @@ LEFT JOIN pg_namespace n ON p.pronamespace = n.oid;
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	for _, function := range results {
-		fqn := utils.MakeFQN(function.FunctionSchema, function.FunctionName)
+		fqn := MakeFQN(function.FunctionSchema, function.FunctionName)
 
 		isInternal := false
 		if function.FunctionSchema == "pg_catalog" {

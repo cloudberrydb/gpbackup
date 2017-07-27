@@ -15,6 +15,16 @@ import (
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
+func MakeFQN(schema string, object string) string {
+	schema = utils.QuoteIdent(schema)
+	object = utils.QuoteIdent(object)
+	return fmt.Sprintf("%s.%s", schema, object)
+}
+
+/*
+ * Structs and functions relating to generic metadata handling.
+ */
+
 type ObjectMetadata struct {
 	Privileges []ACL
 	Owner      string

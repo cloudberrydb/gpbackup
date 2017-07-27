@@ -6,7 +6,6 @@ import (
 
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -22,7 +21,7 @@ var _ = Describe("backup integration create statement tests", func() {
 	Describe("PrintExternalTableCreateStatement", func() {
 		var (
 			extTable  backup.ExternalTableDefinition
-			testTable utils.Relation
+			testTable backup.Relation
 			tableDef  backup.TableDefinition
 		)
 		BeforeEach(func() {
@@ -30,7 +29,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				0, backup.FILE, "file://tmp/ext_table_file", "ALL_SEGMENTS",
 				"t", "delimiter '	' null '\\N' escape '\\'", "", "",
 				0, "", "", "UTF8", false}
-			testTable = utils.BasicRelation("public", "testtable")
+			testTable = backup.BasicRelation("public", "testtable")
 			tableDef = backup.TableDefinition{IsExternal: true}
 			os.Create("/tmp/ext_table_file")
 		})

@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -23,7 +24,29 @@ var (
 	contentList []int
 	segDirMap   map[int]string
 	segHostMap  map[int]string
+
+	/* To be used in a Postgres query without being quoted, an identifier (schema or
+	 * table) must begin with a lowercase letter or underscore, and may contain only
+	 * lowercast letters, digits, and underscores.
+	 */
+	UnquotedIdentifier = regexp.MustCompile(`^([a-z_][a-z0-9_]*)$`)
+	QuotedIdentifier   = regexp.MustCompile(`^"(.+)"$`)
+
+	QuotedOrUnquotedString = regexp.MustCompile(`^(?:\"(.*)\"|(.*))\.(?:\"(.*)\"|(.*))$`)
+
+	// Swap between double quotes and paired double quotes, and between literal whitespace characters and escape sequences
+	ReplacerEscape   = strings.NewReplacer(`"`, `""`, `\`, `\\`)
+	ReplacerUnescape = strings.NewReplacer(`""`, `"`, `\\`, `\`)
 )
+
+// This function quotes an unquoted identifier like quote_ident() in Postgres.
+func QuoteIdent(ident string) string {
+	if !UnquotedIdentifier.MatchString(ident) {
+		ident = ReplacerEscape.Replace(ident)
+		ident = fmt.Sprintf(`"%s"`, ident)
+	}
+	return ident
+}
 
 /*
  * Generic file/directory manipulation functions

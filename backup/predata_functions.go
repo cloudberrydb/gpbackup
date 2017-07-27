@@ -15,7 +15,7 @@ import (
 
 func PrintCreateFunctionStatements(predataFile io.Writer, funcDefs []QueryFunctionDefinition, funcMetadata MetadataMap) {
 	for _, funcDef := range funcDefs {
-		funcFQN := utils.MakeFQN(funcDef.SchemaName, funcDef.FunctionName)
+		funcFQN := MakeFQN(funcDef.SchemaName, funcDef.FunctionName)
 		utils.MustPrintf(predataFile, "\n\nCREATE FUNCTION %s(%s) RETURNS ", funcFQN, funcDef.Arguments)
 		utils.MustPrintf(predataFile, "%s AS", funcDef.ResultType)
 		PrintFunctionBodyOrPath(predataFile, funcDef)
@@ -84,7 +84,7 @@ func PrintFunctionModifiers(predataFile io.Writer, funcDef QueryFunctionDefiniti
 
 func PrintCreateAggregateStatements(predataFile io.Writer, aggDefs []QueryAggregateDefinition, funcInfoMap map[uint32]FunctionInfo, aggMetadata MetadataMap) {
 	for _, aggDef := range aggDefs {
-		aggFQN := utils.MakeFQN(aggDef.SchemaName, aggDef.AggregateName)
+		aggFQN := MakeFQN(aggDef.SchemaName, aggDef.AggregateName)
 		orderedStr := ""
 		if aggDef.IsOrdered {
 			orderedStr = "ORDERED "

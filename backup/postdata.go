@@ -25,7 +25,7 @@ func PrintCreateIndexStatements(postdataFile io.Writer, indexes []QuerySimpleDef
 func PrintCreateRuleStatements(postdataFile io.Writer, rules []QuerySimpleDefinition, ruleMetadata MetadataMap) {
 	for _, rule := range rules {
 		utils.MustPrintf(postdataFile, "\n\n%s", rule.Def)
-		tableFQN := utils.MakeFQN(rule.OwningSchema, rule.OwningTable)
+		tableFQN := MakeFQN(rule.OwningSchema, rule.OwningTable)
 		PrintObjectMetadata(postdataFile, ruleMetadata[rule.Oid], rule.Name, "RULE", tableFQN)
 	}
 }
@@ -33,7 +33,7 @@ func PrintCreateRuleStatements(postdataFile io.Writer, rules []QuerySimpleDefini
 func PrintCreateTriggerStatements(postdataFile io.Writer, triggers []QuerySimpleDefinition, triggerMetadata MetadataMap) {
 	for _, trigger := range triggers {
 		utils.MustPrintf(postdataFile, "\n\n%s;", trigger.Def)
-		tableFQN := utils.MakeFQN(trigger.OwningSchema, trigger.OwningTable)
+		tableFQN := MakeFQN(trigger.OwningSchema, trigger.OwningTable)
 		PrintObjectMetadata(postdataFile, triggerMetadata[trigger.Oid], trigger.Name, "TRIGGER", tableFQN)
 	}
 }

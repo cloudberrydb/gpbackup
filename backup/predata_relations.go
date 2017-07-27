@@ -41,7 +41,7 @@ type TableDefinition struct {
  * single table and assembles the metadata into ColumnDef and TableDef structs
  * for more convenient handling in the PrintCreateTableStatement() function.
  */
-func ConstructDefinitionsForTable(connection *utils.DBConn, table utils.Relation, isExternal bool) TableDefinition {
+func ConstructDefinitionsForTable(connection *utils.DBConn, table Relation, isExternal bool) TableDefinition {
 	tableAttributes := GetTableAttributes(connection, table.RelationOid)
 	tableDefaults := GetTableDefaults(connection, table.RelationOid)
 
@@ -105,7 +105,7 @@ func ConsolidateColumnInfo(atts []QueryTableAttributes, defs []QueryTableDefault
  * the search_path; this will aid in later filtering to include or exclude certain tables during the
  * backup process, and allows customers to copy just the CREATE TABLE block in order to use it directly.
  */
-func PrintCreateTableStatement(predataFile io.Writer, table utils.Relation, tableDef TableDefinition, tableMetadata ObjectMetadata) {
+func PrintCreateTableStatement(predataFile io.Writer, table Relation, tableDef TableDefinition, tableMetadata ObjectMetadata) {
 	if tableDef.IsExternal {
 		PrintExternalTableCreateStatement(predataFile, table, tableDef)
 	} else {
@@ -114,7 +114,7 @@ func PrintCreateTableStatement(predataFile io.Writer, table utils.Relation, tabl
 	PrintPostCreateTableStatements(predataFile, table, tableDef, tableMetadata)
 }
 
-func PrintRegularTableCreateStatement(predataFile io.Writer, table utils.Relation, tableDef TableDefinition) {
+func PrintRegularTableCreateStatement(predataFile io.Writer, table Relation, tableDef TableDefinition) {
 	utils.MustPrintf(predataFile, "\n\nCREATE TABLE %s (\n", table.ToString())
 	printColumnStatements(predataFile, table, tableDef.ColumnDefs)
 	utils.MustPrintf(predataFile, ") ")
@@ -138,7 +138,7 @@ func PrintRegularTableCreateStatement(predataFile io.Writer, table utils.Relatio
 	}
 }
 
-func printColumnStatements(predataFile io.Writer, table utils.Relation, columnDefs []ColumnDefinition) {
+func printColumnStatements(predataFile io.Writer, table Relation, columnDefs []ColumnDefinition) {
 	lines := make([]string, 0)
 	for _, column := range columnDefs {
 		if !column.IsDropped {
@@ -164,7 +164,7 @@ func printColumnStatements(predataFile io.Writer, table utils.Relation, columnDe
  * This function prints additional statements that come after the CREATE TABLE
  * statement for both regular and external tables.
  */
-func PrintPostCreateTableStatements(predataFile io.Writer, table utils.Relation, tableDef TableDefinition, tableMetadata ObjectMetadata) {
+func PrintPostCreateTableStatements(predataFile io.Writer, table Relation, tableDef TableDefinition, tableMetadata ObjectMetadata) {
 	PrintObjectMetadata(predataFile, tableMetadata, table.ToString(), "TABLE")
 
 	for _, att := range tableDef.ColumnDefs {
@@ -175,7 +175,7 @@ func PrintPostCreateTableStatements(predataFile io.Writer, table utils.Relation,
 }
 
 type Sequence struct {
-	utils.Relation
+	Relation
 	QuerySequenceDefinition
 }
 
@@ -239,7 +239,7 @@ func PrintAlterSequenceStatements(predataFile io.Writer, sequences []Sequence, s
 
 func PrintCreateViewStatements(predataFile io.Writer, views []QueryViewDefinition, viewMetadata MetadataMap) {
 	for _, view := range views {
-		viewFQN := utils.MakeFQN(view.SchemaName, view.ViewName)
+		viewFQN := MakeFQN(view.SchemaName, view.ViewName)
 		utils.MustPrintf(predataFile, "\n\nCREATE VIEW %s AS %s\n", viewFQN, view.Definition)
 		PrintObjectMetadata(predataFile, viewMetadata[view.Oid], viewFQN, "VIEW")
 	}

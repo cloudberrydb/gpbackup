@@ -25,7 +25,7 @@ func PrintCreateShellTypeStatements(predataFile io.Writer, types []TypeDefinitio
 	utils.MustPrintln(predataFile, "\n")
 	for _, typ := range types {
 		if typ.Type == "b" || typ.Type == "p" {
-			typeFQN := utils.MakeFQN(typ.TypeSchema, typ.TypeName)
+			typeFQN := MakeFQN(typ.TypeSchema, typ.TypeName)
 			utils.MustPrintf(predataFile, "CREATE TYPE %s;\n", typeFQN)
 		}
 	}
@@ -35,7 +35,7 @@ func PrintCreateDomainStatements(predataFile io.Writer, types []TypeDefinition, 
 	utils.MustPrintln(predataFile, "\n")
 	for _, typ := range types {
 		if typ.Type == "d" {
-			typeFQN := utils.MakeFQN(typ.TypeSchema, typ.TypeName)
+			typeFQN := MakeFQN(typ.TypeSchema, typ.TypeName)
 			utils.MustPrintf(predataFile, "CREATE DOMAIN %s AS %s", typeFQN, typ.BaseType)
 			if typ.DefaultVal != "" {
 				utils.MustPrintf(predataFile, " DEFAULT %s", typ.DefaultVal)
@@ -54,7 +54,7 @@ func PrintCreateBaseTypeStatements(predataFile io.Writer, types []TypeDefinition
 	for i < len(types) {
 		typ := types[i]
 		if typ.Type == "b" {
-			typeFQN := utils.MakeFQN(typ.TypeSchema, typ.TypeName)
+			typeFQN := MakeFQN(typ.TypeSchema, typ.TypeName)
 			utils.MustPrintf(predataFile, "\n\nCREATE TYPE %s (\n", typeFQN)
 
 			// All of the following functions are stored in quoted form and don't need to be quoted again
@@ -139,7 +139,7 @@ func PrintCreateCompositeTypeStatements(predataFile io.Writer, types []TypeDefin
 			 * so we can grab all other values from the first TypeDefinition in the list.
 			 */
 			composite := compositeTypes[0]
-			typeFQN := utils.MakeFQN(composite.TypeSchema, composite.TypeName)
+			typeFQN := MakeFQN(composite.TypeSchema, composite.TypeName)
 			utils.MustPrintf(predataFile, "\n\nCREATE TYPE %s AS (\n", typeFQN)
 			atts := make([]string, 0)
 			for _, composite := range compositeTypes {
@@ -157,7 +157,7 @@ func PrintCreateCompositeTypeStatements(predataFile io.Writer, types []TypeDefin
 func PrintCreateEnumTypeStatements(predataFile io.Writer, types []TypeDefinition, typeMetadata MetadataMap) {
 	for _, typ := range types {
 		if typ.Type == "e" {
-			typeFQN := utils.MakeFQN(typ.TypeSchema, typ.TypeName)
+			typeFQN := MakeFQN(typ.TypeSchema, typ.TypeName)
 			utils.MustPrintf(predataFile, "\n\nCREATE TYPE %s AS ENUM (\n\t%s\n);\n", typeFQN, typ.EnumLabels)
 			PrintObjectMetadata(predataFile, typeMetadata[typ.Oid], typeFQN, "TYPE")
 		}

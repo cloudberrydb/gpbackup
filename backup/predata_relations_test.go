@@ -3,7 +3,6 @@ package backup_test
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -12,7 +11,7 @@ import (
 
 var _ = Describe("backup/predata_relations tests", func() {
 	buffer := gbytes.NewBuffer()
-	testTable := utils.BasicRelation("public", "tablename")
+	testTable := backup.BasicRelation("public", "tablename")
 
 	distRandom := "DISTRIBUTED RANDOMLY"
 	distSingle := "DISTRIBUTED BY (i)"
@@ -405,7 +404,7 @@ SET SUBPARTITION TEMPLATE
 		})
 	})
 	Describe("PrintPostCreateTableStatements", func() {
-		testTable := utils.BasicRelation("public", "tablename")
+		testTable := backup.BasicRelation("public", "tablename")
 		rowCommentOne := backup.ColumnDefinition{1, "i", false, false, false, "integer", "", "This is a column comment.", ""}
 		rowCommentTwo := backup.ColumnDefinition{2, "j", false, false, false, "integer", "", "This is another column comment.", ""}
 
@@ -542,7 +541,7 @@ COMMENT ON COLUMN public.tablename.j IS 'This is another column comment.';`)
 		})
 	})
 	Describe("PrintCreateSequenceStatements", func() {
-		baseSequence := utils.Relation{0, 1, "public", "seq_name", []string{}}
+		baseSequence := backup.Relation{0, 1, "public", "seq_name", []string{}}
 		seqDefault := backup.Sequence{baseSequence, backup.QuerySequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, true}}
 		seqNegIncr := backup.Sequence{baseSequence, backup.QuerySequenceDefinition{"seq_name", 7, -1, -1, -9223372036854775807, 5, 42, false, true}}
 		seqMaxPos := backup.Sequence{baseSequence, backup.QuerySequenceDefinition{"seq_name", 7, 1, 100, 1, 5, 42, false, true}}
@@ -698,7 +697,7 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 		})
 	})
 	Describe("PrintAlterSequenceStatements", func() {
-		baseSequence := utils.BasicRelation("public", "seq_name")
+		baseSequence := backup.BasicRelation("public", "seq_name")
 		seqDefault := backup.Sequence{baseSequence, backup.QuerySequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, true}}
 		emptyColumnOwnerMap := make(map[string]string, 0)
 		columnOwnerMap := map[string]string{"public.seq_name": "tablename.col_one"}

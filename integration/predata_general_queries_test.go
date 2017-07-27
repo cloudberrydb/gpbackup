@@ -3,7 +3,6 @@ package integration
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -19,8 +18,8 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA bar")
 			schemas := backup.GetAllUserSchemas(connection)
 
-			schemaBar := utils.Schema{0, "bar"}
-			schemaPublic := utils.Schema{2200, "public"}
+			schemaBar := backup.Schema{0, "bar"}
+			schemaPublic := backup.Schema{2200, "public"}
 
 			Expect(len(schemas)).To(Equal(2))
 			testutils.ExpectStructsToMatchExcluding(&schemaBar, &schemas[0], "Oid")

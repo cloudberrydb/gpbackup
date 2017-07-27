@@ -3,7 +3,6 @@ package backup_test
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -13,7 +12,7 @@ import (
 
 var _ = Describe("backup/predata_externals tests", func() {
 	buffer := gbytes.NewBuffer()
-	testTable := utils.BasicRelation("public", "tablename")
+	testTable := backup.BasicRelation("public", "tablename")
 
 	distRandom := "DISTRIBUTED RANDOMLY"
 
