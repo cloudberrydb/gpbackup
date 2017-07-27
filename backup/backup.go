@@ -220,6 +220,8 @@ func backupPredata(filename string, tables []Relation, extTableMap map[string]bo
 
 	logger.Verbose("Writing CREATE VIEW statements to predata file")
 	views := GetViewDefinitions(connection)
+	views = ConstructViewDependencies(connection, views)
+	SortViews(views)
 	PrintCreateViewStatements(predataFile, views, relationMetadata)
 
 	logger.Verbose("Writing ADD CONSTRAINT statements to predata file")

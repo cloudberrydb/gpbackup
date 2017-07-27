@@ -185,32 +185,34 @@ var _ = Describe("backup/predata_shared tests", func() {
 			Expect(uniqueSchemas).To(Equal([]backup.Schema{}))
 		})
 	})
-	Describe("Relations.Less", func() {
-		It("returns false if relation i is a child of relation j", func() {
-			tableI := backup.BasicRelation("public", "i")
-			tableI.DependsUpon = []string{"public.j"}
-			tableJ := backup.BasicRelation("public", "j")
-			var relations backup.Relations
-			relations = []backup.Relation{tableI, tableJ}
-			result := relations.Less(0, 1)
-			Expect(result).To(BeFalse())
+	Describe("SortViews", func() {
+		It("sorts by dependencies", func() {
+			views := []backup.QueryViewDefinition{
+				{SchemaName: "public", ViewName: "view1", DependsUpon: []string{"public.view2"}},
+				{SchemaName: "public", ViewName: "view2", DependsUpon: []string{}},
+				{SchemaName: "public", ViewName: "view3", DependsUpon: []string{"public.view1"}},
+			}
+
+			backup.SortViews(views)
+
+			Expect(views[0].ToString()).To(Equal("public.view2"))
+			Expect(views[1].ToString()).To(Equal("public.view1"))
+			Expect(views[2].ToString()).To(Equal("public.view3"))
 		})
-		It("returns true if relation j is a child of relation i", func() {
-			tableI := backup.BasicRelation("public", "i")
-			tableJ := backup.BasicRelation("public", "j")
-			tableJ.DependsUpon = []string{"public.i"}
-			var relations backup.Relations
-			relations = []backup.Relation{tableI, tableJ}
-			result := relations.Less(0, 1)
-			Expect(result).To(BeTrue())
-		})
-		It("returns true if neither relation i nor relation j depends on one another", func() {
-			tableI := backup.BasicRelation("public", "i")
-			tableJ := backup.BasicRelation("public", "j")
-			var relations backup.Relations
-			relations = []backup.Relation{tableI, tableJ}
-			result := relations.Less(0, 1)
-			Expect(result).To(BeTrue())
+	})
+	Describe("SortRelations", func() {
+		It("sorts by dependencies", func() {
+			relations := []backup.Relation{
+				{SchemaName: "public", RelationName: "relation1", DependsUpon: []string{"public.relation2"}},
+				{SchemaName: "public", RelationName: "relation2", DependsUpon: []string{}},
+				{SchemaName: "public", RelationName: "relation3", DependsUpon: []string{"public.relation1"}},
+			}
+
+			backup.SortRelations(relations)
+
+			Expect(relations[0].ToString()).To(Equal("public.relation2"))
+			Expect(relations[1].ToString()).To(Equal("public.relation1"))
+			Expect(relations[2].ToString()).To(Equal("public.relation3"))
 		})
 	})
 	Describe("PrintObjectMetadata", func() {

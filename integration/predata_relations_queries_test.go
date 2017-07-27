@@ -440,13 +440,13 @@ CYCLE`)
 
 			results := backup.GetViewDefinitions(connection)
 
-			viewDef := backup.QueryViewDefinition{1, "public", "simpleview", "SELECT pg_roles.rolname FROM pg_roles;"}
+			viewDef := backup.QueryViewDefinition{1, "public", "simpleview", "SELECT pg_roles.rolname FROM pg_roles;", nil}
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&viewDef, &results[0], "Oid")
 		})
 	})
-	Describe("GetTableDependencies", func() {
+	Describe("ConstructTableDependencies", func() {
 		child := backup.BasicRelation("public", "child")
 		childOne := backup.BasicRelation("public", "child_one")
 		childTwo := backup.BasicRelation("public", "child_two")
@@ -507,6 +507,27 @@ CYCLE`)
 			tables := []backup.Relation{}
 			tables = backup.ConstructTableDependencies(connection, tables)
 			Expect(len(tables)).To(Equal(0))
+		})
+	})
+	Describe("ConstructViewDependencies", func() {
+		It("returns a correct map for a view that depends on two other views", func() {
+			testutils.AssertQueryRuns(connection, "CREATE VIEW parent1 AS SELECT relname FROM pg_class")
+			defer testutils.AssertQueryRuns(connection, "DROP VIEW parent1")
+			testutils.AssertQueryRuns(connection, "CREATE VIEW parent2 AS SELECT relname FROM pg_class")
+			defer testutils.AssertQueryRuns(connection, "DROP VIEW parent2")
+			testutils.AssertQueryRuns(connection, "CREATE VIEW child AS (SELECT * FROM parent1 UNION SELECT * FROM parent2)")
+			defer testutils.AssertQueryRuns(connection, "DROP VIEW child")
+
+			childView := backup.QueryViewDefinition{}
+			childView.Oid = backup.OidFromObjectName(connection, "public", "child", backup.RelationParams)
+			views := []backup.QueryViewDefinition{childView}
+
+			views = backup.ConstructViewDependencies(connection, views)
+
+			Expect(len(views)).To(Equal(1))
+			Expect(len(views[0].DependsUpon)).To(Equal(2))
+			Expect(views[0].DependsUpon[0]).To(Equal("public.parent1"))
+			Expect(views[0].DependsUpon[1]).To(Equal("public.parent2"))
 		})
 	})
 })

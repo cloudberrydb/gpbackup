@@ -168,6 +168,29 @@ func SortRelations(tables Relations) {
 	sort.Sort(tables)
 }
 
+func SortViews(views Views) {
+	sort.Sort(views)
+}
+
+type Views []QueryViewDefinition
+
+func (d Views) Len() int {
+	return len(d)
+}
+
+func (d Views) Swap(i, j int) {
+	d[i], d[j] = d[j], d[i]
+}
+
+func (d Views) Less(i, j int) bool {
+	for _, dependencyFQN := range d[i].DependsUpon {
+		if d[j].ToString() == dependencyFQN {
+			return false
+		}
+	}
+	return true
+}
+
 /*
  * Structs and functions relating to generic metadata handling.
  */

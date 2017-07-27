@@ -165,14 +165,14 @@ WHERE c.oid = %d;`, oid)
 }
 
 type QueryDependency struct {
-	Object           uint32
+	Oid              uint32
 	ReferencedObject string
 }
 
 func ConstructTableDependencies(connection *utils.DBConn, tables []Relation) []Relation {
 	query := `
 SELECT
-	objid AS object,
+	objid AS oid,
 	quote_ident(n.nspname) || '.' || quote_ident(p.relname) AS referencedobject 
 FROM pg_depend d
 JOIN pg_class p
@@ -187,7 +187,7 @@ JOIN pg_class c
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	for _, dependency := range results {
-		dependencyMap[dependency.Object] = append(dependencyMap[dependency.Object], dependency.ReferencedObject)
+		dependencyMap[dependency.Oid] = append(dependencyMap[dependency.Oid], dependency.ReferencedObject)
 	}
 	for i := 0; i < len(tables); i++ {
 		tables[i].DependsUpon = dependencyMap[tables[i].RelationOid]
@@ -196,10 +196,15 @@ JOIN pg_class c
 }
 
 type QueryViewDefinition struct {
-	Oid        uint32
-	SchemaName string
-	ViewName   string
-	Definition string
+	Oid         uint32
+	SchemaName  string
+	ViewName    string
+	Definition  string
+	DependsUpon []string
+}
+
+func (v QueryViewDefinition) ToString() string {
+	return MakeFQN(v.SchemaName, v.ViewName)
 }
 
 func GetViewDefinitions(connection *utils.DBConn) []QueryViewDefinition {
@@ -217,4 +222,33 @@ WHERE c.relkind = 'v'::"char" AND %s;`, nonUserSchemaFilterClause)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results
+}
+
+func ConstructViewDependencies(connection *utils.DBConn, views []QueryViewDefinition) []QueryViewDefinition {
+	query := fmt.Sprintf(`
+SELECT DISTINCT
+	v2.oid,
+	quote_ident(n.nspname) || '.' || quote_ident(v1.relname) AS referencedobject
+FROM pg_class v1
+JOIN pg_depend d ON d.refobjid = v1.oid
+JOIN pg_rewrite rw ON rw.oid = d.objid
+JOIN pg_class v2 ON rw.ev_class = v2.oid
+JOIN pg_namespace n ON v1.relnamespace = n.oid
+WHERE d.classid = 'pg_rewrite'::regclass::oid
+	AND v1.oid != v2.oid
+	AND v1.relkind = 'v'
+	AND %s
+ORDER BY v2.oid, referencedobject;`, nonUserSchemaFilterClause)
+
+	results := make([]QueryDependency, 0)
+	dependencyMap := make(map[uint32][]string, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	for _, dependency := range results {
+		dependencyMap[dependency.Oid] = append(dependencyMap[dependency.Oid], dependency.ReferencedObject)
+	}
+	for i := 0; i < len(views); i++ {
+		views[i].DependsUpon = dependencyMap[views[i].Oid]
+	}
+	return views
 }

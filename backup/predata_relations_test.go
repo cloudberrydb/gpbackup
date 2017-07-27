@@ -668,8 +668,8 @@ GRANT ALL ON SEQUENCE public.seq_name TO testrole;`)
 	})
 	Describe("PrintCreateViewStatements", func() {
 		It("can print a basic view", func() {
-			viewOne := backup.QueryViewDefinition{0, "public", "WowZa", "SELECT rolname FROM pg_role;"}
-			viewTwo := backup.QueryViewDefinition{1, "shamwow", "shazam", "SELECT count(*) FROM pg_tables;"}
+			viewOne := backup.QueryViewDefinition{0, "public", "WowZa", "SELECT rolname FROM pg_role;", []string{}}
+			viewTwo := backup.QueryViewDefinition{1, "shamwow", "shazam", "SELECT count(*) FROM pg_tables;", []string{}}
 			viewMetadataMap := backup.MetadataMap{}
 			backup.PrintCreateViewStatements(buffer, []backup.QueryViewDefinition{viewOne, viewTwo}, viewMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE VIEW public."WowZa" AS SELECT rolname FROM pg_role;
@@ -678,8 +678,8 @@ GRANT ALL ON SEQUENCE public.seq_name TO testrole;`)
 CREATE VIEW shamwow.shazam AS SELECT count(*) FROM pg_tables;`)
 		})
 		It("can print a view with privileges, an owner, and a comment", func() {
-			viewOne := backup.QueryViewDefinition{0, "public", "WowZa", "SELECT rolname FROM pg_role;"}
-			viewTwo := backup.QueryViewDefinition{1, "shamwow", "shazam", "SELECT count(*) FROM pg_tables;"}
+			viewOne := backup.QueryViewDefinition{0, "public", "WowZa", "SELECT rolname FROM pg_role;", []string{}}
+			viewTwo := backup.QueryViewDefinition{1, "shamwow", "shazam", "SELECT count(*) FROM pg_tables;", []string{}}
 			viewMetadataMap := testutils.DefaultMetadataMap("VIEW", true, true, true)
 			backup.PrintCreateViewStatements(buffer, []backup.QueryViewDefinition{viewOne, viewTwo}, viewMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE VIEW public."WowZa" AS SELECT rolname FROM pg_role;

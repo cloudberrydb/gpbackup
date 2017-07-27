@@ -250,7 +250,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 	})
 	Describe("PrintCreateViewStatements", func() {
 		It("creates a view with privileges and a comment (can't specify owner in GPDB5)", func() {
-			viewDef := backup.QueryViewDefinition{1, "public", "simpleview", "SELECT pg_roles.rolname FROM pg_roles;"}
+			viewDef := backup.QueryViewDefinition{1, "public", "simpleview", "SELECT pg_roles.rolname FROM pg_roles;", nil}
 			viewMetadataMap := testutils.DefaultMetadataMap("VIEW", true, true, true)
 			viewMetadata := viewMetadataMap[1]
 
