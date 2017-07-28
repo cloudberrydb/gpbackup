@@ -164,3 +164,11 @@ CREATE OPERATOR %s (
 		PrintObjectMetadata(predataFile, operatorMetadata[operator.Oid], operatorStr, "OPERATOR")
 	}
 }
+func PrintCreateOperatorFamilyStatements(predataFile io.Writer, operatorFamilies []QueryOperatorFamily, operatorFamilyMetadata MetadataMap) {
+	for _, operatorFamily := range operatorFamilies {
+		operatorFamilyFQN := MakeFQN(operatorFamily.SchemaName, operatorFamily.Name)
+		operatorFamilyStr := fmt.Sprintf("%s USING %s", operatorFamilyFQN, utils.QuoteIdent(operatorFamily.IndexMethod))
+		utils.MustPrintf(predataFile, "\n\nCREATE OPERATOR FAMILY %s;", operatorFamilyStr)
+		PrintObjectMetadata(predataFile, operatorFamilyMetadata[operatorFamily.Oid], operatorFamilyStr, "OPERATOR FAMILY")
+	}
+}

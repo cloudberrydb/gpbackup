@@ -265,3 +265,26 @@ WHERE %s AND oprcode != 0`, nonUserSchemaFilterClause)
 	utils.CheckError(err)
 	return results
 }
+
+type QueryOperatorFamily struct {
+	Oid         uint32
+	SchemaName  string
+	Name        string
+	IndexMethod string
+}
+
+func GetOperatorFamilies(connection *utils.DBConn) []QueryOperatorFamily {
+	results := make([]QueryOperatorFamily, 0)
+	query := fmt.Sprintf(`
+SELECT
+	o.oid,
+	n.nspname AS schemaname,
+	opfname AS name,
+	(SELECT amname FROM pg_am WHERE oid = opfmethod) AS indexMethod
+FROM pg_opfamily o
+JOIN pg_namespace n on n.oid = o.opfnamespace
+WHERE %s`, nonUserSchemaFilterClause)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
+}

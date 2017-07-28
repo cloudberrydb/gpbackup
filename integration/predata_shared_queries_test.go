@@ -227,6 +227,19 @@ LANGUAGE SQL`)
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 		})
+		It("returns a slice of default metadata for an operator family", func() {
+			testutils.AssertQueryRuns(connection, "CREATE OPERATOR FAMILY testfam USING hash")
+			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testfam USING hash")
+
+			testutils.AssertQueryRuns(connection, "COMMENT ON OPERATOR FAMILY testfam USING hash IS 'This is an operator family comment.'")
+
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.OperatorFamilyParams)
+
+			oid := backup.OidFromObjectName(connection, "", "testfam", backup.OperatorFamilyParams)
+			expectedMetadata := testutils.DefaultMetadataMap("OPERATOR FAMILY", false, true, true)[1]
+			resultMetadata := resultMetadataMap[oid]
+			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
+		})
 	})
 	Describe("GetCommentsForObjectType", func() {
 		It("returns a slice of default metadata for an index", func() {

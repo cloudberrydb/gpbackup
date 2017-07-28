@@ -91,4 +91,17 @@ var _ = Describe("backup integration tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&expectedOperator, &results[0], "Oid")
 		})
 	})
+	Describe("GetOperatorFamilies", func() {
+		It("returns a slice of operator families", func() {
+			testutils.AssertQueryRuns(connection, "CREATE OPERATOR FAMILY testfam USING hash;")
+			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testfam USING hash")
+
+			expectedOperator := backup.QueryOperatorFamily{0, "public", "testfam", "hash"}
+
+			results := backup.GetOperatorFamilies(connection)
+
+			Expect(len(results)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&expectedOperator, &results[0], "Oid")
+		})
+	})
 })

@@ -202,8 +202,8 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
 			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
 
-			testutils.AssertQueryRuns(connection, "CREATE FUNCTION testschema.\"testFunc\"(path,path) RETURNS path AS 'SELECT $1' LANGUAGE SQL IMMUTABLE")
-			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION testschema.\"testFunc\"(path,path)")
+			testutils.AssertQueryRuns(connection, "CREATE FUNCTION testschema.\"testFunc\" (path,path) RETURNS path AS 'SELECT $1' LANGUAGE SQL IMMUTABLE")
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION testschema.\"testFunc\" (path,path)")
 
 			operator := backup.QueryOperator{0, "testschema", "##", "testschema.\"testFunc\"", "path", "path", "0", "0", "-", "-", false, false}
 			operators := []backup.QueryOperator{operator}
@@ -216,6 +216,62 @@ var _ = Describe("backup integration create statement tests", func() {
 			resultOperators := backup.GetOperators(connection)
 			Expect(len(resultOperators)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&operator, &resultOperators[0], "Oid")
+		})
+		It("creates operator with owner and comment", func() {
+			testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
+			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
+
+			testutils.AssertQueryRuns(connection, "CREATE FUNCTION testschema.\"testFunc\" (path,path) RETURNS path AS 'SELECT $1' LANGUAGE SQL IMMUTABLE")
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION testschema.\"testFunc\" (path,path)")
+
+			operatorMetadataMap := testutils.DefaultMetadataMap("OPERATOR", false, false, true)
+			operatorMetadata := operatorMetadataMap[1]
+			operator := backup.QueryOperator{1, "testschema", "##", "testschema.\"testFunc\"", "path", "path", "0", "0", "-", "-", false, false}
+			operators := []backup.QueryOperator{operator}
+
+			backup.PrintCreateOperatorStatements(buffer, operators, operatorMetadataMap)
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR testschema.##(path, path)")
+
+			resultOperators := backup.GetOperators(connection)
+			Expect(len(resultOperators)).To(Equal(1))
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.OperatorParams)
+			resultMetadata := resultMetadataMap[resultOperators[0].Oid]
+			testutils.ExpectStructsToMatchExcluding(&operator, &resultOperators[0], "Oid")
+			testutils.ExpectStructsToMatchExcluding(&resultMetadata, &operatorMetadata, "Oid")
+		})
+	})
+	Describe("PrintCreateOperatorFamilyStatements", func() {
+		It("creates operator family", func() {
+			operatorFamily := backup.QueryOperatorFamily{1, "public", "testfam", "hash"}
+			operatorFamilies := []backup.QueryOperatorFamily{operatorFamily}
+
+			backup.PrintCreateOperatorFamilyStatements(buffer, operatorFamilies, backup.MetadataMap{})
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.testfam USING hash")
+
+			resultOperatorFamilies := backup.GetOperatorFamilies(connection)
+			Expect(len(resultOperatorFamilies)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&operatorFamily, &resultOperatorFamilies[0], "Oid")
+		})
+		It("creates operator family with owner and comment", func() {
+			operatorFamilyMetadataMap := testutils.DefaultMetadataMap("OPERATOR FAMILY", false, false, true)
+			operatorFamilyMetadata := operatorFamilyMetadataMap[1]
+			operatorFamily := backup.QueryOperatorFamily{1, "public", "testfam", "hash"}
+			operatorFamilies := []backup.QueryOperatorFamily{operatorFamily}
+
+			backup.PrintCreateOperatorFamilyStatements(buffer, operatorFamilies, operatorFamilyMetadataMap)
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.testfam USING hash")
+
+			resultOperatorFamilies := backup.GetOperatorFamilies(connection)
+			Expect(len(resultOperatorFamilies)).To(Equal(1))
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.OperatorFamilyParams)
+			resultMetadata := resultMetadataMap[resultOperatorFamilies[0].Oid]
+			testutils.ExpectStructsToMatchExcluding(&operatorFamily, &resultOperatorFamilies[0], "Oid")
+			testutils.ExpectStructsToMatchExcluding(&resultMetadata, &operatorFamilyMetadata, "Oid")
 		})
 	})
 })

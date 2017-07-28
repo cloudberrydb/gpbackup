@@ -362,4 +362,27 @@ COMMENT ON OPERATOR public.## (NONE, path) IS 'This is an operator comment.';
 ALTER OPERATOR public.## (NONE, path) OWNER TO testrole;`)
 		})
 	})
+	Describe("PrintCreateOperatorFamilyStatements", func() {
+		It("prints a basic operator family", func() {
+			operatorFamily := backup.QueryOperatorFamily{0, "public", "testfam", "hash"}
+
+			backup.PrintCreateOperatorFamilyStatements(buffer, []backup.QueryOperatorFamily{operatorFamily}, backup.MetadataMap{})
+
+			testutils.ExpectRegexp(buffer, `CREATE OPERATOR FAMILY public.testfam USING hash;`)
+		})
+		It("prints an operator family with an owner and comment", func() {
+			operatorFamily := backup.QueryOperatorFamily{1, "public", "testfam", "hash"}
+
+			metadataMap := testutils.DefaultMetadataMap("OPERATOR FAMILY", false, true, true)
+
+			backup.PrintCreateOperatorFamilyStatements(buffer, []backup.QueryOperatorFamily{operatorFamily}, metadataMap)
+
+			testutils.ExpectRegexp(buffer, `CREATE OPERATOR FAMILY public.testfam USING hash;
+
+COMMENT ON OPERATOR FAMILY public.testfam USING hash IS 'This is an operator family comment.';
+
+
+ALTER OPERATOR FAMILY public.testfam USING hash OWNER TO testrole;`)
+		})
+	})
 })
