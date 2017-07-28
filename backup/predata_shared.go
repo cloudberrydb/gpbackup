@@ -62,9 +62,15 @@ type ACL struct {
 type MetadataMap map[uint32]ObjectMetadata
 
 func PrintObjectMetadata(file io.Writer, obj ObjectMetadata, objectName string, objectType string, owningTable ...string) {
-	utils.MustPrintf(file, obj.GetCommentStatement(objectName, objectType, owningTable...))
-	utils.MustPrintf(file, obj.GetOwnerStatement(objectName, objectType))
-	utils.MustPrintf(file, obj.GetPrivilegesStatements(objectName, objectType))
+	if comment := obj.GetCommentStatement(objectName, objectType, owningTable...); comment != "" {
+		utils.MustPrintln(file, comment)
+	}
+	if owner := obj.GetOwnerStatement(objectName, objectType); owner != "" {
+		utils.MustPrintln(file, owner)
+	}
+	if privileges := obj.GetPrivilegesStatements(objectName, objectType); privileges != "" {
+		utils.MustPrintln(file, privileges)
+	}
 }
 
 func ParseACL(aclStr string) *ACL {
@@ -321,7 +327,7 @@ func (obj ObjectMetadata) GetOwnerStatement(objectName string, objectType string
 	}
 	ownerStr := ""
 	if obj.Owner != "" {
-		ownerStr = fmt.Sprintf("\n\nALTER %s %s OWNER TO %s;\n", typeStr, objectName, utils.QuoteIdent(obj.Owner))
+		ownerStr = fmt.Sprintf("\n\nALTER %s %s OWNER TO %s;", typeStr, objectName, utils.QuoteIdent(obj.Owner))
 	}
 	return ownerStr
 }
@@ -333,7 +339,7 @@ func (obj ObjectMetadata) GetCommentStatement(objectName string, objectType stri
 		tableStr = fmt.Sprintf(" ON %s", owningTable[0])
 	}
 	if obj.Comment != "" {
-		commentStr = fmt.Sprintf("\n\nCOMMENT ON %s %s%s IS '%s';\n", objectType, objectName, tableStr, obj.Comment)
+		commentStr = fmt.Sprintf("\n\nCOMMENT ON %s %s%s IS '%s';", objectType, objectName, tableStr, obj.Comment)
 	}
 	return commentStr
 }
