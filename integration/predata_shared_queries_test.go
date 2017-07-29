@@ -235,8 +235,21 @@ LANGUAGE SQL`)
 
 			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.OperatorFamilyParams)
 
-			oid := backup.OidFromObjectName(connection, "", "testfam", backup.OperatorFamilyParams)
+			oid := backup.OidFromObjectName(connection, "public", "testfam", backup.OperatorFamilyParams)
 			expectedMetadata := testutils.DefaultMetadataMap("OPERATOR FAMILY", false, true, true)[1]
+			resultMetadata := resultMetadataMap[oid]
+			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
+		})
+		It("returns a slice of default metadata for an operator class", func() {
+			testutils.AssertQueryRuns(connection, "CREATE OPERATOR CLASS testclass FOR TYPE uuid USING hash AS STORAGE uuid")
+			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testclass USING hash CASCADE")
+
+			testutils.AssertQueryRuns(connection, "COMMENT ON OPERATOR CLASS testclass USING hash IS 'This is an operator class comment.'")
+
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.OperatorClassParams)
+
+			oid := backup.OidFromObjectName(connection, "public", "testclass", backup.OperatorClassParams)
+			expectedMetadata := testutils.DefaultMetadataMap("OPERATOR CLASS", false, true, true)[1]
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 		})

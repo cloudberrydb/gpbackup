@@ -104,4 +104,45 @@ var _ = Describe("backup integration tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&expectedOperator, &results[0], "Oid")
 		})
 	})
+	Describe("GetOperatorClasses", func() {
+		It("returns a slice of operator classes", func() {
+			testutils.AssertQueryRuns(connection, "CREATE OPERATOR CLASS testclass FOR TYPE uuid USING hash AS STORAGE uuid")
+			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testclass USING hash CASCADE")
+
+			expected := backup.QueryOperatorClass{0, "public", "testclass", "public", "testclass", "hash", "uuid", false, "-", nil, nil}
+
+			results := backup.GetOperatorClasses(connection)
+
+			Expect(len(results)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&expected, &results[0], "Oid")
+		})
+		It("returns a slice of operator classes with different type and storage type", func() {
+			testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
+			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
+
+			testutils.AssertQueryRuns(connection, "CREATE OPERATOR FAMILY testschema.testfam USING gist;")
+			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testschema.testfam USING gist CASCADE")
+			testutils.AssertQueryRuns(connection, "CREATE OPERATOR CLASS testclass DEFAULT FOR TYPE uuid USING gist FAMILY testschema.testfam AS STORAGE int")
+
+			expected := backup.QueryOperatorClass{0, "public", "testclass", "testschema", "testfam", "gist", "uuid", true, "integer", nil, nil}
+
+			results := backup.GetOperatorClasses(connection)
+
+			Expect(len(results)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&expected, &results[0], "Oid")
+		})
+		It("returns a slice of operator classes with operators and functions", func() {
+			testutils.AssertQueryRuns(connection, "CREATE OPERATOR CLASS testclass FOR TYPE uuid USING gist AS OPERATOR 1 = RECHECK, OPERATOR 2 < , FUNCTION 1 abs(integer), FUNCTION 2 int4out(integer)")
+			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testclass USING gist CASCADE")
+
+			expected := backup.QueryOperatorClass{0, "public", "testclass", "public", "testclass", "gist", "uuid", false, "-", nil, nil}
+			expected.Operators = []backup.OperatorClassOperator{{0, 1, "=(uuid,uuid)", true}, {0, 2, "<(uuid,uuid)", false}}
+			expected.Functions = []backup.OperatorClassFunction{{0, 1, "abs(integer)"}, {0, 2, "int4out(integer)"}}
+
+			results := backup.GetOperatorClasses(connection)
+
+			Expect(len(results)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&expected, &results[0], "Oid", "Operators.ClassOid", "Functions.ClassOid")
+		})
+	})
 })

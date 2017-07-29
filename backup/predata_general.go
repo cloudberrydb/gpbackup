@@ -172,3 +172,46 @@ func PrintCreateOperatorFamilyStatements(predataFile io.Writer, operatorFamilies
 		PrintObjectMetadata(predataFile, operatorFamilyMetadata[operatorFamily.Oid], operatorFamilyStr, "OPERATOR FAMILY")
 	}
 }
+
+func PrintCreateOperatorClassStatements(predataFile io.Writer, operatorClasses []QueryOperatorClass, operatorClassMetadata MetadataMap) {
+	for _, operatorClass := range operatorClasses {
+		operatorClassFQN := MakeFQN(operatorClass.ClassSchema, operatorClass.ClassName)
+		utils.MustPrintf(predataFile, "\n\nCREATE OPERATOR CLASS %s", operatorClassFQN)
+		forTypeStr := ""
+		if operatorClass.Default {
+			forTypeStr += "DEFAULT "
+		}
+		forTypeStr += fmt.Sprintf("FOR TYPE %s USING %s", operatorClass.Type, operatorClass.IndexMethod)
+		if operatorClass.FamilyName != operatorClass.ClassName {
+			operatorFamilyFQN := MakeFQN(operatorClass.FamilySchema, operatorClass.FamilyName)
+			forTypeStr += fmt.Sprintf(" FAMILY %s", operatorFamilyFQN)
+		}
+		utils.MustPrintf(predataFile, "\n\t%s", forTypeStr)
+		opClassClauses := []string{}
+		if len(operatorClass.Operators) != 0 {
+			for _, operator := range operatorClass.Operators {
+				opStr := fmt.Sprintf("OPERATOR %d %s", operator.StrategyNumber, operator.Operator)
+				if operator.Recheck {
+					opStr += " RECHECK"
+				}
+				opClassClauses = append(opClassClauses, opStr)
+			}
+		}
+		if len(operatorClass.Functions) != 0 {
+			for _, function := range operatorClass.Functions {
+				opClassClauses = append(opClassClauses, fmt.Sprintf("FUNCTION %d %s", function.SupportNumber, function.FunctionName))
+			}
+		}
+		if operatorClass.StorageType != "-" || len(opClassClauses) == 0 {
+			storageType := operatorClass.StorageType
+			if operatorClass.StorageType == "-" {
+				storageType = operatorClass.Type
+			}
+			opClassClauses = append(opClassClauses, fmt.Sprintf("STORAGE %s", storageType))
+		}
+		utils.MustPrintf(predataFile, " AS\n\t%s;", strings.Join(opClassClauses, ",\n\t"))
+
+		operatorClassStr := fmt.Sprintf("%s USING %s", operatorClassFQN, utils.QuoteIdent(operatorClass.IndexMethod))
+		PrintObjectMetadata(predataFile, operatorClassMetadata[operatorClass.Oid], operatorClassStr, "OPERATOR CLASS")
+	}
+}

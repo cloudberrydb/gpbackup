@@ -218,7 +218,7 @@ SELECT
 	pg_get_viewdef(c.oid) AS definition
 FROM pg_class c
 LEFT JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE c.relkind = 'v'::"char" AND %s;`, nonUserSchemaFilterClause)
+WHERE c.relkind = 'v'::"char" AND %s;`, NonUserSchemaFilterClause("n"))
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results
@@ -238,7 +238,7 @@ WHERE d.classid = 'pg_rewrite'::regclass::oid
 	AND v1.oid != v2.oid
 	AND v1.relkind = 'v'
 	AND %s
-ORDER BY v2.oid, referencedobject;`, nonUserSchemaFilterClause)
+ORDER BY v2.oid, referencedobject;`, NonUserSchemaFilterClause("n"))
 
 	results := make([]QueryDependency, 0)
 	dependencyMap := make(map[uint32][]string, 0)

@@ -81,7 +81,7 @@ WHERE %s
 AND (n.nspname || '.' || t.typname) NOT IN (SELECT nspname || '._' || relname FROM pg_namespace n join pg_class c ON n.oid = c.relnamespace WHERE c.relkind = 'r' OR c.relkind = 'S' OR c.relkind = 'v')
 AND (n.nspname || '.' || t.typname) NOT IN (SELECT nspname || '.' || relname FROM pg_namespace n join pg_class c ON n.oid = c.relnamespace WHERE c.relkind = 'r' OR c.relkind = 'S' OR c.relkind = 'v')
 AND (n.nspname || '.' || t.typname) NOT IN (SELECT nspname || '._' || typname FROM pg_namespace n join pg_type t ON n.oid = t.typnamespace)
-ORDER BY n.nspname, t.typname, a.attname;`, nonUserSchemaFilterClause)
+ORDER BY n.nspname, t.typname, a.attname;`, NonUserSchemaFilterClause("n"))
 
 	results := make([]TypeDefinition, 0)
 	err := connection.Select(&results, query)

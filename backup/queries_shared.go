@@ -208,9 +208,6 @@ type MetadataQueryParams struct {
 }
 
 var (
-	// A list of schemas we don't ever want to dump, formatted for use in a WHERE clause
-	nonUserSchemaFilterClause = `nspname NOT LIKE 'pg_temp_%' AND nspname NOT LIKE 'pg_toast%' AND nspname NOT IN ('gp_toolkit', 'information_schema', 'pg_aoseg', 'pg_bitmapindex', 'pg_catalog')`
-
 	AggregateParams      = MetadataQueryParams{NameField: "proname", OwnerField: "proowner", CatalogTable: "pg_proc"}
 	CastParams           = MetadataQueryParams{NameField: "typname", OidField: "oid", OidTable: "pg_type", CatalogTable: "pg_cast"}
 	ConParams            = MetadataQueryParams{NameField: "conname", OidField: "oid", CatalogTable: "pg_constraint"}
@@ -219,7 +216,8 @@ var (
 	IndexParams          = MetadataQueryParams{NameField: "relname", OidField: "indexrelid", OidTable: "pg_class", CommentTable: "pg_class", CatalogTable: "pg_index"}
 	ProcLangParams       = MetadataQueryParams{NameField: "lanname", ACLField: "lanacl", OwnerField: "lanowner", CatalogTable: "pg_language"}
 	OperatorParams       = MetadataQueryParams{NameField: "oprname", OidField: "oid", OwnerField: "oprowner", CatalogTable: "pg_operator"}
-	OperatorFamilyParams = MetadataQueryParams{NameField: "opfname", OidField: "oid", OwnerField: "opfowner", CatalogTable: "pg_opfamily"}
+	OperatorClassParams  = MetadataQueryParams{NameField: "opcname", SchemaField: "opcnamespace", OidField: "oid", OwnerField: "opcowner", CatalogTable: "pg_opclass"}
+	OperatorFamilyParams = MetadataQueryParams{NameField: "opfname", SchemaField: "opfnamespace", OidField: "oid", OwnerField: "opfowner", CatalogTable: "pg_opfamily"}
 	ProtocolParams       = MetadataQueryParams{NameField: "ptcname", ACLField: "ptcacl", OwnerField: "ptcowner", CatalogTable: "pg_extprotocol"}
 	RelationParams       = MetadataQueryParams{NameField: "relname", SchemaField: "relnamespace", ACLField: "relacl", OwnerField: "relowner", CatalogTable: "pg_class"}
 	ResQueueParams       = MetadataQueryParams{NameField: "rsqname", OidField: "oid", CatalogTable: "pg_resqueue", Shared: true}
@@ -230,6 +228,11 @@ var (
 	TriggerParams        = MetadataQueryParams{NameField: "tgname", OidField: "oid", CatalogTable: "pg_trigger"}
 	TypeParams           = MetadataQueryParams{NameField: "typname", SchemaField: "typnamespace", OwnerField: "typowner", CatalogTable: "pg_type"}
 )
+
+// A list of schemas we don't ever want to dump, formatted for use in a WHERE clause
+func NonUserSchemaFilterClause(namespace string) string {
+	return fmt.Sprintf(`%s.nspname NOT LIKE 'pg_temp_%%' AND %s.nspname NOT LIKE 'pg_toast%%' AND %s.nspname NOT IN ('gp_toolkit', 'information_schema', 'pg_aoseg', 'pg_bitmapindex', 'pg_catalog')`, namespace, namespace, namespace)
+}
 
 type QueryOid struct {
 	Oid uint32
@@ -262,7 +265,7 @@ func GetMetadataForObjectType(connection *utils.DBConn, params MetadataQueryPara
 	schemaStr := ""
 	if params.SchemaField != "" {
 		schemaStr = fmt.Sprintf(`JOIN pg_namespace n ON o.%s = n.oid
-WHERE %s`, params.SchemaField, nonUserSchemaFilterClause)
+WHERE %s`, params.SchemaField, NonUserSchemaFilterClause("n"))
 	}
 	aclStr := ""
 	if params.ACLField != "" {

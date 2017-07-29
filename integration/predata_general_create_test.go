@@ -256,7 +256,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&operatorFamily, &resultOperatorFamilies[0], "Oid")
 		})
 		It("creates operator family with owner and comment", func() {
-			operatorFamilyMetadataMap := testutils.DefaultMetadataMap("OPERATOR FAMILY", false, false, true)
+			operatorFamilyMetadataMap := testutils.DefaultMetadataMap("OPERATOR FAMILY", false, true, true)
 			operatorFamilyMetadata := operatorFamilyMetadataMap[1]
 			operatorFamily := backup.QueryOperatorFamily{1, "public", "testfam", "hash"}
 			operatorFamilies := []backup.QueryOperatorFamily{operatorFamily}
@@ -268,10 +268,59 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			resultOperatorFamilies := backup.GetOperatorFamilies(connection)
 			Expect(len(resultOperatorFamilies)).To(Equal(1))
-			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.OperatorFamilyParams)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.OperatorFamilyParams)
 			resultMetadata := resultMetadataMap[resultOperatorFamilies[0].Oid]
 			testutils.ExpectStructsToMatchExcluding(&operatorFamily, &resultOperatorFamilies[0], "Oid")
 			testutils.ExpectStructsToMatchExcluding(&resultMetadata, &operatorFamilyMetadata, "Oid")
+		})
+	})
+	Describe("PrintCreateOperatorClassStatements", func() {
+		It("creates basic operator class", func() {
+			operatorClass := backup.QueryOperatorClass{0, "public", "testclass", "public", "testclass", "hash", "uuid", false, "-", nil, nil}
+
+			backup.PrintCreateOperatorClassStatements(buffer, []backup.QueryOperatorClass{operatorClass}, nil)
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.testclass USING hash CASCADE")
+
+			resultOperatorClasses := backup.GetOperatorClasses(connection)
+			Expect(len(resultOperatorClasses)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&operatorClass, &resultOperatorClasses[0], "Oid")
+		})
+		It("creates complex operator class", func() {
+			operatorClass := backup.QueryOperatorClass{0, "public", "testclass", "public", "testfam", "gist", "uuid", true, "integer", nil, nil}
+			operatorClass.Operators = []backup.OperatorClassOperator{{0, 1, "=(uuid,uuid)", true}}
+			operatorClass.Functions = []backup.OperatorClassFunction{{0, 1, "abs(integer)"}}
+
+			testutils.AssertQueryRuns(connection, "CREATE OPERATOR FAMILY public.testfam USING gist")
+			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.testfam USING gist CASCADE")
+			backup.PrintCreateOperatorClassStatements(buffer, []backup.QueryOperatorClass{operatorClass}, nil)
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+
+			resultOperatorClasses := backup.GetOperatorClasses(connection)
+			Expect(len(resultOperatorClasses)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&operatorClass, &resultOperatorClasses[0], "Oid", "Operators.ClassOid", "Functions.ClassOid")
+		})
+		It("creates basic operator class with a comment and owner", func() {
+			operatorClassMetadataMap := testutils.DefaultMetadataMap("OPERATOR CLASS", false, true, true)
+			operatorClassMetadata := operatorClassMetadataMap[1]
+
+			operatorClass := backup.QueryOperatorClass{1, "public", "testclass", "public", "testclass", "hash", "uuid", false, "-", nil, nil}
+
+			backup.PrintCreateOperatorClassStatements(buffer, []backup.QueryOperatorClass{operatorClass}, operatorClassMetadataMap)
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.testclass USING hash CASCADE")
+
+			resultOperatorClasses := backup.GetOperatorClasses(connection)
+			Expect(len(resultOperatorClasses)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&operatorClass, &resultOperatorClasses[0], "Oid")
+
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.OperatorClassParams)
+			resultMetadata := resultMetadataMap[resultOperatorClasses[0].Oid]
+			testutils.ExpectStructsToMatchExcluding(&resultMetadata, &operatorClassMetadata, "Oid")
+
 		})
 	})
 })

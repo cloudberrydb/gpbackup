@@ -63,7 +63,7 @@ LEFT JOIN pg_namespace n
 	ON p.pronamespace = n.oid
 WHERE %s
 AND proisagg = 'f'
-ORDER BY nspname, proname, identargs;`, nonUserSchemaFilterClause)
+ORDER BY nspname, proname, identargs;`, NonUserSchemaFilterClause("n"))
 
 	results := make([]QueryFunctionDefinition, 0)
 	err := connection.Select(&results, query)
@@ -105,7 +105,7 @@ FROM pg_aggregate a
 LEFT JOIN pg_proc p ON a.aggfnoid = p.oid
 LEFT JOIN pg_type t ON a.aggtranstype = t.oid
 LEFT JOIN pg_namespace n ON p.pronamespace = n.oid
-WHERE %s;`, nonUserSchemaFilterClause)
+WHERE %s;`, NonUserSchemaFilterClause("n"))
 
 	results := make([]QueryAggregateDefinition, 0)
 	err := connection.Select(&results, query)
@@ -179,7 +179,7 @@ LEFT JOIN pg_proc p ON c.castfunc = p.oid
 LEFT JOIN pg_description d ON c.oid = d.objoid
 JOIN pg_namespace n ON p.pronamespace = n.oid
 WHERE %s
-ORDER BY 1, 2;`, nonUserSchemaFilterClause)
+ORDER BY 1, 2;`, NonUserSchemaFilterClause("n"))
 
 	results := make([]QueryCastDefinition, 0)
 	err := connection.Select(&results, query)

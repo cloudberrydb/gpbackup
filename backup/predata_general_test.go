@@ -385,4 +385,64 @@ COMMENT ON OPERATOR FAMILY public.testfam USING hash IS 'This is an operator fam
 ALTER OPERATOR FAMILY public.testfam USING hash OWNER TO testrole;`)
 		})
 	})
+	Describe("PrintCreateOperatorClassStatements", func() {
+		It("prints a basic operator class", func() {
+			operatorClass := backup.QueryOperatorClass{0, "public", "testclass", "public", "testclass", "hash", "uuid", false, "-", nil, nil}
+
+			backup.PrintCreateOperatorClassStatements(buffer, []backup.QueryOperatorClass{operatorClass}, backup.MetadataMap{})
+
+			testutils.ExpectRegexp(buffer, `CREATE OPERATOR CLASS public.testclass
+	FOR TYPE uuid USING hash AS
+	STORAGE uuid;`)
+		})
+		It("prints an operator class with default and family", func() {
+			operatorClass := backup.QueryOperatorClass{0, "public", "testclass", "public", "testfam", "hash", "uuid", true, "-", nil, nil}
+
+			backup.PrintCreateOperatorClassStatements(buffer, []backup.QueryOperatorClass{operatorClass}, backup.MetadataMap{})
+
+			testutils.ExpectRegexp(buffer, `CREATE OPERATOR CLASS public.testclass
+	DEFAULT FOR TYPE uuid USING hash FAMILY public.testfam AS
+	STORAGE uuid;`)
+		})
+		It("prints an operator class with class and family in different schemas", func() {
+			operatorClass := backup.QueryOperatorClass{0, "schema1", "testclass", "Schema2", "testfam", "hash", "uuid", true, "-", nil, nil}
+
+			backup.PrintCreateOperatorClassStatements(buffer, []backup.QueryOperatorClass{operatorClass}, backup.MetadataMap{})
+
+			testutils.ExpectRegexp(buffer, `CREATE OPERATOR CLASS schema1.testclass
+	DEFAULT FOR TYPE uuid USING hash FAMILY "Schema2".testfam AS
+	STORAGE uuid;`)
+		})
+		It("prints an operator class with an operator", func() {
+			operatorClass := backup.QueryOperatorClass{0, "public", "testclass", "public", "testclass", "hash", "uuid", false, "-", nil, nil}
+			operatorClass.Operators = []backup.OperatorClassOperator{{0, 1, "=(uuid,uuid)", false}}
+
+			backup.PrintCreateOperatorClassStatements(buffer, []backup.QueryOperatorClass{operatorClass}, backup.MetadataMap{})
+
+			testutils.ExpectRegexp(buffer, `CREATE OPERATOR CLASS public.testclass
+	FOR TYPE uuid USING hash AS
+	OPERATOR 1 =(uuid,uuid);`)
+		})
+		It("prints an operator class with two operators and recheck", func() {
+			operatorClass := backup.QueryOperatorClass{0, "public", "testclass", "public", "testclass", "hash", "uuid", false, "-", nil, nil}
+			operatorClass.Operators = []backup.OperatorClassOperator{{0, 1, "=(uuid,uuid)", true}, {0, 2, ">(uuid,uuid)", false}}
+
+			backup.PrintCreateOperatorClassStatements(buffer, []backup.QueryOperatorClass{operatorClass}, backup.MetadataMap{})
+
+			testutils.ExpectRegexp(buffer, `CREATE OPERATOR CLASS public.testclass
+	FOR TYPE uuid USING hash AS
+	OPERATOR 1 =(uuid,uuid) RECHECK,
+	OPERATOR 2 >(uuid,uuid);`)
+		})
+		It("prints an operator class with a function", func() {
+			operatorClass := backup.QueryOperatorClass{0, "public", "testclass", "public", "testclass", "hash", "uuid", false, "-", nil, nil}
+			operatorClass.Functions = []backup.OperatorClassFunction{{0, 1, "abs(integer)"}}
+
+			backup.PrintCreateOperatorClassStatements(buffer, []backup.QueryOperatorClass{operatorClass}, backup.MetadataMap{})
+
+			testutils.ExpectRegexp(buffer, `CREATE OPERATOR CLASS public.testclass
+	FOR TYPE uuid USING hash AS
+	FUNCTION 1 abs(integer);`)
+		})
+	})
 })

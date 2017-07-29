@@ -81,7 +81,7 @@ LEFT JOIN pg_tablespace s
 	ON (c.reltablespace = s.oid)
 WHERE %s
 AND i.indisprimary = 'f'
-ORDER BY name;`, nonUserSchemaFilterClause)
+ORDER BY name;`, NonUserSchemaFilterClause("n"))
 
 	results := make([]QuerySimpleDefinition, 0)
 	err := connection.Select(&results, query)

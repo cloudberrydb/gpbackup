@@ -194,6 +194,11 @@ func backupPredata(filename string, tables []Relation, extTableMap map[string]bo
 	operatorFamilyMetadata := GetMetadataForObjectType(connection, OperatorFamilyParams)
 	PrintCreateOperatorFamilyStatements(predataFile, operatorFamilies, operatorFamilyMetadata)
 
+	logger.Verbose("Writing CREATE OPERATOR CLASS statements to predata file")
+	operatorClasses := GetOperatorClasses(connection)
+	operatorClassMetadata := GetMetadataForObjectType(connection, OperatorClassParams)
+	PrintCreateOperatorClassStatements(predataFile, operatorClasses, operatorClassMetadata)
+
 	logger.Verbose("Writing CREATE AGGREGATE statements to predata file")
 	aggDefs := GetAggregateDefinitions(connection)
 	aggMetadata := GetMetadataForObjectType(connection, AggregateParams)
