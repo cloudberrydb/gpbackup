@@ -21,19 +21,26 @@ var _ = Describe("backup integration create statement tests", func() {
 		var (
 			shellType         backup.TypeDefinition
 			baseType          backup.TypeDefinition
+			compositeType     backup.TypeDefinition
 			compositeTypeAtt1 backup.TypeDefinition
 			compositeTypeAtt2 backup.TypeDefinition
 			enumType          backup.TypeDefinition
 			domainType        backup.TypeDefinition
 			types             []backup.TypeDefinition
+			typeMetadata      backup.ObjectMetadata
 			typeMetadataMap   backup.MetadataMap
 		)
 		BeforeEach(func() {
 			shellType = backup.TypeDefinition{Type: "p", TypeSchema: "public", TypeName: "shell_type"}
 			baseType = backup.TypeDefinition{
-				Type: "b", TypeSchema: "public", TypeName: "base_type", Input: "base_fn_in", Output: "base_fn_out", Receive: "-",
-				Send: "-", ModIn: "-", ModOut: "-", InternalLength: 4, IsPassedByValue: true, Alignment: "i", Storage: "p",
+				Type: "b", TypeSchema: "public", TypeName: "base_type", Input: "base_fn_in", Output: "base_fn_out", Receive: "",
+				Send: "", ModIn: "", ModOut: "", InternalLength: 4, IsPassedByValue: true, Alignment: "i", Storage: "p",
 				DefaultVal: "default", Element: "text", Delimiter: ";",
+			}
+			atts := []backup.CompositeTypeAttribute{{"att1", "text"}, {"att2", "integer"}}
+			compositeType = backup.TypeDefinition{
+				Type: "c", TypeSchema: "public", TypeName: "composite_type",
+				CompositeAtts: atts,
 			}
 			compositeTypeAtt1 = backup.TypeDefinition{
 				Type: "c", TypeSchema: "public", TypeName: "composite_type",
@@ -56,8 +63,8 @@ var _ = Describe("backup integration create statement tests", func() {
 			domainType.Send = "numeric_send"
 			domainType.DefaultVal = "5"
 			domainType.NotNull = true
-			types = []backup.TypeDefinition{shellType, baseType, compositeTypeAtt1, compositeTypeAtt2, enumType, domainType}
-			typeMetadataMap = backup.MetadataMap{}
+			types = []backup.TypeDefinition{shellType, baseType, compositeType, enumType, domainType}
+			typeMetadata = backup.ObjectMetadata{}
 		})
 
 		It("creates shell types for base and shell types only", func() {
@@ -75,7 +82,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 
 		It("creates composite types", func() {
-			backup.PrintCreateCompositeTypeStatements(buffer, types, typeMetadataMap)
+			backup.PrintCreateCompositeTypeStatement(buffer, compositeType, typeMetadata)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE composite_type")
@@ -100,7 +107,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 
 		It("creates base types", func() {
-			backup.PrintCreateBaseTypeStatements(buffer, types, typeMetadataMap)
+			backup.PrintCreateBaseTypeStatement(buffer, baseType, typeMetadata)
 
 			//Run queries to set up the database state so we can successfully create base types
 			testutils.AssertQueryRuns(connection, "CREATE TYPE base_type")
@@ -116,7 +123,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&baseType, &resultTypes[0], "Oid")
 		})
 		It("creates domain types", func() {
-			backup.PrintCreateDomainStatements(buffer, types, typeMetadataMap)
+			backup.PrintCreateDomainStatement(buffer, domainType, typeMetadata)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE domain_type")

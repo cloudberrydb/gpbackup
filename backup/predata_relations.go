@@ -11,7 +11,78 @@ import (
 	"strings"
 
 	"github.com/greenplum-db/gpbackup/utils"
+	"github.com/pkg/errors"
 )
+
+type Relation struct {
+	SchemaOid    uint32
+	RelationOid  uint32
+	SchemaName   string
+	RelationName string
+	DependsUpon  []string
+}
+
+/*
+ * This function prints a table in fully-qualified schema.table format, with
+ * everything quoted and escaped appropriately.
+ */
+func (t Relation) ToString() string {
+	return MakeFQN(t.SchemaName, t.RelationName)
+}
+
+/* Parse an appropriately-escaped schema.table string into a Relation.  The Relation's
+ * Oid fields are left at 0, and will need to be filled in with the real values
+ * if the Relation is to be used in any Get[Something]() function in queries.go.
+ */
+func RelationFromString(name string) Relation {
+	var schema, table string
+	var matches []string
+	if matches = utils.QuotedOrUnquotedString.FindStringSubmatch(name); len(matches) != 0 {
+		if matches[1] != "" { // schema was quoted
+			schema = utils.ReplacerUnescape.Replace(matches[1])
+		} else { // schema wasn't quoted
+			schema = utils.ReplacerUnescape.Replace(matches[2])
+		}
+		if matches[3] != "" { // table was quoted
+			table = utils.ReplacerUnescape.Replace(matches[3])
+		} else { // table wasn't quoted
+			table = utils.ReplacerUnescape.Replace(matches[4])
+		}
+	} else {
+		logger.Fatal(errors.Errorf("\"%s\" is not a valid fully-qualified table expression", name), "")
+	}
+	return BasicRelation(schema, table)
+}
+
+func BasicRelation(schema string, relation string) Relation {
+	return Relation{
+		SchemaOid:    0,
+		SchemaName:   schema,
+		RelationOid:  0,
+		RelationName: relation,
+	}
+}
+
+/*
+ * Given a list of Relations, this function returns a sorted list of their Schemas.
+ * It assumes that the Relation list is sorted by schema and then by table, so it
+ * doesn't need to do any sorting itself.
+ */
+func GetUniqueSchemas(schemas []Schema, tables []Relation) []Schema {
+	currentSchemaOid := uint32(0)
+	uniqueSchemas := make([]Schema, 0)
+	schemaMap := make(map[uint32]Schema, 0)
+	for _, schema := range schemas {
+		schemaMap[schema.Oid] = schema
+	}
+	for _, table := range tables {
+		if table.SchemaOid != currentSchemaOid {
+			currentSchemaOid = table.SchemaOid
+			uniqueSchemas = append(uniqueSchemas, schemaMap[currentSchemaOid])
+		}
+	}
+	return uniqueSchemas
+}
 
 type ColumnDefinition struct {
 	Num        int

@@ -31,92 +31,86 @@ func PrintCreateShellTypeStatements(predataFile io.Writer, types []TypeDefinitio
 	}
 }
 
-func PrintCreateDomainStatements(predataFile io.Writer, types []TypeDefinition, typeMetadata MetadataMap) {
-	utils.MustPrintln(predataFile, "\n")
-	for _, typ := range types {
-		if typ.Type == "d" {
-			typeFQN := MakeFQN(typ.TypeSchema, typ.TypeName)
-			utils.MustPrintf(predataFile, "CREATE DOMAIN %s AS %s", typeFQN, typ.BaseType)
-			if typ.DefaultVal != "" {
-				utils.MustPrintf(predataFile, " DEFAULT %s", typ.DefaultVal)
-			}
-			if typ.NotNull {
-				utils.MustPrintf(predataFile, " NOT NULL")
-			}
-			utils.MustPrintln(predataFile, ";")
-			PrintObjectMetadata(predataFile, typeMetadata[typ.Oid], typeFQN, "DOMAIN")
-		}
+func PrintCreateDomainStatement(predataFile io.Writer, domain TypeDefinition, typeMetadata ObjectMetadata) {
+	typeFQN := MakeFQN(domain.TypeSchema, domain.TypeName)
+	utils.MustPrintf(predataFile, "\nCREATE DOMAIN %s AS %s", typeFQN, domain.BaseType)
+	if domain.DefaultVal != "" {
+		utils.MustPrintf(predataFile, " DEFAULT %s", domain.DefaultVal)
 	}
+	if domain.NotNull {
+		utils.MustPrintf(predataFile, " NOT NULL")
+	}
+	utils.MustPrintln(predataFile, ";")
+	PrintObjectMetadata(predataFile, typeMetadata, typeFQN, "DOMAIN")
 }
 
-func PrintCreateBaseTypeStatements(predataFile io.Writer, types []TypeDefinition, typeMetadata MetadataMap) {
-	i := 0
-	for i < len(types) {
-		typ := types[i]
-		if typ.Type == "b" {
-			typeFQN := MakeFQN(typ.TypeSchema, typ.TypeName)
-			utils.MustPrintf(predataFile, "\n\nCREATE TYPE %s (\n", typeFQN)
+func PrintCreateBaseTypeStatement(predataFile io.Writer, base TypeDefinition, typeMetadata ObjectMetadata) {
+	typeFQN := MakeFQN(base.TypeSchema, base.TypeName)
+	utils.MustPrintf(predataFile, "\n\nCREATE TYPE %s (\n", typeFQN)
 
-			// All of the following functions are stored in quoted form and don't need to be quoted again
-			utils.MustPrintf(predataFile, "\tINPUT = %s,\n\tOUTPUT = %s", typ.Input, typ.Output)
-			if typ.Receive != "-" {
-				utils.MustPrintf(predataFile, ",\n\tRECEIVE = %s", typ.Receive)
-			}
-			if typ.Send != "-" {
-				utils.MustPrintf(predataFile, ",\n\tSEND = %s", typ.Send)
-			}
-			if typ.ModIn != "-" {
-				utils.MustPrintf(predataFile, ",\n\tTYPMOD_IN = %s", typ.ModIn)
-			}
-			if typ.ModOut != "-" {
-				utils.MustPrintf(predataFile, ",\n\tTYPMOD_OUT = %s", typ.ModOut)
-			}
-			if typ.InternalLength > 0 {
-				utils.MustPrintf(predataFile, ",\n\tINTERNALLENGTH = %d", typ.InternalLength)
-			}
-			if typ.IsPassedByValue {
-				utils.MustPrintf(predataFile, ",\n\tPASSEDBYVALUE")
-			}
-			if typ.Alignment != "-" {
-				switch typ.Alignment {
-				case "d":
-					utils.MustPrintf(predataFile, ",\n\tALIGNMENT = double")
-				case "i":
-					utils.MustPrintf(predataFile, ",\n\tALIGNMENT = int4")
-				case "s":
-					utils.MustPrintf(predataFile, ",\n\tALIGNMENT = int2")
-				case "c": // Default case, don't print anything else
-				}
-			}
-			if typ.Storage != "" {
-				switch typ.Storage {
-				case "e":
-					utils.MustPrintf(predataFile, ",\n\tSTORAGE = extended")
-				case "m":
-					utils.MustPrintf(predataFile, ",\n\tSTORAGE = main")
-				case "x":
-					utils.MustPrintf(predataFile, ",\n\tSTORAGE = external")
-				case "p": // Default case, don't print anything else
-				}
-			}
-			if typ.DefaultVal != "" {
-				utils.MustPrintf(predataFile, ",\n\tDEFAULT = %s", typ.DefaultVal)
-			}
-			if typ.Element != "-" {
-				utils.MustPrintf(predataFile, ",\n\tELEMENT = %s", typ.Element)
-			}
-			if typ.Delimiter != "" {
-				utils.MustPrintf(predataFile, ",\n\tDELIMITER = '%s'", typ.Delimiter)
-			}
-			utils.MustPrintln(predataFile, "\n);")
-			PrintObjectMetadata(predataFile, typeMetadata[typ.Oid], typeFQN, "TYPE")
-		}
-		i++
+	// All of the following functions are stored in quoted form and don't need to be quoted again
+	utils.MustPrintf(predataFile, "\tINPUT = %s,\n\tOUTPUT = %s", base.Input, base.Output)
+	if base.Receive != "" {
+		utils.MustPrintf(predataFile, ",\n\tRECEIVE = %s", base.Receive)
 	}
+	if base.Send != "" {
+		utils.MustPrintf(predataFile, ",\n\tSEND = %s", base.Send)
+	}
+	if base.ModIn != "" {
+		utils.MustPrintf(predataFile, ",\n\tTYPMOD_IN = %s", base.ModIn)
+	}
+	if base.ModOut != "" {
+		utils.MustPrintf(predataFile, ",\n\tTYPMOD_OUT = %s", base.ModOut)
+	}
+	if base.InternalLength > 0 {
+		utils.MustPrintf(predataFile, ",\n\tINTERNALLENGTH = %d", base.InternalLength)
+	}
+	if base.IsPassedByValue {
+		utils.MustPrintf(predataFile, ",\n\tPASSEDBYVALUE")
+	}
+	if base.Alignment != "" {
+		switch base.Alignment {
+		case "d":
+			utils.MustPrintf(predataFile, ",\n\tALIGNMENT = double")
+		case "i":
+			utils.MustPrintf(predataFile, ",\n\tALIGNMENT = int4")
+		case "s":
+			utils.MustPrintf(predataFile, ",\n\tALIGNMENT = int2")
+		case "c": // Default case, don't print anything else
+		}
+	}
+	if base.Storage != "" {
+		switch base.Storage {
+		case "e":
+			utils.MustPrintf(predataFile, ",\n\tSTORAGE = extended")
+		case "m":
+			utils.MustPrintf(predataFile, ",\n\tSTORAGE = main")
+		case "x":
+			utils.MustPrintf(predataFile, ",\n\tSTORAGE = external")
+		case "p": // Default case, don't print anything else
+		}
+	}
+	if base.DefaultVal != "" {
+		utils.MustPrintf(predataFile, ",\n\tDEFAULT = %s", base.DefaultVal)
+	}
+	if base.Element != "" {
+		utils.MustPrintf(predataFile, ",\n\tELEMENT = %s", base.Element)
+	}
+	if base.Delimiter != "" {
+		utils.MustPrintf(predataFile, ",\n\tDELIMITER = '%s'", base.Delimiter)
+	}
+	utils.MustPrintln(predataFile, "\n);")
+	PrintObjectMetadata(predataFile, typeMetadata, typeFQN, "TYPE")
 }
 
-func PrintCreateCompositeTypeStatements(predataFile io.Writer, types []TypeDefinition, typeMetadata MetadataMap) {
+type CompositeType struct {
+	AttName string
+	AttType string
+}
+
+func CoalesceCompositeTypes(types []TypeDefinition) []TypeDefinition {
 	i := 0
+	coalescedTypes := make([]TypeDefinition, 0)
 	for i < len(types) {
 		typ := types[i]
 		if typ.Type == "c" {
@@ -139,19 +133,30 @@ func PrintCreateCompositeTypeStatements(predataFile io.Writer, types []TypeDefin
 			 * so we can grab all other values from the first TypeDefinition in the list.
 			 */
 			composite := compositeTypes[0]
-			typeFQN := MakeFQN(composite.TypeSchema, composite.TypeName)
-			utils.MustPrintf(predataFile, "\n\nCREATE TYPE %s AS (\n", typeFQN)
-			atts := make([]string, 0)
+			atts := make([]CompositeTypeAttribute, 0)
 			for _, composite := range compositeTypes {
-				atts = append(atts, fmt.Sprintf("\t%s %s", composite.AttName, composite.AttType))
+				atts = append(atts, CompositeTypeAttribute{composite.AttName, composite.AttType})
 			}
-			utils.MustPrintf(predataFile, strings.Join(atts, ",\n"))
-			utils.MustPrintln(predataFile, "\n);")
-			PrintObjectMetadata(predataFile, typeMetadata[typ.Oid], typeFQN, "TYPE")
+			composite.CompositeAtts = atts
+			coalescedTypes = append(coalescedTypes, composite)
 		} else {
+			coalescedTypes = append(coalescedTypes, typ)
 			i++
 		}
 	}
+	return coalescedTypes
+}
+
+func PrintCreateCompositeTypeStatement(predataFile io.Writer, composite TypeDefinition, typeMetadata ObjectMetadata) {
+	typeFQN := MakeFQN(composite.TypeSchema, composite.TypeName)
+	utils.MustPrintf(predataFile, "\n\nCREATE TYPE %s AS (\n", typeFQN)
+	atts := make([]string, 0)
+	for _, att := range composite.CompositeAtts {
+		atts = append(atts, fmt.Sprintf("\t%s %s", att.AttName, att.AttType))
+	}
+	utils.MustPrintln(predataFile, strings.Join(atts, ",\n"))
+	utils.MustPrintf(predataFile, ");")
+	PrintObjectMetadata(predataFile, typeMetadata, typeFQN, "TYPE")
 }
 
 func PrintCreateEnumTypeStatements(predataFile io.Writer, types []TypeDefinition, typeMetadata MetadataMap) {

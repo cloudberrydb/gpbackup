@@ -29,6 +29,7 @@ type QueryFunctionDefinition struct {
 	NumRows           float32 `db:"prorows"`
 	DataAccess        string  `db:"prodataaccess"`
 	Language          string
+	DependsUpon       []string
 }
 
 func GetFunctionDefinitions(connection *utils.DBConn) []QueryFunctionDefinition {
@@ -185,4 +186,42 @@ ORDER BY 1, 2;`, NonUserSchemaFilterClause("n"))
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results
+}
+
+/*
+ * When we retrieve function dependencies, we don't record a dependency of a
+ * function on a base type if the function is part of the definition of the
+ * base type, as we print out shell types for all base types at the beginning
+ * of the dump and so do not need to consider those dependencies when sorting
+ * functions and types.
+ */
+func ConstructFunctionDependencies(connection *utils.DBConn, functions []QueryFunctionDefinition) []QueryFunctionDefinition {
+	query := fmt.Sprintf(`
+SELECT
+p.oid,
+quote_ident(n.nspname) || '.' || quote_ident(t.typname) AS referencedobject
+FROM pg_depend d
+JOIN pg_type t ON (d.refobjid = t.oid AND t.typtype != 'e' AND t.typtype != 'p')
+JOIN pg_proc p ON d.objid = p.oid
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE %s
+AND d.refclassid = 'pg_type'::regclass
+AND t.typinput != p.oid
+AND t.typoutput != p.oid
+AND t.typreceive != p.oid
+AND t.typsend != p.oid
+AND t.typmodin != p.oid
+AND t.typmodout != p.oid;`, NonUserSchemaFilterClause("n"))
+
+	results := make([]QueryDependency, 0)
+	dependencyMap := make(map[uint32][]string, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	for _, dependency := range results {
+		dependencyMap[dependency.Oid] = append(dependencyMap[dependency.Oid], dependency.ReferencedObject)
+	}
+	for i := 0; i < len(functions); i++ {
+		functions[i].DependsUpon = dependencyMap[functions[i].Oid]
+	}
+	return functions
 }

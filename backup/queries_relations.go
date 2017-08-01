@@ -175,12 +175,9 @@ SELECT
 	objid AS oid,
 	quote_ident(n.nspname) || '.' || quote_ident(p.relname) AS referencedobject 
 FROM pg_depend d
-JOIN pg_class p
-	ON d.refobjid = p.oid AND p.relkind = 'r'
-JOIN pg_namespace n
-	ON p.relnamespace = n.oid
-JOIN pg_class c
-	ON d.objid = c.oid AND c.relkind = 'r';`
+JOIN pg_class p ON d.refobjid = p.oid AND p.relkind = 'r'
+JOIN pg_namespace n ON p.relnamespace = n.oid
+JOIN pg_class c ON d.objid = c.oid AND c.relkind = 'r';`
 
 	results := make([]QueryDependency, 0)
 	dependencyMap := make(map[uint32][]string, 0)

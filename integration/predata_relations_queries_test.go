@@ -450,7 +450,7 @@ CYCLE`)
 		child := backup.BasicRelation("public", "child")
 		childOne := backup.BasicRelation("public", "child_one")
 		childTwo := backup.BasicRelation("public", "child_two")
-		It("returns a correct map if there is one table dependent on one table", func() {
+		It("constructs dependencies correctly if there is one table dependent on one table", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE parent(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE parent")
 			testutils.AssertQueryRuns(connection, "CREATE TABLE child() INHERITS (parent)")
@@ -465,7 +465,7 @@ CYCLE`)
 			Expect(len(tables[0].DependsUpon)).To(Equal(1))
 			Expect(tables[0].DependsUpon[0]).To(Equal("public.parent"))
 		})
-		It("returns a correct map if there are two tables dependent on one table", func() {
+		It("constructs dependencies correctly if there are two tables dependent on one table", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE parent(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE parent")
 			testutils.AssertQueryRuns(connection, "CREATE TABLE child_one() INHERITS (parent)")
@@ -485,7 +485,7 @@ CYCLE`)
 			Expect(len(tables[1].DependsUpon)).To(Equal(1))
 			Expect(tables[1].DependsUpon[0]).To(Equal("public.parent"))
 		})
-		It("returns a correct map if there is one table dependent on two tables", func() {
+		It("constructs dependencies correctly if there is one table dependent on two tables", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE parent_one(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE parent_one")
 			testutils.AssertQueryRuns(connection, "CREATE TABLE parent_two(j int)")
@@ -503,14 +503,14 @@ CYCLE`)
 			Expect(tables[0].DependsUpon[0]).To(Equal("public.parent_one"))
 			Expect(tables[0].DependsUpon[1]).To(Equal("public.parent_two"))
 		})
-		It("returns a correct map if there are no table dependencies", func() {
+		It("constructs dependencies correctly if there are no table dependencies", func() {
 			tables := []backup.Relation{}
 			tables = backup.ConstructTableDependencies(connection, tables)
 			Expect(len(tables)).To(Equal(0))
 		})
 	})
 	Describe("ConstructViewDependencies", func() {
-		It("returns a correct map for a view that depends on two other views", func() {
+		It("constructs dependencies correctly for a view that depends on two other views", func() {
 			testutils.AssertQueryRuns(connection, "CREATE VIEW parent1 AS SELECT relname FROM pg_class")
 			defer testutils.AssertQueryRuns(connection, "DROP VIEW parent1")
 			testutils.AssertQueryRuns(connection, "CREATE VIEW parent2 AS SELECT relname FROM pg_class")

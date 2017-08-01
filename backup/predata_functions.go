@@ -13,19 +13,17 @@ import (
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
-func PrintCreateFunctionStatements(predataFile io.Writer, funcDefs []QueryFunctionDefinition, funcMetadata MetadataMap) {
-	for _, funcDef := range funcDefs {
-		funcFQN := MakeFQN(funcDef.SchemaName, funcDef.FunctionName)
-		utils.MustPrintf(predataFile, "\n\nCREATE FUNCTION %s(%s) RETURNS ", funcFQN, funcDef.Arguments)
-		utils.MustPrintf(predataFile, "%s AS", funcDef.ResultType)
-		PrintFunctionBodyOrPath(predataFile, funcDef)
-		utils.MustPrintf(predataFile, "LANGUAGE %s", funcDef.Language)
-		PrintFunctionModifiers(predataFile, funcDef)
-		utils.MustPrintln(predataFile, ";")
+func PrintCreateFunctionStatement(predataFile io.Writer, funcDef QueryFunctionDefinition, funcMetadata ObjectMetadata) {
+	funcFQN := MakeFQN(funcDef.SchemaName, funcDef.FunctionName)
+	utils.MustPrintf(predataFile, "\n\nCREATE FUNCTION %s(%s) RETURNS ", funcFQN, funcDef.Arguments)
+	utils.MustPrintf(predataFile, "%s AS", funcDef.ResultType)
+	PrintFunctionBodyOrPath(predataFile, funcDef)
+	utils.MustPrintf(predataFile, "LANGUAGE %s", funcDef.Language)
+	PrintFunctionModifiers(predataFile, funcDef)
+	utils.MustPrintln(predataFile, ";")
 
-		nameStr := fmt.Sprintf("%s(%s)", funcFQN, funcDef.IdentArgs)
-		PrintObjectMetadata(predataFile, funcMetadata[funcDef.Oid], nameStr, "FUNCTION")
-	}
+	nameStr := fmt.Sprintf("%s(%s)", funcFQN, funcDef.IdentArgs)
+	PrintObjectMetadata(predataFile, funcMetadata, nameStr, "FUNCTION")
 }
 
 /*

@@ -185,36 +185,6 @@ var _ = Describe("backup/predata_shared tests", func() {
 			Expect(uniqueSchemas).To(Equal([]backup.Schema{}))
 		})
 	})
-	Describe("SortViews", func() {
-		It("sorts by dependencies", func() {
-			views := []backup.QueryViewDefinition{
-				{SchemaName: "public", ViewName: "view1", DependsUpon: []string{"public.view2"}},
-				{SchemaName: "public", ViewName: "view2", DependsUpon: []string{}},
-				{SchemaName: "public", ViewName: "view3", DependsUpon: []string{"public.view1"}},
-			}
-
-			backup.SortViews(views)
-
-			Expect(views[0].ToString()).To(Equal("public.view2"))
-			Expect(views[1].ToString()).To(Equal("public.view1"))
-			Expect(views[2].ToString()).To(Equal("public.view3"))
-		})
-	})
-	Describe("SortRelations", func() {
-		It("sorts by dependencies", func() {
-			relations := []backup.Relation{
-				{SchemaName: "public", RelationName: "relation1", DependsUpon: []string{"public.relation2"}},
-				{SchemaName: "public", RelationName: "relation2", DependsUpon: []string{}},
-				{SchemaName: "public", RelationName: "relation3", DependsUpon: []string{"public.relation1"}},
-			}
-
-			backup.SortRelations(relations)
-
-			Expect(relations[0].ToString()).To(Equal("public.relation2"))
-			Expect(relations[1].ToString()).To(Equal("public.relation1"))
-			Expect(relations[2].ToString()).To(Equal("public.relation3"))
-		})
-	})
 	Describe("PrintObjectMetadata", func() {
 		hasAllPrivileges := testutils.DefaultACLForType("anothertestrole", "TABLE")
 		hasMostPrivileges := testutils.DefaultACLForType("testrole", "TABLE")
@@ -322,6 +292,73 @@ REVOKE ALL ON TABLE public.tablename FROM testrole;
 GRANT ALL ON TABLE public.tablename TO anothertestrole;
 GRANT SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES ON TABLE public.tablename TO testrole;
 GRANT TRIGGER ON TABLE public.tablename TO PUBLIC;`)
+		})
+	})
+	Describe("TopologicalSort", func() {
+		It("returns the original slice if there are no dependencies among objects", func() {
+			relations := []backup.Sortable{
+				backup.Relation{SchemaName: "public", RelationName: "relation1", DependsUpon: []string{}},
+				backup.Relation{SchemaName: "public", RelationName: "relation2", DependsUpon: []string{}},
+				backup.Relation{SchemaName: "public", RelationName: "relation3", DependsUpon: []string{}},
+			}
+
+			relations = backup.TopologicalSort(relations)
+
+			Expect(relations[0].Name()).To(Equal("public.relation1"))
+			Expect(relations[1].Name()).To(Equal("public.relation2"))
+			Expect(relations[2].Name()).To(Equal("public.relation3"))
+		})
+		It("sorts the slice correctly if there is an object dependent on one other object", func() {
+			relations := []backup.Sortable{
+				backup.Relation{SchemaName: "public", RelationName: "relation1", DependsUpon: []string{"public.relation3"}},
+				backup.Relation{SchemaName: "public", RelationName: "relation2", DependsUpon: []string{}},
+				backup.Relation{SchemaName: "public", RelationName: "relation3", DependsUpon: []string{}},
+			}
+
+			relations = backup.TopologicalSort(relations)
+
+			Expect(relations[0].Name()).To(Equal("public.relation2"))
+			Expect(relations[1].Name()).To(Equal("public.relation3"))
+			Expect(relations[2].Name()).To(Equal("public.relation1"))
+		})
+		It("sorts the slice correctly if there are two objects dependent on one other object", func() {
+			views := []backup.Sortable{
+				backup.QueryViewDefinition{SchemaName: "public", ViewName: "view1", DependsUpon: []string{"public.view2"}},
+				backup.QueryViewDefinition{SchemaName: "public", ViewName: "view2", DependsUpon: []string{}},
+				backup.QueryViewDefinition{SchemaName: "public", ViewName: "view3", DependsUpon: []string{"public.view2"}},
+			}
+
+			views = backup.TopologicalSort(views)
+
+			Expect(views[0].Name()).To(Equal("public.view2"))
+			Expect(views[1].Name()).To(Equal("public.view1"))
+			Expect(views[2].Name()).To(Equal("public.view3"))
+		})
+		It("sorts the slice correctly if there is one object dependent on two other objects", func() {
+			types := []backup.Sortable{
+				backup.TypeDefinition{TypeSchema: "public", TypeName: "type1", DependsUpon: []string{}},
+				backup.TypeDefinition{TypeSchema: "public", TypeName: "type2", DependsUpon: []string{"public.type1", "public.type3"}},
+				backup.TypeDefinition{TypeSchema: "public", TypeName: "type3", DependsUpon: []string{}},
+			}
+
+			types = backup.TopologicalSort(types)
+
+			Expect(types[0].Name()).To(Equal("public.type1"))
+			Expect(types[1].Name()).To(Equal("public.type3"))
+			Expect(types[2].Name()).To(Equal("public.type2"))
+		})
+		It("sorts the slice correctly if there are complex dependencies", func() {
+			sortable := []backup.Sortable{
+				backup.TypeDefinition{TypeSchema: "public", TypeName: "type1", DependsUpon: []string{}},
+				backup.TypeDefinition{TypeSchema: "public", TypeName: "type2", DependsUpon: []string{"public.type1", "public.function3"}},
+				backup.QueryFunctionDefinition{SchemaName: "public", FunctionName: "function3", DependsUpon: []string{"public.type1"}},
+			}
+
+			sortable = backup.TopologicalSort(sortable)
+
+			Expect(sortable[0].Name()).To(Equal("public.type1"))
+			Expect(sortable[1].Name()).To(Equal("public.function3"))
+			Expect(sortable[2].Name()).To(Equal("public.type2"))
 		})
 	})
 })

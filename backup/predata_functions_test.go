@@ -17,32 +17,30 @@ var _ = Describe("backup/predata_functions tests", func() {
 	})
 	Describe("Functions involved in printing CREATE FUNCTION statements", func() {
 		var funcDef backup.QueryFunctionDefinition
-		funcDefs := make([]backup.QueryFunctionDefinition, 1)
 		funcDefault := backup.QueryFunctionDefinition{1, "public", "func_name", false, "add_two_ints", "", "integer, integer", "integer, integer", "integer",
-			"v", false, false, "", float32(1), float32(0), "", "internal"}
+			"v", false, false, "", float32(1), float32(0), "", "internal", nil}
 		BeforeEach(func() {
 			funcDef = funcDefault
-			funcDefs[0] = funcDef
 		})
 
-		Describe("PrintCreateFunctionStatements", func() {
+		Describe("PrintCreateFunctionStatement", func() {
 			var (
-				funcMetadataMap backup.MetadataMap
+				funcMetadata backup.ObjectMetadata
 			)
 			BeforeEach(func() {
-				funcMetadataMap = backup.MetadataMap{}
+				funcMetadata = backup.ObjectMetadata{}
 			})
 			It("prints a function definition for an internal function without a binary path", func() {
-				backup.PrintCreateFunctionStatements(buffer, funcDefs, funcMetadataMap)
+				backup.PrintCreateFunctionStatement(buffer, funcDef, funcMetadata)
 				testutils.ExpectRegexp(buffer, `CREATE FUNCTION public.func_name(integer, integer) RETURNS integer AS
 $$add_two_ints$$
 LANGUAGE internal;
 `)
 			})
 			It("prints a function definition for a function that returns a set", func() {
-				funcDefs[0].ReturnsSet = true
-				funcDefs[0].ResultType = "SETOF integer"
-				backup.PrintCreateFunctionStatements(buffer, funcDefs, funcMetadataMap)
+				funcDef.ReturnsSet = true
+				funcDef.ResultType = "SETOF integer"
+				backup.PrintCreateFunctionStatement(buffer, funcDef, funcMetadata)
 				testutils.ExpectRegexp(buffer, `CREATE FUNCTION public.func_name(integer, integer) RETURNS SETOF integer AS
 $$add_two_ints$$
 LANGUAGE internal;
@@ -50,8 +48,7 @@ LANGUAGE internal;
 			})
 			It("prints a function definition for a function with permissions, an owner, and a comment", func() {
 				funcMetadata := backup.ObjectMetadata{[]backup.ACL{testutils.DefaultACLForType("testrole", "FUNCTION")}, "testrole", "This is a function comment."}
-				funcMetadataMap[1] = funcMetadata
-				backup.PrintCreateFunctionStatements(buffer, funcDefs, funcMetadataMap)
+				backup.PrintCreateFunctionStatement(buffer, funcDef, funcMetadata)
 				testutils.ExpectRegexp(buffer, `CREATE FUNCTION public.func_name(integer, integer) RETURNS integer AS
 $$add_two_ints$$
 LANGUAGE internal;

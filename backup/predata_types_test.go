@@ -10,10 +10,12 @@ import (
 
 var _ = Describe("backup/predata_types tests", func() {
 	buffer := gbytes.NewBuffer()
+	typeMetadata := backup.ObjectMetadata{}
 	typeMetadataMap := backup.MetadataMap{}
 
 	BeforeEach(func() {
 		buffer = gbytes.BufferWithBytes([]byte(""))
+		typeMetadata = backup.ObjectMetadata{}
 		typeMetadataMap = backup.MetadataMap{}
 	})
 	Describe("PrintCreateEnumTypeStatements", func() {
@@ -44,33 +46,34 @@ COMMENT ON TYPE public.enum_type IS 'This is a type comment.';
 ALTER TYPE public.enum_type OWNER TO testrole;`)
 		})
 	})
-	Describe("PrintCreateCompositeTypeStatements", func() {
-		compOne := backup.TypeDefinition{Oid: 1, TypeSchema: "public", TypeName: "composite_type", Type: "c", AttName: "bar", AttType: "integer"}
-		compTwo := backup.TypeDefinition{Oid: 1, TypeSchema: "public", TypeName: "composite_type", Type: "c", AttName: "baz", AttType: "text"}
-		compThree := backup.TypeDefinition{Oid: 1, TypeSchema: "public", TypeName: "composite_type", Type: "c", AttName: "foo", AttType: "float"}
+	Describe("PrintCreateCompositeTypeStatement", func() {
+		oneAtt := []backup.CompositeTypeAttribute{{"foo", "integer"}}
+		twoAtts := []backup.CompositeTypeAttribute{{"foo", "integer"}, {"bar", "text"}}
+		compType := backup.TypeDefinition{Oid: 1, TypeSchema: "public", TypeName: "composite_type", Type: "c"}
 
 		It("prints a composite type with one attribute", func() {
-			backup.PrintCreateCompositeTypeStatements(buffer, []backup.TypeDefinition{compOne}, typeMetadataMap)
+			compType.CompositeAtts = oneAtt
+			backup.PrintCreateCompositeTypeStatement(buffer, compType, typeMetadata)
 			testutils.ExpectRegexp(buffer, `CREATE TYPE public.composite_type AS (
-	bar integer
+	foo integer
 );`)
 		})
 		It("prints a composite type with multiple attributes", func() {
-			backup.PrintCreateCompositeTypeStatements(buffer, []backup.TypeDefinition{compOne, compTwo, compThree}, typeMetadataMap)
+			compType.CompositeAtts = twoAtts
+			backup.PrintCreateCompositeTypeStatement(buffer, compType, typeMetadata)
 			testutils.ExpectRegexp(buffer, `CREATE TYPE public.composite_type AS (
-	bar integer,
-	baz text,
-	foo float
+	foo integer,
+	bar text
 );`)
 		})
 		It("prints a composite type with comment and owner", func() {
-			typeMetadataMap = testutils.DefaultMetadataMap("TYPE", false, true, true)
-			backup.PrintCreateCompositeTypeStatements(buffer, []backup.TypeDefinition{compOne, compThree}, typeMetadataMap)
+			compType.CompositeAtts = twoAtts
+			typeMetadata = testutils.DefaultMetadataMap("TYPE", false, true, true)[1]
+			backup.PrintCreateCompositeTypeStatement(buffer, compType, typeMetadata)
 			testutils.ExpectRegexp(buffer, `CREATE TYPE public.composite_type AS (
-	bar integer,
-	foo float
+	foo integer,
+	bar text
 );
-
 
 COMMENT ON TYPE public.composite_type IS 'This is a type comment.';
 
@@ -78,29 +81,29 @@ COMMENT ON TYPE public.composite_type IS 'This is a type comment.';
 ALTER TYPE public.composite_type OWNER TO testrole;`)
 		})
 	})
-	Describe("PrintCreateBaseTypeStatements", func() {
+	Describe("PrintCreateBaseTypeStatement", func() {
 		baseSimple := backup.TypeDefinition{1, "public", "base_type", "b", "", "", "input_fn", "output_fn",
-			"-", "-", "-", "-", -1, false, "c", "p", "", "-", "", "", "", false}
+			"", "", "", "", -1, false, "c", "p", "", "", "", "", "", false, nil, nil}
 		basePartial := backup.TypeDefinition{1, "public", "base_type", "b", "", "", "input_fn", "output_fn",
-			"receive_fn", "send_fn", "modin_fn", "modout_fn", -1, false, "c", "p", "42", "int4", ",", "", "", false}
+			"receive_fn", "send_fn", "modin_fn", "modout_fn", -1, false, "c", "p", "42", "int4", ",", "", "", false, nil, nil}
 		baseFull := backup.TypeDefinition{1, "public", "base_type", "b", "", "", "input_fn", "output_fn",
-			"receive_fn", "send_fn", "modin_fn", "modout_fn", 16, true, "s", "e", "42", "int4", ",", "", "", false}
+			"receive_fn", "send_fn", "modin_fn", "modout_fn", 16, true, "s", "e", "42", "int4", ",", "", "", false, nil, nil}
 		basePermOne := backup.TypeDefinition{1, "public", "base_type", "b", "", "", "input_fn", "output_fn",
-			"-", "-", "-", "-", -1, false, "d", "m", "", "-", "", "", "", false}
+			"", "", "", "", -1, false, "d", "m", "", "", "", "", "", false, nil, nil}
 		basePermTwo := backup.TypeDefinition{1, "public", "base_type", "b", "", "", "input_fn", "output_fn",
-			"-", "-", "-", "-", -1, false, "i", "x", "", "-", "", "", "", false}
+			"", "", "", "", -1, false, "i", "x", "", "", "", "", "", false, nil, nil}
 		baseCommentOwner := backup.TypeDefinition{1, "public", "base_type", "b", "", "", "input_fn", "output_fn",
-			"-", "-", "-", "-", -1, false, "c", "p", "", "-", "", "", "", false}
+			"", "", "", "", -1, false, "c", "p", "", "", "", "", "", false, nil, nil}
 
 		It("prints a base type with no optional arguments", func() {
-			backup.PrintCreateBaseTypeStatements(buffer, []backup.TypeDefinition{baseSimple}, typeMetadataMap)
+			backup.PrintCreateBaseTypeStatement(buffer, baseSimple, typeMetadata)
 			testutils.ExpectRegexp(buffer, `CREATE TYPE public.base_type (
 	INPUT = input_fn,
 	OUTPUT = output_fn
 );`)
 		})
 		It("prints a base type where all optional arguments have default values where possible", func() {
-			backup.PrintCreateBaseTypeStatements(buffer, []backup.TypeDefinition{basePartial}, typeMetadataMap)
+			backup.PrintCreateBaseTypeStatement(buffer, basePartial, typeMetadata)
 			testutils.ExpectRegexp(buffer, `CREATE TYPE public.base_type (
 	INPUT = input_fn,
 	OUTPUT = output_fn,
@@ -114,7 +117,7 @@ ALTER TYPE public.composite_type OWNER TO testrole;`)
 );`)
 		})
 		It("prints a base type with all optional arguments provided", func() {
-			backup.PrintCreateBaseTypeStatements(buffer, []backup.TypeDefinition{baseFull}, typeMetadataMap)
+			backup.PrintCreateBaseTypeStatement(buffer, baseFull, typeMetadata)
 			testutils.ExpectRegexp(buffer, `CREATE TYPE public.base_type (
 	INPUT = input_fn,
 	OUTPUT = output_fn,
@@ -132,7 +135,7 @@ ALTER TYPE public.composite_type OWNER TO testrole;`)
 );`)
 		})
 		It("prints a base type with double alignment and main storage", func() {
-			backup.PrintCreateBaseTypeStatements(buffer, []backup.TypeDefinition{basePermOne}, typeMetadataMap)
+			backup.PrintCreateBaseTypeStatement(buffer, basePermOne, typeMetadata)
 			testutils.ExpectRegexp(buffer, `CREATE TYPE public.base_type (
 	INPUT = input_fn,
 	OUTPUT = output_fn,
@@ -141,7 +144,7 @@ ALTER TYPE public.composite_type OWNER TO testrole;`)
 );`)
 		})
 		It("prints a base type with int4 alignment and external storage", func() {
-			backup.PrintCreateBaseTypeStatements(buffer, []backup.TypeDefinition{basePermTwo}, typeMetadataMap)
+			backup.PrintCreateBaseTypeStatement(buffer, basePermTwo, typeMetadata)
 			testutils.ExpectRegexp(buffer, `CREATE TYPE public.base_type (
 	INPUT = input_fn,
 	OUTPUT = output_fn,
@@ -150,7 +153,7 @@ ALTER TYPE public.composite_type OWNER TO testrole;`)
 );`)
 		})
 		It("prints a base type with comment and owner", func() {
-			backup.PrintCreateBaseTypeStatements(buffer, []backup.TypeDefinition{baseCommentOwner}, typeMetadataMap)
+			backup.PrintCreateBaseTypeStatement(buffer, baseCommentOwner, typeMetadata)
 			testutils.ExpectRegexp(buffer, `CREATE TYPE public.base_type (
 	INPUT = input_fn,
 	OUTPUT = output_fn
@@ -159,9 +162,9 @@ ALTER TYPE public.composite_type OWNER TO testrole;`)
 	})
 	Describe("PrintCreateShellTypeStatements", func() {
 		baseOne := backup.TypeDefinition{1, "public", "base_type1", "b", "", "", "input_fn", "output_fn",
-			"-", "-", "-", "-", -1, false, "c", "p", "", "-", "", "", "", false}
+			"", "", "", "", -1, false, "c", "p", "", "", "", "", "", false, nil, nil}
 		baseTwo := backup.TypeDefinition{1, "public", "base_type2", "b", "", "", "input_fn", "output_fn",
-			"-", "-", "-", "-", -1, false, "c", "p", "", "-", "", "", "", false}
+			"", "", "", "", -1, false, "c", "p", "", "", "", "", "", false, nil, nil}
 		compOne := backup.TypeDefinition{Oid: 1, TypeSchema: "public", TypeName: "composite_type1", Type: "c", AttName: "bar", AttType: "integer"}
 		compTwo := backup.TypeDefinition{Oid: 1, TypeSchema: "public", TypeName: "composite_type2", Type: "c", AttName: "bar", AttType: "integer"}
 		enumOne := backup.TypeDefinition{Oid: 1, TypeSchema: "public", TypeName: "enum_type", Type: "e", EnumLabels: "'bar',\n\t'baz',\n\t'foo'"}
@@ -171,25 +174,21 @@ ALTER TYPE public.composite_type OWNER TO testrole;`)
 CREATE TYPE public.base_type2;`)
 		})
 	})
-	Describe("PrintCreateDomainStatements", func() {
-		emptyMetadataMap := backup.MetadataMap{}
+	Describe("PrintCreateDomainStatement", func() {
+		emptyMetadata := backup.ObjectMetadata{}
 		domainOne := testutils.DefaultTypeDefinition("d", "domain1")
 		domainOne.DefaultVal = "4"
 		domainOne.BaseType = "numeric"
 		domainOne.NotNull = true
 		domainTwo := testutils.DefaultTypeDefinition("d", "domain2")
 		domainTwo.BaseType = "varchar"
-		baseOne := testutils.DefaultTypeDefinition("b", "base_type1")
-		compOne := testutils.DefaultTypeDefinition("c", "composite_type1")
-		enumOne := testutils.DefaultTypeDefinition("e", "enum_type")
-		It("prints domain types", func() {
-			backup.PrintCreateDomainStatements(buffer, []backup.TypeDefinition{domainOne, domainTwo, baseOne, compOne, enumOne}, emptyMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE DOMAIN public.domain1 AS numeric DEFAULT 4 NOT NULL;
-CREATE DOMAIN public.domain2 AS varchar;`)
+		It("prints a basic domain type", func() {
+			backup.PrintCreateDomainStatement(buffer, domainOne, emptyMetadata)
+			testutils.ExpectRegexp(buffer, `CREATE DOMAIN public.domain1 AS numeric DEFAULT 4 NOT NULL;`)
 		})
-		It("prints a composite type with comment and owner", func() {
-			typeMetadataMap = testutils.DefaultMetadataMap("DOMAIN", false, true, true)
-			backup.PrintCreateDomainStatements(buffer, []backup.TypeDefinition{domainTwo}, typeMetadataMap)
+		It("prints a domain type with comment and owner", func() {
+			typeMetadata = testutils.DefaultMetadataMap("DOMAIN", false, true, true)[1]
+			backup.PrintCreateDomainStatement(buffer, domainTwo, typeMetadata)
 			testutils.ExpectRegexp(buffer, `CREATE DOMAIN public.domain2 AS varchar;
 
 

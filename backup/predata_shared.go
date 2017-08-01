@@ -343,3 +343,155 @@ func (obj ObjectMetadata) GetCommentStatement(objectName string, objectType stri
 	}
 	return commentStr
 }
+
+func SortFunctionsAndTypesInDependencyOrder(types []TypeDefinition, functions []QueryFunctionDefinition) []Sortable {
+	objects := make([]Sortable, 0)
+	for _, typ := range types {
+		if typ.Type != "e" && typ.Type != "p" {
+			objects = append(objects, typ)
+		}
+	}
+	for _, function := range functions {
+		objects = append(objects, function)
+	}
+	sorted := TopologicalSort(objects)
+	return sorted
+}
+
+func ConstructDependencyLists(connection *utils.DBConn, types []TypeDefinition, functions []QueryFunctionDefinition) ([]TypeDefinition, []QueryFunctionDefinition) {
+	types = CoalesceCompositeTypes(types)
+	types = ConstructBaseTypeDependencies(connection, types)
+	types = ConstructDomainDependencies(connection, types)
+	types = ConstructCompositeTypeDependencies(connection, types)
+	functions = ConstructFunctionDependencies(connection, functions)
+	return types, functions
+}
+
+func ConstructFunctionAndTypeMetadataMap(types MetadataMap, functions MetadataMap) MetadataMap {
+	metadataMap := make(MetadataMap, 0)
+	for k, v := range types {
+		metadataMap[k] = v
+	}
+	for k, v := range functions {
+		metadataMap[k] = v
+	}
+	return metadataMap
+}
+
+func PrintCreateDependentTypeAndFunctionStatements(predataFile io.Writer, objects []Sortable, metadataMap MetadataMap) {
+	for _, object := range objects {
+		switch obj := object.(type) {
+		case TypeDefinition:
+			switch obj.Type {
+			case "b":
+				PrintCreateBaseTypeStatement(predataFile, obj, metadataMap[obj.Oid])
+			case "c":
+				PrintCreateCompositeTypeStatement(predataFile, obj, metadataMap[obj.Oid])
+			case "d":
+				PrintCreateDomainStatement(predataFile, obj, metadataMap[obj.Oid])
+			}
+		case QueryFunctionDefinition:
+			PrintCreateFunctionStatement(predataFile, obj, metadataMap[obj.Oid])
+		}
+	}
+}
+
+/*
+ * Structs and functions for topological sort
+ */
+
+type Sortable interface {
+	Name() string
+	Dependencies() []string
+}
+
+func (r Relation) Name() string {
+	return r.ToString()
+}
+
+func (v QueryViewDefinition) Name() string {
+	return MakeFQN(v.SchemaName, v.ViewName)
+}
+
+func (f QueryFunctionDefinition) Name() string {
+	return MakeFQN(f.SchemaName, f.FunctionName)
+}
+
+func (t TypeDefinition) Name() string {
+	return MakeFQN(t.TypeSchema, t.TypeName)
+}
+
+func (r Relation) Dependencies() []string {
+	return r.DependsUpon
+}
+
+func (v QueryViewDefinition) Dependencies() []string {
+	return v.DependsUpon
+}
+
+func (f QueryFunctionDefinition) Dependencies() []string {
+	return f.DependsUpon
+}
+
+func (t TypeDefinition) Dependencies() []string {
+	return t.DependsUpon
+}
+
+func SortRelations(relations []Relation) []Relation {
+	sortable := make([]Sortable, len(relations))
+	for i := range relations {
+		sortable[i] = relations[i]
+	}
+	sortable = TopologicalSort(sortable)
+	for i := range sortable {
+		relations[i] = sortable[i].(Relation)
+	}
+	return relations
+}
+
+func SortViews(views []QueryViewDefinition) []QueryViewDefinition {
+	sortable := make([]Sortable, len(views))
+	for i := range views {
+		sortable[i] = views[i]
+	}
+	sortable = TopologicalSort(sortable)
+	for i := range views {
+		views[i] = sortable[i].(QueryViewDefinition)
+	}
+	return views
+}
+
+func TopologicalSort(slice []Sortable) []Sortable {
+	inDegrees := make(map[string]int, 0)
+	dependencyIndexes := make(map[string]int, 0)
+	isDependentOn := make(map[string][]string, 0)
+	queue := make([]Sortable, 0)
+	sorted := make([]Sortable, 0)
+	notVisited := make(map[string]bool)
+	for i, item := range slice {
+		name := item.Name()
+		deps := item.Dependencies()
+		notVisited[name] = true
+		inDegrees[name] = len(deps)
+		for _, dep := range deps {
+			isDependentOn[dep] = append(isDependentOn[dep], name)
+		}
+		dependencyIndexes[name] = i
+		if len(deps) == 0 {
+			queue = append(queue, item)
+		}
+	}
+	for len(queue) > 0 {
+		item := queue[0]
+		queue = queue[1:]
+		sorted = append(sorted, item)
+		delete(notVisited, item.Name())
+		for _, dep := range isDependentOn[item.Name()] {
+			inDegrees[dep]--
+			if inDegrees[dep] == 0 {
+				queue = append(queue, slice[dependencyIndexes[dep]])
+			}
+		}
+	}
+	return sorted
+}

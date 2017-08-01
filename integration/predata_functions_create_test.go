@@ -17,8 +17,8 @@ var _ = Describe("backup integration create statement tests", func() {
 		buffer = bytes.NewBuffer([]byte(""))
 		testutils.SetupTestLogger()
 	})
-	Describe("PrintCreateFunctionStatements", func() {
-		funcMetadataMap := backup.MetadataMap{}
+	Describe("PrintCreateFunctionStatement", func() {
+		funcMetadata := backup.ObjectMetadata{}
 		It("creates a function with a simple return type", func() {
 			addFunction := backup.QueryFunctionDefinition{
 				SchemaName: "public", FunctionName: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
@@ -27,7 +27,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				Language: "sql",
 			}
 
-			backup.PrintCreateFunctionStatements(buffer, []backup.QueryFunctionDefinition{addFunction}, funcMetadataMap)
+			backup.PrintCreateFunctionStatement(buffer, addFunction, funcMetadata)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION add(integer, integer)")
@@ -45,7 +45,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				NumRows: 200, DataAccess: "m", Language: "sql",
 			}
 
-			backup.PrintCreateFunctionStatements(buffer, []backup.QueryFunctionDefinition{appendFunction}, funcMetadataMap)
+			backup.PrintCreateFunctionStatement(buffer, appendFunction, funcMetadata)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION append(integer, integer)")
@@ -63,7 +63,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				Language: "sql",
 			}
 
-			backup.PrintCreateFunctionStatements(buffer, []backup.QueryFunctionDefinition{dupFunction}, funcMetadataMap)
+			backup.PrintCreateFunctionStatement(buffer, dupFunction, funcMetadata)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION dup(integer)")

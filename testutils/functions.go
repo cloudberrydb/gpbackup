@@ -193,7 +193,7 @@ func DefaultACLWithGrantWithout(grantee string, objType string, revoke ...string
 
 func DefaultTypeDefinition(typeType string, typeName string) backup.TypeDefinition {
 	return backup.TypeDefinition{1, "public", typeName, typeType, "", "", "", "",
-		"-", "-", "-", "-", -1, false, "c", "p", "", "-", "", "", "", false}
+		"", "", "", "", -1, false, "c", "p", "", "", "", "", "", false, nil, nil}
 }
 
 /*

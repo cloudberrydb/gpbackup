@@ -150,34 +150,30 @@ func backupPredata(filename string, tables []Relation, extTableMap map[string]bo
 
 	types := GetTypeDefinitions(connection)
 	typeMetadata := GetMetadataForObjectType(connection, TypeParams)
+	functions := GetFunctionDefinitions(connection)
+	funcInfoMap := GetFunctionOidToInfoMap(connection)
+	functionMetadata := GetMetadataForObjectType(connection, FunctionParams)
+	types, functions = ConstructDependencyLists(connection, types, functions)
+
 	logger.Verbose("Writing CREATE TYPE statements for shell types to predata file")
 	PrintCreateShellTypeStatements(predataFile, types)
 
-	logger.Verbose("Writing CREATE DOMAIN statements to predata file")
-	PrintCreateDomainStatements(predataFile, types, typeMetadata)
-
-	funcDefs := GetFunctionDefinitions(connection)
-	funcInfoMap := GetFunctionOidToInfoMap(connection)
-	funcMetadata := GetMetadataForObjectType(connection, FunctionParams)
-
 	logger.Verbose("Writing CREATE PROCEDURAL LANGUAGE statements to predata file")
 	procLangs := GetProceduralLanguages(connection)
-	langFuncs, otherFuncs := ExtractLanguageFunctions(funcDefs, procLangs)
-	PrintCreateFunctionStatements(predataFile, langFuncs, funcMetadata)
+	langFuncs, otherFuncs := ExtractLanguageFunctions(functions, procLangs)
+	for _, langFunc := range langFuncs {
+		PrintCreateFunctionStatement(predataFile, langFunc, functionMetadata[langFunc.Oid])
+	}
 	procLangMetadata := GetMetadataForObjectType(connection, ProcLangParams)
 	PrintCreateLanguageStatements(predataFile, procLangs, funcInfoMap, procLangMetadata)
 
 	logger.Verbose("Writing CREATE TYPE statements for enum types to predata file")
 	PrintCreateEnumTypeStatements(predataFile, types, typeMetadata)
 
-	logger.Verbose("Writing CREATE TYPE statements for composite types to predata file")
-	PrintCreateCompositeTypeStatements(predataFile, types, typeMetadata)
-
-	logger.Verbose("Writing CREATE FUNCTION statements to predata file")
-	PrintCreateFunctionStatements(predataFile, otherFuncs, funcMetadata)
-
-	logger.Verbose("Writing CREATE TYPE statements for base types to predata file")
-	PrintCreateBaseTypeStatements(predataFile, types, typeMetadata)
+	logger.Verbose("Writing CREATE FUNCTION statements and CREATE TYPE statements for base, composite, and domain types to predata file")
+	sortedSlice := SortFunctionsAndTypesInDependencyOrder(types, otherFuncs)
+	filteredMetadata := ConstructFunctionAndTypeMetadataMap(typeMetadata, functionMetadata)
+	PrintCreateDependentTypeAndFunctionStatements(predataFile, sortedSlice, filteredMetadata)
 
 	logger.Verbose("Writing CREATE PROTOCOL statements to predata file")
 	protocols := GetExternalProtocols(connection)
@@ -217,7 +213,7 @@ func backupPredata(filename string, tables []Relation, extTableMap map[string]bo
 
 	logger.Verbose("Writing CREATE TABLE statements to predata file")
 	tables = ConstructTableDependencies(connection, tables)
-	SortRelations(tables)
+	tables = SortRelations(tables)
 	for _, table := range tables {
 		isExternal := extTableMap[table.ToString()]
 		tableDef := ConstructDefinitionsForTable(connection, table, isExternal)
@@ -231,7 +227,7 @@ func backupPredata(filename string, tables []Relation, extTableMap map[string]bo
 	logger.Verbose("Writing CREATE VIEW statements to predata file")
 	views := GetViewDefinitions(connection)
 	views = ConstructViewDependencies(connection, views)
-	SortViews(views)
+	views = SortViews(views)
 	PrintCreateViewStatements(predataFile, views, relationMetadata)
 
 	logger.Verbose("Writing ADD CONSTRAINT statements to predata file")
