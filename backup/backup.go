@@ -13,13 +13,23 @@ var (
 )
 
 var ( // Command-line flags
-	dbname      = flag.String("dbname", "", "The database to be backed up")
-	debug       = flag.Bool("debug", false, "Print verbose and debug log messages")
-	dumpDir     = flag.String("dumpdir", "", "The directory to which all dump files will be written")
-	quiet       = flag.Bool("quiet", false, "Suppress non-warning, non-error log messages")
-	verbose     = flag.Bool("verbose", false, "Print verbose log messages")
-	dumpGlobals = flag.Bool("globals", false, "Dump global metadata")
+	dbname      *string
+	debug       *bool
+	dumpDir     *string
+	quiet       *bool
+	verbose     *bool
+	dumpGlobals *bool
 )
+
+// We define and initialize flags separately to avoid import conflicts in tests
+func initializeFlags() {
+	dbname = flag.String("dbname", "", "The database to be backed up")
+	debug = flag.Bool("debug", false, "Print verbose and debug log messages")
+	dumpDir = flag.String("dumpdir", "", "The directory to which all dump files will be written")
+	quiet = flag.Bool("quiet", false, "Suppress non-warning, non-error log messages")
+	verbose = flag.Bool("verbose", false, "Print verbose log messages")
+	dumpGlobals = flag.Bool("globals", false, "Dump global metadata")
+}
 
 // This function handles setup that can be done before parsing flags.
 func DoInit() {
@@ -35,6 +45,7 @@ func SetLogger(log *utils.Logger) {
 * It should only validate; initialization with any sort of side effects should go in DoInit or DoSetup.
  */
 func DoValidation() {
+	initializeFlags()
 	flag.Parse()
 	utils.CheckExclusiveFlags("debug", "quiet", "verbose")
 }
@@ -100,7 +111,7 @@ func DoBackup() {
 }
 
 func backupGlobal(filename string) {
-	globalFile := utils.MustOpenFile(filename)
+	globalFile := utils.MustOpenFileForWriting(filename)
 
 	logger.Verbose("Writing session GUCs to global file")
 	gucs := GetSessionGUCs(connection)
@@ -136,7 +147,7 @@ func backupGlobal(filename string) {
 }
 
 func backupPredata(filename string, tables []Relation, extTableMap map[string]bool) {
-	predataFile := utils.MustOpenFile(filename)
+	predataFile := utils.MustOpenFileForWriting(filename)
 	PrintConnectionString(predataFile, connection.DBName)
 
 	logger.Verbose("Writing session GUCs to predata file")
@@ -241,18 +252,18 @@ func backupData(tables []Relation, extTableMap map[string]bool) {
 		isExternal := extTableMap[table.ToString()]
 		if !isExternal {
 			logger.Verbose("Writing data for table %s to file", table.ToString())
-			dumpFile := GetTableDumpFilePath(table)
+			dumpFile := utils.GetTableDumpFilePath(table.RelationOid)
 			CopyTableOut(connection, table, dumpFile)
 		} else {
 			logger.Warn("Skipping data dump of table %s because it is an external table.", table.ToString())
 		}
 	}
-	logger.Verbose("Writing table map file to %s", GetTableMapFilePath())
+	logger.Verbose("Writing table map file to %s", utils.GetTableMapFilePath())
 	WriteTableMapFile(tables)
 }
 
 func backupPostdata(filename string, tables []Relation, extTableMap map[string]bool) {
-	postdataFile := utils.MustOpenFile(filename)
+	postdataFile := utils.MustOpenFileForWriting(filename)
 	PrintConnectionString(postdataFile, connection.DBName)
 
 	logger.Verbose("Writing session GUCs to predata file")

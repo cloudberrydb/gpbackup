@@ -82,10 +82,18 @@ func DirectoryMustExist(dirname string) {
 	}
 }
 
-func MustOpenFile(filename string) io.Writer {
+func MustOpenFileForWriting(filename string) io.Writer {
 	fileHandle, err := System.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
-		logger.Fatal(err, "Unable to create or open file")
+		logger.Fatal(err, "Unable to create or open file for writing")
+	}
+	return fileHandle
+}
+
+func MustOpenFileForReading(filename string) io.Reader {
+	fileHandle, err := System.OpenFile(filename, os.O_RDONLY, 0666)
+	if err != nil {
+		logger.Fatal(err, "Unable to open file for reading")
 	}
 	return fileHandle
 }
@@ -220,4 +228,12 @@ func GetDirForContent(content int) string {
  */
 func GetGenericSegDir() string {
 	return fmt.Sprintf("%s/backups/%s/%s", BaseDumpDir, DumpTimestamp[0:8], DumpTimestamp)
+}
+
+func GetTableMapFilePath() string {
+	return fmt.Sprintf("%s/gpbackup_%s_table_map", GetDirForContent(-1), DumpTimestamp)
+}
+
+func GetTableDumpFilePath(oid uint32) string {
+	return fmt.Sprintf("%s/gpbackup_<SEGID>_%s_%d", GetGenericSegDir(), DumpTimestamp, oid)
 }

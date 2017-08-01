@@ -15,13 +15,23 @@ var (
 )
 
 var ( // Command-line flags
-	debug          = flag.Bool("debug", false, "Print verbose and debug log messages")
-	dumpDir        = flag.String("dumpdir", "", "The directory in which the dump files to be restored are located")
-	quiet          = flag.Bool("quiet", false, "Suppress non-warning, non-error log messages")
-	timestamp      = flag.String("timestamp", "", "The timestamp to be restored, in the format YYYYMMDDHHMMSS")
-	verbose        = flag.Bool("verbose", false, "Print verbose log messages")
-	restoreGlobals = flag.Bool("globals", false, "Restore global metadata")
+	debug          *bool
+	dumpDir        *string
+	quiet          *bool
+	timestamp      *string
+	verbose        *bool
+	restoreGlobals *bool
 )
+
+// We define and initialize flags separately to avoid import conflicts in tests
+func initializeFlags() {
+	debug = flag.Bool("debug", false, "Print verbose and debug log messages")
+	dumpDir = flag.String("dumpdir", "", "The directory in which the dump files to be restored are located")
+	quiet = flag.Bool("quiet", false, "Suppress non-warning, non-error log messages")
+	timestamp = flag.String("timestamp", "", "The timestamp to be restored, in the format YYYYMMDDHHMMSS")
+	verbose = flag.Bool("verbose", false, "Print verbose log messages")
+	restoreGlobals = flag.Bool("globals", false, "Restore global metadata")
+}
 
 // This function handles setup that can be done before parsing flags.
 func DoInit() {
@@ -37,6 +47,7 @@ func SetLogger(log *utils.Logger) {
 * It should only validate; initialization with any sort of side effects should go in DoInit or DoSetup.
  */
 func DoValidation() {
+	initializeFlags()
 	flag.Parse()
 	utils.CheckExclusiveFlags("debug", "quiet", "verbose")
 	utils.CheckMandatoryFlags("timestamp")
@@ -84,14 +95,19 @@ func DoRestore() {
 		logger.Info("Global database metadata restore complete")
 	}
 
+	connection.Close()
+	dbname := GetDatabaseNameFromPredataFile(predataFilename)
+	connection = utils.NewDBConn(dbname)
+	connection.Connect()
+	connection.Exec("SET application_name TO 'gprestore'")
+
 	logger.Info("Restoring pre-data metadata from %s", predataFilename)
 	restorePredata(predataFilename)
 	logger.Info("Pre-data metadata restore complete")
 
-	//TODO: Restore data
-	//logger.Info("Restoring data")
-	//restoreData(tables)
-	//logger.Info("Data restore complete")
+	logger.Info("Restoring data")
+	restoreData()
+	logger.Info("Data restore complete")
 
 	logger.Info("Restoring post-data metadata from %s", postdataFilename)
 	restorePostdata(postdataFilename)
@@ -107,6 +123,12 @@ func restorePredata(filename string) {
 }
 
 func restoreData() {
+	tableMap := ReadTableMapFile()
+	for name, oid := range tableMap {
+		logger.Verbose("Reading data for table %s from file", name)
+		dumpFile := utils.GetTableDumpFilePath(oid)
+		CopyTableIn(connection, name, dumpFile)
+	}
 }
 
 func restorePostdata(filename string) {

@@ -14,16 +14,8 @@ var (
 	tableDelim = ","
 )
 
-func GetTableMapFilePath() string {
-	return fmt.Sprintf("%s/gpbackup_%s_table_map", utils.GetDirForContent(-1), utils.DumpTimestamp)
-}
-
-func GetTableDumpFilePath(table Relation) string {
-	return fmt.Sprintf("%s/gpbackup_<SEGID>_%s_%d", utils.GetGenericSegDir(), utils.DumpTimestamp, table.RelationOid)
-}
-
 func WriteTableMapFile(tables []Relation) {
-	tableMapFile := utils.MustOpenFile(GetTableMapFilePath())
+	tableMapFile := utils.MustOpenFileForWriting(utils.GetTableMapFilePath())
 	for _, table := range tables {
 		utils.MustPrintf(tableMapFile, "%s: %d\n", table.ToString(), table.RelationOid)
 	}

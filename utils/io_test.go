@@ -38,11 +38,11 @@ var _ = Describe("utils/io tests", func() {
 			utils.DirectoryMustExist("dirname")
 		})
 	})
-	Describe("MustOpenFile", func() {
+	Describe("MustOpenFileForWriting", func() {
 		It("creates or opens the file for writing", func() {
 			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) { return os.Stdout, nil }
 			defer func() { utils.System.OpenFile = os.OpenFile }()
-			fileHandle := utils.MustOpenFile("filename")
+			fileHandle := utils.MustOpenFileForWriting("filename")
 			Expect(fileHandle).To(Equal(os.Stdout))
 		})
 		It("panics on error", func() {
@@ -50,8 +50,24 @@ var _ = Describe("utils/io tests", func() {
 				return nil, errors.New("Permission denied")
 			}
 			defer func() { utils.System.OpenFile = os.OpenFile }()
-			defer testutils.ShouldPanicWithMessage("Unable to create or open file: Permission denied")
-			utils.MustOpenFile("filename")
+			defer testutils.ShouldPanicWithMessage("Unable to create or open file for writing: Permission denied")
+			utils.MustOpenFileForWriting("filename")
+		})
+	})
+	Describe("MustOpenFileForReading", func() {
+		It("creates or opens the file for reading", func() {
+			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) { return os.Stdin, nil }
+			defer func() { utils.System.OpenFile = os.OpenFile }()
+			fileHandle := utils.MustOpenFileForReading("filename")
+			Expect(fileHandle).To(Equal(os.Stdin))
+		})
+		It("panics on error", func() {
+			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) {
+				return nil, errors.New("Permission denied")
+			}
+			defer func() { utils.System.OpenFile = os.OpenFile }()
+			defer testutils.ShouldPanicWithMessage("Unable to open file for reading: Permission denied")
+			utils.MustOpenFileForReading("filename")
 		})
 	})
 	Describe("GetSegmentConfiguration", func() {
@@ -183,6 +199,14 @@ var _ = Describe("utils/io tests", func() {
 		It("panics on error", func() {
 			defer testutils.ShouldPanicWithMessage("write /dev/stdin:")
 			utils.MustPrintln(os.Stdin, "text")
+		})
+	})
+	Describe("GetTableDumpFilePath", func() {
+		It("will create the dump path for data", func() {
+			utils.DumpTimestamp = "20170101010101"
+			expectedFilename := "<SEG_DATA_DIR>/backups/20170101/20170101010101/gpbackup_<SEGID>_20170101010101_3456"
+			actualFilename := utils.GetTableDumpFilePath(3456)
+			Expect(actualFilename).To(Equal(expectedFilename))
 		})
 	})
 })
