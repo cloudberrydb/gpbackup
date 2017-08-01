@@ -83,6 +83,32 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatch(&langMetadata, &resultMetadata)
 		})
 	})
+	Describe("PrintCreateConversionStatements", func() {
+		It("creates conversions", func() {
+			convOne := backup.Conversion{1, "public", "conv_one", "LATIN1", "MULE_INTERNAL", "pg_catalog.latin1_to_mic", false}
+			convTwo := backup.Conversion{0, "public", "conv_two", "LATIN1", "MULE_INTERNAL", "pg_catalog.latin1_to_mic", true}
+			conversions := []backup.Conversion{convOne, convTwo}
+			convMetadataMap := testutils.DefaultMetadataMap("CONVERSION", false, true, true)
+			convMetadata := convMetadataMap[1]
+
+			backup.PrintCreateConversionStatements(buffer, conversions, convMetadataMap)
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, "DROP CONVERSION conv_one")
+			defer testutils.AssertQueryRuns(connection, "DROP CONVERSION conv_two")
+
+			resultConversions := backup.GetConversions(connection)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.ConversionParams)
+
+			convOne.Oid = backup.OidFromObjectName(connection, "public", "conv_one", backup.ConversionParams)
+			convTwo.Oid = backup.OidFromObjectName(connection, "public", "conv_two", backup.ConversionParams)
+			Expect(len(resultConversions)).To(Equal(2))
+			resultMetadata := resultMetadataMap[convOne.Oid]
+			testutils.ExpectStructsToMatch(&convOne, &resultConversions[0])
+			testutils.ExpectStructsToMatch(&convTwo, &resultConversions[1])
+			testutils.ExpectStructsToMatch(&convMetadata, &resultMetadata)
+		})
+	})
 	Describe("PrintConstraintStatements", func() {
 		var (
 			testTable        backup.Relation

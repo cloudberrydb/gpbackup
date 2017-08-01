@@ -215,3 +215,17 @@ func PrintCreateOperatorClassStatements(predataFile io.Writer, operatorClasses [
 		PrintObjectMetadata(predataFile, operatorClassMetadata[operatorClass.Oid], operatorClassStr, "OPERATOR CLASS")
 	}
 }
+
+func PrintCreateConversionStatements(predataFile io.Writer, conversions []Conversion, conversionMetadata MetadataMap) {
+	for _, conversion := range conversions {
+		convFQN := MakeFQN(conversion.Schema, conversion.Name)
+		defaultStr := ""
+		if conversion.IsDefault {
+			defaultStr = " DEFAULT"
+		}
+		utils.MustPrintf(predataFile, "\n\nCREATE%s CONVERSION %s FOR '%s' TO '%s' FROM %s;",
+			defaultStr, convFQN, conversion.ForEncoding, conversion.ToEncoding, conversion.ConversionFunction)
+		PrintObjectMetadata(predataFile, conversionMetadata[conversion.Oid], convFQN, "CONVERSION")
+		utils.MustPrintln(predataFile)
+	}
+}

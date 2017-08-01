@@ -49,6 +49,19 @@ var _ = Describe("backup integration tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&expectedPlperlInfo, &resultProcLangs[1], "Oid", "Owner")
 		})
 	})
+	Describe("GetConversions", func() {
+		It("returns a slice of conversions", func() {
+			testutils.AssertQueryRuns(connection, "CREATE CONVERSION testconv FOR 'LATIN1' TO 'MULE_INTERNAL' FROM latin1_to_mic")
+			defer testutils.AssertQueryRuns(connection, "DROP CONVERSION testconv")
+
+			expectedConversion := backup.Conversion{0, "public", "testconv", "LATIN1", "MULE_INTERNAL", "pg_catalog.latin1_to_mic", false}
+
+			resultConversions := backup.GetConversions(connection)
+
+			Expect(len(resultConversions)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&expectedConversion, &resultConversions[0], "Oid")
+		})
+	})
 	Describe("GetOperators", func() {
 		It("returns a slice of operators", func() {
 			testutils.AssertQueryRuns(connection, "CREATE OPERATOR ## (LEFTARG = bigint, PROCEDURE = numeric_fac)")

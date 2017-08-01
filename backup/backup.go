@@ -191,6 +191,11 @@ func backupPredata(filename string, tables []Relation, extTableMap map[string]bo
 	protoMetadata := GetMetadataForObjectType(connection, ProtocolParams)
 	PrintCreateExternalProtocolStatements(predataFile, protocols, funcInfoMap, protoMetadata)
 
+	logger.Verbose("Writing CREATE CONVERSION statements to predata file")
+	conversions := GetConversions(connection)
+	convMetadata := GetMetadataForObjectType(connection, ConversionParams)
+	PrintCreateConversionStatements(predataFile, conversions, convMetadata)
+
 	logger.Verbose("Writing CREATE OPERATOR statements to predata file")
 	operators := GetOperators(connection)
 	operatorMetadata := GetMetadataForObjectType(connection, OperatorParams)

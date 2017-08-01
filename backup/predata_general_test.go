@@ -445,4 +445,48 @@ ALTER OPERATOR FAMILY public.testfam USING hash OWNER TO testrole;`)
 	FUNCTION 1 abs(integer);`)
 		})
 	})
+	Describe("PrintCreateConversionStatements", func() {
+		var (
+			convOne     backup.Conversion
+			convTwo     backup.Conversion
+			metadataMap backup.MetadataMap
+		)
+		BeforeEach(func() {
+			convOne = backup.Conversion{1, "public", "conv_one", "UTF8", "LATIN1", "public.converter", false}
+			convTwo = backup.Conversion{0, "public", "conv_two", "UTF8", "LATIN1", "public.converter", true}
+			metadataMap = backup.MetadataMap{}
+		})
+
+		It("prints a non-default conversion", func() {
+			conversions := []backup.Conversion{convOne}
+			backup.PrintCreateConversionStatements(buffer, conversions, metadataMap)
+			testutils.ExpectRegexp(buffer, `CREATE CONVERSION public.conv_one FOR 'UTF8' TO 'LATIN1' FROM public.converter;`)
+		})
+		It("prints a default conversion", func() {
+			conversions := []backup.Conversion{convTwo}
+			backup.PrintCreateConversionStatements(buffer, conversions, metadataMap)
+			testutils.ExpectRegexp(buffer, `CREATE DEFAULT CONVERSION public.conv_two FOR 'UTF8' TO 'LATIN1' FROM public.converter;`)
+		})
+		It("prints multiple create conversion statements", func() {
+			conversions := []backup.Conversion{convOne, convTwo}
+			backup.PrintCreateConversionStatements(buffer, conversions, metadataMap)
+			testutils.ExpectRegexp(buffer, `
+
+CREATE CONVERSION public.conv_one FOR 'UTF8' TO 'LATIN1' FROM public.converter;
+
+
+CREATE DEFAULT CONVERSION public.conv_two FOR 'UTF8' TO 'LATIN1' FROM public.converter;`)
+		})
+		It("prints a conversion with an owner and a comment", func() {
+			conversions := []backup.Conversion{convOne}
+			metadataMap = testutils.DefaultMetadataMap("CONVERSION", false, true, true)
+			backup.PrintCreateConversionStatements(buffer, conversions, metadataMap)
+			testutils.ExpectRegexp(buffer, `CREATE CONVERSION public.conv_one FOR 'UTF8' TO 'LATIN1' FROM public.converter;
+
+COMMENT ON CONVERSION public.conv_one IS 'This is a conversion comment.';
+
+
+ALTER CONVERSION public.conv_one OWNER TO testrole;`)
+		})
+	})
 })

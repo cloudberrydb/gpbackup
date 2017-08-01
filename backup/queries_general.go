@@ -395,3 +395,36 @@ ORDER BY amprocnum
 	}
 	return functions
 }
+
+type Conversion struct {
+	Oid                uint32
+	Schema             string `db:"nspname"`
+	Name               string `db:"conname"`
+	ForEncoding        string
+	ToEncoding         string
+	ConversionFunction string
+	IsDefault          bool `db:"condefault"`
+}
+
+func GetConversions(connection *utils.DBConn) []Conversion {
+	results := make([]Conversion, 0)
+	query := fmt.Sprintf(`
+SELECT
+	c.oid,
+	n.nspname,
+	c.conname,
+	pg_encoding_to_char(c.conforencoding) AS forencoding,
+	pg_encoding_to_char(c.contoencoding) AS toencoding,
+	quote_ident(fn.nspname) || '.' || quote_ident(p.proname) AS conversionfunction,
+	c.condefault
+FROM pg_conversion c
+JOIN pg_namespace n ON c.connamespace = n.oid
+JOIN pg_proc p ON c.conproc = p.oid
+JOIN pg_namespace fn ON p.pronamespace = fn.oid
+WHERE %s
+ORDER BY n.nspname, c.conname;`, NonUserSchemaFilterClause("n"))
+
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
+}

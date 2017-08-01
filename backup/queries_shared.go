@@ -90,6 +90,7 @@ var (
 	AggregateParams      = MetadataQueryParams{NameField: "proname", OwnerField: "proowner", CatalogTable: "pg_proc"}
 	CastParams           = MetadataQueryParams{NameField: "typname", OidField: "oid", OidTable: "pg_type", CatalogTable: "pg_cast"}
 	ConParams            = MetadataQueryParams{NameField: "conname", OidField: "oid", CatalogTable: "pg_constraint"}
+	ConversionParams     = MetadataQueryParams{NameField: "conname", OidField: "oid", SchemaField: "connamespace", OwnerField: "conowner", CatalogTable: "pg_conversion"}
 	DatabaseParams       = MetadataQueryParams{NameField: "datname", ACLField: "datacl", OwnerField: "datdba", CatalogTable: "pg_database", Shared: true}
 	FunctionParams       = MetadataQueryParams{NameField: "proname", SchemaField: "pronamespace", ACLField: "proacl", OwnerField: "proowner", CatalogTable: "pg_proc"}
 	IndexParams          = MetadataQueryParams{NameField: "relname", OidField: "indexrelid", OidTable: "pg_class", CommentTable: "pg_class", CatalogTable: "pg_index"}
