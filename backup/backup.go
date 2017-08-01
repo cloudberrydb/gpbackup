@@ -186,6 +186,11 @@ func backupPredata(filename string, tables []Relation, extTableMap map[string]bo
 	filteredMetadata := ConstructFunctionAndTypeMetadataMap(typeMetadata, functionMetadata)
 	PrintCreateDependentTypeAndFunctionStatements(predataFile, sortedSlice, filteredMetadata)
 
+	logger.Verbose("Writing CREATE TEXT SEARCH PARSER statements to predata file")
+	parsers := GetTextSearchParsers(connection)
+	parserMetadata := GetCommentsForObjectType(connection, TSParserParams)
+	PrintCreateTextSearchParserStatements(predataFile, parsers, parserMetadata)
+
 	logger.Verbose("Writing CREATE PROTOCOL statements to predata file")
 	protocols := GetExternalProtocols(connection)
 	protoMetadata := GetMetadataForObjectType(connection, ProtocolParams)
