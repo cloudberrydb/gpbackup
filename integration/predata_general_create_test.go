@@ -111,20 +111,22 @@ var _ = Describe("backup integration create statement tests", func() {
 	})
 	Describe("PrintConstraintStatements", func() {
 		var (
-			testTable        backup.Relation
-			tableOid         uint32
-			uniqueConstraint backup.QueryConstraint
-			pkConstraint     backup.QueryConstraint
-			fkConstraint     backup.QueryConstraint
-			checkConstraint  backup.QueryConstraint
-			conMetadataMap   backup.MetadataMap
+			testTable                backup.Relation
+			tableOid                 uint32
+			uniqueConstraint         backup.QueryConstraint
+			pkConstraint             backup.QueryConstraint
+			fkConstraint             backup.QueryConstraint
+			checkConstraint          backup.QueryConstraint
+			partitionCheckConstraint backup.QueryConstraint
+			conMetadataMap           backup.MetadataMap
 		)
 		BeforeEach(func() {
 			testTable = backup.BasicRelation("public", "testtable")
-			uniqueConstraint = backup.QueryConstraint{0, "uniq2", "u", "UNIQUE (a, b)", "public.testtable", false}
-			pkConstraint = backup.QueryConstraint{0, "constraints_other_table_pkey", "p", "PRIMARY KEY (b)", "public.constraints_other_table", false}
-			fkConstraint = backup.QueryConstraint{0, "fk1", "f", "FOREIGN KEY (b) REFERENCES constraints_other_table(b)", "public.testtable", false}
-			checkConstraint = backup.QueryConstraint{0, "check1", "c", "CHECK (a <> 42)", "public.testtable", false}
+			uniqueConstraint = backup.QueryConstraint{0, "uniq2", "u", "UNIQUE (a, b)", "public.testtable", false, false}
+			pkConstraint = backup.QueryConstraint{0, "constraints_other_table_pkey", "p", "PRIMARY KEY (b)", "public.constraints_other_table", false, false}
+			fkConstraint = backup.QueryConstraint{0, "fk1", "f", "FOREIGN KEY (b) REFERENCES constraints_other_table(b)", "public.testtable", false, false}
+			checkConstraint = backup.QueryConstraint{0, "check1", "c", "CHECK (a <> 42)", "public.testtable", false, false}
+			partitionCheckConstraint = backup.QueryConstraint{0, "check1", "c", "CHECK (id <> 0)", "public.part", false, true}
 			testutils.AssertQueryRuns(connection, "CREATE TABLE public.testtable(a int, b text) DISTRIBUTED BY (b)")
 			tableOid = backup.OidFromObjectName(connection, "public", "testtable", backup.RelationParams)
 			conMetadataMap = backup.MetadataMap{}
@@ -200,7 +202,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		It("creates a check constraint on a domain", func() {
 			testutils.AssertQueryRuns(connection, "CREATE DOMAIN domain1 AS numeric")
 			defer testutils.AssertQueryRuns(connection, "DROP DOMAIN domain1")
-			domainCheckConstraint := backup.QueryConstraint{0, "check1", "c", "CHECK (VALUE <> 42::numeric)", "public.domain1", true}
+			domainCheckConstraint := backup.QueryConstraint{0, "check1", "c", "CHECK (VALUE <> 42::numeric)", "public.domain1", true, false}
 			constraints := []backup.QueryConstraint{domainCheckConstraint}
 			backup.PrintConstraintStatements(buffer, constraints, conMetadataMap)
 
@@ -210,6 +212,23 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			Expect(len(resultConstraints)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&domainCheckConstraint, &resultConstraints[0], "Oid")
+		})
+		It("creates a check constraint on a parent partition table", func() {
+			constraints := []backup.QueryConstraint{partitionCheckConstraint}
+			backup.PrintConstraintStatements(buffer, constraints, conMetadataMap)
+
+			testutils.AssertQueryRuns(connection, `CREATE TABLE part (id int, year int)
+DISTRIBUTED BY (id)
+PARTITION BY RANGE (year)
+( START (2007) END (2008) EVERY (1),
+  DEFAULT PARTITION extra ); `)
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE part CASCADE")
+			testutils.AssertQueryRuns(connection, buffer.String())
+
+			resultConstraints := backup.GetConstraints(connection)
+
+			Expect(len(resultConstraints)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&partitionCheckConstraint, &resultConstraints[0], "Oid")
 		})
 	})
 	Describe("PrintSessionGUCs", func() {

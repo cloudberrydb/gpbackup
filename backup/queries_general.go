@@ -42,6 +42,7 @@ type QueryConstraint struct {
 	ConDef             string
 	OwningObject       string
 	IsDomainConstraint bool
+	IsPartitionParent  bool
 }
 
 func GetConstraints(connection *utils.DBConn) []QueryConstraint {
@@ -59,15 +60,24 @@ SELECT
 	CASE
 		WHEN r.relname IS NULL THEN 't'
 		ELSE 'f'
-	END AS isdomainconstraint
+	END AS isdomainconstraint,
+	CASE
+		WHEN pt.parrelid IS NULL THEN 'f'
+		ELSE 't'
+	END AS ispartitionparent
 FROM pg_constraint c
 LEFT JOIN pg_class r
 	ON c.conrelid = r.oid
+LEFT JOIN pg_partition_rule pr
+	ON c.conrelid = pr.parchildrelid
+LEFT JOIN pg_partition pt
+	ON c.conrelid = pt.parrelid
 LEFT JOIN pg_type t
 	ON c.contypid = t.oid
 JOIN pg_namespace n
 	ON n.oid = c.connamespace
 WHERE %s
+AND pr.parchildrelid IS NULL
 ORDER BY conname;`, NonUserSchemaFilterClause("n"))
 
 	results := make([]QueryConstraint, 0)

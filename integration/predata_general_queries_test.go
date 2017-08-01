@@ -62,6 +62,109 @@ var _ = Describe("backup integration tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&expectedConversion, &resultConversions[0], "Oid")
 		})
 	})
+	Describe("GetConstraints", func() {
+		var (
+			uniqueConstraint         = backup.QueryConstraint{0, "uniq2", "u", "UNIQUE (a, b)", "public.constraints_table", false, false}
+			fkConstraint             = backup.QueryConstraint{0, "fk1", "f", "FOREIGN KEY (b) REFERENCES constraints_table(b)", "public.constraints_other_table", false, false}
+			pkConstraint             = backup.QueryConstraint{0, "pk1", "p", "PRIMARY KEY (b)", "public.constraints_table", false, false}
+			checkConstraint          = backup.QueryConstraint{0, "check1", "c", "CHECK (a <> 42)", "public.constraints_table", false, false}
+			partitionCheckConstraint = backup.QueryConstraint{0, "check1", "c", "CHECK (id <> 0)", "public.part", false, true}
+		)
+		Context("No constraints", func() {
+			It("returns an empty constraint array for a table with no constraints", func() {
+				testutils.AssertQueryRuns(connection, "CREATE TABLE no_constraints_table(a int, b text)")
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE no_constraints_table")
+
+				constraints := backup.GetConstraints(connection)
+
+				Expect(len(constraints)).To(Equal(0))
+			})
+		})
+		Context("One constraint", func() {
+			It("returns a constraint array for a table with one UNIQUE constraint and a comment", func() {
+				testutils.AssertQueryRuns(connection, "CREATE TABLE constraints_table(a int, b text, c float)")
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE constraints_table")
+				testutils.AssertQueryRuns(connection, "ALTER TABLE ONLY constraints_table ADD CONSTRAINT uniq2 UNIQUE (a, b)")
+				testutils.AssertQueryRuns(connection, "COMMENT ON CONSTRAINT uniq2 ON constraints_table IS 'this is a constraint comment'")
+
+				constraints := backup.GetConstraints(connection)
+
+				Expect(len(constraints)).To(Equal(1))
+				testutils.ExpectStructsToMatchExcluding(&constraints[0], &uniqueConstraint, "Oid")
+			})
+			It("returns a constraint array for a table with one PRIMARY KEY constraint and a comment", func() {
+				testutils.AssertQueryRuns(connection, "CREATE TABLE constraints_table(a int, b text, c float)")
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE constraints_table")
+				testutils.AssertQueryRuns(connection, "ALTER TABLE ONLY constraints_table ADD CONSTRAINT pk1 PRIMARY KEY (b)")
+				testutils.AssertQueryRuns(connection, "COMMENT ON CONSTRAINT pk1 ON constraints_table IS 'this is a constraint comment'")
+
+				constraints := backup.GetConstraints(connection)
+
+				Expect(len(constraints)).To(Equal(1))
+				testutils.ExpectStructsToMatchExcluding(&constraints[0], &pkConstraint, "Oid")
+			})
+			It("returns a constraint array for a table with one FOREIGN KEY constraint", func() {
+				testutils.AssertQueryRuns(connection, "CREATE TABLE constraints_table(a int, b text, c float)")
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE constraints_table CASCADE")
+				testutils.AssertQueryRuns(connection, "CREATE TABLE constraints_other_table(b text)")
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE constraints_other_table CASCADE")
+				testutils.AssertQueryRuns(connection, "ALTER TABLE ONLY constraints_table ADD CONSTRAINT pk1 PRIMARY KEY (b)")
+				testutils.AssertQueryRuns(connection, "ALTER TABLE ONLY constraints_other_table ADD CONSTRAINT fk1 FOREIGN KEY (b) REFERENCES constraints_table(b)")
+
+				constraints := backup.GetConstraints(connection)
+
+				Expect(len(constraints)).To(Equal(2))
+				testutils.ExpectStructsToMatchExcluding(&constraints[0], &fkConstraint, "Oid")
+				testutils.ExpectStructsToMatchExcluding(&constraints[1], &pkConstraint, "Oid")
+			})
+			It("returns a constraint array for a table with one CHECK constraint", func() {
+				testutils.AssertQueryRuns(connection, "CREATE TABLE constraints_table(a int, b text, c float)")
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE constraints_table")
+				testutils.AssertQueryRuns(connection, "ALTER TABLE ONLY constraints_table ADD CONSTRAINT check1 CHECK (a <> 42)")
+
+				constraints := backup.GetConstraints(connection)
+
+				Expect(len(constraints)).To(Equal(1))
+				testutils.ExpectStructsToMatchExcluding(&constraints[0], &checkConstraint, "Oid")
+			})
+			It("returns a constraint array for a parent partition table with one CHECK constraint", func() {
+				testutils.AssertQueryRuns(connection, `CREATE TABLE part (id int, year int)
+DISTRIBUTED BY (id)
+PARTITION BY RANGE (year)
+( START (2007) END (2008) EVERY (1),
+  DEFAULT PARTITION extra ); `)
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE part")
+				testutils.AssertQueryRuns(connection, "ALTER TABLE part ADD CONSTRAINT check1 CHECK (id <> 0)")
+
+				constraints := backup.GetConstraints(connection)
+
+				Expect(len(constraints)).To(Equal(1))
+				testutils.ExpectStructsToMatchExcluding(&constraints[0], &partitionCheckConstraint, "Oid")
+			})
+		})
+		Context("Multiple constraints", func() {
+			It("returns a constraint array for a table with multiple constraints", func() {
+				testutils.AssertQueryRuns(connection, "CREATE TABLE constraints_table(a int, b text, c float) DISTRIBUTED BY (b)")
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE constraints_table CASCADE")
+				testutils.AssertQueryRuns(connection, "CREATE TABLE constraints_other_table(b text)")
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE constraints_other_table CASCADE")
+				testutils.AssertQueryRuns(connection, "ALTER TABLE ONLY constraints_table ADD CONSTRAINT uniq2 UNIQUE (a, b)")
+				testutils.AssertQueryRuns(connection, "COMMENT ON CONSTRAINT uniq2 ON constraints_table IS 'this is a constraint comment'")
+				testutils.AssertQueryRuns(connection, "ALTER TABLE ONLY constraints_table ADD CONSTRAINT pk1 PRIMARY KEY (b)")
+				testutils.AssertQueryRuns(connection, "COMMENT ON CONSTRAINT pk1 ON constraints_table IS 'this is a constraint comment'")
+				testutils.AssertQueryRuns(connection, "ALTER TABLE ONLY constraints_other_table ADD CONSTRAINT fk1 FOREIGN KEY (b) REFERENCES constraints_table(b)")
+				testutils.AssertQueryRuns(connection, "ALTER TABLE ONLY constraints_table ADD CONSTRAINT check1 CHECK (a <> 42)")
+
+				constraints := backup.GetConstraints(connection)
+
+				Expect(len(constraints)).To(Equal(4))
+				testutils.ExpectStructsToMatchExcluding(&constraints[0], &checkConstraint, "Oid")
+				testutils.ExpectStructsToMatchExcluding(&constraints[1], &fkConstraint, "Oid")
+				testutils.ExpectStructsToMatchExcluding(&constraints[2], &pkConstraint, "Oid")
+				testutils.ExpectStructsToMatchExcluding(&constraints[3], &uniqueConstraint, "Oid")
+			})
+		})
+	})
 	Describe("GetOperators", func() {
 		It("returns a slice of operators", func() {
 			testutils.AssertQueryRuns(connection, "CREATE OPERATOR ## (LEFTARG = bigint, PROCEDURE = numeric_fac)")

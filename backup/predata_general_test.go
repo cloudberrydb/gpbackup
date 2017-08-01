@@ -16,13 +16,24 @@ var _ = Describe("backup/predata_general tests", func() {
 		buffer = gbytes.BufferWithBytes([]byte(""))
 	})
 	Describe("PrintConstraintStatements", func() {
-		uniqueOne := backup.QueryConstraint{1, "tablename_i_key", "u", "UNIQUE (i)", "public.tablename", false}
-		uniqueTwo := backup.QueryConstraint{0, "tablename_j_key", "u", "UNIQUE (j)", "public.tablename", false}
-		primarySingle := backup.QueryConstraint{0, "tablename_pkey", "p", "PRIMARY KEY (i)", "public.tablename", false}
-		primaryComposite := backup.QueryConstraint{0, "tablename_pkey", "p", "PRIMARY KEY (i, j)", "public.tablename", false}
-		foreignOne := backup.QueryConstraint{0, "tablename_i_fkey", "f", "FOREIGN KEY (i) REFERENCES other_tablename(a)", "public.tablename", false}
-		foreignTwo := backup.QueryConstraint{0, "tablename_j_fkey", "f", "FOREIGN KEY (j) REFERENCES other_tablename(b)", "public.tablename", false}
-		emptyMetadataMap := backup.MetadataMap{}
+		var (
+			uniqueOne        backup.QueryConstraint
+			uniqueTwo        backup.QueryConstraint
+			primarySingle    backup.QueryConstraint
+			primaryComposite backup.QueryConstraint
+			foreignOne       backup.QueryConstraint
+			foreignTwo       backup.QueryConstraint
+			emptyMetadataMap backup.MetadataMap
+		)
+		BeforeEach(func() {
+			uniqueOne = backup.QueryConstraint{1, "tablename_i_key", "u", "UNIQUE (i)", "public.tablename", false, false}
+			uniqueTwo = backup.QueryConstraint{0, "tablename_j_key", "u", "UNIQUE (j)", "public.tablename", false, false}
+			primarySingle = backup.QueryConstraint{0, "tablename_pkey", "p", "PRIMARY KEY (i)", "public.tablename", false, false}
+			primaryComposite = backup.QueryConstraint{0, "tablename_pkey", "p", "PRIMARY KEY (i, j)", "public.tablename", false, false}
+			foreignOne = backup.QueryConstraint{0, "tablename_i_fkey", "f", "FOREIGN KEY (i) REFERENCES other_tablename(a)", "public.tablename", false, false}
+			foreignTwo = backup.QueryConstraint{0, "tablename_j_fkey", "f", "FOREIGN KEY (j) REFERENCES other_tablename(b)", "public.tablename", false, false}
+			emptyMetadataMap = backup.MetadataMap{}
+		})
 
 		Context("No constraints", func() {
 			It("doesn't print anything", func() {
@@ -167,12 +178,21 @@ ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_fkey FOREIGN KEY (i
 `)
 			})
 			It("prints ADD CONSTRAINT statement for domain check constraint", func() {
-				domainCheckConstraint := backup.QueryConstraint{0, "check1", "c", "CHECK (VALUE <> 42::numeric)", "public.domain1", true}
+				domainCheckConstraint := backup.QueryConstraint{0, "check1", "c", "CHECK (VALUE <> 42::numeric)", "public.domain1", true, false}
 				constraints := []backup.QueryConstraint{domainCheckConstraint}
 				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
 				testutils.ExpectRegexp(buffer, `
 
 ALTER DOMAIN public.domain1 ADD CONSTRAINT check1 CHECK (VALUE <> 42::numeric);
+`)
+			})
+			It("prints an ADD CONSTRAINT statement for a parent partition table", func() {
+				uniqueOne.IsPartitionParent = true
+				constraints := []backup.QueryConstraint{uniqueOne}
+				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
+				testutils.ExpectRegexp(buffer, `
+
+ALTER TABLE public.tablename ADD CONSTRAINT tablename_i_key UNIQUE (i);
 `)
 			})
 		})

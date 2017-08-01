@@ -41,6 +41,8 @@ func PrintConstraintStatements(predataFile io.Writer, constraints []QueryConstra
 		objStr := "TABLE ONLY"
 		if constraint.IsDomainConstraint {
 			objStr = "DOMAIN"
+		} else if constraint.IsPartitionParent {
+			objStr = "TABLE"
 		}
 		conName := utils.QuoteIdent(constraint.ConName)
 		utils.MustPrintf(predataFile, alterStr, objStr, constraint.OwningObject, conName, constraint.ConDef)
