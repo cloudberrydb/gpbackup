@@ -391,7 +391,7 @@ SET SUBPARTITION TEMPLATE
 			sequenceMap := backup.GetSequenceColumnOwnerMap(connection)
 
 			Expect(len(sequenceMap)).To(Equal(1))
-			Expect(sequenceMap["public.my_sequence"]).To(Equal("with_sequence.a"))
+			Expect(sequenceMap["public.my_sequence"]).To(Equal("public.with_sequence.a"))
 		})
 	})
 	Describe("GetAllSequences", func() {

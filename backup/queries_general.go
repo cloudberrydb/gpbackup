@@ -144,7 +144,7 @@ WHERE s.relkind = 'S';`
 	utils.CheckError(err)
 	for _, seqOwner := range results {
 		seqFQN := MakeFQN(seqOwner.SchemaName, seqOwner.SequenceName)
-		columnFQN := MakeFQN(seqOwner.TableName, seqOwner.ColumnName)
+		columnFQN := fmt.Sprintf("%s.%s", MakeFQN(seqOwner.SchemaName, seqOwner.TableName), utils.QuoteIdent(seqOwner.ColumnName))
 		sequenceOwners[seqFQN] = columnFQN
 	}
 	return sequenceOwners

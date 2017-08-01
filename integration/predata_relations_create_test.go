@@ -329,7 +329,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 	Describe("PrintAlterSequenceStatements", func() {
 		It("creates a sequence owned by a table column", func() {
 			sequenceDef := backup.Sequence{Relation: backup.Relation{0, 1, "public", "my_sequence", nil}}
-			columnOwnerMap := map[string]string{"public.my_sequence": "sequence_table.a"}
+			columnOwnerMap := map[string]string{"public.my_sequence": "public.sequence_table.a"}
 
 			sequenceDef.QuerySequenceDefinition = backup.QuerySequenceDefinition{Name: "my_sequence",
 				LastVal: 1, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
@@ -345,7 +345,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 
 			sequenceOwners := backup.GetSequenceColumnOwnerMap(connection)
 			Expect(len(sequenceOwners)).To(Equal(1))
-			Expect(sequenceOwners["public.my_sequence"]).To(Equal("sequence_table.a"))
+			Expect(sequenceOwners["public.my_sequence"]).To(Equal("public.sequence_table.a"))
 		})
 	})
 })
