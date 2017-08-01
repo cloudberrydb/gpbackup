@@ -129,11 +129,11 @@ func PrintCreateOperatorStatements(predataFile io.Writer, operators []QueryOpera
 		leftArg := "NONE"
 		rightArg := "NONE"
 		if operator.LeftArgType != "-" {
-			leftArg = utils.QuoteIdent(operator.LeftArgType)
+			leftArg = operator.LeftArgType
 			optionalFields = append(optionalFields, fmt.Sprintf("LEFTARG = %s", leftArg))
 		}
 		if operator.RightArgType != "-" {
-			rightArg = utils.QuoteIdent(operator.RightArgType)
+			rightArg = operator.RightArgType
 			optionalFields = append(optionalFields, fmt.Sprintf("RIGHTARG = %s", rightArg))
 		}
 		if operator.CommutatorOp != "0" {
