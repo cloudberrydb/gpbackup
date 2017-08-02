@@ -51,4 +51,38 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatch(&parserMetadata, &resultMetadata)
 		})
 	})
+	Describe("PrintCreateTextSearchTemplateStatements", func() {
+		It("creates a basic text search template", func() {
+			templates := []backup.TextSearchTemplate{{0, "public", "testtemplate", "dsimple_init", "dsimple_lexize"}}
+
+			backup.PrintCreateTextSearchTemplateStatements(buffer, templates, backup.MetadataMap{})
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH TEMPLATE testtemplate")
+
+			resultTemplates := backup.GetTextSearchTemplates(connection)
+
+			Expect(len(resultTemplates)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&templates[0], &resultTemplates[0], "Oid")
+		})
+		It("creates a basic text search template with a comment", func() {
+			templates := []backup.TextSearchTemplate{{1, "public", "testtemplate", "dsimple_init", "dsimple_lexize"}}
+			templateMetadataMap := testutils.DefaultMetadataMap("TEXT SEARCH TEMPLATE", false, false, true)
+			templateMetadata := templateMetadataMap[1]
+
+			backup.PrintCreateTextSearchTemplateStatements(buffer, templates, templateMetadataMap)
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH TEMPLATE testtemplate")
+
+			resultTemplates := backup.GetTextSearchTemplates(connection)
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TSTemplateParams)
+
+			Expect(len(resultTemplates)).To(Equal(1))
+			oid := backup.OidFromObjectName(connection, "public", "testtemplate", backup.TSTemplateParams)
+			resultMetadata := resultMetadataMap[oid]
+			testutils.ExpectStructsToMatchExcluding(&templates[0], &resultTemplates[0], "Oid")
+			testutils.ExpectStructsToMatch(&templateMetadata, &resultMetadata)
+		})
+	})
 })

@@ -38,4 +38,14 @@ var _ = Describe("backup/predata_textsearch tests", func() {
 )`)
 		})
 	})
+	Describe("PrintCreateTextSearchTemplateStatements", func() {
+		It("prints a basic text search template", func() {
+			templates := []backup.TextSearchTemplate{{0, "public", "testtemplate", "dsimple_init", "dsimple_lexize"}}
+			backup.PrintCreateTextSearchTemplateStatements(buffer, templates, backup.MetadataMap{})
+			testutils.ExpectRegexp(buffer, `CREATE TEXT SEARCH TEMPLATE public.testtemplate (
+	INIT = dsimple_init,
+	LEXIZE = dsimple_lexize
+)`)
+		})
+	})
 })

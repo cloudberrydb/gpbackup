@@ -34,4 +34,26 @@ var _ = Describe("backup integration tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&expectedParser, &parsers[0], "Oid")
 		})
 	})
+	Describe("GetTextSearchTemplates", func() {
+		It("returns a text search template without an init function", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TEXT SEARCH TEMPLATE testtemplate(LEXIZE = dsimple_lexize);")
+			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH TEMPLATE testtemplate")
+			templates := backup.GetTextSearchTemplates(connection)
+
+			expectedTemplate := backup.TextSearchTemplate{1, "public", "testtemplate", "", "dsimple_lexize"}
+
+			Expect(len(templates)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&expectedTemplate, &templates[0], "Oid")
+		})
+		It("returns a text search template with an init function", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TEXT SEARCH TEMPLATE testtemplate(INIT = dsimple_init, LEXIZE = dsimple_lexize);")
+			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH TEMPLATE testtemplate")
+			templates := backup.GetTextSearchTemplates(connection)
+
+			expectedTemplate := backup.TextSearchTemplate{1, "public", "testtemplate", "dsimple_init", "dsimple_lexize"}
+
+			Expect(len(templates)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&expectedTemplate, &templates[0], "Oid")
+		})
+	})
 })

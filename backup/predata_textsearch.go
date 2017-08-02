@@ -27,3 +27,16 @@ func PrintCreateTextSearchParserStatements(predataFile io.Writer, parsers []Text
 		PrintObjectMetadata(predataFile, parserMetadata[parser.Oid], parserFQN, "TEXT SEARCH PARSER")
 	}
 }
+
+func PrintCreateTextSearchTemplateStatements(predataFile io.Writer, templates []TextSearchTemplate, templateMetadata MetadataMap) {
+	for _, template := range templates {
+		templateFQN := MakeFQN(template.Schema, template.Name)
+		utils.MustPrintf(predataFile, "\n\nCREATE TEXT SEARCH TEMPLATE %s (", templateFQN)
+		if template.InitFunc != "" {
+			utils.MustPrintf(predataFile, "\n\tINIT = %s,", template.InitFunc)
+		}
+		utils.MustPrintf(predataFile, "\n\tLEXIZE = %s", template.LexizeFunc)
+		utils.MustPrintf(predataFile, "\n);")
+		PrintObjectMetadata(predataFile, templateMetadata[template.Oid], templateFQN, "TEXT SEARCH TEMPLATE")
+	}
+}
