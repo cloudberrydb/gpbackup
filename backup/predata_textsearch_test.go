@@ -48,4 +48,14 @@ var _ = Describe("backup/predata_textsearch tests", func() {
 )`)
 		})
 	})
+	Describe("PrintCreateTextSearchDictionaryStatements", func() {
+		It("prints a basic text search dictionary", func() {
+			dictionaries := []backup.TextSearchDictionary{{0, "public", "testdictionary", "testschema.snowball", "language = 'russian', stopwords = 'russian'"}}
+			backup.PrintCreateTextSearchDictionaryStatements(buffer, dictionaries, backup.MetadataMap{})
+			testutils.ExpectRegexp(buffer, `CREATE TEXT SEARCH DICTIONARY public.testdictionary (
+	TEMPLATE = testschema.snowball,
+	language = 'russian', stopwords = 'russian'
+)`)
+		})
+	})
 })

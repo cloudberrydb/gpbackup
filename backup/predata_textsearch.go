@@ -40,3 +40,16 @@ func PrintCreateTextSearchTemplateStatements(predataFile io.Writer, templates []
 		PrintObjectMetadata(predataFile, templateMetadata[template.Oid], templateFQN, "TEXT SEARCH TEMPLATE")
 	}
 }
+
+func PrintCreateTextSearchDictionaryStatements(predataFile io.Writer, dictionaries []TextSearchDictionary, dictionaryMetadata MetadataMap) {
+	for _, dictionary := range dictionaries {
+		dictionaryFQN := MakeFQN(dictionary.Schema, dictionary.Name)
+		utils.MustPrintf(predataFile, "\n\nCREATE TEXT SEARCH DICTIONARY %s (", dictionaryFQN)
+		utils.MustPrintf(predataFile, "\n\tTEMPLATE = %s", dictionary.Template)
+		if dictionary.InitOption != "" {
+			utils.MustPrintf(predataFile, ",\n\t%s", dictionary.InitOption)
+		}
+		utils.MustPrintf(predataFile, "\n);")
+		PrintObjectMetadata(predataFile, dictionaryMetadata[dictionary.Oid], dictionaryFQN, "TEXT SEARCH DICTIONARY")
+	}
+}

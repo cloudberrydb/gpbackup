@@ -70,3 +70,32 @@ ORDER BY tmplname;`, NonUserSchemaFilterClause("n"))
 	utils.CheckError(err)
 	return results
 }
+
+type TextSearchDictionary struct {
+	Oid        uint32
+	Schema     string
+	Name       string
+	Template   string
+	InitOption string
+}
+
+func GetTextSearchDictionaries(connection *utils.DBConn) []TextSearchDictionary {
+	query := fmt.Sprintf(`
+SELECT
+	d.oid,
+	dict_ns.nspname as schema,
+	dictname AS name,
+	quote_ident(tmpl_ns.nspname) || '.' || quote_ident(t.tmplname) AS template,
+	COALESCE(dictinitoption, '') AS initoption
+FROM pg_ts_dict d
+JOIN pg_ts_template t ON t.oid = d.dicttemplate
+JOIN pg_namespace tmpl_ns ON tmpl_ns.oid = t.tmplnamespace
+JOIN pg_namespace dict_ns ON dict_ns.oid = d.dictnamespace
+WHERE %s
+ORDER BY dictname;`, NonUserSchemaFilterClause("dict_ns"))
+
+	results := make([]TextSearchDictionary, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
+}

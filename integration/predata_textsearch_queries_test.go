@@ -56,4 +56,26 @@ var _ = Describe("backup integration tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&expectedTemplate, &templates[0], "Oid")
 		})
 	})
+	Describe("GetTextSearchDictionaries", func() {
+		It("returns a text search dictionary with init options", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TEXT SEARCH DICTIONARY testdictionary(TEMPLATE = snowball, LANGUAGE = 'russian', STOPWORDS = 'russian');")
+			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH DICTIONARY testdictionary")
+			dictionaries := backup.GetTextSearchDictionaries(connection)
+
+			expectedDictionary := backup.TextSearchDictionary{1, "public", "testdictionary", "pg_catalog.snowball", "language = 'russian', stopwords = 'russian'"}
+
+			Expect(len(dictionaries)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&expectedDictionary, &dictionaries[0], "Oid")
+		})
+		It("returns a text search dictionary without init options", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TEXT SEARCH DICTIONARY testdictionary (TEMPLATE = 'simple');")
+			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH DICTIONARY testdictionary")
+			dictionaries := backup.GetTextSearchDictionaries(connection)
+
+			expectedDictionary := backup.TextSearchDictionary{1, "public", "testdictionary", "pg_catalog.simple", ""}
+
+			Expect(len(dictionaries)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&expectedDictionary, &dictionaries[0], "Oid")
+		})
+	})
 })

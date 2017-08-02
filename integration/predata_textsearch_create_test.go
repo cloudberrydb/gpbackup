@@ -85,4 +85,38 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatch(&templateMetadata, &resultMetadata)
 		})
 	})
+	Describe("PrintCreateTextSearchDictionaryStatements", func() {
+		It("creates a basic text search dictionary", func() {
+			dictionaries := []backup.TextSearchDictionary{{0, "public", "testdictionary", "pg_catalog.snowball", "language = 'russian', stopwords = 'russian'"}}
+
+			backup.PrintCreateTextSearchDictionaryStatements(buffer, dictionaries, backup.MetadataMap{})
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH DICTIONARY testdictionary")
+
+			resultDictionaries := backup.GetTextSearchDictionaries(connection)
+
+			Expect(len(resultDictionaries)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&dictionaries[0], &resultDictionaries[0], "Oid")
+		})
+		It("creates a basic text search dictionary with a comment and owner", func() {
+			dictionaries := []backup.TextSearchDictionary{{1, "public", "testdictionary", "pg_catalog.snowball", "language = 'russian', stopwords = 'russian'"}}
+			dictionaryMetadataMap := testutils.DefaultMetadataMap("TEXT SEARCH DICTIONARY", false, true, true)
+			dictionaryMetadata := dictionaryMetadataMap[1]
+
+			backup.PrintCreateTextSearchDictionaryStatements(buffer, dictionaries, dictionaryMetadataMap)
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH DICTIONARY testdictionary")
+
+			resultDictionaries := backup.GetTextSearchDictionaries(connection)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TSDictionaryParams)
+
+			Expect(len(resultDictionaries)).To(Equal(1))
+			oid := backup.OidFromObjectName(connection, "public", "testdictionary", backup.TSDictionaryParams)
+			resultMetadata := resultMetadataMap[oid]
+			testutils.ExpectStructsToMatchExcluding(&dictionaries[0], &resultDictionaries[0], "Oid")
+			testutils.ExpectStructsToMatch(&dictionaryMetadata, &resultMetadata)
+		})
+	})
 })
