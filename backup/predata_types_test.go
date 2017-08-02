@@ -111,7 +111,7 @@ ALTER TYPE public.composite_type OWNER TO testrole;`)
 	SEND = send_fn,
 	TYPMOD_IN = modin_fn,
 	TYPMOD_OUT = modout_fn,
-	DEFAULT = 42,
+	DEFAULT = '42',
 	ELEMENT = int4,
 	DELIMITER = ','
 );`)
@@ -129,7 +129,7 @@ ALTER TYPE public.composite_type OWNER TO testrole;`)
 	PASSEDBYVALUE,
 	ALIGNMENT = int2,
 	STORAGE = extended,
-	DEFAULT = 42,
+	DEFAULT = '42',
 	ELEMENT = int4,
 	DELIMITER = ','
 );`)

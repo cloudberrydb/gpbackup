@@ -91,7 +91,7 @@ func PrintCreateBaseTypeStatement(predataFile io.Writer, base TypeDefinition, ty
 		}
 	}
 	if base.DefaultVal != "" {
-		utils.MustPrintf(predataFile, ",\n\tDEFAULT = %s", base.DefaultVal)
+		utils.MustPrintf(predataFile, ",\n\tDEFAULT = '%s'", base.DefaultVal)
 	}
 	if base.Element != "" {
 		utils.MustPrintf(predataFile, ",\n\tELEMENT = %s", base.Element)
