@@ -140,6 +140,15 @@ var _ = Describe("backup integration tests", func() {
 
 			Expect(len(results)).To(Equal(0))
 		})
+		It("does not return implicit base or composite types for tables with length > NAMEDATALEN", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLE looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong(i int)")
+			// The table's name will be truncated to 63 characters upon creation, as will the names of its implicit types
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo;")
+
+			results := backup.GetTypeDefinitions(connection)
+
+			Expect(len(results)).To(Equal(0))
+		})
 		It("returns a slice for a domain type", func() {
 			domainType := backup.TypeDefinition{
 				Oid: 1, Type: "d", TypeSchema: "public", TypeName: "domain1", AttName: "", AttType: "", Input: "domain_in", Output: "numeric_out",

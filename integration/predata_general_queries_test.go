@@ -128,11 +128,12 @@ var _ = Describe("backup integration tests", func() {
 				testutils.ExpectStructsToMatchExcluding(&constraints[0], &checkConstraint, "Oid")
 			})
 			It("returns a constraint array for a parent partition table with one CHECK constraint", func() {
-				testutils.AssertQueryRuns(connection, `CREATE TABLE part (id int, year int)
-DISTRIBUTED BY (id)
-PARTITION BY RANGE (year)
-( START (2007) END (2008) EVERY (1),
-  DEFAULT PARTITION extra ); `)
+				testutils.AssertQueryRuns(connection, `CREATE TABLE part (id int, date date, amt decimal(10,2) default 0.0) DISTRIBUTED BY (id)
+PARTITION BY RANGE (date)
+      (PARTITION Jan08 START (date '2008-01-01') INCLUSIVE ,
+      PARTITION Feb08 START (date '2008-02-01') INCLUSIVE ,
+      PARTITION Mar08 START (date '2008-03-01') INCLUSIVE
+      END (date '2008-04-01') EXCLUSIVE);`)
 				defer testutils.AssertQueryRuns(connection, "DROP TABLE part")
 				testutils.AssertQueryRuns(connection, "ALTER TABLE part ADD CONSTRAINT check1 CHECK (id <> 0)")
 

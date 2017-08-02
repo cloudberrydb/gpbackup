@@ -54,7 +54,7 @@ SELECT
 	contype,
 	pg_get_constraintdef(c.oid, TRUE) AS condef,
 	CASE
-		WHEN r.relname IS NULL THEN quote_ident(n.nspname) || '.' ||quote_ident(t.typname)
+		WHEN r.relname IS NULL THEN quote_ident(n.nspname) || '.' || quote_ident(t.typname)
 		ELSE  quote_ident(n.nspname) || '.' || quote_ident(r.relname)
 	END AS owningobject,
 	CASE
@@ -78,6 +78,7 @@ JOIN pg_namespace n
 	ON n.oid = c.connamespace
 WHERE %s
 AND pr.parchildrelid IS NULL
+GROUP BY c.oid, conname, contype, r.relname, n.nspname, t.typname, pt.parrelid
 ORDER BY conname;`, NonUserSchemaFilterClause("n"))
 
 	results := make([]QueryConstraint, 0)

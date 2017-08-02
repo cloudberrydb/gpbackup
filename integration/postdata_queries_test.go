@@ -86,6 +86,26 @@ var _ = Describe("backup integration tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&index1, &results[0], "Oid")
 			testutils.ExpectStructsToMatchExcluding(&index2, &results[1], "Oid")
 		})
+		It("returns a slice of indexes for only partition parent tables", func() {
+			testutils.AssertQueryRuns(connection, `CREATE TABLE part (id int, date date, amt decimal(10,2)) DISTRIBUTED BY (id)
+PARTITION BY RANGE (date)
+      (PARTITION Jan08 START (date '2008-01-01') INCLUSIVE ,
+      PARTITION Feb08 START (date '2008-02-01') INCLUSIVE ,
+      PARTITION Mar08 START (date '2008-03-01') INCLUSIVE
+      END (date '2008-04-01') EXCLUSIVE);
+`)
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE part")
+			testutils.AssertQueryRuns(connection, "CREATE INDEX part_idx ON part(id)")
+			defer testutils.AssertQueryRuns(connection, "DROP INDEX part_idx")
+
+			index1 := backup.QuerySimpleDefinition{0, "part_idx", "public", "part", "",
+				"CREATE INDEX part_idx ON part USING btree (id)"}
+
+			results := backup.GetIndexDefinitions(connection, indexNameMap)
+
+			Expect(len(results)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&index1, &results[0], "Oid")
+		})
 		It("returns a slice containing an index in a non-default tablespace", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLESPACE test_tablespace FILESPACE test_filespace")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")

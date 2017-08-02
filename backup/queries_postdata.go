@@ -63,7 +63,7 @@ type QuerySimpleDefinition struct {
 
 func GetIndexDefinitions(connection *utils.DBConn, indexNameMap map[string]bool) []QuerySimpleDefinition {
 	query := fmt.Sprintf(`
-SELECT
+SELECT DISTINCT
 	i.indexrelid AS oid,
 	c.relname AS name,
 	n.nspname AS owningschema,
@@ -77,10 +77,13 @@ JOIN pg_namespace n
 	ON (c.relnamespace = n.oid)
 JOIN pg_class t
 	ON (t.oid = i.indrelid)
+LEFT JOIN pg_partitions p
+	ON (t.relname = p.tablename AND p.partitionlevel = 0)
 LEFT JOIN pg_tablespace s
 	ON (c.reltablespace = s.oid)
 WHERE %s
 AND i.indisprimary = 'f'
+AND n.nspname || '.' || t.relname NOT IN (SELECT partitionschemaname || '.' || partitiontablename FROM pg_partitions)
 ORDER BY name;`, NonUserSchemaFilterClause("n"))
 
 	results := make([]QuerySimpleDefinition, 0)
