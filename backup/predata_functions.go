@@ -80,7 +80,7 @@ func PrintFunctionModifiers(predataFile io.Writer, funcDef Function) {
 	}
 }
 
-func PrintCreateAggregateStatements(predataFile io.Writer, aggDefs []AggregateDefinition, funcInfoMap map[uint32]FunctionInfo, aggMetadata MetadataMap) {
+func PrintCreateAggregateStatements(predataFile io.Writer, aggDefs []Aggregate, funcInfoMap map[uint32]FunctionInfo, aggMetadata MetadataMap) {
 	for _, aggDef := range aggDefs {
 		aggFQN := MakeFQN(aggDef.SchemaName, aggDef.AggregateName)
 		orderedStr := ""
@@ -119,7 +119,7 @@ func PrintCreateAggregateStatements(predataFile io.Writer, aggDefs []AggregateDe
 	}
 }
 
-func PrintCreateCastStatements(predataFile io.Writer, castDefs []CastDefinition, castMetadata MetadataMap) {
+func PrintCreateCastStatements(predataFile io.Writer, castDefs []Cast, castMetadata MetadataMap) {
 	for _, castDef := range castDefs {
 		/*
 		 * Because we use pg_catalog.format_type() in the query to get the cast definition,

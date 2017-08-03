@@ -75,7 +75,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 	})
 	Describe("PrintCreateAggregateStatements", func() {
-		aggregateDef := backup.AggregateDefinition{
+		aggregateDef := backup.Aggregate{
 			Oid: 1, SchemaName: "public", AggregateName: "agg_prefunc", Arguments: "numeric, numeric",
 			IdentArgs: "numeric, numeric", TransitionFunction: 1, PreliminaryFunction: 2, FinalFunction: 0,
 			SortOperator: 0, TransitionDataType: "numeric", InitialValue: "0", IsOrdered: false,
@@ -105,21 +105,21 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 		It("creates a basic aggregate", func() {
 			emptyMetadataMap := backup.MetadataMap{}
-			backup.PrintCreateAggregateStatements(buffer, []backup.AggregateDefinition{aggregateDef}, funcInfoMap, emptyMetadataMap)
+			backup.PrintCreateAggregateStatements(buffer, []backup.Aggregate{aggregateDef}, funcInfoMap, emptyMetadataMap)
 
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION mysfunc_accum(numeric, numeric, numeric)")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION mypre_accum(numeric, numeric)")
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP AGGREGATE agg_prefunc(numeric, numeric)")
 
-			resultAggregates := backup.GetAggregateDefinitions(connection)
+			resultAggregates := backup.GetAggregates(connection)
 			Expect(len(resultAggregates)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&aggregateDef, &resultAggregates[0], "Oid", "TransitionFunction", "PreliminaryFunction")
 		})
 		It("creates an aggregate with an owner and a comment", func() {
 			aggMetadata := backup.ObjectMetadata{[]backup.ACL{}, "testrole", "This is an aggregate comment."}
 			aggMetadataMap := backup.MetadataMap{1: aggMetadata}
-			backup.PrintCreateAggregateStatements(buffer, []backup.AggregateDefinition{aggregateDef}, funcInfoMap, aggMetadataMap)
+			backup.PrintCreateAggregateStatements(buffer, []backup.Aggregate{aggregateDef}, funcInfoMap, aggMetadataMap)
 
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION mysfunc_accum(numeric, numeric, numeric)")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION mypre_accum(numeric, numeric)")
@@ -127,7 +127,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP AGGREGATE agg_prefunc(numeric, numeric)")
 
 			oid := backup.OidFromObjectName(connection, "", "agg_prefunc", backup.TYPE_AGGREGATE)
-			resultAggregates := backup.GetAggregateDefinitions(connection)
+			resultAggregates := backup.GetAggregates(connection)
 			Expect(len(resultAggregates)).To(Equal(1))
 			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_AGGREGATE)
 			resultMetadata := resultMetadataMap[oid]
@@ -143,51 +143,51 @@ var _ = Describe("backup integration create statement tests", func() {
 			castMetadataMap = backup.MetadataMap{}
 		})
 		It("prints a basic cast with a function", func() {
-			castDef := backup.CastDefinition{0, "text", "int4", "public", "casttoint", "text", "a"}
+			castDef := backup.Cast{0, "text", "int4", "public", "casttoint", "text", "a"}
 
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION casttoint(text) RETURNS integer STRICT IMMUTABLE LANGUAGE SQL AS 'SELECT cast($1 as integer);'")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION casttoint(text)")
 
-			backup.PrintCreateCastStatements(buffer, []backup.CastDefinition{castDef}, castMetadataMap)
+			backup.PrintCreateCastStatements(buffer, []backup.Cast{castDef}, castMetadataMap)
 			defer testutils.AssertQueryRuns(connection, "DROP CAST (text AS int4)")
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			resultCasts := backup.GetCastDefinitions(connection)
+			resultCasts := backup.GetCasts(connection)
 			Expect(len(resultCasts)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&castDef, &resultCasts[0], "Oid")
 		})
 		It("prints a basic cast without a function", func() {
-			castDef := backup.CastDefinition{0, "text", "casttesttype", "", "", "", "i"}
+			castDef := backup.Cast{0, "text", "casttesttype", "", "", "", "i"}
 
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION cast_in(cstring) RETURNS casttesttype AS $$textin$$ LANGUAGE internal STRICT NO SQL")
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION cast_out(casttesttype) RETURNS cstring AS $$textout$$ LANGUAGE internal STRICT NO SQL")
 			testutils.AssertQueryRuns(connection, "CREATE TYPE casttesttype (INTERNALLENGTH = variable, INPUT = cast_in, OUTPUT = cast_out)")
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE casttesttype CASCADE")
 
-			backup.PrintCreateCastStatements(buffer, []backup.CastDefinition{castDef}, castMetadataMap)
+			backup.PrintCreateCastStatements(buffer, []backup.Cast{castDef}, castMetadataMap)
 			defer testutils.AssertQueryRuns(connection, "DROP CAST (text AS public.casttesttype)")
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			resultCasts := backup.GetCastDefinitions(connection)
+			resultCasts := backup.GetCasts(connection)
 			Expect(len(resultCasts)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&castDef, &resultCasts[0], "Oid")
 		})
 		It("prints a cast with a comment", func() {
-			castDef := backup.CastDefinition{1, "text", "int4", "public", "casttoint", "text", "a"}
+			castDef := backup.Cast{1, "text", "int4", "public", "casttoint", "text", "a"}
 			castMetadataMap = testutils.DefaultMetadataMap("CAST", false, false, true)
 			castMetadata := castMetadataMap[1]
 
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION casttoint(text) RETURNS integer STRICT IMMUTABLE LANGUAGE SQL AS 'SELECT cast($1 as integer);'")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION casttoint(text)")
 
-			backup.PrintCreateCastStatements(buffer, []backup.CastDefinition{castDef}, castMetadataMap)
+			backup.PrintCreateCastStatements(buffer, []backup.Cast{castDef}, castMetadataMap)
 			defer testutils.AssertQueryRuns(connection, "DROP CAST (text AS int4)")
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			resultCasts := backup.GetCastDefinitions(connection)
+			resultCasts := backup.GetCasts(connection)
 			Expect(len(resultCasts)).To(Equal(1))
 			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_CAST)
 			resultMetadata := resultMetadataMap[resultCasts[0].Oid]

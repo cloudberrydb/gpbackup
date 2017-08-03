@@ -232,12 +232,12 @@ func backupPredata(filename string, tables []Relation, extTableMap map[string]bo
 	PrintCreateOperatorClassStatements(predataFile, operatorClasses, operatorClassMetadata)
 
 	logger.Verbose("Writing CREATE AGGREGATE statements to predata file")
-	aggDefs := GetAggregateDefinitions(connection)
+	aggDefs := GetAggregates(connection)
 	aggMetadata := GetMetadataForObjectType(connection, TYPE_AGGREGATE)
 	PrintCreateAggregateStatements(predataFile, aggDefs, funcInfoMap, aggMetadata)
 
 	logger.Verbose("Writing CREATE CAST statements to predata file")
-	castDefs := GetCastDefinitions(connection)
+	castDefs := GetCasts(connection)
 	castMetadata := GetCommentsForObjectType(connection, TYPE_CAST)
 	PrintCreateCastStatements(predataFile, castDefs, castMetadata)
 

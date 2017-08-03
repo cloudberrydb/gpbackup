@@ -72,7 +72,7 @@ ORDER BY nspname, proname, identargs;`, NonUserSchemaFilterClause("n"))
 	return results
 }
 
-type AggregateDefinition struct {
+type Aggregate struct {
 	Oid                 uint32
 	SchemaName          string `db:"nspname"`
 	AggregateName       string `db:"proname"`
@@ -87,7 +87,7 @@ type AggregateDefinition struct {
 	IsOrdered           bool `db:"aggordered"`
 }
 
-func GetAggregateDefinitions(connection *utils.DBConn) []AggregateDefinition {
+func GetAggregates(connection *utils.DBConn) []Aggregate {
 	query := fmt.Sprintf(`
 SELECT
 	p.oid,
@@ -108,7 +108,7 @@ LEFT JOIN pg_type t ON a.aggtranstype = t.oid
 LEFT JOIN pg_namespace n ON p.pronamespace = n.oid
 WHERE %s;`, NonUserSchemaFilterClause("n"))
 
-	results := make([]AggregateDefinition, 0)
+	results := make([]Aggregate, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results
@@ -153,7 +153,7 @@ LEFT JOIN pg_namespace n ON p.pronamespace = n.oid;
 	return funcMap
 }
 
-type CastDefinition struct {
+type Cast struct {
 	Oid            uint32
 	SourceType     string
 	TargetType     string
@@ -163,7 +163,7 @@ type CastDefinition struct {
 	CastContext    string
 }
 
-func GetCastDefinitions(connection *utils.DBConn) []CastDefinition {
+func GetCasts(connection *utils.DBConn) []Cast {
 	/* This query retrieves all casts where either the source type, the target
 	 * type, or the cast function is user-defined.
 	 */
@@ -188,7 +188,7 @@ WHERE (%s) OR (%s) OR (%s)
 ORDER BY 1, 2;
 `, NonUserSchemaFilterClause("sn"), NonUserSchemaFilterClause("tn"), NonUserSchemaFilterClause("n"))
 
-	results := make([]CastDefinition, 0)
+	results := make([]Cast, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results

@@ -83,9 +83,9 @@ CREATE AGGREGATE agg_prefunc(numeric, numeric) (
 			transitionOid := backup.OidFromObjectName(connection, "public", "mysfunc_accum", backup.TYPE_FUNCTION)
 			prelimOid := backup.OidFromObjectName(connection, "public", "mypre_accum", backup.TYPE_FUNCTION)
 
-			result := backup.GetAggregateDefinitions(connection)
+			result := backup.GetAggregates(connection)
 
-			aggregateDef := backup.AggregateDefinition{
+			aggregateDef := backup.Aggregate{
 				SchemaName: "public", AggregateName: "agg_prefunc", Arguments: "numeric, numeric",
 				IdentArgs: "numeric, numeric", TransitionFunction: transitionOid, PreliminaryFunction: prelimOid,
 				FinalFunction: 0, SortOperator: 0, TransitionDataType: "numeric", InitialValue: "0", IsOrdered: false,
@@ -126,9 +126,9 @@ LANGUAGE SQL`)
 			testutils.AssertQueryRuns(connection, "CREATE CAST (text AS int4) WITH FUNCTION casttoint(text) AS ASSIGNMENT")
 			defer testutils.AssertQueryRuns(connection, "DROP CAST (text AS int4)")
 
-			results := backup.GetCastDefinitions(connection)
+			results := backup.GetCasts(connection)
 
-			castDef := backup.CastDefinition{0, "text", "int4", "public", "casttoint", "text", "a"}
+			castDef := backup.Cast{0, "text", "int4", "public", "casttoint", "text", "a"}
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&castDef, &results[0], "Oid")
@@ -141,9 +141,9 @@ LANGUAGE SQL`)
 			testutils.AssertQueryRuns(connection, "CREATE CAST (text AS public.casttesttype) WITHOUT FUNCTION AS IMPLICIT")
 			defer testutils.AssertQueryRuns(connection, "DROP CAST (text AS public.casttesttype)")
 
-			results := backup.GetCastDefinitions(connection)
+			results := backup.GetCasts(connection)
 
-			castDef := backup.CastDefinition{0, "text", "casttesttype", "", "", "", "i"}
+			castDef := backup.Cast{0, "text", "casttesttype", "", "", "", "i"}
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&castDef, &results[0], "Oid")
@@ -155,9 +155,9 @@ LANGUAGE SQL`)
 			defer testutils.AssertQueryRuns(connection, "DROP CAST (text AS int4)")
 			testutils.AssertQueryRuns(connection, "COMMENT ON CAST (text AS int4) IS 'this is a cast comment'")
 
-			results := backup.GetCastDefinitions(connection)
+			results := backup.GetCasts(connection)
 
-			castDef := backup.CastDefinition{1, "text", "int4", "public", "casttoint", "text", "a"}
+			castDef := backup.Cast{1, "text", "int4", "public", "casttoint", "text", "a"}
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&castDef, &results[0], "Oid")
