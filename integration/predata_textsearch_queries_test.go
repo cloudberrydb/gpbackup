@@ -78,4 +78,41 @@ var _ = Describe("backup integration tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&expectedDictionary, &dictionaries[0], "Oid")
 		})
 	})
+	Describe("GetTextSearchConfigurations", func() {
+		It("returns a text search configuration without an init function", func() {
+			testutils.AssertQueryRuns(connection, `CREATE TEXT SEARCH CONFIGURATION testconfiguration (PARSER = pg_catalog."default");`)
+			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH CONFIGURATION testconfiguration")
+			configurations := backup.GetTextSearchConfigurations(connection)
+
+			expectedConfiguration := backup.TextSearchConfiguration{1, "public", "testconfiguration", `pg_catalog."default"`, map[string][]string{}}
+
+			Expect(len(configurations)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&expectedConfiguration, &configurations[0], "Oid")
+		})
+		It("returns a text search configuration with an init function", func() {
+			testutils.AssertQueryRuns(connection, `CREATE TEXT SEARCH CONFIGURATION testconfiguration ( PARSER = pg_catalog."default");`)
+			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH CONFIGURATION testconfiguration")
+			configurations := backup.GetTextSearchConfigurations(connection)
+
+			expectedConfiguration := backup.TextSearchConfiguration{1, "public", "testconfiguration", `pg_catalog."default"`, map[string][]string{}}
+
+			Expect(len(configurations)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&expectedConfiguration, &configurations[0], "Oid")
+		})
+		It("returns a text search configuration with mappings", func() {
+			testutils.AssertQueryRuns(connection, `CREATE TEXT SEARCH CONFIGURATION testconfiguration ( PARSER = pg_catalog."default");`)
+			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH CONFIGURATION testconfiguration")
+
+			testutils.AssertQueryRuns(connection, "ALTER TEXT SEARCH CONFIGURATION testconfiguration ADD MAPPING FOR uint WITH simple;")
+			testutils.AssertQueryRuns(connection, "ALTER TEXT SEARCH CONFIGURATION testconfiguration ADD MAPPING FOR asciiword WITH danish_stem;")
+
+			configurations := backup.GetTextSearchConfigurations(connection)
+
+			expectedConfiguration := backup.TextSearchConfiguration{1, "public", "testconfiguration", `pg_catalog."default"`, map[string][]string{}}
+			expectedConfiguration.TokenToDicts = map[string][]string{"uint": {"simple"}, "asciiword": {"danish_stem"}}
+
+			Expect(len(configurations)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&expectedConfiguration, &configurations[0], "Oid")
+		})
+	})
 })

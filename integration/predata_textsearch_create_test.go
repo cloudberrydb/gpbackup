@@ -119,4 +119,38 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatch(&dictionaryMetadata, &resultMetadata)
 		})
 	})
+	Describe("PrintCreateTextSearchConfigurationStatements", func() {
+		It("creates a basic text search configuration", func() {
+			configurations := []backup.TextSearchConfiguration{{0, "public", "testconfiguration", `pg_catalog."default"`, map[string][]string{}}}
+
+			backup.PrintCreateTextSearchConfigurationStatements(buffer, configurations, backup.MetadataMap{})
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH CONFIGURATION testconfiguration")
+
+			resultConfigurations := backup.GetTextSearchConfigurations(connection)
+
+			Expect(len(resultConfigurations)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&configurations[0], &resultConfigurations[0], "Oid")
+		})
+		It("creates a basic text search configuration with a comment and owner", func() {
+			configurations := []backup.TextSearchConfiguration{{1, "public", "testconfiguration", `pg_catalog."default"`, map[string][]string{}}}
+			configurationMetadataMap := testutils.DefaultMetadataMap("TEXT SEARCH CONFIGURATION", false, true, true)
+			configurationMetadata := configurationMetadataMap[1]
+
+			backup.PrintCreateTextSearchConfigurationStatements(buffer, configurations, configurationMetadataMap)
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH CONFIGURATION testconfiguration")
+
+			resultConfigurations := backup.GetTextSearchConfigurations(connection)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TSConfigurationParams)
+
+			Expect(len(resultConfigurations)).To(Equal(1))
+			oid := backup.OidFromObjectName(connection, "public", "testconfiguration", backup.TSConfigurationParams)
+			resultMetadata := resultMetadataMap[oid]
+			testutils.ExpectStructsToMatchExcluding(&configurations[0], &resultConfigurations[0], "Oid")
+			testutils.ExpectStructsToMatch(&configurationMetadata, &resultMetadata)
+		})
+	})
 })

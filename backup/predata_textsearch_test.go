@@ -58,4 +58,27 @@ var _ = Describe("backup/predata_textsearch tests", func() {
 )`)
 		})
 	})
+	Describe("PrintCreateTextSearchConfigurationStatements", func() {
+		It("prints a basic text search configuration", func() {
+			configurations := []backup.TextSearchConfiguration{{0, "public", "testconfiguration", `pg_catalog."default"`, map[string][]string{}}}
+			backup.PrintCreateTextSearchConfigurationStatements(buffer, configurations, backup.MetadataMap{})
+			testutils.ExpectRegexp(buffer, `CREATE TEXT SEARCH CONFIGURATION public.testconfiguration (
+	PARSER = pg_catalog."default"
+)`)
+		})
+		It("prints a text search configuration with multiple mappings", func() {
+			tokenToDicts := map[string][]string{"int": {"simple", "english_stem"}, "asciiword": {"english_stem"}}
+			configurations := []backup.TextSearchConfiguration{{0, "public", "testconfiguration", `pg_catalog."default"`, tokenToDicts}}
+			backup.PrintCreateTextSearchConfigurationStatements(buffer, configurations, backup.MetadataMap{})
+			testutils.ExpectRegexp(buffer, `CREATE TEXT SEARCH CONFIGURATION public.testconfiguration (
+	PARSER = pg_catalog."default"
+);
+
+ALTER TEXT SEARCH CONFIGURATION public.testconfiguration
+	ADD MAPPING FOR "asciiword" WITH english_stem;
+
+ALTER TEXT SEARCH CONFIGURATION public.testconfiguration
+	ADD MAPPING FOR "int" WITH simple, english_stem;`)
+		})
+	})
 })

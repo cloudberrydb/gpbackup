@@ -8,6 +8,8 @@ package backup
 
 import (
 	"io"
+	"sort"
+	"strings"
 
 	"github.com/greenplum-db/gpbackup/utils"
 )
@@ -51,5 +53,25 @@ func PrintCreateTextSearchDictionaryStatements(predataFile io.Writer, dictionari
 		}
 		utils.MustPrintf(predataFile, "\n);")
 		PrintObjectMetadata(predataFile, dictionaryMetadata[dictionary.Oid], dictionaryFQN, "TEXT SEARCH DICTIONARY")
+	}
+}
+
+func PrintCreateTextSearchConfigurationStatements(predataFile io.Writer, configurations []TextSearchConfiguration, configurationMetadata MetadataMap) {
+	for _, configuration := range configurations {
+		configurationFQN := MakeFQN(configuration.Schema, configuration.Name)
+		utils.MustPrintf(predataFile, "\n\nCREATE TEXT SEARCH CONFIGURATION %s (", configurationFQN)
+		utils.MustPrintf(predataFile, "\n\tPARSER = %s", configuration.Parser)
+		utils.MustPrintf(predataFile, "\n);")
+		tokens := []string{}
+		for token := range configuration.TokenToDicts {
+			tokens = append(tokens, token)
+		}
+		sort.Strings(tokens)
+		for _, token := range tokens {
+			dicts := configuration.TokenToDicts[token]
+			utils.MustPrintf(predataFile, "\n\nALTER TEXT SEARCH CONFIGURATION %s", configurationFQN)
+			utils.MustPrintf(predataFile, "\n\tADD MAPPING FOR \"%s\" WITH %s;", token, strings.Join(dicts, ", "))
+		}
+		PrintObjectMetadata(predataFile, configurationMetadata[configuration.Oid], configurationFQN, "TEXT SEARCH CONFIGURATION")
 	}
 }
