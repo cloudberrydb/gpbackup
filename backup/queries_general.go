@@ -35,7 +35,7 @@ ORDER BY name;`, NonUserSchemaFilterClause("n"))
 	return results
 }
 
-type QueryConstraint struct {
+type Constraint struct {
 	Oid                uint32
 	ConName            string
 	ConType            string
@@ -45,7 +45,7 @@ type QueryConstraint struct {
 	IsPartitionParent  bool
 }
 
-func GetConstraints(connection *utils.DBConn) []QueryConstraint {
+func GetConstraints(connection *utils.DBConn) []Constraint {
 	// This query is adapted from the queries underlying \d in psql.
 	query := fmt.Sprintf(`
 SELECT
@@ -81,7 +81,7 @@ AND pr.parchildrelid IS NULL
 GROUP BY c.oid, conname, contype, r.relname, n.nspname, t.typname, pt.parrelid
 ORDER BY conname;`, NonUserSchemaFilterClause("n"))
 
-	results := make([]QueryConstraint, 0)
+	results := make([]Constraint, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results
@@ -105,7 +105,7 @@ ORDER BY schemaname, relationname;`
 	return results
 }
 
-type QuerySequenceDefinition struct {
+type SequenceDefinition struct {
 	Name      string `db:"sequence_name"`
 	LastVal   int64  `db:"last_value"`
 	Increment int64  `db:"increment_by"`
@@ -117,19 +117,12 @@ type QuerySequenceDefinition struct {
 	IsCalled  bool   `db:"is_called"`
 }
 
-func GetSequenceDefinition(connection *utils.DBConn, seqName string) QuerySequenceDefinition {
+func GetSequenceDefinition(connection *utils.DBConn, seqName string) SequenceDefinition {
 	query := fmt.Sprintf("SELECT * FROM %s", seqName)
-	result := QuerySequenceDefinition{}
+	result := SequenceDefinition{}
 	err := connection.Get(&result, query)
 	utils.CheckError(err)
 	return result
-}
-
-type QuerySequenceOwner struct {
-	SchemaName   string `db:"nspname"`
-	SequenceName string
-	TableName    string
-	ColumnName   string `db:"attname"`
 }
 
 func GetSequenceColumnOwnerMap(connection *utils.DBConn) map[string]string {
@@ -149,7 +142,12 @@ JOIN pg_namespace n
 	ON n.oid = s.relnamespace
 WHERE s.relkind = 'S';`
 
-	results := make([]QuerySequenceOwner, 0)
+	results := make([]struct {
+		SchemaName   string `db:"nspname"`
+		SequenceName string
+		TableName    string
+		ColumnName   string `db:"attname"`
+	}, 0)
 	sequenceOwners := make(map[string]string, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
@@ -161,14 +159,14 @@ WHERE s.relkind = 'S';`
 	return sequenceOwners
 }
 
-type QuerySessionGUCs struct {
+type SessionGUCs struct {
 	ClientEncoding       string `db:"client_encoding"`
 	StdConformingStrings string `db:"standard_conforming_strings"`
 	DefaultWithOids      string `db:"default_with_oids"`
 }
 
-func GetSessionGUCs(connection *utils.DBConn) QuerySessionGUCs {
-	result := QuerySessionGUCs{}
+func GetSessionGUCs(connection *utils.DBConn) SessionGUCs {
+	result := SessionGUCs{}
 	query := "SHOW client_encoding;"
 	err := connection.Get(&result, query)
 	query = "SHOW standard_conforming_strings;"
@@ -179,7 +177,7 @@ func GetSessionGUCs(connection *utils.DBConn) QuerySessionGUCs {
 	return result
 }
 
-type QueryProceduralLanguage struct {
+type ProceduralLanguage struct {
 	Oid       uint32
 	Name      string `db:"lanname"`
 	Owner     string
@@ -190,8 +188,8 @@ type QueryProceduralLanguage struct {
 	Validator uint32 `db:"lanvalidator"`
 }
 
-func GetProceduralLanguages(connection *utils.DBConn) []QueryProceduralLanguage {
-	results := make([]QueryProceduralLanguage, 0)
+func GetProceduralLanguages(connection *utils.DBConn) []ProceduralLanguage {
+	results := make([]ProceduralLanguage, 0)
 	query := `
 SELECT
 	oid,
@@ -210,7 +208,7 @@ WHERE l.lanispl='t';
 	return results
 }
 
-type QueryExtProtocol struct {
+type ExternalProtocol struct {
 	Oid           uint32
 	Name          string `db:"ptcname"`
 	Owner         string
@@ -220,8 +218,8 @@ type QueryExtProtocol struct {
 	Validator     uint32 `db:"ptcvalidatorfn"`
 }
 
-func GetExternalProtocols(connection *utils.DBConn) []QueryExtProtocol {
-	results := make([]QueryExtProtocol, 0)
+func GetExternalProtocols(connection *utils.DBConn) []ExternalProtocol {
+	results := make([]ExternalProtocol, 0)
 	query := `
 SELECT
 	p.oid,
@@ -238,7 +236,7 @@ FROM pg_extprotocol p;
 	return results
 }
 
-type QueryOperator struct {
+type Operator struct {
 	Oid              uint32
 	SchemaName       string
 	Name             string
@@ -253,8 +251,8 @@ type QueryOperator struct {
 	CanMerge         bool
 }
 
-func GetOperators(connection *utils.DBConn) []QueryOperator {
-	results := make([]QueryOperator, 0)
+func GetOperators(connection *utils.DBConn) []Operator {
+	results := make([]Operator, 0)
 	query := fmt.Sprintf(`
 SELECT
 	o.oid,
@@ -277,15 +275,15 @@ WHERE %s AND oprcode != 0`, NonUserSchemaFilterClause("n"))
 	return results
 }
 
-type QueryOperatorFamily struct {
+type OperatorFamily struct {
 	Oid         uint32
 	SchemaName  string
 	Name        string
 	IndexMethod string
 }
 
-func GetOperatorFamilies(connection *utils.DBConn) []QueryOperatorFamily {
-	results := make([]QueryOperatorFamily, 0)
+func GetOperatorFamilies(connection *utils.DBConn) []OperatorFamily {
+	results := make([]OperatorFamily, 0)
 	query := fmt.Sprintf(`
 SELECT
 	o.oid,
@@ -300,7 +298,7 @@ WHERE %s`, NonUserSchemaFilterClause("n"))
 	return results
 }
 
-type QueryOperatorClass struct {
+type OperatorClass struct {
 	Oid          uint32
 	ClassSchema  string
 	ClassName    string
@@ -314,8 +312,8 @@ type QueryOperatorClass struct {
 	Functions    []OperatorClassFunction
 }
 
-func GetOperatorClasses(connection *utils.DBConn) []QueryOperatorClass {
-	results := make([]QueryOperatorClass, 0)
+func GetOperatorClasses(connection *utils.DBConn) []OperatorClass {
+	results := make([]OperatorClass, 0)
 	query := fmt.Sprintf(`
 SELECT
 	c.oid,

@@ -20,11 +20,11 @@ var _ = Describe("backup integration create statement tests", func() {
 	})
 	Describe("PrintCreateResourceQueueStatements", func() {
 		It("creates a basic resource queue with a comment", func() {
-			basicQueue := backup.QueryResourceQueue{1, "basicQueue", -1, "32.80", false, "0.00", "medium", "-1"}
+			basicQueue := backup.ResourceQueue{1, "basicQueue", -1, "32.80", false, "0.00", "medium", "-1"}
 			resQueueMetadataMap := testutils.DefaultMetadataMap("RESOURCE QUEUE", false, false, true)
 			resQueueMetadata := resQueueMetadataMap[1]
 
-			backup.PrintCreateResourceQueueStatements(buffer, []backup.QueryResourceQueue{basicQueue}, resQueueMetadataMap)
+			backup.PrintCreateResourceQueueStatements(buffer, []backup.ResourceQueue{basicQueue}, resQueueMetadataMap)
 
 			// CREATE RESOURCE QUEUE statements can not be part of a multi-command statement, so
 			// feed the CREATE RESOURCE QUEUE and COMMENT ON statements separately.
@@ -47,10 +47,10 @@ var _ = Describe("backup integration create statement tests", func() {
 			}
 		})
 		It("creates a resource queue with all attributes", func() {
-			everythingQueue := backup.QueryResourceQueue{1, "everythingQueue", 7, "32.80", true, "22.80", "low", "2GB"}
+			everythingQueue := backup.ResourceQueue{1, "everythingQueue", 7, "32.80", true, "22.80", "low", "2GB"}
 			emptyMetadataMap := map[uint32]backup.ObjectMetadata{}
 
-			backup.PrintCreateResourceQueueStatements(buffer, []backup.QueryResourceQueue{everythingQueue}, emptyMetadataMap)
+			backup.PrintCreateResourceQueueStatements(buffer, []backup.ResourceQueue{everythingQueue}, emptyMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, `DROP RESOURCE QUEUE "everythingQueue"`)
@@ -68,7 +68,7 @@ var _ = Describe("backup integration create statement tests", func() {
 	})
 	Describe("PrintCreateRoleStatements", func() {
 		It("creates a basic role ", func() {
-			role1 := backup.QueryRole{
+			role1 := backup.Role{
 				Oid:             0,
 				Name:            "role1",
 				Super:           true,
@@ -89,7 +89,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			}
 			emptyMetadataMap := backup.MetadataMap{}
 
-			backup.PrintCreateRoleStatements(buffer, []backup.QueryRole{role1}, emptyMetadataMap)
+			backup.PrintCreateRoleStatements(buffer, []backup.Role{role1}, emptyMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, `DROP ROLE "role1"`)
@@ -105,7 +105,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			Fail("Role 'role1' was not found")
 		})
 		It("creates a role with all attributes", func() {
-			role1 := backup.QueryRole{
+			role1 := backup.Role{
 				Oid:             1,
 				Name:            "role1",
 				Super:           false,
@@ -140,7 +140,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			}
 			metadataMap := testutils.DefaultMetadataMap("ROLE", false, false, true)
 
-			backup.PrintCreateRoleStatements(buffer, []backup.QueryRole{role1}, metadataMap)
+			backup.PrintCreateRoleStatements(buffer, []backup.Role{role1}, metadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, `DROP ROLE "role1"`)
@@ -167,8 +167,8 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 		It("grants a role without ADMIN OPTION", func() {
 			numRoleMembers := len(backup.GetRoleMembers(connection))
-			expectedRoleMember := backup.QueryRoleMember{"usergroup", "testuser", "testrole", false}
-			backup.PrintRoleMembershipStatements(buffer, []backup.QueryRoleMember{expectedRoleMember})
+			expectedRoleMember := backup.RoleMember{"usergroup", "testuser", "testrole", false}
+			backup.PrintRoleMembershipStatements(buffer, []backup.RoleMember{expectedRoleMember})
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
@@ -184,8 +184,8 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 		It("grants a role WITH ADMIN OPTION", func() {
 			numRoleMembers := len(backup.GetRoleMembers(connection))
-			expectedRoleMember := backup.QueryRoleMember{"usergroup", "testuser", "testrole", true}
-			backup.PrintRoleMembershipStatements(buffer, []backup.QueryRoleMember{expectedRoleMember})
+			expectedRoleMember := backup.RoleMember{"usergroup", "testuser", "testrole", true}
+			backup.PrintRoleMembershipStatements(buffer, []backup.RoleMember{expectedRoleMember})
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
@@ -201,11 +201,11 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 	})
 	Describe("PrintCreateTablespaceStatements", func() {
-		expectedTablespace := backup.QueryTablespace{1, "test_tablespace", "test_filespace"}
+		expectedTablespace := backup.Tablespace{1, "test_tablespace", "test_filespace"}
 		It("creates a basic tablespace", func() {
 			numTablespaces := len(backup.GetTablespaces(connection))
 			emptyMetadataMap := backup.MetadataMap{}
-			backup.PrintCreateTablespaceStatements(buffer, []backup.QueryTablespace{expectedTablespace}, emptyMetadataMap)
+			backup.PrintCreateTablespaceStatements(buffer, []backup.Tablespace{expectedTablespace}, emptyMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")
@@ -224,7 +224,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			numTablespaces := len(backup.GetTablespaces(connection))
 			tablespaceMetadataMap := testutils.DefaultMetadataMap("TABLESPACE", true, true, true)
 			tablespaceMetadata := tablespaceMetadataMap[1]
-			backup.PrintCreateTablespaceStatements(buffer, []backup.QueryTablespace{expectedTablespace}, tablespaceMetadataMap)
+			backup.PrintCreateTablespaceStatements(buffer, []backup.Tablespace{expectedTablespace}, tablespaceMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")

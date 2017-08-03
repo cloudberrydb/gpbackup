@@ -58,9 +58,9 @@ PARTITION BY LIST (gender)
 
 			tableAtts := backup.GetTableAttributes(connection, oid)
 
-			columnA := backup.QueryTableAttributes{1, "a", false, false, false, "double precision", "", -1, "att comment"}
-			columnC := backup.QueryTableAttributes{3, "c", true, false, false, "text", "", -1, ""}
-			columnD := backup.QueryTableAttributes{4, "d", false, true, false, "integer", "", -1, ""}
+			columnA := backup.TableAttributes{1, "a", false, false, false, "double precision", "", -1, "att comment"}
+			columnC := backup.TableAttributes{3, "c", true, false, false, "text", "", -1, ""}
+			columnD := backup.TableAttributes{4, "d", false, true, false, "integer", "", -1, ""}
 
 			Expect(len(tableAtts)).To(Equal(3))
 
@@ -75,8 +75,8 @@ PARTITION BY LIST (gender)
 
 			tableAtts := backup.GetTableAttributes(connection, uint32(oid))
 
-			columnA := backup.QueryTableAttributes{1, "a", false, false, false, "double precision", "compresstype=none,blocksize=32768,compresslevel=0", -1, ""}
-			columnB := backup.QueryTableAttributes{2, "b", false, false, false, "text", "blocksize=65536,compresstype=none,compresslevel=0", -1, ""}
+			columnA := backup.TableAttributes{1, "a", false, false, false, "double precision", "compresstype=none,blocksize=32768,compresslevel=0", -1, ""}
+			columnB := backup.TableAttributes{2, "b", false, false, false, "text", "blocksize=65536,compresstype=none,compresslevel=0", -1, ""}
 
 			Expect(len(tableAtts)).To(Equal(2))
 
@@ -154,7 +154,7 @@ PARTITION BY LIST (gender)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
 			oid := backup.OidFromObjectName(connection, "public", "simple_table", backup.RelationParams)
 
-			result := backup.GetPartitionDefinition(connection, oid)
+			result := backup.GetPartition(connection, oid)
 
 			Expect(result).To(Equal(""))
 		})
@@ -170,7 +170,7 @@ PARTITION BY LIST (gender)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE part_table")
 			oid := backup.OidFromObjectName(connection, "public", "part_table", backup.RelationParams)
 
-			result := backup.GetPartitionDefinition(connection, oid)
+			result := backup.GetPartition(connection, oid)
 
 			// The spacing is very specific here and is output from the postgres function
 			expectedResult := `PARTITION BY LIST(gender) 
@@ -188,7 +188,7 @@ PARTITION BY LIST (gender)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
 			oid := backup.OidFromObjectName(connection, "public", "simple_table", backup.RelationParams)
 
-			result := backup.GetPartitionTemplateDefinition(connection, oid)
+			result := backup.GetPartitionTemplate(connection, oid)
 
 			Expect(result).To(Equal(""))
 		})
@@ -208,7 +208,7 @@ PARTITION BY LIST (gender)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE part_table")
 			oid := backup.OidFromObjectName(connection, "public", "part_table", backup.RelationParams)
 
-			result := backup.GetPartitionTemplateDefinition(connection, oid)
+			result := backup.GetPartitionTemplate(connection, oid)
 
 			// The spacing is very specific here and is output from the postgres function
 			expectedResult := `ALTER TABLE part_table 
@@ -271,7 +271,7 @@ SET SUBPARTITION TEMPLATE
 
 			resultSequenceDef := backup.GetSequenceDefinition(connection, "my_sequence")
 
-			expectedSequence := backup.QuerySequenceDefinition{Name: "my_sequence", LastVal: 1, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
+			expectedSequence := backup.SequenceDefinition{Name: "my_sequence", LastVal: 1, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
 
 			testutils.ExpectStructsToMatch(&expectedSequence, &resultSequenceDef)
 		})
@@ -286,7 +286,7 @@ SET SUBPARTITION TEMPLATE
 
 			resultSequenceDef := backup.GetSequenceDefinition(connection, "my_sequence")
 
-			expectedSequence := backup.QuerySequenceDefinition{Name: "my_sequence", LastVal: 105, Increment: 5, MaxVal: 1000, MinVal: 20, CacheVal: 1, LogCnt: 31, IsCycled: false, IsCalled: true}
+			expectedSequence := backup.SequenceDefinition{Name: "my_sequence", LastVal: 105, Increment: 5, MaxVal: 1000, MinVal: 20, CacheVal: 1, LogCnt: 31, IsCycled: false, IsCalled: true}
 
 			testutils.ExpectStructsToMatch(&expectedSequence, &resultSequenceDef)
 		})
@@ -316,16 +316,16 @@ SET SUBPARTITION TEMPLATE
 			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE seq_two")
 
 			seqOneRelation := backup.BasicRelation("public", "seq_one")
-			seqOneDef := backup.QuerySequenceDefinition{Name: "seq_one", LastVal: 3, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
+			seqOneDef := backup.SequenceDefinition{Name: "seq_one", LastVal: 3, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
 			seqTwoRelation := backup.BasicRelation("public", "seq_two")
-			seqTwoDef := backup.QuerySequenceDefinition{Name: "seq_two", LastVal: 7, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
+			seqTwoDef := backup.SequenceDefinition{Name: "seq_two", LastVal: 7, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
 
 			results := backup.GetAllSequences(connection)
 
 			testutils.ExpectStructsToMatchExcluding(&seqOneRelation, &results[0].Relation, "SchemaOid", "RelationOid")
-			testutils.ExpectStructsToMatchExcluding(&seqOneDef, &results[0].QuerySequenceDefinition)
+			testutils.ExpectStructsToMatchExcluding(&seqOneDef, &results[0].SequenceDefinition)
 			testutils.ExpectStructsToMatchExcluding(&seqTwoRelation, &results[1].Relation, "SchemaOid", "RelationOid")
-			testutils.ExpectStructsToMatchExcluding(&seqTwoDef, &results[1].QuerySequenceDefinition)
+			testutils.ExpectStructsToMatchExcluding(&seqTwoDef, &results[1].SequenceDefinition)
 		})
 	})
 	Describe("GetSequenceDefinition", func() {
@@ -338,7 +338,7 @@ CYCLE`)
 			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE mysequence")
 			testutils.AssertQueryRuns(connection, "COMMENT ON SEQUENCE public.mysequence IS 'this is a sequence comment'")
 
-			expectedSequenceDef := backup.QuerySequenceDefinition{Name: "mysequence", LastVal: 42, Increment: 1, MaxVal: 1000, MinVal: 1, CacheVal: 41, IsCycled: true}
+			expectedSequenceDef := backup.SequenceDefinition{Name: "mysequence", LastVal: 42, Increment: 1, MaxVal: 1000, MinVal: 1, CacheVal: 41, IsCycled: true}
 
 			result := backup.GetSequenceDefinition(connection, "mysequence")
 
@@ -350,9 +350,9 @@ CYCLE`)
 			testutils.AssertQueryRuns(connection, "CREATE VIEW simpleview AS SELECT rolname FROM pg_roles")
 			defer testutils.AssertQueryRuns(connection, "DROP VIEW simpleview")
 
-			results := backup.GetViewDefinitions(connection)
+			results := backup.GetViews(connection)
 
-			viewDef := backup.QueryViewDefinition{1, "public", "simpleview", "SELECT pg_roles.rolname FROM pg_roles;", nil}
+			viewDef := backup.View{1, "public", "simpleview", "SELECT pg_roles.rolname FROM pg_roles;", nil}
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&viewDef, &results[0], "Oid")
@@ -430,9 +430,9 @@ CYCLE`)
 			testutils.AssertQueryRuns(connection, "CREATE VIEW child AS (SELECT * FROM parent1 UNION SELECT * FROM parent2)")
 			defer testutils.AssertQueryRuns(connection, "DROP VIEW child")
 
-			childView := backup.QueryViewDefinition{}
+			childView := backup.View{}
 			childView.Oid = backup.OidFromObjectName(connection, "public", "child", backup.RelationParams)
-			views := []backup.QueryViewDefinition{childView}
+			views := []backup.View{childView}
 
 			views = backup.ConstructViewDependencies(connection, views)
 

@@ -323,9 +323,9 @@ GRANT TRIGGER ON TABLE public.tablename TO PUBLIC;`)
 		})
 		It("sorts the slice correctly if there are two objects dependent on one other object", func() {
 			views := []backup.Sortable{
-				backup.QueryViewDefinition{SchemaName: "public", ViewName: "view1", DependsUpon: []string{"public.view2"}},
-				backup.QueryViewDefinition{SchemaName: "public", ViewName: "view2", DependsUpon: []string{}},
-				backup.QueryViewDefinition{SchemaName: "public", ViewName: "view3", DependsUpon: []string{"public.view2"}},
+				backup.View{SchemaName: "public", ViewName: "view1", DependsUpon: []string{"public.view2"}},
+				backup.View{SchemaName: "public", ViewName: "view2", DependsUpon: []string{}},
+				backup.View{SchemaName: "public", ViewName: "view3", DependsUpon: []string{"public.view2"}},
 			}
 
 			views = backup.TopologicalSort(views)
@@ -336,9 +336,9 @@ GRANT TRIGGER ON TABLE public.tablename TO PUBLIC;`)
 		})
 		It("sorts the slice correctly if there is one object dependent on two other objects", func() {
 			types := []backup.Sortable{
-				backup.TypeDefinition{TypeSchema: "public", TypeName: "type1", DependsUpon: []string{}},
-				backup.TypeDefinition{TypeSchema: "public", TypeName: "type2", DependsUpon: []string{"public.type1", "public.type3"}},
-				backup.TypeDefinition{TypeSchema: "public", TypeName: "type3", DependsUpon: []string{}},
+				backup.Type{TypeSchema: "public", TypeName: "type1", DependsUpon: []string{}},
+				backup.Type{TypeSchema: "public", TypeName: "type2", DependsUpon: []string{"public.type1", "public.type3"}},
+				backup.Type{TypeSchema: "public", TypeName: "type3", DependsUpon: []string{}},
 			}
 
 			types = backup.TopologicalSort(types)
@@ -349,9 +349,9 @@ GRANT TRIGGER ON TABLE public.tablename TO PUBLIC;`)
 		})
 		It("sorts the slice correctly if there are complex dependencies", func() {
 			sortable := []backup.Sortable{
-				backup.TypeDefinition{TypeSchema: "public", TypeName: "type1", DependsUpon: []string{}},
-				backup.TypeDefinition{TypeSchema: "public", TypeName: "type2", DependsUpon: []string{"public.type1", "public.function3"}},
-				backup.QueryFunctionDefinition{SchemaName: "public", FunctionName: "function3", DependsUpon: []string{"public.type1"}},
+				backup.Type{TypeSchema: "public", TypeName: "type1", DependsUpon: []string{}},
+				backup.Type{TypeSchema: "public", TypeName: "type2", DependsUpon: []string{"public.type1", "public.function3"}},
+				backup.Function{SchemaName: "public", FunctionName: "function3", DependsUpon: []string{"public.type1"}},
 			}
 
 			sortable = backup.TopologicalSort(sortable)

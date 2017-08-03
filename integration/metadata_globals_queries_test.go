@@ -43,7 +43,7 @@ var _ = Describe("backup integration tests", func() {
 
 			results := backup.GetResourceQueues(connection)
 
-			statementsQueue := backup.QueryResourceQueue{1, "statementsQueue", 7, "-1.00", false, "0.00", "medium", "-1"}
+			statementsQueue := backup.ResourceQueue{1, "statementsQueue", 7, "-1.00", false, "0.00", "medium", "-1"}
 
 			//Since resource queues are global, we can't be sure this is the only one
 			for _, resultQueue := range results {
@@ -60,7 +60,7 @@ var _ = Describe("backup integration tests", func() {
 
 			results := backup.GetResourceQueues(connection)
 
-			maxCostQueue := backup.QueryResourceQueue{1, "maxCostQueue", -1, "32.80", false, "0.00", "medium", "-1"}
+			maxCostQueue := backup.ResourceQueue{1, "maxCostQueue", -1, "32.80", false, "0.00", "medium", "-1"}
 
 			for _, resultQueue := range results {
 				if resultQueue.Name == "maxCostQueue" {
@@ -76,7 +76,7 @@ var _ = Describe("backup integration tests", func() {
 
 			results := backup.GetResourceQueues(connection)
 
-			everyQueue := backup.QueryResourceQueue{1, "everyQueue", 7, "30000.00", true, "22.53", "low", "2GB"}
+			everyQueue := backup.ResourceQueue{1, "everyQueue", 7, "30000.00", true, "22.53", "low", "2GB"}
 
 			for _, resultQueue := range results {
 				if resultQueue.Name == "everyQueue" {
@@ -96,7 +96,7 @@ var _ = Describe("backup integration tests", func() {
 			results := backup.GetRoles(connection)
 
 			roleOid := backup.OidFromObjectName(connection, "", "role1", backup.RoleParams)
-			expectedRole := backup.QueryRole{
+			expectedRole := backup.Role{
 				Oid:             roleOid,
 				Name:            "role1",
 				Super:           true,
@@ -142,7 +142,7 @@ CREATEEXTTABLE (protocol='gphdfs', type='writable')`)
 			results := backup.GetRoles(connection)
 
 			roleOid := backup.OidFromObjectName(connection, "", "role1", backup.RoleParams)
-			expectedRole := backup.QueryRole{
+			expectedRole := backup.Role{
 				Oid:             roleOid,
 				Name:            "role1",
 				Super:           false,
@@ -196,7 +196,7 @@ CREATEEXTTABLE (protocol='gphdfs', type='writable')`)
 		})
 		It("returns a role without ADMIN OPTION", func() {
 			testutils.AssertQueryRuns(connection, "GRANT usergroup TO testuser")
-			expectedRoleMember := backup.QueryRoleMember{"usergroup", "testuser", "testrole", false}
+			expectedRoleMember := backup.RoleMember{"usergroup", "testuser", "testrole", false}
 
 			roleMembers := backup.GetRoleMembers(connection)
 
@@ -210,7 +210,7 @@ CREATEEXTTABLE (protocol='gphdfs', type='writable')`)
 		})
 		It("returns a role WITH ADMIN OPTION", func() {
 			testutils.AssertQueryRuns(connection, "GRANT usergroup TO testuser WITH ADMIN OPTION GRANTED BY testrole")
-			expectedRoleMember := backup.QueryRoleMember{"usergroup", "testuser", "testrole", true}
+			expectedRoleMember := backup.RoleMember{"usergroup", "testuser", "testrole", true}
 
 			roleMembers := backup.GetRoleMembers(connection)
 
@@ -227,7 +227,7 @@ CREATEEXTTABLE (protocol='gphdfs', type='writable')`)
 		It("returns a tablespace", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLESPACE test_tablespace FILESPACE test_filespace")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")
-			expectedTablespace := backup.QueryTablespace{0, "test_tablespace", "test_filespace"}
+			expectedTablespace := backup.Tablespace{0, "test_tablespace", "test_filespace"}
 
 			resultTablespaces := backup.GetTablespaces(connection)
 

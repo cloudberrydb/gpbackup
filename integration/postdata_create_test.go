@@ -38,7 +38,7 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			resultIndexes := backup.GetIndexDefinitions(connection, indexNameMap)
+			resultIndexes := backup.GetIndexes(connection, indexNameMap)
 			Expect(len(resultIndexes)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&resultIndexes[0], &indexes[0], "Oid")
 		})
@@ -57,7 +57,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.AssertQueryRuns(connection, buffer.String())
 
 			indexes[0].Oid = backup.OidFromObjectName(connection, "", "index1", backup.IndexParams)
-			resultIndexes := backup.GetIndexDefinitions(connection, indexNameMap)
+			resultIndexes := backup.GetIndexes(connection, indexNameMap)
 			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.IndexParams)
 			resultMetadata := resultMetadataMap[indexes[0].Oid]
 			Expect(len(resultIndexes)).To(Equal(1))
@@ -78,7 +78,7 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			resultIndexes := backup.GetIndexDefinitions(connection, indexNameMap)
+			resultIndexes := backup.GetIndexes(connection, indexNameMap)
 			Expect(len(resultIndexes)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&resultIndexes[0], &indexes[0], "Oid")
 		})
@@ -101,7 +101,7 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			resultRules := backup.GetRuleDefinitions(connection)
+			resultRules := backup.GetRules(connection)
 			Expect(len(resultRules)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&resultRules[0], &rules[0], "Oid")
 		})
@@ -119,7 +119,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.AssertQueryRuns(connection, buffer.String())
 
 			rules[0].Oid = backup.OidFromObjectName(connection, "", "update_notify", backup.RuleParams)
-			resultRules := backup.GetRuleDefinitions(connection)
+			resultRules := backup.GetRules(connection)
 			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.RuleParams)
 			resultMetadata := resultMetadataMap[rules[0].Oid]
 			Expect(len(resultRules)).To(Equal(1))
@@ -145,7 +145,7 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			resultTriggers := backup.GetTriggerDefinitions(connection)
+			resultTriggers := backup.GetTriggers(connection)
 			Expect(len(resultTriggers)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&resultTriggers[0], &triggers[0], "Oid")
 		})
@@ -163,7 +163,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.AssertQueryRuns(connection, buffer.String())
 
 			triggers[0].Oid = backup.OidFromObjectName(connection, "", "sync_testtable", backup.TriggerParams)
-			resultTriggers := backup.GetTriggerDefinitions(connection)
+			resultTriggers := backup.GetTriggers(connection)
 			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TriggerParams)
 			resultMetadata := resultMetadataMap[triggers[0].Oid]
 			Expect(len(resultTriggers)).To(Equal(1))

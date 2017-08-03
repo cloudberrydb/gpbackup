@@ -21,7 +21,7 @@ import (
  * Because only base types are dependent on functions, we only need to print
  * shell type statements for base types.
  */
-func PrintCreateShellTypeStatements(predataFile io.Writer, types []TypeDefinition) {
+func PrintCreateShellTypeStatements(predataFile io.Writer, types []Type) {
 	utils.MustPrintln(predataFile, "\n")
 	for _, typ := range types {
 		if typ.Type == "b" || typ.Type == "p" {
@@ -31,7 +31,7 @@ func PrintCreateShellTypeStatements(predataFile io.Writer, types []TypeDefinitio
 	}
 }
 
-func PrintCreateDomainStatement(predataFile io.Writer, domain TypeDefinition, typeMetadata ObjectMetadata) {
+func PrintCreateDomainStatement(predataFile io.Writer, domain Type, typeMetadata ObjectMetadata) {
 	typeFQN := MakeFQN(domain.TypeSchema, domain.TypeName)
 	utils.MustPrintf(predataFile, "\nCREATE DOMAIN %s AS %s", typeFQN, domain.BaseType)
 	if domain.DefaultVal != "" {
@@ -44,7 +44,7 @@ func PrintCreateDomainStatement(predataFile io.Writer, domain TypeDefinition, ty
 	PrintObjectMetadata(predataFile, typeMetadata, typeFQN, "DOMAIN")
 }
 
-func PrintCreateBaseTypeStatement(predataFile io.Writer, base TypeDefinition, typeMetadata ObjectMetadata) {
+func PrintCreateBaseTypeStatement(predataFile io.Writer, base Type, typeMetadata ObjectMetadata) {
 	typeFQN := MakeFQN(base.TypeSchema, base.TypeName)
 	utils.MustPrintf(predataFile, "\n\nCREATE TYPE %s (\n", typeFQN)
 
@@ -108,13 +108,13 @@ type CompositeType struct {
 	AttType string
 }
 
-func CoalesceCompositeTypes(types []TypeDefinition) []TypeDefinition {
+func CoalesceCompositeTypes(types []Type) []Type {
 	i := 0
-	coalescedTypes := make([]TypeDefinition, 0)
+	coalescedTypes := make([]Type, 0)
 	for i < len(types) {
 		typ := types[i]
 		if typ.Type == "c" {
-			compositeTypes := make([]TypeDefinition, 0)
+			compositeTypes := make([]Type, 0)
 			/*
 			 * Since types is sorted by schema then by type, all TypeDefinitions
 			 * for the same composite type are grouped together.  Collect them in
@@ -147,7 +147,7 @@ func CoalesceCompositeTypes(types []TypeDefinition) []TypeDefinition {
 	return coalescedTypes
 }
 
-func PrintCreateCompositeTypeStatement(predataFile io.Writer, composite TypeDefinition, typeMetadata ObjectMetadata) {
+func PrintCreateCompositeTypeStatement(predataFile io.Writer, composite Type, typeMetadata ObjectMetadata) {
 	typeFQN := MakeFQN(composite.TypeSchema, composite.TypeName)
 	utils.MustPrintf(predataFile, "\n\nCREATE TYPE %s AS (\n", typeFQN)
 	atts := make([]string, 0)
@@ -159,7 +159,7 @@ func PrintCreateCompositeTypeStatement(predataFile io.Writer, composite TypeDefi
 	PrintObjectMetadata(predataFile, typeMetadata, typeFQN, "TYPE")
 }
 
-func PrintCreateEnumTypeStatements(predataFile io.Writer, types []TypeDefinition, typeMetadata MetadataMap) {
+func PrintCreateEnumTypeStatements(predataFile io.Writer, types []Type, typeMetadata MetadataMap) {
 	for _, typ := range types {
 		if typ.Type == "e" {
 			typeFQN := MakeFQN(typ.TypeSchema, typ.TypeName)

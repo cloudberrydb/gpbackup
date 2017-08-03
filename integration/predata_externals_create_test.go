@@ -76,13 +76,13 @@ var _ = Describe("backup integration create statement tests", func() {
 			1: {"public.write_to_s3", "", false},
 			2: {"public.read_from_s3", "", false},
 		}
-		protocolReadOnly := backup.QueryExtProtocol{1, "s3_read", "testrole", true, 2, 0, 0}
-		protocolWriteOnly := backup.QueryExtProtocol{1, "s3_write", "testrole", false, 0, 1, 0}
-		protocolReadWrite := backup.QueryExtProtocol{1, "s3_read_write", "testrole", false, 2, 1, 0}
+		protocolReadOnly := backup.ExternalProtocol{1, "s3_read", "testrole", true, 2, 0, 0}
+		protocolWriteOnly := backup.ExternalProtocol{1, "s3_write", "testrole", false, 0, 1, 0}
+		protocolReadWrite := backup.ExternalProtocol{1, "s3_read_write", "testrole", false, 2, 1, 0}
 		emptyMetadataMap := backup.MetadataMap{}
 
 		It("creates a trusted protocol with a read function, privileges, and an owner", func() {
-			externalProtocols := []backup.QueryExtProtocol{protocolReadOnly}
+			externalProtocols := []backup.ExternalProtocol{protocolReadOnly}
 			protoMetadataMap := testutils.DefaultMetadataMap("PROTOCOL", true, true, false)
 
 			backup.PrintCreateExternalProtocolStatements(buffer, externalProtocols, funcInfoMap, protoMetadataMap)
@@ -99,7 +99,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&protocolReadOnly, &resultExternalProtocols[0], "Oid", "ReadFunction")
 		})
 		It("creates a protocol with a write function", func() {
-			externalProtocols := []backup.QueryExtProtocol{protocolWriteOnly}
+			externalProtocols := []backup.ExternalProtocol{protocolWriteOnly}
 
 			backup.PrintCreateExternalProtocolStatements(buffer, externalProtocols, funcInfoMap, emptyMetadataMap)
 
@@ -115,7 +115,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&protocolWriteOnly, &resultExternalProtocols[0], "Oid", "WriteFunction")
 		})
 		It("creates a protocol with a read and write function", func() {
-			externalProtocols := []backup.QueryExtProtocol{protocolReadWrite}
+			externalProtocols := []backup.ExternalProtocol{protocolReadWrite}
 
 			backup.PrintCreateExternalProtocolStatements(buffer, externalProtocols, funcInfoMap, emptyMetadataMap)
 

@@ -23,7 +23,7 @@ func PrintConnectionString(metadataFile io.Writer, dbname string) {
  * Session GUCs are printed to global, predata, and postdata files so we
  * will use the correct settings when the files are run during restore
  */
-func PrintSessionGUCs(metadataFile io.Writer, gucs QuerySessionGUCs) {
+func PrintSessionGUCs(metadataFile io.Writer, gucs SessionGUCs) {
 	utils.MustPrintf(metadataFile, `SET statement_timeout = 0;
 SET check_function_bodies = false;
 SET client_min_messages = error;
@@ -33,7 +33,7 @@ SET default_with_oids = %s;
 `, gucs.ClientEncoding, gucs.StdConformingStrings, gucs.DefaultWithOids)
 }
 
-func PrintCreateDatabaseStatement(globalFile io.Writer, dbname string, allDBs []QueryDatabaseName, dbMetadata MetadataMap, dumpGlobals bool) {
+func PrintCreateDatabaseStatement(globalFile io.Writer, dbname string, allDBs []DatabaseName, dbMetadata MetadataMap, dumpGlobals bool) {
 	dbname = utils.QuoteIdent(dbname)
 	for _, db := range allDBs {
 		if db.DatabaseName == dbname {
@@ -61,7 +61,7 @@ func PrintDatabaseGUCs(globalFile io.Writer, gucs []string, dbname string) {
 	}
 }
 
-func PrintCreateResourceQueueStatements(globalFile io.Writer, resQueues []QueryResourceQueue, resQueueMetadata MetadataMap) {
+func PrintCreateResourceQueueStatements(globalFile io.Writer, resQueues []ResourceQueue, resQueueMetadata MetadataMap) {
 	for _, resQueue := range resQueues {
 		attributes := []string{}
 		if resQueue.ActiveStatements != -1 {
@@ -95,7 +95,7 @@ func PrintCreateResourceQueueStatements(globalFile io.Writer, resQueues []QueryR
 	}
 }
 
-func PrintCreateRoleStatements(globalFile io.Writer, roles []QueryRole, roleMetadata MetadataMap) {
+func PrintCreateRoleStatements(globalFile io.Writer, roles []Role, roleMetadata MetadataMap) {
 	for _, role := range roles {
 		quotedName := utils.QuoteIdent(role.Name)
 		attrs := []string{}
@@ -177,7 +177,7 @@ ALTER ROLE %s WITH %s;`, quotedName, quotedName, strings.Join(attrs, " "))
 	}
 }
 
-func PrintRoleMembershipStatements(globalFile io.Writer, roleMembers []QueryRoleMember) {
+func PrintRoleMembershipStatements(globalFile io.Writer, roleMembers []RoleMember) {
 	utils.MustPrintln(globalFile, "\n")
 	for _, roleMember := range roleMembers {
 		utils.MustPrintf(globalFile, "\nGRANT %s TO %s", roleMember.Role, roleMember.Member)
@@ -188,7 +188,7 @@ func PrintRoleMembershipStatements(globalFile io.Writer, roleMembers []QueryRole
 	}
 }
 
-func PrintCreateTablespaceStatements(globalFile io.Writer, tablespaces []QueryTablespace, tablespaceMetadata MetadataMap) {
+func PrintCreateTablespaceStatements(globalFile io.Writer, tablespaces []Tablespace, tablespaceMetadata MetadataMap) {
 	for _, tablespace := range tablespaces {
 		utils.MustPrintf(globalFile, "\n\nCREATE TABLESPACE %s FILESPACE %s;", tablespace.Tablespace, tablespace.Filespace)
 		PrintObjectMetadata(globalFile, tablespaceMetadata[tablespace.Oid], tablespace.Tablespace, "TABLESPACE")

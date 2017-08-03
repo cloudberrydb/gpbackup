@@ -33,14 +33,14 @@ MODIFIES SQL DATA
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION append(integer, integer)")
 			testutils.AssertQueryRuns(connection, "COMMENT ON FUNCTION append(integer, integer) IS 'this is a function comment'")
 
-			results := backup.GetFunctionDefinitions(connection)
+			results := backup.GetFunctions(connection)
 
-			addFunction := backup.QueryFunctionDefinition{
+			addFunction := backup.Function{
 				SchemaName: "public", FunctionName: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
 				BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "integer",
 				Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 0, DataAccess: "c",
 				Language: "sql"}
-			appendFunction := backup.QueryFunctionDefinition{
+			appendFunction := backup.Function{
 				SchemaName: "public", FunctionName: "append", ReturnsSet: true, FunctionBody: "SELECT ($1, $2)",
 				BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "SETOF record",
 				Volatility: "s", IsStrict: true, IsSecurityDefiner: true, Config: "SET search_path TO pg_temp", Cost: 200,
@@ -85,7 +85,7 @@ CREATE AGGREGATE agg_prefunc(numeric, numeric) (
 
 			result := backup.GetAggregateDefinitions(connection)
 
-			aggregateDef := backup.QueryAggregateDefinition{
+			aggregateDef := backup.AggregateDefinition{
 				SchemaName: "public", AggregateName: "agg_prefunc", Arguments: "numeric, numeric",
 				IdentArgs: "numeric, numeric", TransitionFunction: transitionOid, PreliminaryFunction: prelimOid,
 				FinalFunction: 0, SortOperator: 0, TransitionDataType: "numeric", InitialValue: "0", IsOrdered: false,
@@ -128,7 +128,7 @@ LANGUAGE SQL`)
 
 			results := backup.GetCastDefinitions(connection)
 
-			castDef := backup.QueryCastDefinition{0, "text", "int4", "public", "casttoint", "text", "a"}
+			castDef := backup.CastDefinition{0, "text", "int4", "public", "casttoint", "text", "a"}
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&castDef, &results[0], "Oid")
@@ -143,7 +143,7 @@ LANGUAGE SQL`)
 
 			results := backup.GetCastDefinitions(connection)
 
-			castDef := backup.QueryCastDefinition{0, "text", "casttesttype", "", "", "", "i"}
+			castDef := backup.CastDefinition{0, "text", "casttesttype", "", "", "", "i"}
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&castDef, &results[0], "Oid")
@@ -157,7 +157,7 @@ LANGUAGE SQL`)
 
 			results := backup.GetCastDefinitions(connection)
 
-			castDef := backup.QueryCastDefinition{1, "text", "int4", "public", "casttoint", "text", "a"}
+			castDef := backup.CastDefinition{1, "text", "int4", "public", "casttoint", "text", "a"}
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&castDef, &results[0], "Oid")
@@ -174,15 +174,15 @@ LANGUAGE SQL`)
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION add(composite_ints) RETURNS integer STRICT IMMUTABLE LANGUAGE SQL AS 'SELECT ($1.one + $1.two);'")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION add(composite_ints)")
 
-			allFunctions := backup.GetFunctionDefinitions(connection)
-			function := backup.QueryFunctionDefinition{}
+			allFunctions := backup.GetFunctions(connection)
+			function := backup.Function{}
 			for _, funct := range allFunctions {
 				if funct.FunctionName == "add" {
 					function = funct
 					break
 				}
 			}
-			functions := []backup.QueryFunctionDefinition{function}
+			functions := []backup.Function{function}
 
 			functions = backup.ConstructFunctionDependencies(connection, functions)
 
@@ -194,15 +194,15 @@ LANGUAGE SQL`)
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION compose(integer, integer) RETURNS composite_ints STRICT IMMUTABLE LANGUAGE PLPGSQL AS 'DECLARE comp composite_ints; BEGIN SELECT $1, $2 INTO comp; RETURN comp; END;';")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION compose(integer, integer)")
 
-			allFunctions := backup.GetFunctionDefinitions(connection)
-			function := backup.QueryFunctionDefinition{}
+			allFunctions := backup.GetFunctions(connection)
+			function := backup.Function{}
 			for _, funct := range allFunctions {
 				if funct.FunctionName == "compose" {
 					function = funct
 					break
 				}
 			}
-			functions := []backup.QueryFunctionDefinition{function}
+			functions := []backup.Function{function}
 
 			functions = backup.ConstructFunctionDependencies(connection, functions)
 

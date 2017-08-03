@@ -16,39 +16,39 @@ var _ = Describe("backup integration tests", func() {
 	})
 	Describe("GetTypeDefinitions", func() {
 		var (
-			shellType         backup.TypeDefinition
-			baseTypeDefault   backup.TypeDefinition
-			baseTypeCustom    backup.TypeDefinition
-			compositeTypeAtt1 backup.TypeDefinition
-			compositeTypeAtt2 backup.TypeDefinition
-			compositeTypeAtt3 backup.TypeDefinition
-			enumType          backup.TypeDefinition
+			shellType         backup.Type
+			baseTypeDefault   backup.Type
+			baseTypeCustom    backup.Type
+			compositeTypeAtt1 backup.Type
+			compositeTypeAtt2 backup.Type
+			compositeTypeAtt3 backup.Type
+			enumType          backup.Type
 		)
 		BeforeEach(func() {
-			shellType = backup.TypeDefinition{Type: "p", TypeSchema: "public", TypeName: "shell_type"}
-			baseTypeDefault = backup.TypeDefinition{
+			shellType = backup.Type{Type: "p", TypeSchema: "public", TypeName: "shell_type"}
+			baseTypeDefault = backup.Type{
 				Oid: 1, Type: "b", TypeSchema: "public", TypeName: "base_type", Input: "base_fn_in", Output: "base_fn_out", Receive: "",
 				Send: "", ModIn: "", ModOut: "", InternalLength: -1, IsPassedByValue: false, Alignment: "i", Storage: "p",
 				DefaultVal: "", Element: "", Delimiter: ",",
 			}
-			baseTypeCustom = backup.TypeDefinition{
+			baseTypeCustom = backup.Type{
 				Oid: 1, Type: "b", TypeSchema: "public", TypeName: "base_type", Input: "base_fn_in", Output: "base_fn_out", Receive: "",
 				Send: "", ModIn: "", ModOut: "", InternalLength: 8, IsPassedByValue: true, Alignment: "c", Storage: "p",
 				DefaultVal: "0", Element: "integer", Delimiter: ";",
 			}
-			compositeTypeAtt1 = backup.TypeDefinition{
+			compositeTypeAtt1 = backup.Type{
 				Oid: 1, Type: "c", TypeSchema: "public", TypeName: "composite_type",
 				AttName: "name", AttType: "integer",
 			}
-			compositeTypeAtt2 = backup.TypeDefinition{
+			compositeTypeAtt2 = backup.Type{
 				Oid: 1, Type: "c", TypeSchema: "public", TypeName: "composite_type",
 				AttName: "name1", AttType: "integer",
 			}
-			compositeTypeAtt3 = backup.TypeDefinition{
+			compositeTypeAtt3 = backup.Type{
 				Oid: 1, Type: "c", TypeSchema: "public", TypeName: "composite_type",
 				AttName: "name2", AttType: "text",
 			}
-			enumType = backup.TypeDefinition{
+			enumType = backup.Type{
 				Oid: 1, Type: "e", TypeSchema: "public", TypeName: "enum_type", AttName: "", AttType: "", Input: "enum_in", Output: "enum_out",
 				Receive: "enum_recv", Send: "enum_send", ModIn: "", ModOut: "", InternalLength: 4, IsPassedByValue: true,
 				Alignment: "i", Storage: "p", DefaultVal: "", Element: "", Delimiter: ",", EnumLabels: "'label1',\n\t'label2',\n\t'label3'",
@@ -58,7 +58,7 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TYPE shell_type")
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE shell_type")
 
-			results := backup.GetTypeDefinitions(connection)
+			results := backup.GetTypes(connection)
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchIncluding(&shellType, &results[0], "TypeSchema", "TypeName", "Type")
@@ -67,7 +67,7 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TYPE composite_type AS (name int4, name1 int, name2 text);")
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE composite_type")
 
-			results := backup.GetTypeDefinitions(connection)
+			results := backup.GetTypes(connection)
 
 			Expect(len(results)).To(Equal(3))
 			testutils.ExpectStructsToMatchIncluding(&compositeTypeAtt1, &results[0], "Type", "TypeSchema", "TypeName", "AttName", "AttType")
@@ -81,7 +81,7 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION base_fn_out(base_type) RETURNS cstring AS 'boolout' LANGUAGE internal")
 			testutils.AssertQueryRuns(connection, "CREATE TYPE base_type(INPUT=base_fn_in, OUTPUT=base_fn_out)")
 
-			results := backup.GetTypeDefinitions(connection)
+			results := backup.GetTypes(connection)
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&results[0], &baseTypeDefault, "Oid")
@@ -93,7 +93,7 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION base_fn_out(base_type) RETURNS cstring AS 'boolout' LANGUAGE internal")
 			testutils.AssertQueryRuns(connection, "CREATE TYPE base_type(INPUT=base_fn_in, OUTPUT=base_fn_out, INTERNALLENGTH=8, PASSEDBYVALUE, ALIGNMENT=char, STORAGE=plain, DEFAULT=0, ELEMENT=integer, DELIMITER=';')")
 
-			results := backup.GetTypeDefinitions(connection)
+			results := backup.GetTypes(connection)
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&results[0], &baseTypeCustom, "Oid")
@@ -102,7 +102,7 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TYPE enum_type AS ENUM ('label1','label2','label3')")
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE enum_type")
 
-			results := backup.GetTypeDefinitions(connection)
+			results := backup.GetTypes(connection)
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&results[0], &enumType, "Oid")
@@ -120,7 +120,7 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TYPE enum_type AS ENUM ('label1','label2','label3')")
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE enum_type")
 
-			resultTypes := backup.GetTypeDefinitions(connection)
+			resultTypes := backup.GetTypes(connection)
 
 			Expect(len(resultTypes)).To(Equal(6))
 			testutils.ExpectStructsToMatchExcluding(&resultTypes[0], &baseTypeCustom, "Oid")
@@ -136,7 +136,7 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE VIEW simpleview AS SELECT rolname FROM pg_roles")
 			defer testutils.AssertQueryRuns(connection, "DROP VIEW simpleview")
 
-			results := backup.GetTypeDefinitions(connection)
+			results := backup.GetTypes(connection)
 
 			Expect(len(results)).To(Equal(0))
 		})
@@ -145,12 +145,12 @@ var _ = Describe("backup integration tests", func() {
 			// The table's name will be truncated to 63 characters upon creation, as will the names of its implicit types
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo;")
 
-			results := backup.GetTypeDefinitions(connection)
+			results := backup.GetTypes(connection)
 
 			Expect(len(results)).To(Equal(0))
 		})
 		It("returns a slice for a domain type", func() {
-			domainType := backup.TypeDefinition{
+			domainType := backup.Type{
 				Oid: 1, Type: "d", TypeSchema: "public", TypeName: "domain1", AttName: "", AttType: "", Input: "domain_in", Output: "numeric_out",
 				Receive: "domain_recv", Send: "numeric_send", ModIn: "", ModOut: "", InternalLength: -1, IsPassedByValue: false,
 				Alignment: "i", Storage: "m", DefaultVal: "4", Element: "", Delimiter: ",", EnumLabels: "", BaseType: "numeric",
@@ -158,7 +158,7 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE DOMAIN domain1 AS numeric DEFAULT 4")
 			defer testutils.AssertQueryRuns(connection, "DROP DOMAIN domain1")
 
-			results := backup.GetTypeDefinitions(connection)
+			results := backup.GetTypes(connection)
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&results[0], &domainType, "Oid")
@@ -181,15 +181,15 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TYPE comp_type AS (base base_type, builtin integer)")
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE comp_type")
 
-			allTypes := backup.GetTypeDefinitions(connection)
-			compType := backup.TypeDefinition{}
+			allTypes := backup.GetTypes(connection)
+			compType := backup.Type{}
 			for _, typ := range allTypes {
 				if typ.TypeName == "comp_type" {
 					compType = typ
 					break
 				}
 			}
-			compTypes := []backup.TypeDefinition{compType}
+			compTypes := []backup.Type{compType}
 
 			compTypes = backup.ConstructCompositeTypeDependencies(connection, compTypes)
 
@@ -201,15 +201,15 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TYPE comp_type AS (base base_type, base2 base_type2)")
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE comp_type")
 
-			allTypes := backup.GetTypeDefinitions(connection)
-			compType := backup.TypeDefinition{}
+			allTypes := backup.GetTypes(connection)
+			compType := backup.Type{}
 			for _, typ := range allTypes {
 				if typ.TypeName == "comp_type" {
 					compType = typ
 					break
 				}
 			}
-			compTypes := []backup.TypeDefinition{compType}
+			compTypes := []backup.Type{compType}
 
 			compTypes = backup.ConstructCompositeTypeDependencies(connection, compTypes)
 
@@ -222,15 +222,15 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TYPE comp_type AS (base base_type, base2 base_type)")
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE comp_type")
 
-			allTypes := backup.GetTypeDefinitions(connection)
-			compType := backup.TypeDefinition{}
+			allTypes := backup.GetTypes(connection)
+			compType := backup.Type{}
 			for _, typ := range allTypes {
 				if typ.TypeName == "base_type" {
 					compType = typ
 					return
 				}
 			}
-			compTypes := []backup.TypeDefinition{compType}
+			compTypes := []backup.Type{compType}
 
 			compTypes = backup.ConstructCompositeTypeDependencies(connection, compTypes)
 
@@ -250,15 +250,15 @@ var _ = Describe("backup integration tests", func() {
 		It("constructs dependencies on user-defined functions", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TYPE base_type(INPUT=base_fn_in, OUTPUT=base_fn_out)")
 
-			allTypes := backup.GetTypeDefinitions(connection)
-			baseType := backup.TypeDefinition{}
+			allTypes := backup.GetTypes(connection)
+			baseType := backup.Type{}
 			for _, typ := range allTypes {
 				if typ.TypeName == "base_type" {
 					baseType = typ
 					break
 				}
 			}
-			baseTypes := []backup.TypeDefinition{baseType}
+			baseTypes := []backup.Type{baseType}
 
 			baseTypes = backup.ConstructBaseTypeDependencies(connection, baseTypes)
 
@@ -271,15 +271,15 @@ var _ = Describe("backup integration tests", func() {
 		It("doesn't construct dependencies on built-in functions", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TYPE base_type(INPUT=base_fn_in, OUTPUT=base_fn_out, TYPMOD_IN=numerictypmodin, TYPMOD_OUT=numerictypmodout)")
 
-			allTypes := backup.GetTypeDefinitions(connection)
-			baseType := backup.TypeDefinition{}
+			allTypes := backup.GetTypes(connection)
+			baseType := backup.Type{}
 			for _, typ := range allTypes {
 				if typ.TypeName == "base_type" {
 					baseType = typ
 					break
 				}
 			}
-			baseTypes := []backup.TypeDefinition{baseType}
+			baseTypes := []backup.Type{baseType}
 
 			baseTypes = backup.ConstructBaseTypeDependencies(connection, baseTypes)
 
@@ -297,15 +297,15 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE DOMAIN domain_type AS parent_domain")
 			defer testutils.AssertQueryRuns(connection, "DROP DOMAIN domain_type")
 
-			allTypes := backup.GetTypeDefinitions(connection)
-			domain := backup.TypeDefinition{}
+			allTypes := backup.GetTypes(connection)
+			domain := backup.Type{}
 			for _, typ := range allTypes {
 				if typ.TypeName == "domain_type" {
 					domain = typ
 					break
 				}
 			}
-			domains := []backup.TypeDefinition{domain}
+			domains := []backup.Type{domain}
 
 			domains = backup.ConstructDomainDependencies(connection, domains)
 
@@ -317,15 +317,15 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE DOMAIN parent_domain AS integer")
 			defer testutils.AssertQueryRuns(connection, "DROP DOMAIN parent_domain")
 
-			allTypes := backup.GetTypeDefinitions(connection)
-			domain := backup.TypeDefinition{}
+			allTypes := backup.GetTypes(connection)
+			domain := backup.Type{}
 			for _, typ := range allTypes {
 				if typ.TypeName == "base_type" {
 					domain = typ
 					break
 				}
 			}
-			domains := []backup.TypeDefinition{domain}
+			domains := []backup.Type{domain}
 
 			domains = backup.ConstructDomainDependencies(connection, domains)
 

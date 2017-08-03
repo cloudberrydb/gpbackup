@@ -16,8 +16,8 @@ var _ = Describe("backup/predata_functions tests", func() {
 		buffer = gbytes.BufferWithBytes([]byte(""))
 	})
 	Describe("Functions involved in printing CREATE FUNCTION statements", func() {
-		var funcDef backup.QueryFunctionDefinition
-		funcDefault := backup.QueryFunctionDefinition{1, "public", "func_name", false, "add_two_ints", "", "integer, integer", "integer, integer", "integer",
+		var funcDef backup.Function
+		funcDefault := backup.Function{1, "public", "func_name", false, "add_two_ints", "", "integer, integer", "integer, integer", "integer",
 			"v", false, false, "", float32(1), float32(0), "", "internal", nil}
 		BeforeEach(func() {
 			funcDef = funcDefault
@@ -238,8 +238,8 @@ $_$`)
 		})
 	})
 	Describe("PrintCreateAggregateStatements", func() {
-		aggDefs := make([]backup.QueryAggregateDefinition, 1)
-		aggDefault := backup.QueryAggregateDefinition{1, "public", "agg_name", "integer, integer", "integer, integer", 1, 0, 0, 0, "integer", "", false}
+		aggDefs := make([]backup.AggregateDefinition, 1)
+		aggDefault := backup.AggregateDefinition{1, "public", "agg_name", "integer, integer", "integer, integer", 1, 0, 0, 0, "integer", "", false}
 		funcInfoMap := map[uint32]backup.FunctionInfo{
 			1: {QualifiedName: "public.mysfunc", Arguments: "integer"},
 			2: {QualifiedName: "public.mypfunc", Arguments: "numeric, numeric"},
@@ -357,49 +357,49 @@ ALTER AGGREGATE public.agg_name(*) OWNER TO testrole;`)
 	Describe("PrintCreateCastStatements", func() {
 		emptyMetadataMap := backup.MetadataMap{}
 		It("prints an explicit cast with a function", func() {
-			castDef := backup.QueryCastDefinition{1, "src", "dst", "public", "cast_func", "integer, integer", "e"}
-			backup.PrintCreateCastStatements(buffer, []backup.QueryCastDefinition{castDef}, emptyMetadataMap)
+			castDef := backup.CastDefinition{1, "src", "dst", "public", "cast_func", "integer, integer", "e"}
+			backup.PrintCreateCastStatements(buffer, []backup.CastDefinition{castDef}, emptyMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE CAST (src AS dst)
 	WITH FUNCTION public.cast_func(integer, integer);`)
 		})
 		It("prints an implicit cast with a function", func() {
-			castDef := backup.QueryCastDefinition{1, "src", "dst", "public", "cast_func", "integer, integer", "i"}
-			backup.PrintCreateCastStatements(buffer, []backup.QueryCastDefinition{castDef}, emptyMetadataMap)
+			castDef := backup.CastDefinition{1, "src", "dst", "public", "cast_func", "integer, integer", "i"}
+			backup.PrintCreateCastStatements(buffer, []backup.CastDefinition{castDef}, emptyMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE CAST (src AS dst)
 	WITH FUNCTION public.cast_func(integer, integer)
 AS IMPLICIT;`)
 		})
 		It("prints an assignment cast with a function", func() {
-			castDef := backup.QueryCastDefinition{1, "src", "dst", "public", "cast_func", "integer, integer", "a"}
-			backup.PrintCreateCastStatements(buffer, []backup.QueryCastDefinition{castDef}, emptyMetadataMap)
+			castDef := backup.CastDefinition{1, "src", "dst", "public", "cast_func", "integer, integer", "a"}
+			backup.PrintCreateCastStatements(buffer, []backup.CastDefinition{castDef}, emptyMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE CAST (src AS dst)
 	WITH FUNCTION public.cast_func(integer, integer)
 AS ASSIGNMENT;`)
 		})
 		It("prints an explicit cast without a function", func() {
-			castDef := backup.QueryCastDefinition{1, "src", "dst", "", "", "", "e"}
-			backup.PrintCreateCastStatements(buffer, []backup.QueryCastDefinition{castDef}, emptyMetadataMap)
+			castDef := backup.CastDefinition{1, "src", "dst", "", "", "", "e"}
+			backup.PrintCreateCastStatements(buffer, []backup.CastDefinition{castDef}, emptyMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE CAST (src AS dst)
 	WITHOUT FUNCTION;`)
 		})
 		It("prints an implicit cast without a function", func() {
-			castDef := backup.QueryCastDefinition{1, "src", "dst", "", "", "", "i"}
-			backup.PrintCreateCastStatements(buffer, []backup.QueryCastDefinition{castDef}, emptyMetadataMap)
+			castDef := backup.CastDefinition{1, "src", "dst", "", "", "", "i"}
+			backup.PrintCreateCastStatements(buffer, []backup.CastDefinition{castDef}, emptyMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE CAST (src AS dst)
 	WITHOUT FUNCTION
 AS IMPLICIT;`)
 		})
 		It("prints an assignment cast without a function", func() {
-			castDef := backup.QueryCastDefinition{1, "src", "dst", "", "", "", "a"}
-			backup.PrintCreateCastStatements(buffer, []backup.QueryCastDefinition{castDef}, emptyMetadataMap)
+			castDef := backup.CastDefinition{1, "src", "dst", "", "", "", "a"}
+			backup.PrintCreateCastStatements(buffer, []backup.CastDefinition{castDef}, emptyMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE CAST (src AS dst)
 	WITHOUT FUNCTION
 AS ASSIGNMENT;`)
 		})
 		It("prints a cast with a comment", func() {
-			castDef := backup.QueryCastDefinition{1, "src", "dst", "", "", "", "e"}
+			castDef := backup.CastDefinition{1, "src", "dst", "", "", "", "e"}
 			castMetadataMap := testutils.DefaultMetadataMap("CAST", false, false, true)
-			backup.PrintCreateCastStatements(buffer, []backup.QueryCastDefinition{castDef}, castMetadataMap)
+			backup.PrintCreateCastStatements(buffer, []backup.CastDefinition{castDef}, castMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE CAST (src AS dst)
 	WITHOUT FUNCTION;
 

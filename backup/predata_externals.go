@@ -190,7 +190,7 @@ func PrintExternalTableStatements(predataFile io.Writer, table Relation, extTabl
 	}
 }
 
-func PrintCreateExternalProtocolStatements(predataFile io.Writer, protocols []QueryExtProtocol, funcInfoMap map[uint32]FunctionInfo, protoMetadata MetadataMap) {
+func PrintCreateExternalProtocolStatements(predataFile io.Writer, protocols []ExternalProtocol, funcInfoMap map[uint32]FunctionInfo, protoMetadata MetadataMap) {
 	for _, protocol := range protocols {
 
 		hasUserDefinedFunc := false

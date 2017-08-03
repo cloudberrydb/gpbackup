@@ -344,7 +344,7 @@ func (obj ObjectMetadata) GetCommentStatement(objectName string, objectType stri
 	return commentStr
 }
 
-func SortFunctionsAndTypesInDependencyOrder(types []TypeDefinition, functions []QueryFunctionDefinition) []Sortable {
+func SortFunctionsAndTypesInDependencyOrder(types []Type, functions []Function) []Sortable {
 	objects := make([]Sortable, 0)
 	for _, typ := range types {
 		if typ.Type != "e" && typ.Type != "p" {
@@ -358,7 +358,7 @@ func SortFunctionsAndTypesInDependencyOrder(types []TypeDefinition, functions []
 	return sorted
 }
 
-func ConstructDependencyLists(connection *utils.DBConn, types []TypeDefinition, functions []QueryFunctionDefinition) ([]TypeDefinition, []QueryFunctionDefinition) {
+func ConstructDependencyLists(connection *utils.DBConn, types []Type, functions []Function) ([]Type, []Function) {
 	types = CoalesceCompositeTypes(types)
 	types = ConstructBaseTypeDependencies(connection, types)
 	types = ConstructDomainDependencies(connection, types)
@@ -381,7 +381,7 @@ func ConstructFunctionAndTypeMetadataMap(types MetadataMap, functions MetadataMa
 func PrintCreateDependentTypeAndFunctionStatements(predataFile io.Writer, objects []Sortable, metadataMap MetadataMap) {
 	for _, object := range objects {
 		switch obj := object.(type) {
-		case TypeDefinition:
+		case Type:
 			switch obj.Type {
 			case "b":
 				PrintCreateBaseTypeStatement(predataFile, obj, metadataMap[obj.Oid])
@@ -390,7 +390,7 @@ func PrintCreateDependentTypeAndFunctionStatements(predataFile io.Writer, object
 			case "d":
 				PrintCreateDomainStatement(predataFile, obj, metadataMap[obj.Oid])
 			}
-		case QueryFunctionDefinition:
+		case Function:
 			PrintCreateFunctionStatement(predataFile, obj, metadataMap[obj.Oid])
 		}
 	}
@@ -409,15 +409,15 @@ func (r Relation) Name() string {
 	return r.ToString()
 }
 
-func (v QueryViewDefinition) Name() string {
+func (v View) Name() string {
 	return MakeFQN(v.SchemaName, v.ViewName)
 }
 
-func (f QueryFunctionDefinition) Name() string {
+func (f Function) Name() string {
 	return MakeFQN(f.SchemaName, f.FunctionName)
 }
 
-func (t TypeDefinition) Name() string {
+func (t Type) Name() string {
 	return MakeFQN(t.TypeSchema, t.TypeName)
 }
 
@@ -425,15 +425,15 @@ func (r Relation) Dependencies() []string {
 	return r.DependsUpon
 }
 
-func (v QueryViewDefinition) Dependencies() []string {
+func (v View) Dependencies() []string {
 	return v.DependsUpon
 }
 
-func (f QueryFunctionDefinition) Dependencies() []string {
+func (f Function) Dependencies() []string {
 	return f.DependsUpon
 }
 
-func (t TypeDefinition) Dependencies() []string {
+func (t Type) Dependencies() []string {
 	return t.DependsUpon
 }
 
@@ -449,14 +449,14 @@ func SortRelations(relations []Relation) []Relation {
 	return relations
 }
 
-func SortViews(views []QueryViewDefinition) []QueryViewDefinition {
+func SortViews(views []View) []View {
 	sortable := make([]Sortable, len(views))
 	for i := range views {
 		sortable[i] = views[i]
 	}
 	sortable = TopologicalSort(sortable)
 	for i := range views {
-		views[i] = sortable[i].(QueryViewDefinition)
+		views[i] = sortable[i].(View)
 	}
 	return views
 }

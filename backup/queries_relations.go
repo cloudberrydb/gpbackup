@@ -46,7 +46,7 @@ ORDER BY schemaname, relationname;`
 	return results
 }
 
-type QueryTableAttributes struct {
+type TableAttributes struct {
 	AttNum     int
 	Name       string `db:"attname"`
 	NotNull    bool   `db:"attnotnull"`
@@ -58,7 +58,7 @@ type QueryTableAttributes struct {
 	Comment    string `db:"attcomment"`
 }
 
-func GetTableAttributes(connection *utils.DBConn, oid uint32) []QueryTableAttributes {
+func GetTableAttributes(connection *utils.DBConn, oid uint32) []TableAttributes {
 	// This query is adapted from the getTableAttrs() function in pg_dump.c.
 	query := fmt.Sprintf(`
 SELECT a.attnum,
@@ -80,18 +80,18 @@ WHERE a.attrelid = %d
 ORDER BY a.attrelid,
 	a.attnum;`, oid)
 
-	results := make([]QueryTableAttributes, 0)
+	results := make([]TableAttributes, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results
 }
 
-type QueryTableDefault struct {
+type TableDefault struct {
 	AdNum      int
 	DefaultVal string
 }
 
-func GetTableDefaults(connection *utils.DBConn, oid uint32) []QueryTableDefault {
+func GetTableDefaults(connection *utils.DBConn, oid uint32) []TableDefault {
 	// This query is adapted from the hasdefaults == true case of the getTableAttrs() function in pg_dump.c.
 	query := fmt.Sprintf(`
 SELECT adnum,
@@ -101,7 +101,7 @@ WHERE adrelid = %d
 ORDER BY adrelid,
 	adnum;`, oid)
 
-	results := make([]QueryTableDefault, 0)
+	results := make([]TableDefault, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results
@@ -132,7 +132,7 @@ WHERE a.attrelid = %d;`, oid)
 	return fmt.Sprintf("DISTRIBUTED BY (%s)", strings.Join(distCols, ", "))
 }
 
-func GetPartitionDefinition(connection *utils.DBConn, oid uint32) string {
+func GetPartition(connection *utils.DBConn, oid uint32) string {
 	/* This query is adapted from the gp_partitioning_available == true case of the dumpTableSchema
 	 * function in pg_dump.c.
 	 */
@@ -140,7 +140,7 @@ func GetPartitionDefinition(connection *utils.DBConn, oid uint32) string {
 	return SelectString(connection, query)
 }
 
-func GetPartitionTemplateDefinition(connection *utils.DBConn, oid uint32) string {
+func GetPartitionTemplate(connection *utils.DBConn, oid uint32) string {
 	/* This query is adapted from the isTemplatesSupported == true case of the dumpTableSchema
 	 * function in pg_dump.c.
 	 */
@@ -166,7 +166,7 @@ WHERE c.oid = %d;`, oid)
 	return SelectString(connection, query)
 }
 
-type QueryDependency struct {
+type Dependency struct {
 	Oid              uint32
 	ReferencedObject string
 }
@@ -181,7 +181,7 @@ JOIN pg_class p ON d.refobjid = p.oid AND p.relkind = 'r'
 JOIN pg_namespace n ON p.relnamespace = n.oid
 JOIN pg_class c ON d.objid = c.oid AND c.relkind = 'r';`
 
-	results := make([]QueryDependency, 0)
+	results := make([]Dependency, 0)
 	dependencyMap := make(map[uint32][]string, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
@@ -194,7 +194,7 @@ JOIN pg_class c ON d.objid = c.oid AND c.relkind = 'r';`
 	return tables
 }
 
-type QueryViewDefinition struct {
+type View struct {
 	Oid         uint32
 	SchemaName  string
 	ViewName    string
@@ -202,12 +202,12 @@ type QueryViewDefinition struct {
 	DependsUpon []string
 }
 
-func (v QueryViewDefinition) ToString() string {
+func (v View) ToString() string {
 	return MakeFQN(v.SchemaName, v.ViewName)
 }
 
-func GetViewDefinitions(connection *utils.DBConn) []QueryViewDefinition {
-	results := make([]QueryViewDefinition, 0)
+func GetViews(connection *utils.DBConn) []View {
+	results := make([]View, 0)
 
 	query := fmt.Sprintf(`
 SELECT
@@ -223,7 +223,7 @@ WHERE c.relkind = 'v'::"char" AND %s;`, NonUserSchemaFilterClause("n"))
 	return results
 }
 
-func ConstructViewDependencies(connection *utils.DBConn, views []QueryViewDefinition) []QueryViewDefinition {
+func ConstructViewDependencies(connection *utils.DBConn, views []View) []View {
 	query := fmt.Sprintf(`
 SELECT DISTINCT
 	v2.oid,
@@ -239,7 +239,7 @@ WHERE d.classid = 'pg_rewrite'::regclass::oid
 	AND %s
 ORDER BY v2.oid, referencedobject;`, NonUserSchemaFilterClause("n"))
 
-	results := make([]QueryDependency, 0)
+	results := make([]Dependency, 0)
 	dependencyMap := make(map[uint32][]string, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)

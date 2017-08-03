@@ -11,13 +11,13 @@ import (
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
-type QueryDatabaseName struct {
+type DatabaseName struct {
 	Oid            uint32
 	DatabaseName   string `db:"datname"`
 	TablespaceName string `db:"spcname"`
 }
 
-func GetDatabaseNames(connection *utils.DBConn) []QueryDatabaseName {
+func GetDatabaseNames(connection *utils.DBConn) []DatabaseName {
 	query := `
 SELECT
 	d.oid,
@@ -27,7 +27,7 @@ FROM pg_database d
 JOIN pg_tablespace t
 ON d.dattablespace = t.oid;`
 
-	results := make([]QueryDatabaseName, 0)
+	results := make([]DatabaseName, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results
@@ -41,7 +41,7 @@ FROM pg_options_to_table(
 	return SelectStringSlice(connection, query)
 }
 
-type QueryResourceQueue struct {
+type ResourceQueue struct {
 	Oid              uint32
 	Name             string
 	ActiveStatements int
@@ -52,7 +52,7 @@ type QueryResourceQueue struct {
 	MemoryLimit      string
 }
 
-func GetResourceQueues(connection *utils.DBConn) []QueryResourceQueue {
+func GetResourceQueues(connection *utils.DBConn) []ResourceQueue {
 	/*
 	 * maxcost and mincost are represented as real types in the database, but we round to two decimals
 	 * and cast them as text for more consistent formatting. pg_dumpall does this as well.
@@ -76,7 +76,7 @@ FROM
 		(SELECT resqueueid, ressetting FROM pg_resqueuecapability WHERE restypid = 6) memory_capability
 		ON r.oid = memory_capability.resqueueid;
 `
-	results := make([]QueryResourceQueue, 0)
+	results := make([]ResourceQueue, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results
@@ -90,7 +90,7 @@ type TimeConstraint struct {
 	EndTime   string
 }
 
-type QueryRole struct {
+type Role struct {
 	Oid             uint32
 	Name            string `db:"rolname"`
 	Super           bool   `db:"rolsuper"`
@@ -115,7 +115,7 @@ type QueryRole struct {
  * we standardize times to UTC but do not lose time zone information
  * in the timestamp.
  */
-func GetRoles(connection *utils.DBConn) []QueryRole {
+func GetRoles(connection *utils.DBConn) []Role {
 	query := `
 SELECT
 	oid,
@@ -137,7 +137,7 @@ SELECT
 FROM
 	pg_authid`
 
-	roles := make([]QueryRole, 0)
+	roles := make([]Role, 0)
 	err := connection.Select(&roles, query)
 	utils.CheckError(err)
 
@@ -178,14 +178,14 @@ FROM
 	return constraintsByRole
 }
 
-type QueryRoleMember struct {
+type RoleMember struct {
 	Role    string
 	Member  string
 	Grantor string
 	IsAdmin bool
 }
 
-func GetRoleMembers(connection *utils.DBConn) []QueryRoleMember {
+func GetRoleMembers(connection *utils.DBConn) []RoleMember {
 	query := `
 SELECT
 	pg_get_userbyid(roleid) AS role,
@@ -195,19 +195,19 @@ SELECT
 FROM pg_auth_members
 ORDER BY roleid, member;`
 
-	results := make([]QueryRoleMember, 0)
+	results := make([]RoleMember, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results
 }
 
-type QueryTablespace struct {
+type Tablespace struct {
 	Oid        uint32
 	Tablespace string
 	Filespace  string
 }
 
-func GetTablespaces(connection *utils.DBConn) []QueryTablespace {
+func GetTablespaces(connection *utils.DBConn) []Tablespace {
 	query := `
 SELECT
 	t.oid,
@@ -218,7 +218,7 @@ JOIN pg_filespace f
 ON t.spcfsoid = f.oid
 WHERE fsname != 'pg_system';`
 
-	results := make([]QueryTablespace, 0)
+	results := make([]Tablespace, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results

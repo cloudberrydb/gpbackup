@@ -118,10 +118,6 @@ func NonUserSchemaFilterClause(namespace string) string {
 	return fmt.Sprintf(`%s.nspname NOT LIKE 'pg_temp_%%' AND %s.nspname NOT LIKE 'pg_toast%%' AND %s.nspname NOT IN ('gp_toolkit', 'information_schema', 'pg_aoseg', 'pg_bitmapindex', 'pg_catalog')`, namespace, namespace, namespace)
 }
 
-type QueryOid struct {
-	Oid uint32
-}
-
 func OidFromObjectName(dbconn *utils.DBConn, schemaName string, objectName string, params MetadataQueryParams) uint32 {
 	catalogTable := params.CatalogTable
 	if params.OidTable != "" {
@@ -132,17 +128,12 @@ func OidFromObjectName(dbconn *utils.DBConn, schemaName string, objectName strin
 		schemaStr = fmt.Sprintf(" AND %s = (SELECT oid FROM pg_namespace WHERE nspname = '%s')", params.SchemaField, schemaName)
 	}
 	query := fmt.Sprintf("SELECT oid FROM %s WHERE %s ='%s'%s", catalogTable, params.NameField, objectName, schemaStr)
-	result := QueryOid{}
+	result := struct {
+		Oid uint32
+	}{}
 	err := dbconn.Get(&result, query)
 	utils.CheckError(err)
 	return result.Oid
-}
-
-type QueryObjectMetadata struct {
-	Oid        uint32
-	Privileges string
-	Owner      string
-	Comment    string
 }
 
 func GetMetadataForObjectType(connection *utils.DBConn, params MetadataQueryParams) MetadataMap {
@@ -177,7 +168,12 @@ FROM %s o
 ORDER BY o.oid;
 `, aclStr, params.OwnerField, descFunc, params.CatalogTable, params.CatalogTable, schemaStr)
 
-	results := make([]QueryObjectMetadata, 0)
+	results := make([]struct {
+		Oid        uint32
+		Privileges string
+		Owner      string
+		Comment    string
+	}, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 
@@ -230,14 +226,17 @@ SELECT
 FROM %s o;
 `, params.OidField, descFunc, params.OidField, commentTable, params.CatalogTable)
 
-	results := make([]QueryObjectMetadata, 0)
+	results := make([]struct {
+		Oid     uint32
+		Comment string
+	}, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 
 	metadataMap := make(MetadataMap)
 	if len(results) > 0 {
 		for _, result := range results {
-			metadataMap[result.Oid] = ObjectMetadata{[]ACL{}, result.Owner, result.Comment}
+			metadataMap[result.Oid] = ObjectMetadata{[]ACL{}, "", result.Comment}
 		}
 	}
 	return metadataMap
@@ -247,17 +246,13 @@ FROM %s o;
  * Helper functions
  */
 
-type QuerySingleString struct {
-	String string
-}
-
 /*
  * This is a convenience function for Select() when we're selecting single string
  * that may be NULL or not exist.  We can't use Get() because that expects exactly
  * one string and will panic if no rows are returned, even if using a sql.NullString.
  */
 func SelectString(connection *utils.DBConn, query string) string {
-	results := make([]QuerySingleString, 0)
+	results := make([]struct{ String string }, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	if len(results) == 1 {
@@ -270,7 +265,7 @@ func SelectString(connection *utils.DBConn, query string) string {
 
 // This is a convenience function for Select() when we're selecting single strings.
 func SelectStringSlice(connection *utils.DBConn, query string) []string {
-	results := make([]QuerySingleString, 0)
+	results := make([]struct{ String string }, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	retval := make([]string, 0)

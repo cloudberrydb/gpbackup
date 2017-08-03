@@ -93,7 +93,7 @@ SEGMENT REJECT LIMIT 10 PERCENT
 
 			results := backup.GetExternalProtocols(connection)
 
-			protocolDef := backup.QueryExtProtocol{1, "s3", "testrole", false, readFunctionOid, writeFunctionOid, 0}
+			protocolDef := backup.ExternalProtocol{1, "s3", "testrole", false, readFunctionOid, writeFunctionOid, 0}
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&protocolDef, &results[0], "Oid")

@@ -11,7 +11,7 @@ import (
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
-type QueryFunctionDefinition struct {
+type Function struct {
 	Oid               uint32
 	SchemaName        string `db:"nspname"`
 	FunctionName      string `db:"proname"`
@@ -32,7 +32,7 @@ type QueryFunctionDefinition struct {
 	DependsUpon       []string
 }
 
-func GetFunctionDefinitions(connection *utils.DBConn) []QueryFunctionDefinition {
+func GetFunctions(connection *utils.DBConn) []Function {
 	/*
 	 * This query is copied from the dumpFunc() function in pg_dump.c, modified
 	 * slightly to also retrieve the function's schema, name, and comment.
@@ -66,13 +66,13 @@ WHERE %s
 AND proisagg = 'f'
 ORDER BY nspname, proname, identargs;`, NonUserSchemaFilterClause("n"))
 
-	results := make([]QueryFunctionDefinition, 0)
+	results := make([]Function, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results
 }
 
-type QueryAggregateDefinition struct {
+type AggregateDefinition struct {
 	Oid                 uint32
 	SchemaName          string `db:"nspname"`
 	AggregateName       string `db:"proname"`
@@ -87,7 +87,7 @@ type QueryAggregateDefinition struct {
 	IsOrdered           bool `db:"aggordered"`
 }
 
-func GetAggregateDefinitions(connection *utils.DBConn) []QueryAggregateDefinition {
+func GetAggregateDefinitions(connection *utils.DBConn) []AggregateDefinition {
 	query := fmt.Sprintf(`
 SELECT
 	p.oid,
@@ -108,17 +108,10 @@ LEFT JOIN pg_type t ON a.aggtranstype = t.oid
 LEFT JOIN pg_namespace n ON p.pronamespace = n.oid
 WHERE %s;`, NonUserSchemaFilterClause("n"))
 
-	results := make([]QueryAggregateDefinition, 0)
+	results := make([]AggregateDefinition, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results
-}
-
-type QueryFunction struct {
-	Oid            uint32
-	FunctionSchema string `db:"nspname"`
-	FunctionName   string `db:"proname"`
-	Arguments      string
 }
 
 type FunctionInfo struct {
@@ -138,7 +131,12 @@ FROM pg_proc p
 LEFT JOIN pg_namespace n ON p.pronamespace = n.oid;
 `
 
-	results := make([]QueryFunction, 0)
+	results := make([]struct {
+		Oid            uint32
+		FunctionSchema string `db:"nspname"`
+		FunctionName   string `db:"proname"`
+		Arguments      string
+	}, 0)
 	funcMap := make(map[uint32]FunctionInfo, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
@@ -155,7 +153,7 @@ LEFT JOIN pg_namespace n ON p.pronamespace = n.oid;
 	return funcMap
 }
 
-type QueryCastDefinition struct {
+type CastDefinition struct {
 	Oid            uint32
 	SourceType     string
 	TargetType     string
@@ -165,7 +163,7 @@ type QueryCastDefinition struct {
 	CastContext    string
 }
 
-func GetCastDefinitions(connection *utils.DBConn) []QueryCastDefinition {
+func GetCastDefinitions(connection *utils.DBConn) []CastDefinition {
 	/* This query retrieves all casts where either the source type, the target
 	 * type, or the cast function is user-defined.
 	 */
@@ -190,7 +188,7 @@ WHERE (%s) OR (%s) OR (%s)
 ORDER BY 1, 2;
 `, NonUserSchemaFilterClause("sn"), NonUserSchemaFilterClause("tn"), NonUserSchemaFilterClause("n"))
 
-	results := make([]QueryCastDefinition, 0)
+	results := make([]CastDefinition, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results
@@ -203,7 +201,7 @@ ORDER BY 1, 2;
  * of the dump and so do not need to consider those dependencies when sorting
  * functions and types.
  */
-func ConstructFunctionDependencies(connection *utils.DBConn, functions []QueryFunctionDefinition) []QueryFunctionDefinition {
+func ConstructFunctionDependencies(connection *utils.DBConn, functions []Function) []Function {
 	query := fmt.Sprintf(`
 SELECT
 p.oid,
@@ -221,7 +219,7 @@ AND t.typsend != p.oid
 AND t.typmodin != p.oid
 AND t.typmodout != p.oid;`, NonUserSchemaFilterClause("n"))
 
-	results := make([]QueryDependency, 0)
+	results := make([]Dependency, 0)
 	dependencyMap := make(map[uint32][]string, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)

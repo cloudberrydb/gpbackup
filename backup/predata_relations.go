@@ -118,8 +118,8 @@ func ConstructDefinitionsForTable(connection *utils.DBConn, table Relation, isEx
 	tableDefaults := GetTableDefaults(connection, table.RelationOid)
 
 	distributionPolicy := GetDistributionPolicy(connection, table.RelationOid)
-	partitionDef := GetPartitionDefinition(connection, table.RelationOid)
-	partTemplateDef := GetPartitionTemplateDefinition(connection, table.RelationOid)
+	partitionDef := GetPartition(connection, table.RelationOid)
+	partTemplateDef := GetPartitionTemplate(connection, table.RelationOid)
 	storageOptions := GetStorageOptions(connection, table.RelationOid)
 	tablespaceName := GetTablespaceName(connection, table.RelationOid)
 
@@ -137,7 +137,7 @@ func ConstructDefinitionsForTable(connection *utils.DBConn, table Relation, isEx
  * one struct, instead of performing an expensive join to get everything in
  * a single query.
  */
-func ConsolidateColumnInfo(atts []QueryTableAttributes, defs []QueryTableDefault) []ColumnDefinition {
+func ConsolidateColumnInfo(atts []TableAttributes, defs []TableDefault) []ColumnDefinition {
 	colDefs := make([]ColumnDefinition, 0)
 	/*
 	 * The queries to get attributes and defaults ORDER BY oid and then attribute
@@ -258,7 +258,7 @@ func PrintPostCreateTableStatements(predataFile io.Writer, table Relation, table
 
 type Sequence struct {
 	Relation
-	QuerySequenceDefinition
+	SequenceDefinition
 }
 
 func GetAllSequences(connection *utils.DBConn) []Sequence {
@@ -319,7 +319,7 @@ func PrintAlterSequenceStatements(predataFile io.Writer, sequences []Sequence, s
 	}
 }
 
-func PrintCreateViewStatements(predataFile io.Writer, views []QueryViewDefinition, viewMetadata MetadataMap) {
+func PrintCreateViewStatements(predataFile io.Writer, views []View, viewMetadata MetadataMap) {
 	for _, view := range views {
 		viewFQN := MakeFQN(view.SchemaName, view.ViewName)
 		utils.MustPrintf(predataFile, "\n\nCREATE VIEW %s AS %s\n", viewFQN, view.Definition)

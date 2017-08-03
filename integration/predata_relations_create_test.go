@@ -250,16 +250,16 @@ SET SUBPARTITION TEMPLATE  ` + `
 	})
 	Describe("PrintCreateViewStatements", func() {
 		It("creates a view with privileges and a comment (can't specify owner in GPDB5)", func() {
-			viewDef := backup.QueryViewDefinition{1, "public", "simpleview", "SELECT pg_roles.rolname FROM pg_roles;", nil}
+			viewDef := backup.View{1, "public", "simpleview", "SELECT pg_roles.rolname FROM pg_roles;", nil}
 			viewMetadataMap := testutils.DefaultMetadataMap("VIEW", true, true, true)
 			viewMetadata := viewMetadataMap[1]
 
-			backup.PrintCreateViewStatements(buffer, []backup.QueryViewDefinition{viewDef}, viewMetadataMap)
+			backup.PrintCreateViewStatements(buffer, []backup.View{viewDef}, viewMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP VIEW simpleview")
 
-			resultViews := backup.GetViewDefinitions(connection)
+			resultViews := backup.GetViews(connection)
 			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.RelationParams)
 
 			viewDef.Oid = backup.OidFromObjectName(connection, "public", "simpleview", backup.RelationParams)
@@ -281,7 +281,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			sequenceMetadataMap = backup.MetadataMap{}
 		})
 		It("creates a basic sequence", func() {
-			sequenceDef.QuerySequenceDefinition = backup.QuerySequenceDefinition{Name: "my_sequence", LastVal: 1, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
+			sequenceDef.SequenceDefinition = backup.SequenceDefinition{Name: "my_sequence", LastVal: 1, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
 			backup.PrintCreateSequenceStatements(buffer, []backup.Sequence{sequenceDef}, sequenceMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
@@ -291,10 +291,10 @@ SET SUBPARTITION TEMPLATE  ` + `
 
 			Expect(len(resultSequences)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&sequence, &resultSequences[0].Relation, "SchemaOid", "RelationOid")
-			testutils.ExpectStructsToMatch(&sequenceDef.QuerySequenceDefinition, &resultSequences[0].QuerySequenceDefinition)
+			testutils.ExpectStructsToMatch(&sequenceDef.SequenceDefinition, &resultSequences[0].SequenceDefinition)
 		})
 		It("creates a complex sequence", func() {
-			sequenceDef.QuerySequenceDefinition = backup.QuerySequenceDefinition{Name: "my_sequence", LastVal: 105, Increment: 5, MaxVal: 1000, MinVal: 20, CacheVal: 1, LogCnt: 0, IsCycled: false, IsCalled: true}
+			sequenceDef.SequenceDefinition = backup.SequenceDefinition{Name: "my_sequence", LastVal: 105, Increment: 5, MaxVal: 1000, MinVal: 20, CacheVal: 1, LogCnt: 0, IsCycled: false, IsCalled: true}
 			backup.PrintCreateSequenceStatements(buffer, []backup.Sequence{sequenceDef}, sequenceMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
@@ -304,10 +304,10 @@ SET SUBPARTITION TEMPLATE  ` + `
 
 			Expect(len(resultSequences)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&sequence, &resultSequences[0].Relation, "SchemaOid", "RelationOid")
-			testutils.ExpectStructsToMatch(&sequenceDef.QuerySequenceDefinition, &resultSequences[0].QuerySequenceDefinition)
+			testutils.ExpectStructsToMatch(&sequenceDef.SequenceDefinition, &resultSequences[0].SequenceDefinition)
 		})
 		It("creates a sequence with privileges, owner, and comment", func() {
-			sequenceDef.QuerySequenceDefinition = backup.QuerySequenceDefinition{Name: "my_sequence", LastVal: 1, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
+			sequenceDef.SequenceDefinition = backup.SequenceDefinition{Name: "my_sequence", LastVal: 1, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
 			sequenceMetadata := backup.ObjectMetadata{[]backup.ACL{testutils.DefaultACLWithout("testrole", "SEQUENCE", "UPDATE")}, "testrole", "This is a sequence comment."}
 			sequenceMetadataMap[1] = sequenceMetadata
 			backup.PrintCreateSequenceStatements(buffer, []backup.Sequence{sequenceDef}, sequenceMetadataMap)
@@ -322,7 +322,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			oid := backup.OidFromObjectName(connection, "public", "my_sequence", backup.RelationParams)
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&sequence, &resultSequences[0].Relation, "SchemaOid", "RelationOid")
-			testutils.ExpectStructsToMatch(&sequenceDef.QuerySequenceDefinition, &resultSequences[0].QuerySequenceDefinition)
+			testutils.ExpectStructsToMatch(&sequenceDef.SequenceDefinition, &resultSequences[0].SequenceDefinition)
 			testutils.ExpectStructsToMatch(&sequenceMetadata, &resultMetadata)
 		})
 	})
@@ -331,7 +331,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			sequenceDef := backup.Sequence{Relation: backup.Relation{0, 1, "public", "my_sequence", nil}}
 			columnOwnerMap := map[string]string{"public.my_sequence": "public.sequence_table.a"}
 
-			sequenceDef.QuerySequenceDefinition = backup.QuerySequenceDefinition{Name: "my_sequence",
+			sequenceDef.SequenceDefinition = backup.SequenceDefinition{Name: "my_sequence",
 				LastVal: 1, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
 			backup.PrintCreateSequenceStatements(buffer, []backup.Sequence{sequenceDef}, backup.MetadataMap{})
 			backup.PrintAlterSequenceStatements(buffer, []backup.Sequence{sequenceDef}, columnOwnerMap)

@@ -40,7 +40,7 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
 
-			results := backup.GetIndexDefinitions(connection, indexNameMap)
+			results := backup.GetIndexes(connection, indexNameMap)
 
 			Expect(len(results)).To(Equal(0))
 		})
@@ -57,7 +57,7 @@ var _ = Describe("backup integration tests", func() {
 			index2 := backup.QuerySimpleDefinition{1, "simple_table_idx2", "public", "simple_table", "",
 				"CREATE INDEX simple_table_idx2 ON simple_table USING btree (j)"}
 
-			results := backup.GetIndexDefinitions(connection, indexNameMap)
+			results := backup.GetIndexes(connection, indexNameMap)
 
 			Expect(len(results)).To(Equal(2))
 			results[0].Oid = backup.OidFromObjectName(connection, "", "simple_table_idx1", backup.IndexParams)
@@ -80,7 +80,7 @@ var _ = Describe("backup integration tests", func() {
 			index2 := backup.QuerySimpleDefinition{1, "simple_table_idx2", "public", "simple_table", "",
 				"CREATE INDEX simple_table_idx2 ON simple_table USING btree (j)"}
 
-			results := backup.GetIndexDefinitions(connection, indexNameMap)
+			results := backup.GetIndexes(connection, indexNameMap)
 
 			Expect(len(results)).To(Equal(2))
 			testutils.ExpectStructsToMatchExcluding(&index1, &results[0], "Oid")
@@ -101,7 +101,7 @@ PARTITION BY RANGE (date)
 			index1 := backup.QuerySimpleDefinition{0, "part_idx", "public", "part", "",
 				"CREATE INDEX part_idx ON part USING btree (id)"}
 
-			results := backup.GetIndexDefinitions(connection, indexNameMap)
+			results := backup.GetIndexes(connection, indexNameMap)
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&index1, &results[0], "Oid")
@@ -117,7 +117,7 @@ PARTITION BY RANGE (date)
 			index1 := backup.QuerySimpleDefinition{0, "simple_table_idx", "public", "simple_table", "test_tablespace",
 				"CREATE INDEX simple_table_idx ON simple_table USING btree (i)"}
 
-			results := backup.GetIndexDefinitions(connection, indexNameMap)
+			results := backup.GetIndexes(connection, indexNameMap)
 
 			Expect(len(results)).To(Equal(1))
 			results[0].Oid = backup.OidFromObjectName(connection, "", "simple_table_idx", backup.IndexParams)
@@ -127,7 +127,7 @@ PARTITION BY RANGE (date)
 	})
 	Describe("GetRuleDefinitions", func() {
 		It("returns no slice when no rule exists", func() {
-			results := backup.GetRuleDefinitions(connection)
+			results := backup.GetRules(connection)
 
 			Expect(len(results)).To(Equal(0))
 		})
@@ -147,7 +147,7 @@ PARTITION BY RANGE (date)
 			rule2 := backup.QuerySimpleDefinition{1, "update_notify", "public", "rule_table1", "",
 				"CREATE RULE update_notify AS ON UPDATE TO rule_table1 DO NOTIFY rule_table1;"}
 
-			results := backup.GetRuleDefinitions(connection)
+			results := backup.GetRules(connection)
 
 			Expect(len(results)).To(Equal(2))
 			testutils.ExpectStructsToMatchExcluding(&rule1, &results[0], "Oid")
@@ -156,7 +156,7 @@ PARTITION BY RANGE (date)
 	})
 	Describe("GetTriggerDefinitions", func() {
 		It("returns no slice when no trigger exists", func() {
-			results := backup.GetTriggerDefinitions(connection)
+			results := backup.GetTriggers(connection)
 
 			Expect(len(results)).To(Equal(0))
 		})
@@ -178,7 +178,7 @@ PARTITION BY RANGE (date)
 				"CREATE TRIGGER sync_trigger_table2 AFTER INSERT OR DELETE OR UPDATE ON trigger_table2 FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger()",
 			}
 
-			results := backup.GetTriggerDefinitions(connection)
+			results := backup.GetTriggers(connection)
 
 			Expect(len(results)).To(Equal(2))
 			testutils.ExpectStructsToMatchExcluding(&trigger1, &results[0], "Oid")
@@ -191,7 +191,7 @@ PARTITION BY RANGE (date)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE trigger_table2")
 			testutils.AssertQueryRuns(connection, "ALTER TABLE trigger_table2 ADD CONSTRAINT fkc FOREIGN KEY (j) REFERENCES trigger_table1 (i) ON UPDATE RESTRICT ON DELETE RESTRICT")
 
-			results := backup.GetTriggerDefinitions(connection)
+			results := backup.GetTriggers(connection)
 
 			Expect(len(results)).To(Equal(0))
 		})

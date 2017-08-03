@@ -19,9 +19,9 @@ import (
  * There's no built-in function to generate constraint definitions like there is for other types of
  * metadata, so this function constructs them.
  */
-func PrintConstraintStatements(predataFile io.Writer, constraints []QueryConstraint, conMetadata MetadataMap) {
-	allConstraints := make([]QueryConstraint, 0)
-	allFkConstraints := make([]QueryConstraint, 0)
+func PrintConstraintStatements(predataFile io.Writer, constraints []Constraint, conMetadata MetadataMap) {
+	allConstraints := make([]Constraint, 0)
+	allFkConstraints := make([]Constraint, 0)
 	/*
 	 * Because FOREIGN KEY constraints must be dumped after PRIMARY KEY
 	 * constraints, we separate the two types then concatenate the lists,
@@ -66,7 +66,7 @@ func PrintCreateSchemaStatements(predataFile io.Writer, schemas []Schema, schema
  * the languages themselves and we can avoid sorting languages and functions
  * together to resolve dependencies.
  */
-func ExtractLanguageFunctions(funcDefs []QueryFunctionDefinition, procLangs []QueryProceduralLanguage) ([]QueryFunctionDefinition, []QueryFunctionDefinition) {
+func ExtractLanguageFunctions(funcDefs []Function, procLangs []ProceduralLanguage) ([]Function, []Function) {
 	isLangFuncMap := make(map[uint32]bool, 0)
 	for _, procLang := range procLangs {
 		for _, funcDef := range funcDefs {
@@ -75,8 +75,8 @@ func ExtractLanguageFunctions(funcDefs []QueryFunctionDefinition, procLangs []Qu
 				funcDef.Oid == procLang.Validator)
 		}
 	}
-	langFuncs := make([]QueryFunctionDefinition, 0)
-	otherFuncs := make([]QueryFunctionDefinition, 0)
+	langFuncs := make([]Function, 0)
+	otherFuncs := make([]Function, 0)
 	for _, funcDef := range funcDefs {
 		if isLangFuncMap[funcDef.Oid] {
 			langFuncs = append(langFuncs, funcDef)
@@ -87,7 +87,7 @@ func ExtractLanguageFunctions(funcDefs []QueryFunctionDefinition, procLangs []Qu
 	return langFuncs, otherFuncs
 }
 
-func PrintCreateLanguageStatements(predataFile io.Writer, procLangs []QueryProceduralLanguage,
+func PrintCreateLanguageStatements(predataFile io.Writer, procLangs []ProceduralLanguage,
 	funcInfoMap map[uint32]FunctionInfo, procLangMetadata MetadataMap) {
 	for _, procLang := range procLangs {
 		quotedOwner := utils.QuoteIdent(procLang.Owner)
@@ -122,7 +122,7 @@ func PrintCreateLanguageStatements(predataFile io.Writer, procLangs []QueryProce
 	}
 }
 
-func PrintCreateOperatorStatements(predataFile io.Writer, operators []QueryOperator, operatorMetadata MetadataMap) {
+func PrintCreateOperatorStatements(predataFile io.Writer, operators []Operator, operatorMetadata MetadataMap) {
 	for _, operator := range operators {
 		// We do not use MakeFQN here as the operator cannot be quoted
 		schema := utils.QuoteIdent(operator.SchemaName)
@@ -166,7 +166,7 @@ CREATE OPERATOR %s (
 		PrintObjectMetadata(predataFile, operatorMetadata[operator.Oid], operatorStr, "OPERATOR")
 	}
 }
-func PrintCreateOperatorFamilyStatements(predataFile io.Writer, operatorFamilies []QueryOperatorFamily, operatorFamilyMetadata MetadataMap) {
+func PrintCreateOperatorFamilyStatements(predataFile io.Writer, operatorFamilies []OperatorFamily, operatorFamilyMetadata MetadataMap) {
 	for _, operatorFamily := range operatorFamilies {
 		operatorFamilyFQN := MakeFQN(operatorFamily.SchemaName, operatorFamily.Name)
 		operatorFamilyStr := fmt.Sprintf("%s USING %s", operatorFamilyFQN, utils.QuoteIdent(operatorFamily.IndexMethod))
@@ -175,7 +175,7 @@ func PrintCreateOperatorFamilyStatements(predataFile io.Writer, operatorFamilies
 	}
 }
 
-func PrintCreateOperatorClassStatements(predataFile io.Writer, operatorClasses []QueryOperatorClass, operatorClassMetadata MetadataMap) {
+func PrintCreateOperatorClassStatements(predataFile io.Writer, operatorClasses []OperatorClass, operatorClassMetadata MetadataMap) {
 	for _, operatorClass := range operatorClasses {
 		operatorClassFQN := MakeFQN(operatorClass.ClassSchema, operatorClass.ClassName)
 		utils.MustPrintf(predataFile, "\n\nCREATE OPERATOR CLASS %s", operatorClassFQN)

@@ -19,11 +19,11 @@ var _ = Describe("backup/predata_types tests", func() {
 		typeMetadataMap = backup.MetadataMap{}
 	})
 	Describe("PrintCreateEnumTypeStatements", func() {
-		enumOne := backup.TypeDefinition{Oid: 1, TypeSchema: "public", TypeName: "enum_type", Type: "e", EnumLabels: "'bar',\n\t'baz',\n\t'foo'"}
-		enumTwo := backup.TypeDefinition{Oid: 1, TypeSchema: "public", TypeName: "enum_type", Type: "e", EnumLabels: "'bar',\n\t'baz',\n\t'foo'"}
+		enumOne := backup.Type{Oid: 1, TypeSchema: "public", TypeName: "enum_type", Type: "e", EnumLabels: "'bar',\n\t'baz',\n\t'foo'"}
+		enumTwo := backup.Type{Oid: 1, TypeSchema: "public", TypeName: "enum_type", Type: "e", EnumLabels: "'bar',\n\t'baz',\n\t'foo'"}
 
 		It("prints an enum type with multiple attributes", func() {
-			backup.PrintCreateEnumTypeStatements(buffer, []backup.TypeDefinition{enumOne}, typeMetadataMap)
+			backup.PrintCreateEnumTypeStatements(buffer, []backup.Type{enumOne}, typeMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE TYPE public.enum_type AS ENUM (
 	'bar',
 	'baz',
@@ -32,7 +32,7 @@ var _ = Describe("backup/predata_types tests", func() {
 		})
 		It("prints an enum type with comment and owner", func() {
 			typeMetadataMap = testutils.DefaultMetadataMap("TYPE", false, true, true)
-			backup.PrintCreateEnumTypeStatements(buffer, []backup.TypeDefinition{enumTwo}, typeMetadataMap)
+			backup.PrintCreateEnumTypeStatements(buffer, []backup.Type{enumTwo}, typeMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE TYPE public.enum_type AS ENUM (
 	'bar',
 	'baz',
@@ -49,7 +49,7 @@ ALTER TYPE public.enum_type OWNER TO testrole;`)
 	Describe("PrintCreateCompositeTypeStatement", func() {
 		oneAtt := []backup.CompositeTypeAttribute{{"foo", "integer"}}
 		twoAtts := []backup.CompositeTypeAttribute{{"foo", "integer"}, {"bar", "text"}}
-		compType := backup.TypeDefinition{Oid: 1, TypeSchema: "public", TypeName: "composite_type", Type: "c"}
+		compType := backup.Type{Oid: 1, TypeSchema: "public", TypeName: "composite_type", Type: "c"}
 
 		It("prints a composite type with one attribute", func() {
 			compType.CompositeAtts = oneAtt
@@ -82,17 +82,17 @@ ALTER TYPE public.composite_type OWNER TO testrole;`)
 		})
 	})
 	Describe("PrintCreateBaseTypeStatement", func() {
-		baseSimple := backup.TypeDefinition{1, "public", "base_type", "b", "", "", "input_fn", "output_fn",
+		baseSimple := backup.Type{1, "public", "base_type", "b", "", "", "input_fn", "output_fn",
 			"", "", "", "", -1, false, "c", "p", "", "", "", "", "", false, nil, nil}
-		basePartial := backup.TypeDefinition{1, "public", "base_type", "b", "", "", "input_fn", "output_fn",
+		basePartial := backup.Type{1, "public", "base_type", "b", "", "", "input_fn", "output_fn",
 			"receive_fn", "send_fn", "modin_fn", "modout_fn", -1, false, "c", "p", "42", "int4", ",", "", "", false, nil, nil}
-		baseFull := backup.TypeDefinition{1, "public", "base_type", "b", "", "", "input_fn", "output_fn",
+		baseFull := backup.Type{1, "public", "base_type", "b", "", "", "input_fn", "output_fn",
 			"receive_fn", "send_fn", "modin_fn", "modout_fn", 16, true, "s", "e", "42", "int4", ",", "", "", false, nil, nil}
-		basePermOne := backup.TypeDefinition{1, "public", "base_type", "b", "", "", "input_fn", "output_fn",
+		basePermOne := backup.Type{1, "public", "base_type", "b", "", "", "input_fn", "output_fn",
 			"", "", "", "", -1, false, "d", "m", "", "", "", "", "", false, nil, nil}
-		basePermTwo := backup.TypeDefinition{1, "public", "base_type", "b", "", "", "input_fn", "output_fn",
+		basePermTwo := backup.Type{1, "public", "base_type", "b", "", "", "input_fn", "output_fn",
 			"", "", "", "", -1, false, "i", "x", "", "", "", "", "", false, nil, nil}
-		baseCommentOwner := backup.TypeDefinition{1, "public", "base_type", "b", "", "", "input_fn", "output_fn",
+		baseCommentOwner := backup.Type{1, "public", "base_type", "b", "", "", "input_fn", "output_fn",
 			"", "", "", "", -1, false, "c", "p", "", "", "", "", "", false, nil, nil}
 
 		It("prints a base type with no optional arguments", func() {
@@ -161,15 +161,15 @@ ALTER TYPE public.composite_type OWNER TO testrole;`)
 		})
 	})
 	Describe("PrintCreateShellTypeStatements", func() {
-		baseOne := backup.TypeDefinition{1, "public", "base_type1", "b", "", "", "input_fn", "output_fn",
+		baseOne := backup.Type{1, "public", "base_type1", "b", "", "", "input_fn", "output_fn",
 			"", "", "", "", -1, false, "c", "p", "", "", "", "", "", false, nil, nil}
-		baseTwo := backup.TypeDefinition{1, "public", "base_type2", "b", "", "", "input_fn", "output_fn",
+		baseTwo := backup.Type{1, "public", "base_type2", "b", "", "", "input_fn", "output_fn",
 			"", "", "", "", -1, false, "c", "p", "", "", "", "", "", false, nil, nil}
-		compOne := backup.TypeDefinition{Oid: 1, TypeSchema: "public", TypeName: "composite_type1", Type: "c", AttName: "bar", AttType: "integer"}
-		compTwo := backup.TypeDefinition{Oid: 1, TypeSchema: "public", TypeName: "composite_type2", Type: "c", AttName: "bar", AttType: "integer"}
-		enumOne := backup.TypeDefinition{Oid: 1, TypeSchema: "public", TypeName: "enum_type", Type: "e", EnumLabels: "'bar',\n\t'baz',\n\t'foo'"}
+		compOne := backup.Type{Oid: 1, TypeSchema: "public", TypeName: "composite_type1", Type: "c", AttName: "bar", AttType: "integer"}
+		compTwo := backup.Type{Oid: 1, TypeSchema: "public", TypeName: "composite_type2", Type: "c", AttName: "bar", AttType: "integer"}
+		enumOne := backup.Type{Oid: 1, TypeSchema: "public", TypeName: "enum_type", Type: "e", EnumLabels: "'bar',\n\t'baz',\n\t'foo'"}
 		It("prints shell type for only a base type", func() {
-			backup.PrintCreateShellTypeStatements(buffer, []backup.TypeDefinition{baseOne, baseTwo, compOne, compTwo, enumOne})
+			backup.PrintCreateShellTypeStatements(buffer, []backup.Type{baseOne, baseTwo, compOne, compTwo, enumOne})
 			testutils.ExpectRegexp(buffer, `CREATE TYPE public.base_type1;
 CREATE TYPE public.base_type2;`)
 		})

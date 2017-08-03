@@ -16,7 +16,7 @@ type CompositeTypeAttribute struct {
 	AttType string
 }
 
-type TypeDefinition struct {
+type Type struct {
 	Oid             uint32
 	TypeSchema      string `db:"nspname"`
 	TypeName        string `db:"typname"`
@@ -43,7 +43,7 @@ type TypeDefinition struct {
 	DependsUpon     []string
 }
 
-func GetTypeDefinitions(connection *utils.DBConn) []TypeDefinition {
+func GetTypes(connection *utils.DBConn) []Type {
 	/*
 	 * To get all user-defined types, this query needs to filter out automatically-
 	 * defined types created for tables (e.g. if the user creates table public.foo,
@@ -92,7 +92,7 @@ AND NOT (t.typname[0] = '_' AND t.typelem != 0)
 AND (n.nspname || '.' || t.typname) NOT IN (SELECT nspname || '.' || relname FROM pg_namespace n join pg_class c ON n.oid = c.relnamespace WHERE c.relkind = 'r' OR c.relkind = 'S' OR c.relkind = 'v')
 ORDER BY n.nspname, t.typname, a.attname;`, NonUserSchemaFilterClause("n"))
 
-	results := make([]TypeDefinition, 0)
+	results := make([]Type, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results
@@ -104,7 +104,7 @@ ORDER BY n.nspname, t.typname, a.attname;`, NonUserSchemaFilterClause("n"))
  * functions is a built-in function (and therefore should not be considered a
  * dependency for dependency sorting purposes).
  */
-func ConstructBaseTypeDependencies(connection *utils.DBConn, types []TypeDefinition) []TypeDefinition {
+func ConstructBaseTypeDependencies(connection *utils.DBConn, types []Type) []Type {
 	query := fmt.Sprintf(`
 SELECT DISTINCT
     t.oid,
@@ -117,7 +117,7 @@ WHERE %s
 AND d.refclassid = 'pg_proc'::regclass
 AND d.deptype = 'n';`, NonUserSchemaFilterClause("n"))
 
-	results := make([]QueryDependency, 0)
+	results := make([]Dependency, 0)
 	dependencyMap := make(map[uint32][]string, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
@@ -137,7 +137,7 @@ AND d.deptype = 'n';`, NonUserSchemaFilterClause("n"))
  * we need to query pg_type to determine whether the base type is built in (and
  * therefore should not be considered a dependency for dependency sorting purposes).
  */
-func ConstructDomainDependencies(connection *utils.DBConn, types []TypeDefinition) []TypeDefinition {
+func ConstructDomainDependencies(connection *utils.DBConn, types []Type) []Type {
 	query := fmt.Sprintf(`
 SELECT
 	t.oid,
@@ -153,7 +153,7 @@ AND bt.typnamespace != (
 	WHERE bn.nspname = 'pg_catalog'
 );`, NonUserSchemaFilterClause("n"))
 
-	results := make([]QueryDependency, 0)
+	results := make([]Dependency, 0)
 	dependencyMap := make(map[uint32][]string, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
@@ -168,7 +168,7 @@ AND bt.typnamespace != (
 	return types
 }
 
-func ConstructCompositeTypeDependencies(connection *utils.DBConn, types []TypeDefinition) []TypeDefinition {
+func ConstructCompositeTypeDependencies(connection *utils.DBConn, types []Type) []Type {
 	query := fmt.Sprintf(`
 SELECT DISTINCT
 	tc.oid,
@@ -183,7 +183,7 @@ AND d.refclassid = 'pg_type'::regclass
 AND c.reltype != t.oid
 AND d.deptype = 'n';`, NonUserSchemaFilterClause("n"))
 
-	results := make([]QueryDependency, 0)
+	results := make([]Dependency, 0)
 	dependencyMap := make(map[uint32][]string, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)

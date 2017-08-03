@@ -61,9 +61,9 @@ var _ = Describe("backup integration create statement tests", func() {
 				5: {"pg_catalog.plperl_inline_handler", "internal", true},
 				6: {"pg_catalog.plperl_call_handler", "", true},
 			}
-			plpgsqlInfo := backup.QueryProceduralLanguage{0, "plpgsql", "testrole", true, true, 1, 2, 3}
-			plperlInfo := backup.QueryProceduralLanguage{1, "plperl", "testrole", true, true, 4, 5, 6}
-			procLangs := []backup.QueryProceduralLanguage{plpgsqlInfo, plperlInfo}
+			plpgsqlInfo := backup.ProceduralLanguage{0, "plpgsql", "testrole", true, true, 1, 2, 3}
+			plperlInfo := backup.ProceduralLanguage{1, "plperl", "testrole", true, true, 4, 5, 6}
+			procLangs := []backup.ProceduralLanguage{plpgsqlInfo, plperlInfo}
 			langMetadataMap := testutils.DefaultMetadataMap("LANGUAGE", true, true, true)
 			langMetadata := langMetadataMap[1]
 
@@ -113,20 +113,20 @@ var _ = Describe("backup integration create statement tests", func() {
 		var (
 			testTable                backup.Relation
 			tableOid                 uint32
-			uniqueConstraint         backup.QueryConstraint
-			pkConstraint             backup.QueryConstraint
-			fkConstraint             backup.QueryConstraint
-			checkConstraint          backup.QueryConstraint
-			partitionCheckConstraint backup.QueryConstraint
+			uniqueConstraint         backup.Constraint
+			pkConstraint             backup.Constraint
+			fkConstraint             backup.Constraint
+			checkConstraint          backup.Constraint
+			partitionCheckConstraint backup.Constraint
 			conMetadataMap           backup.MetadataMap
 		)
 		BeforeEach(func() {
 			testTable = backup.BasicRelation("public", "testtable")
-			uniqueConstraint = backup.QueryConstraint{0, "uniq2", "u", "UNIQUE (a, b)", "public.testtable", false, false}
-			pkConstraint = backup.QueryConstraint{0, "constraints_other_table_pkey", "p", "PRIMARY KEY (b)", "public.constraints_other_table", false, false}
-			fkConstraint = backup.QueryConstraint{0, "fk1", "f", "FOREIGN KEY (b) REFERENCES constraints_other_table(b)", "public.testtable", false, false}
-			checkConstraint = backup.QueryConstraint{0, "check1", "c", "CHECK (a <> 42)", "public.testtable", false, false}
-			partitionCheckConstraint = backup.QueryConstraint{0, "check1", "c", "CHECK (id <> 0)", "public.part", false, true}
+			uniqueConstraint = backup.Constraint{0, "uniq2", "u", "UNIQUE (a, b)", "public.testtable", false, false}
+			pkConstraint = backup.Constraint{0, "constraints_other_table_pkey", "p", "PRIMARY KEY (b)", "public.constraints_other_table", false, false}
+			fkConstraint = backup.Constraint{0, "fk1", "f", "FOREIGN KEY (b) REFERENCES constraints_other_table(b)", "public.testtable", false, false}
+			checkConstraint = backup.Constraint{0, "check1", "c", "CHECK (a <> 42)", "public.testtable", false, false}
+			partitionCheckConstraint = backup.Constraint{0, "check1", "c", "CHECK (id <> 0)", "public.part", false, true}
 			testutils.AssertQueryRuns(connection, "CREATE TABLE public.testtable(a int, b text) DISTRIBUTED BY (b)")
 			tableOid = backup.OidFromObjectName(connection, "public", "testtable", backup.RelationParams)
 			conMetadataMap = backup.MetadataMap{}
@@ -135,7 +135,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.AssertQueryRuns(connection, "DROP TABLE testtable CASCADE")
 		})
 		It("creates a unique constraint", func() {
-			constraints := []backup.QueryConstraint{uniqueConstraint}
+			constraints := []backup.Constraint{uniqueConstraint}
 			backup.PrintConstraintStatements(buffer, constraints, conMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
@@ -146,7 +146,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&uniqueConstraint, &resultConstraints[0], "Oid")
 		})
 		It("creates a primary key constraint", func() {
-			constraints := []backup.QueryConstraint{}
+			constraints := []backup.Constraint{}
 			backup.PrintConstraintStatements(buffer, constraints, conMetadataMap)
 
 			testutils.AssertQueryRuns(connection, "CREATE TABLE constraints_other_table(b text PRIMARY KEY)")
@@ -159,7 +159,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&pkConstraint, &resultConstraints[0], "Oid")
 		})
 		It("creates a foreign key constraint", func() {
-			constraints := []backup.QueryConstraint{fkConstraint}
+			constraints := []backup.Constraint{fkConstraint}
 			backup.PrintConstraintStatements(buffer, constraints, conMetadataMap)
 
 			testutils.AssertQueryRuns(connection, "CREATE TABLE constraints_other_table(b text PRIMARY KEY)")
@@ -173,7 +173,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&fkConstraint, &resultConstraints[1], "Oid")
 		})
 		It("creates a check constraint", func() {
-			constraints := []backup.QueryConstraint{checkConstraint}
+			constraints := []backup.Constraint{checkConstraint}
 			backup.PrintConstraintStatements(buffer, constraints, conMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
@@ -184,7 +184,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&checkConstraint, &resultConstraints[0], "Oid")
 		})
 		It("creates multiple constraints on one table", func() {
-			constraints := []backup.QueryConstraint{checkConstraint, uniqueConstraint, fkConstraint}
+			constraints := []backup.Constraint{checkConstraint, uniqueConstraint, fkConstraint}
 			backup.PrintConstraintStatements(buffer, constraints, conMetadataMap)
 
 			testutils.AssertQueryRuns(connection, "CREATE TABLE constraints_other_table(b text PRIMARY KEY)")
@@ -202,8 +202,8 @@ var _ = Describe("backup integration create statement tests", func() {
 		It("creates a check constraint on a domain", func() {
 			testutils.AssertQueryRuns(connection, "CREATE DOMAIN domain1 AS numeric")
 			defer testutils.AssertQueryRuns(connection, "DROP DOMAIN domain1")
-			domainCheckConstraint := backup.QueryConstraint{0, "check1", "c", "CHECK (VALUE <> 42::numeric)", "public.domain1", true, false}
-			constraints := []backup.QueryConstraint{domainCheckConstraint}
+			domainCheckConstraint := backup.Constraint{0, "check1", "c", "CHECK (VALUE <> 42::numeric)", "public.domain1", true, false}
+			constraints := []backup.Constraint{domainCheckConstraint}
 			backup.PrintConstraintStatements(buffer, constraints, conMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
@@ -214,7 +214,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&domainCheckConstraint, &resultConstraints[0], "Oid")
 		})
 		It("creates a check constraint on a parent partition table", func() {
-			constraints := []backup.QueryConstraint{partitionCheckConstraint}
+			constraints := []backup.Constraint{partitionCheckConstraint}
 			backup.PrintConstraintStatements(buffer, constraints, conMetadataMap)
 
 			testutils.AssertQueryRuns(connection, `CREATE TABLE part (id int, year int)
@@ -233,7 +233,7 @@ PARTITION BY RANGE (year)
 	})
 	Describe("PrintSessionGUCs", func() {
 		It("prints the default session GUCs", func() {
-			gucs := backup.QuerySessionGUCs{ClientEncoding: "UTF8", StdConformingStrings: "on", DefaultWithOids: "off"}
+			gucs := backup.SessionGUCs{ClientEncoding: "UTF8", StdConformingStrings: "on", DefaultWithOids: "off"}
 
 			backup.PrintSessionGUCs(buffer, gucs)
 
@@ -250,8 +250,8 @@ PARTITION BY RANGE (year)
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION testschema.\"testFunc\" (path,path) RETURNS path AS 'SELECT $1' LANGUAGE SQL IMMUTABLE")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION testschema.\"testFunc\" (path,path)")
 
-			operator := backup.QueryOperator{0, "testschema", "##", "testschema.\"testFunc\"", "path", "path", "0", "0", "-", "-", false, false}
-			operators := []backup.QueryOperator{operator}
+			operator := backup.Operator{0, "testschema", "##", "testschema.\"testFunc\"", "path", "path", "0", "0", "-", "-", false, false}
+			operators := []backup.Operator{operator}
 
 			backup.PrintCreateOperatorStatements(buffer, operators, backup.MetadataMap{})
 
@@ -271,8 +271,8 @@ PARTITION BY RANGE (year)
 
 			operatorMetadataMap := testutils.DefaultMetadataMap("OPERATOR", false, false, true)
 			operatorMetadata := operatorMetadataMap[1]
-			operator := backup.QueryOperator{1, "testschema", "##", "testschema.\"testFunc\"", "path", "path", "0", "0", "-", "-", false, false}
-			operators := []backup.QueryOperator{operator}
+			operator := backup.Operator{1, "testschema", "##", "testschema.\"testFunc\"", "path", "path", "0", "0", "-", "-", false, false}
+			operators := []backup.Operator{operator}
 
 			backup.PrintCreateOperatorStatements(buffer, operators, operatorMetadataMap)
 			testutils.AssertQueryRuns(connection, buffer.String())
@@ -288,8 +288,8 @@ PARTITION BY RANGE (year)
 	})
 	Describe("PrintCreateOperatorFamilyStatements", func() {
 		It("creates operator family", func() {
-			operatorFamily := backup.QueryOperatorFamily{1, "public", "testfam", "hash"}
-			operatorFamilies := []backup.QueryOperatorFamily{operatorFamily}
+			operatorFamily := backup.OperatorFamily{1, "public", "testfam", "hash"}
+			operatorFamilies := []backup.OperatorFamily{operatorFamily}
 
 			backup.PrintCreateOperatorFamilyStatements(buffer, operatorFamilies, backup.MetadataMap{})
 
@@ -303,8 +303,8 @@ PARTITION BY RANGE (year)
 		It("creates operator family with owner and comment", func() {
 			operatorFamilyMetadataMap := testutils.DefaultMetadataMap("OPERATOR FAMILY", false, true, true)
 			operatorFamilyMetadata := operatorFamilyMetadataMap[1]
-			operatorFamily := backup.QueryOperatorFamily{1, "public", "testfam", "hash"}
-			operatorFamilies := []backup.QueryOperatorFamily{operatorFamily}
+			operatorFamily := backup.OperatorFamily{1, "public", "testfam", "hash"}
+			operatorFamilies := []backup.OperatorFamily{operatorFamily}
 
 			backup.PrintCreateOperatorFamilyStatements(buffer, operatorFamilies, operatorFamilyMetadataMap)
 
@@ -321,9 +321,9 @@ PARTITION BY RANGE (year)
 	})
 	Describe("PrintCreateOperatorClassStatements", func() {
 		It("creates basic operator class", func() {
-			operatorClass := backup.QueryOperatorClass{0, "public", "testclass", "public", "testclass", "hash", "uuid", false, "-", nil, nil}
+			operatorClass := backup.OperatorClass{0, "public", "testclass", "public", "testclass", "hash", "uuid", false, "-", nil, nil}
 
-			backup.PrintCreateOperatorClassStatements(buffer, []backup.QueryOperatorClass{operatorClass}, nil)
+			backup.PrintCreateOperatorClassStatements(buffer, []backup.OperatorClass{operatorClass}, nil)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.testclass USING hash CASCADE")
@@ -333,13 +333,13 @@ PARTITION BY RANGE (year)
 			testutils.ExpectStructsToMatchExcluding(&operatorClass, &resultOperatorClasses[0], "Oid")
 		})
 		It("creates complex operator class", func() {
-			operatorClass := backup.QueryOperatorClass{0, "public", "testclass", "public", "testfam", "gist", "uuid", true, "integer", nil, nil}
+			operatorClass := backup.OperatorClass{0, "public", "testclass", "public", "testfam", "gist", "uuid", true, "integer", nil, nil}
 			operatorClass.Operators = []backup.OperatorClassOperator{{0, 1, "=(uuid,uuid)", true}}
 			operatorClass.Functions = []backup.OperatorClassFunction{{0, 1, "abs(integer)"}}
 
 			testutils.AssertQueryRuns(connection, "CREATE OPERATOR FAMILY public.testfam USING gist")
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.testfam USING gist CASCADE")
-			backup.PrintCreateOperatorClassStatements(buffer, []backup.QueryOperatorClass{operatorClass}, nil)
+			backup.PrintCreateOperatorClassStatements(buffer, []backup.OperatorClass{operatorClass}, nil)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
@@ -351,9 +351,9 @@ PARTITION BY RANGE (year)
 			operatorClassMetadataMap := testutils.DefaultMetadataMap("OPERATOR CLASS", false, true, true)
 			operatorClassMetadata := operatorClassMetadataMap[1]
 
-			operatorClass := backup.QueryOperatorClass{1, "public", "testclass", "public", "testclass", "hash", "uuid", false, "-", nil, nil}
+			operatorClass := backup.OperatorClass{1, "public", "testclass", "public", "testclass", "hash", "uuid", false, "-", nil, nil}
 
-			backup.PrintCreateOperatorClassStatements(buffer, []backup.QueryOperatorClass{operatorClass}, operatorClassMetadataMap)
+			backup.PrintCreateOperatorClassStatements(buffer, []backup.OperatorClass{operatorClass}, operatorClassMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.testclass USING hash CASCADE")

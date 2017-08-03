@@ -476,75 +476,75 @@ COMMENT ON COLUMN public.tablename.j IS 'This is another column comment.';`)
 		})
 	})
 	Describe("ConsolidateColumnInfo", func() {
-		attsOne := backup.QueryTableAttributes{1, "i", false, false, false, "integer", "", -1, ""}
-		attsTwo := backup.QueryTableAttributes{2, "j", false, false, false, "integer", "", -1, ""}
-		attsThree := backup.QueryTableAttributes{3, "k", false, false, false, "integer", "", -1, ""}
-		attsOneDef := backup.QueryTableAttributes{1, "i", false, true, false, "integer", "", -1, ""}
-		attsTwoDef := backup.QueryTableAttributes{2, "j", false, true, false, "integer", "", -1, ""}
-		attsThreeDef := backup.QueryTableAttributes{3, "k", false, true, false, "integer", "", -1, ""}
+		attsOne := backup.TableAttributes{1, "i", false, false, false, "integer", "", -1, ""}
+		attsTwo := backup.TableAttributes{2, "j", false, false, false, "integer", "", -1, ""}
+		attsThree := backup.TableAttributes{3, "k", false, false, false, "integer", "", -1, ""}
+		attsOneDef := backup.TableAttributes{1, "i", false, true, false, "integer", "", -1, ""}
+		attsTwoDef := backup.TableAttributes{2, "j", false, true, false, "integer", "", -1, ""}
+		attsThreeDef := backup.TableAttributes{3, "k", false, true, false, "integer", "", -1, ""}
 
-		defaultsOne := backup.QueryTableDefault{1, "1"}
-		defaultsTwo := backup.QueryTableDefault{2, "2"}
-		defaultsThree := backup.QueryTableDefault{3, "3"}
+		defaultsOne := backup.TableDefault{1, "1"}
+		defaultsTwo := backup.TableDefault{2, "2"}
+		defaultsThree := backup.TableDefault{3, "3"}
 		It("has no DEFAULT columns", func() {
-			atts := []backup.QueryTableAttributes{attsOne, attsTwo, attsThree}
-			defaults := []backup.QueryTableDefault{}
+			atts := []backup.TableAttributes{attsOne, attsTwo, attsThree}
+			defaults := []backup.TableDefault{}
 			info := backup.ConsolidateColumnInfo(atts, defaults)
 			Expect(info[0].DefaultVal).To(Equal(""))
 			Expect(info[1].DefaultVal).To(Equal(""))
 			Expect(info[2].DefaultVal).To(Equal(""))
 		})
 		It("has one DEFAULT column (i)", func() {
-			atts := []backup.QueryTableAttributes{attsOneDef, attsTwo, attsThree}
-			defaults := []backup.QueryTableDefault{defaultsOne}
+			atts := []backup.TableAttributes{attsOneDef, attsTwo, attsThree}
+			defaults := []backup.TableDefault{defaultsOne}
 			info := backup.ConsolidateColumnInfo(atts, defaults)
 			Expect(info[0].DefaultVal).To(Equal("1"))
 			Expect(info[1].DefaultVal).To(Equal(""))
 			Expect(info[2].DefaultVal).To(Equal(""))
 		})
 		It("has one DEFAULT column (j)", func() {
-			atts := []backup.QueryTableAttributes{attsOne, attsTwoDef, attsThree}
-			defaults := []backup.QueryTableDefault{defaultsTwo}
+			atts := []backup.TableAttributes{attsOne, attsTwoDef, attsThree}
+			defaults := []backup.TableDefault{defaultsTwo}
 			info := backup.ConsolidateColumnInfo(atts, defaults)
 			Expect(info[0].DefaultVal).To(Equal(""))
 			Expect(info[1].DefaultVal).To(Equal("2"))
 			Expect(info[2].DefaultVal).To(Equal(""))
 		})
 		It("has one DEFAULT column (k)", func() {
-			atts := []backup.QueryTableAttributes{attsOne, attsTwo, attsThreeDef}
-			defaults := []backup.QueryTableDefault{defaultsThree}
+			atts := []backup.TableAttributes{attsOne, attsTwo, attsThreeDef}
+			defaults := []backup.TableDefault{defaultsThree}
 			info := backup.ConsolidateColumnInfo(atts, defaults)
 			Expect(info[0].DefaultVal).To(Equal(""))
 			Expect(info[1].DefaultVal).To(Equal(""))
 			Expect(info[2].DefaultVal).To(Equal("3"))
 		})
 		It("has two DEFAULT columns (i and j)", func() {
-			atts := []backup.QueryTableAttributes{attsOneDef, attsTwoDef, attsThree}
-			defaults := []backup.QueryTableDefault{defaultsOne, defaultsTwo}
+			atts := []backup.TableAttributes{attsOneDef, attsTwoDef, attsThree}
+			defaults := []backup.TableDefault{defaultsOne, defaultsTwo}
 			info := backup.ConsolidateColumnInfo(atts, defaults)
 			Expect(info[0].DefaultVal).To(Equal("1"))
 			Expect(info[1].DefaultVal).To(Equal("2"))
 			Expect(info[2].DefaultVal).To(Equal(""))
 		})
 		It("has two DEFAULT columns (j and k)", func() {
-			atts := []backup.QueryTableAttributes{attsOne, attsTwoDef, attsThreeDef}
-			defaults := []backup.QueryTableDefault{defaultsTwo, defaultsThree}
+			atts := []backup.TableAttributes{attsOne, attsTwoDef, attsThreeDef}
+			defaults := []backup.TableDefault{defaultsTwo, defaultsThree}
 			info := backup.ConsolidateColumnInfo(atts, defaults)
 			Expect(info[0].DefaultVal).To(Equal(""))
 			Expect(info[1].DefaultVal).To(Equal("2"))
 			Expect(info[2].DefaultVal).To(Equal("3"))
 		})
 		It("has two DEFAULT columns (i and k)", func() {
-			atts := []backup.QueryTableAttributes{attsOneDef, attsTwo, attsThreeDef}
-			defaults := []backup.QueryTableDefault{defaultsOne, defaultsThree}
+			atts := []backup.TableAttributes{attsOneDef, attsTwo, attsThreeDef}
+			defaults := []backup.TableDefault{defaultsOne, defaultsThree}
 			info := backup.ConsolidateColumnInfo(atts, defaults)
 			Expect(info[0].DefaultVal).To(Equal("1"))
 			Expect(info[1].DefaultVal).To(Equal(""))
 			Expect(info[2].DefaultVal).To(Equal("3"))
 		})
 		It("has all DEFAULT columns", func() {
-			atts := []backup.QueryTableAttributes{attsOneDef, attsTwoDef, attsThreeDef}
-			defaults := []backup.QueryTableDefault{defaultsOne, defaultsTwo, defaultsThree}
+			atts := []backup.TableAttributes{attsOneDef, attsTwoDef, attsThreeDef}
+			defaults := []backup.TableDefault{defaultsOne, defaultsTwo, defaultsThree}
 			info := backup.ConsolidateColumnInfo(atts, defaults)
 			Expect(info[0].DefaultVal).To(Equal("1"))
 			Expect(info[1].DefaultVal).To(Equal("2"))
@@ -553,14 +553,14 @@ COMMENT ON COLUMN public.tablename.j IS 'This is another column comment.';`)
 	})
 	Describe("PrintCreateSequenceStatements", func() {
 		baseSequence := backup.Relation{0, 1, "public", "seq_name", []string{}}
-		seqDefault := backup.Sequence{baseSequence, backup.QuerySequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, true}}
-		seqNegIncr := backup.Sequence{baseSequence, backup.QuerySequenceDefinition{"seq_name", 7, -1, -1, -9223372036854775807, 5, 42, false, true}}
-		seqMaxPos := backup.Sequence{baseSequence, backup.QuerySequenceDefinition{"seq_name", 7, 1, 100, 1, 5, 42, false, true}}
-		seqMinPos := backup.Sequence{baseSequence, backup.QuerySequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 10, 5, 42, false, true}}
-		seqMaxNeg := backup.Sequence{baseSequence, backup.QuerySequenceDefinition{"seq_name", 7, -1, -10, -9223372036854775807, 5, 42, false, true}}
-		seqMinNeg := backup.Sequence{baseSequence, backup.QuerySequenceDefinition{"seq_name", 7, -1, -1, -100, 5, 42, false, true}}
-		seqCycle := backup.Sequence{baseSequence, backup.QuerySequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, true, true}}
-		seqStart := backup.Sequence{baseSequence, backup.QuerySequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, false}}
+		seqDefault := backup.Sequence{baseSequence, backup.SequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, true}}
+		seqNegIncr := backup.Sequence{baseSequence, backup.SequenceDefinition{"seq_name", 7, -1, -1, -9223372036854775807, 5, 42, false, true}}
+		seqMaxPos := backup.Sequence{baseSequence, backup.SequenceDefinition{"seq_name", 7, 1, 100, 1, 5, 42, false, true}}
+		seqMinPos := backup.Sequence{baseSequence, backup.SequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 10, 5, 42, false, true}}
+		seqMaxNeg := backup.Sequence{baseSequence, backup.SequenceDefinition{"seq_name", 7, -1, -10, -9223372036854775807, 5, 42, false, true}}
+		seqMinNeg := backup.Sequence{baseSequence, backup.SequenceDefinition{"seq_name", 7, -1, -1, -100, 5, 42, false, true}}
+		seqCycle := backup.Sequence{baseSequence, backup.SequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, true, true}}
+		seqStart := backup.Sequence{baseSequence, backup.SequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, false}}
 		emptySequenceMetadataMap := backup.MetadataMap{}
 		sequenceMetadataMap := testutils.DefaultMetadataMap("SEQUENCE", true, true, true)
 
@@ -679,20 +679,20 @@ GRANT ALL ON SEQUENCE public.seq_name TO testrole;`)
 	})
 	Describe("PrintCreateViewStatements", func() {
 		It("can print a basic view", func() {
-			viewOne := backup.QueryViewDefinition{0, "public", "WowZa", "SELECT rolname FROM pg_role;", []string{}}
-			viewTwo := backup.QueryViewDefinition{1, "shamwow", "shazam", "SELECT count(*) FROM pg_tables;", []string{}}
+			viewOne := backup.View{0, "public", "WowZa", "SELECT rolname FROM pg_role;", []string{}}
+			viewTwo := backup.View{1, "shamwow", "shazam", "SELECT count(*) FROM pg_tables;", []string{}}
 			viewMetadataMap := backup.MetadataMap{}
-			backup.PrintCreateViewStatements(buffer, []backup.QueryViewDefinition{viewOne, viewTwo}, viewMetadataMap)
+			backup.PrintCreateViewStatements(buffer, []backup.View{viewOne, viewTwo}, viewMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE VIEW public."WowZa" AS SELECT rolname FROM pg_role;
 
 
 CREATE VIEW shamwow.shazam AS SELECT count(*) FROM pg_tables;`)
 		})
 		It("can print a view with privileges, an owner, and a comment", func() {
-			viewOne := backup.QueryViewDefinition{0, "public", "WowZa", "SELECT rolname FROM pg_role;", []string{}}
-			viewTwo := backup.QueryViewDefinition{1, "shamwow", "shazam", "SELECT count(*) FROM pg_tables;", []string{}}
+			viewOne := backup.View{0, "public", "WowZa", "SELECT rolname FROM pg_role;", []string{}}
+			viewTwo := backup.View{1, "shamwow", "shazam", "SELECT count(*) FROM pg_tables;", []string{}}
 			viewMetadataMap := testutils.DefaultMetadataMap("VIEW", true, true, true)
-			backup.PrintCreateViewStatements(buffer, []backup.QueryViewDefinition{viewOne, viewTwo}, viewMetadataMap)
+			backup.PrintCreateViewStatements(buffer, []backup.View{viewOne, viewTwo}, viewMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE VIEW public."WowZa" AS SELECT rolname FROM pg_role;
 
 
@@ -709,7 +709,7 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 	})
 	Describe("PrintAlterSequenceStatements", func() {
 		baseSequence := backup.BasicRelation("public", "seq_name")
-		seqDefault := backup.Sequence{baseSequence, backup.QuerySequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, true}}
+		seqDefault := backup.Sequence{baseSequence, backup.SequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, true}}
 		emptyColumnOwnerMap := make(map[string]string, 0)
 		columnOwnerMap := map[string]string{"public.seq_name": "tablename.col_one"}
 		It("prints nothing for a sequence without an owning column", func() {

@@ -61,7 +61,7 @@ type QuerySimpleDefinition struct {
 	Def            string
 }
 
-func GetIndexDefinitions(connection *utils.DBConn, indexNameMap map[string]bool) []QuerySimpleDefinition {
+func GetIndexes(connection *utils.DBConn, indexNameMap map[string]bool) []QuerySimpleDefinition {
 	query := fmt.Sprintf(`
 SELECT DISTINCT
 	i.indexrelid AS oid,
@@ -104,7 +104,7 @@ ORDER BY name;`, NonUserSchemaFilterClause("n"))
  * Rules named "_RETURN", "pg_settings_n", and "pg_settings_u" are
  * built-in rules and we don't want to dump them.
  */
-func GetRuleDefinitions(connection *utils.DBConn) []QuerySimpleDefinition {
+func GetRules(connection *utils.DBConn) []QuerySimpleDefinition {
 	query := `
 SELECT
 	r.oid,
@@ -128,7 +128,7 @@ ORDER BY rulename;`
 	return results
 }
 
-func GetTriggerDefinitions(connection *utils.DBConn) []QuerySimpleDefinition {
+func GetTriggers(connection *utils.DBConn) []QuerySimpleDefinition {
 	query := `
 SELECT
 	t.oid,

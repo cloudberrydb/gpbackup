@@ -13,7 +13,7 @@ import (
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
-func PrintCreateFunctionStatement(predataFile io.Writer, funcDef QueryFunctionDefinition, funcMetadata ObjectMetadata) {
+func PrintCreateFunctionStatement(predataFile io.Writer, funcDef Function, funcMetadata ObjectMetadata) {
 	funcFQN := MakeFQN(funcDef.SchemaName, funcDef.FunctionName)
 	utils.MustPrintf(predataFile, "\n\nCREATE FUNCTION %s(%s) RETURNS ", funcFQN, funcDef.Arguments)
 	utils.MustPrintf(predataFile, "%s AS", funcDef.ResultType)
@@ -30,7 +30,7 @@ func PrintCreateFunctionStatement(predataFile io.Writer, funcDef QueryFunctionDe
  * This function either prints a path to an executable function (for C and
  * internal functions) or a function definition (for functions in other languages).
  */
-func PrintFunctionBodyOrPath(predataFile io.Writer, funcDef QueryFunctionDefinition) {
+func PrintFunctionBodyOrPath(predataFile io.Writer, funcDef Function) {
 	/*
 	 * pg_proc.probin uses either NULL (in this case an empty string) or "-"
 	 * to signify an unused path, for historical reasons.  See dumpFunc in
@@ -43,7 +43,7 @@ func PrintFunctionBodyOrPath(predataFile io.Writer, funcDef QueryFunctionDefinit
 	}
 }
 
-func PrintFunctionModifiers(predataFile io.Writer, funcDef QueryFunctionDefinition) {
+func PrintFunctionModifiers(predataFile io.Writer, funcDef Function) {
 	switch funcDef.DataAccess {
 	case "c":
 		utils.MustPrintf(predataFile, " CONTAINS SQL")
@@ -80,7 +80,7 @@ func PrintFunctionModifiers(predataFile io.Writer, funcDef QueryFunctionDefiniti
 	}
 }
 
-func PrintCreateAggregateStatements(predataFile io.Writer, aggDefs []QueryAggregateDefinition, funcInfoMap map[uint32]FunctionInfo, aggMetadata MetadataMap) {
+func PrintCreateAggregateStatements(predataFile io.Writer, aggDefs []AggregateDefinition, funcInfoMap map[uint32]FunctionInfo, aggMetadata MetadataMap) {
 	for _, aggDef := range aggDefs {
 		aggFQN := MakeFQN(aggDef.SchemaName, aggDef.AggregateName)
 		orderedStr := ""
@@ -119,7 +119,7 @@ func PrintCreateAggregateStatements(predataFile io.Writer, aggDefs []QueryAggreg
 	}
 }
 
-func PrintCreateCastStatements(predataFile io.Writer, castDefs []QueryCastDefinition, castMetadata MetadataMap) {
+func PrintCreateCastStatements(predataFile io.Writer, castDefs []CastDefinition, castMetadata MetadataMap) {
 	for _, castDef := range castDefs {
 		/*
 		 * Because we use pg_catalog.format_type() in the query to get the cast definition,

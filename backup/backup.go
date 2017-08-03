@@ -159,9 +159,9 @@ func backupPredata(filename string, tables []Relation, extTableMap map[string]bo
 	schemaMetadata := GetMetadataForObjectType(connection, SchemaParams)
 	PrintCreateSchemaStatements(predataFile, schemas, schemaMetadata)
 
-	types := GetTypeDefinitions(connection)
+	types := GetTypes(connection)
 	typeMetadata := GetMetadataForObjectType(connection, TypeParams)
-	functions := GetFunctionDefinitions(connection)
+	functions := GetFunctions(connection)
 	funcInfoMap := GetFunctionOidToInfoMap(connection)
 	functionMetadata := GetMetadataForObjectType(connection, FunctionParams)
 	types, functions = ConstructDependencyLists(connection, types, functions)
@@ -261,7 +261,7 @@ func backupPredata(filename string, tables []Relation, extTableMap map[string]bo
 	PrintAlterSequenceStatements(predataFile, sequenceDefs, sequenceColumnOwners)
 
 	logger.Verbose("Writing CREATE VIEW statements to predata file")
-	views := GetViewDefinitions(connection)
+	views := GetViews(connection)
 	views = ConstructViewDependencies(connection, views)
 	views = SortViews(views)
 	PrintCreateViewStatements(predataFile, views, relationMetadata)
@@ -306,17 +306,17 @@ func backupPostdata(filename string, tables []Relation, extTableMap map[string]b
 
 	logger.Verbose("Writing CREATE INDEX statements to postdata file")
 	indexNameMap := ConstructImplicitIndexNames(connection)
-	indexes := GetIndexDefinitions(connection, indexNameMap)
+	indexes := GetIndexes(connection, indexNameMap)
 	indexMetadata := GetCommentsForObjectType(connection, IndexParams)
 	PrintCreateIndexStatements(postdataFile, indexes, indexMetadata)
 
 	logger.Verbose("Writing CREATE RULE statements to postdata file")
-	rules := GetRuleDefinitions(connection)
+	rules := GetRules(connection)
 	ruleMetadata := GetCommentsForObjectType(connection, RuleParams)
 	PrintCreateRuleStatements(postdataFile, rules, ruleMetadata)
 
 	logger.Verbose("Writing CREATE TRIGGER statements to postdata file")
-	triggers := GetTriggerDefinitions(connection)
+	triggers := GetTriggers(connection)
 	triggerMetadata := GetCommentsForObjectType(connection, TriggerParams)
 	PrintCreateTriggerStatements(postdataFile, triggers, triggerMetadata)
 }

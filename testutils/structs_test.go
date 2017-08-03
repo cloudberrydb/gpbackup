@@ -29,36 +29,36 @@ var _ = Describe("StructMatchers", func() {
 			Expect(mismatches).ToNot(BeEmpty())
 		})
 		It("returns mismatches in nested structs", func() {
-			role1 := backup.QueryRole{Oid: 0, Name: "testrole", TimeConstraints: []backup.TimeConstraint{{StartDay: 3}}}
-			role2 := backup.QueryRole{Oid: 0, Name: "testrole", TimeConstraints: []backup.TimeConstraint{{StartDay: 4}}}
+			role1 := backup.Role{Oid: 0, Name: "testrole", TimeConstraints: []backup.TimeConstraint{{StartDay: 3}}}
+			role2 := backup.Role{Oid: 0, Name: "testrole", TimeConstraints: []backup.TimeConstraint{{StartDay: 4}}}
 			mismatches := StructMatcher(&role1, &role2, false, false)
 			Expect(len(mismatches)).To(Equal(1))
 			Expect(mismatches[0]).To(Equal("Mismatch on field StartDay\nExpected\n    <int>: 3\nto equal\n    <int>: 4"))
 		})
 		It("returns mismatches including struct fields", func() {
-			role1 := backup.QueryRole{Oid: 0, Name: "testrole", TimeConstraints: []backup.TimeConstraint{{StartDay: 3}}}
-			role2 := backup.QueryRole{Oid: 0, Name: "testrole2", TimeConstraints: []backup.TimeConstraint{{StartDay: 4}}}
+			role1 := backup.Role{Oid: 0, Name: "testrole", TimeConstraints: []backup.TimeConstraint{{StartDay: 3}}}
+			role2 := backup.Role{Oid: 0, Name: "testrole2", TimeConstraints: []backup.TimeConstraint{{StartDay: 4}}}
 			mismatches := StructMatcher(&role1, &role2, true, true, "Name")
 			Expect(len(mismatches)).To(Equal(1))
 			Expect(mismatches[0]).To(Equal("Mismatch on field Name\nExpected\n    <string>: testrole\nto equal\n    <string>: testrole2"))
 		})
 		It("returns mismatches including nested struct fields", func() {
-			role1 := backup.QueryRole{Oid: 0, Name: "testrole", TimeConstraints: []backup.TimeConstraint{{StartDay: 3}}}
-			role2 := backup.QueryRole{Oid: 0, Name: "testrole2", TimeConstraints: []backup.TimeConstraint{{StartDay: 4}}}
+			role1 := backup.Role{Oid: 0, Name: "testrole", TimeConstraints: []backup.TimeConstraint{{StartDay: 3}}}
+			role2 := backup.Role{Oid: 0, Name: "testrole2", TimeConstraints: []backup.TimeConstraint{{StartDay: 4}}}
 			mismatches := StructMatcher(&role1, &role2, true, true, "TimeConstraints.StartDay")
 			Expect(len(mismatches)).To(Equal(1))
 			Expect(mismatches[0]).To(Equal("Mismatch on field StartDay\nExpected\n    <int>: 3\nto equal\n    <int>: 4"))
 		})
 		It("returns mismatches excluding struct fields", func() {
-			role1 := backup.QueryRole{Oid: 0, Name: "testrole", TimeConstraints: []backup.TimeConstraint{{StartDay: 3}}}
-			role2 := backup.QueryRole{Oid: 0, Name: "testrole2", TimeConstraints: []backup.TimeConstraint{{StartDay: 4}}}
+			role1 := backup.Role{Oid: 0, Name: "testrole", TimeConstraints: []backup.TimeConstraint{{StartDay: 3}}}
+			role2 := backup.Role{Oid: 0, Name: "testrole2", TimeConstraints: []backup.TimeConstraint{{StartDay: 4}}}
 			mismatches := StructMatcher(&role1, &role2, true, false, "Name")
 			Expect(len(mismatches)).To(Equal(1))
 			Expect(mismatches[0]).To(Equal("Mismatch on field StartDay\nExpected\n    <int>: 3\nto equal\n    <int>: 4"))
 		})
 		It("returns mismatches excluding nested struct fields", func() {
-			role1 := backup.QueryRole{Oid: 0, Name: "testrole", TimeConstraints: []backup.TimeConstraint{{StartDay: 3}}}
-			role2 := backup.QueryRole{Oid: 0, Name: "testrole2", TimeConstraints: []backup.TimeConstraint{{StartDay: 4}}}
+			role1 := backup.Role{Oid: 0, Name: "testrole", TimeConstraints: []backup.TimeConstraint{{StartDay: 3}}}
+			role2 := backup.Role{Oid: 0, Name: "testrole2", TimeConstraints: []backup.TimeConstraint{{StartDay: 4}}}
 			mismatches := StructMatcher(&role1, &role2, true, false, "TimeConstraints.StartDay")
 			Expect(len(mismatches)).To(Equal(1))
 			Expect(mismatches[0]).To(Equal("Mismatch on field Name\nExpected\n    <string>: testrole\nto equal\n    <string>: testrole2"))

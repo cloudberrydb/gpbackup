@@ -191,8 +191,8 @@ func DefaultACLWithGrantWithout(grantee string, objType string, revoke ...string
 	return defaultACL
 }
 
-func DefaultTypeDefinition(typeType string, typeName string) backup.TypeDefinition {
-	return backup.TypeDefinition{1, "public", typeName, typeType, "", "", "", "",
+func DefaultTypeDefinition(typeType string, typeName string) backup.Type {
+	return backup.Type{1, "public", typeName, typeType, "", "", "", "",
 		"", "", "", "", -1, false, "c", "p", "", "", "", "", "", false, nil, nil}
 }
 
@@ -236,7 +236,9 @@ func AssertQueryRuns(dbconn *utils.DBConn, query string) {
 
 func OidFromCast(connection *utils.DBConn, castSource uint32, castTarget uint32) uint32 {
 	query := fmt.Sprintf("SELECT c.oid FROM pg_cast c WHERE castsource = '%d' AND casttarget = '%d'", castSource, castTarget)
-	result := backup.QueryOid{}
+	result := struct {
+		Oid uint32
+	}{}
 	err := connection.Get(&result, query)
 	utils.CheckError(err)
 	return result.Oid

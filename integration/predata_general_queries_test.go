@@ -39,8 +39,8 @@ var _ = Describe("backup integration tests", func() {
 			perlInlineOid := backup.OidFromObjectName(connection, "pg_catalog", "plperl_inline_handler", backup.FunctionParams)
 			perlValidatorOid := backup.OidFromObjectName(connection, "pg_catalog", "plperl_validator", backup.FunctionParams)
 
-			expectedPlpgsqlInfo := backup.QueryProceduralLanguage{0, "plpgsql", "testrole", true, true, pgsqlHandlerOid, pgsqlInlineOid, pgsqlValidatorOid}
-			expectedPlperlInfo := backup.QueryProceduralLanguage{1, "plperl", "testrole", true, true, perlHandlerOid, perlInlineOid, perlValidatorOid}
+			expectedPlpgsqlInfo := backup.ProceduralLanguage{0, "plpgsql", "testrole", true, true, pgsqlHandlerOid, pgsqlInlineOid, pgsqlValidatorOid}
+			expectedPlperlInfo := backup.ProceduralLanguage{1, "plperl", "testrole", true, true, perlHandlerOid, perlInlineOid, perlValidatorOid}
 
 			resultProcLangs := backup.GetProceduralLanguages(connection)
 
@@ -64,11 +64,11 @@ var _ = Describe("backup integration tests", func() {
 	})
 	Describe("GetConstraints", func() {
 		var (
-			uniqueConstraint         = backup.QueryConstraint{0, "uniq2", "u", "UNIQUE (a, b)", "public.constraints_table", false, false}
-			fkConstraint             = backup.QueryConstraint{0, "fk1", "f", "FOREIGN KEY (b) REFERENCES constraints_table(b)", "public.constraints_other_table", false, false}
-			pkConstraint             = backup.QueryConstraint{0, "pk1", "p", "PRIMARY KEY (b)", "public.constraints_table", false, false}
-			checkConstraint          = backup.QueryConstraint{0, "check1", "c", "CHECK (a <> 42)", "public.constraints_table", false, false}
-			partitionCheckConstraint = backup.QueryConstraint{0, "check1", "c", "CHECK (id <> 0)", "public.part", false, true}
+			uniqueConstraint         = backup.Constraint{0, "uniq2", "u", "UNIQUE (a, b)", "public.constraints_table", false, false}
+			fkConstraint             = backup.Constraint{0, "fk1", "f", "FOREIGN KEY (b) REFERENCES constraints_table(b)", "public.constraints_other_table", false, false}
+			pkConstraint             = backup.Constraint{0, "pk1", "p", "PRIMARY KEY (b)", "public.constraints_table", false, false}
+			checkConstraint          = backup.Constraint{0, "check1", "c", "CHECK (a <> 42)", "public.constraints_table", false, false}
+			partitionCheckConstraint = backup.Constraint{0, "check1", "c", "CHECK (id <> 0)", "public.part", false, true}
 		)
 		Context("No constraints", func() {
 			It("returns an empty constraint array for a table with no constraints", func() {
@@ -171,7 +171,7 @@ PARTITION BY RANGE (date)
 			testutils.AssertQueryRuns(connection, "CREATE OPERATOR ## (LEFTARG = bigint, PROCEDURE = numeric_fac)")
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR ## (bigint, NONE)")
 
-			expectedOperator := backup.QueryOperator{0, "public", "##", "numeric_fac", "bigint", "-", "0", "0", "-", "-", false, false}
+			expectedOperator := backup.Operator{0, "public", "##", "numeric_fac", "bigint", "-", "0", "0", "-", "-", false, false}
 
 			results := backup.GetOperators(connection)
 
@@ -200,7 +200,7 @@ PARTITION BY RANGE (date)
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR testschema.## (path, path)")
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR ### (path, path)")
 
-			expectedOperator := backup.QueryOperator{0, "testschema", "##", "testschema.\"testFunc\"", "path", "path", "testschema.##", "###", "eqsel", "eqjoinsel", true, true}
+			expectedOperator := backup.Operator{0, "testschema", "##", "testschema.\"testFunc\"", "path", "path", "testschema.##", "###", "eqsel", "eqjoinsel", true, true}
 
 			results := backup.GetOperators(connection)
 
@@ -213,7 +213,7 @@ PARTITION BY RANGE (date)
 			testutils.AssertQueryRuns(connection, "CREATE OPERATOR FAMILY testfam USING hash;")
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testfam USING hash")
 
-			expectedOperator := backup.QueryOperatorFamily{0, "public", "testfam", "hash"}
+			expectedOperator := backup.OperatorFamily{0, "public", "testfam", "hash"}
 
 			results := backup.GetOperatorFamilies(connection)
 
@@ -226,7 +226,7 @@ PARTITION BY RANGE (date)
 			testutils.AssertQueryRuns(connection, "CREATE OPERATOR CLASS testclass FOR TYPE uuid USING hash AS STORAGE uuid")
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testclass USING hash CASCADE")
 
-			expected := backup.QueryOperatorClass{0, "public", "testclass", "public", "testclass", "hash", "uuid", false, "-", nil, nil}
+			expected := backup.OperatorClass{0, "public", "testclass", "public", "testclass", "hash", "uuid", false, "-", nil, nil}
 
 			results := backup.GetOperatorClasses(connection)
 
@@ -241,7 +241,7 @@ PARTITION BY RANGE (date)
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testschema.testfam USING gist CASCADE")
 			testutils.AssertQueryRuns(connection, "CREATE OPERATOR CLASS testclass DEFAULT FOR TYPE uuid USING gist FAMILY testschema.testfam AS STORAGE int")
 
-			expected := backup.QueryOperatorClass{0, "public", "testclass", "testschema", "testfam", "gist", "uuid", true, "integer", nil, nil}
+			expected := backup.OperatorClass{0, "public", "testclass", "testschema", "testfam", "gist", "uuid", true, "integer", nil, nil}
 
 			results := backup.GetOperatorClasses(connection)
 
@@ -252,7 +252,7 @@ PARTITION BY RANGE (date)
 			testutils.AssertQueryRuns(connection, "CREATE OPERATOR CLASS testclass FOR TYPE uuid USING gist AS OPERATOR 1 = RECHECK, OPERATOR 2 < , FUNCTION 1 abs(integer), FUNCTION 2 int4out(integer)")
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testclass USING gist CASCADE")
 
-			expected := backup.QueryOperatorClass{0, "public", "testclass", "public", "testclass", "gist", "uuid", false, "-", nil, nil}
+			expected := backup.OperatorClass{0, "public", "testclass", "public", "testclass", "gist", "uuid", false, "-", nil, nil}
 			expected.Operators = []backup.OperatorClassOperator{{0, 1, "=(uuid,uuid)", true}, {0, 2, "<(uuid,uuid)", false}}
 			expected.Functions = []backup.OperatorClassFunction{{0, 1, "abs(integer)"}, {0, 2, "int4out(integer)"}}
 
