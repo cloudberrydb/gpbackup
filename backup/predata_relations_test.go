@@ -29,7 +29,7 @@ var _ = Describe("backup/predata_relations tests", func() {
 	partDefEmpty := ""
 	partTemplateDefEmpty := ""
 	colDefsEmpty := []backup.ColumnDefinition{}
-	extTableEmpty := backup.ExternalTableDefinition{-2, -2, "", "ALL_SEGMENTS", "t", "", "", "", 0, "", "", "UTF-8", false}
+	extTableEmpty := backup.ExternalTableDefinition{-2, -2, "", "ALL_SEGMENTS", "t", "", "", "", 0, "", "", "UTF-8", false, nil}
 
 	partDef := `PARTITION BY LIST(gender)
 	(

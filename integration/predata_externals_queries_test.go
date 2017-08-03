@@ -51,7 +51,7 @@ FORMAT 'TEXT'`)
 			extTable := backup.ExternalTableDefinition{
 				0, 0, "file://tmp/myfile.txt", "ALL_SEGMENTS",
 				"t", "delimiter '	' null '\\N' escape '\\'", "", "",
-				0, "", "", "UTF8", false,
+				0, "", "", "UTF8", false, []string{"file://tmp/myfile.txt"},
 			}
 
 			testutils.ExpectStructsToMatchExcluding(&extTable, &result)
@@ -72,7 +72,7 @@ SEGMENT REJECT LIMIT 10 PERCENT
 			extTable := backup.ExternalTableDefinition{
 				0, 0, "file://tmp/myfile.txt", "ALL_SEGMENTS",
 				"t", "delimiter '	' null '\\N' escape '\\'", "foo 'bar'", "",
-				10, "p", "ext_table", "UTF8", false,
+				10, "p", "ext_table", "UTF8", false, []string{"file://tmp/myfile.txt"},
 			}
 
 			testutils.ExpectStructsToMatchExcluding(&extTable, &result)

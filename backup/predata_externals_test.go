@@ -21,7 +21,7 @@ var _ = Describe("backup/predata_externals tests", func() {
 	partDefEmpty := ""
 	partTemplateDefEmpty := ""
 	colDefsEmpty := []backup.ColumnDefinition{}
-	extTableEmpty := backup.ExternalTableDefinition{-2, -2, "", "ALL_SEGMENTS", "t", "", "", "", 0, "", "", "UTF-8", false}
+	extTableEmpty := backup.ExternalTableDefinition{-2, -2, "", "ALL_SEGMENTS", "t", "", "", "", 0, "", "", "UTF-8", false, nil}
 
 	Describe("DetermineExternalTableCharacteristics", func() {
 		var extTableDef backup.ExternalTableDefinition
@@ -70,7 +70,7 @@ var _ = Describe("backup/predata_externals tests", func() {
 			})
 		})
 		DescribeTable("Protocol classification", func(location string, expectedType int, expectedProto int) {
-			extTableDef := backup.ExternalTableDefinition{-2, -2, "", "ALL_SEGMENTS", "t", "", "", "", 0, "", "", "UTF-8", false}
+			extTableDef := backup.ExternalTableDefinition{-2, -2, "", "ALL_SEGMENTS", "t", "", "", "", 0, "", "", "UTF-8", false, nil}
 			extTableDef.Location = location
 			typ, proto := backup.DetermineExternalTableCharacteristics(extTableDef)
 			Expect(typ).To(Equal(expectedType))
@@ -95,6 +95,7 @@ var _ = Describe("backup/predata_externals tests", func() {
 
 		It("prints a CREATE block for a READABLE EXTERNAL table", func() {
 			extTableDef.Location = "file://host:port/path/file"
+			extTableDef.URIs = []string{"file://host:port/path/file"}
 			tableDef.ExtTableDef = extTableDef
 			backup.PrintExternalTableCreateStatement(buffer, testTable, tableDef)
 			testutils.ExpectRegexp(buffer, `CREATE READABLE EXTERNAL TABLE public.tablename (
@@ -106,6 +107,7 @@ ENCODING 'UTF-8';`)
 		})
 		It("prints a CREATE block for a WRITABLE EXTERNAL table", func() {
 			extTableDef.Location = "file://host:port/path/file"
+			extTableDef.URIs = []string{"file://host:port/path/file"}
 			extTableDef.Writable = true
 			tableDef.ExtTableDef = extTableDef
 			backup.PrintExternalTableCreateStatement(buffer, testTable, tableDef)
@@ -119,6 +121,7 @@ DISTRIBUTED RANDOMLY;`)
 		})
 		It("prints a CREATE block for a READABLE EXTERNAL WEB table with a LOCATION", func() {
 			extTableDef.Location = "http://webhost:port/path/file"
+			extTableDef.URIs = []string{"http://webhost:port/path/file"}
 			tableDef.ExtTableDef = extTableDef
 			backup.PrintExternalTableCreateStatement(buffer, testTable, tableDef)
 			testutils.ExpectRegexp(buffer, `CREATE READABLE EXTERNAL WEB TABLE public.tablename (
@@ -160,6 +163,7 @@ DISTRIBUTED RANDOMLY;`)
 		Context("FORMAT options", func() {
 			BeforeEach(func() {
 				extTableDef.Location = "file://host:port/path/file"
+				extTableDef.URIs = []string{"file://host:port/path/file"}
 			})
 			It("prints a CREATE block for a table in Avro format, no options provided", func() {
 				extTableDef.FormatType = "a"
@@ -266,11 +270,14 @@ ENCODING 'UTF-8'`)
 				extTableDef = extTableEmpty
 				extTableDef.Type = backup.READABLE
 				extTableDef.Protocol = backup.FILE
+				extTableDef.Location = "file://host:port/path/file"
+				extTableDef.URIs = []string{"file://host:port/path/file"}
 			})
 
 			It("prints a CREATE block for an S3 table with ON MASTER", func() {
 				extTableDef.Protocol = backup.S3
 				extTableDef.Location = "s3://s3_endpoint:port/bucket_name/s3_prefix"
+				extTableDef.URIs = []string{"s3://s3_endpoint:port/bucket_name/s3_prefix"}
 				extTableDef.ExecLocation = "MASTER_ONLY"
 				backup.PrintExternalTableStatements(buffer, testTable, extTableDef)
 				testutils.ExpectRegexp(buffer, `LOCATION (
@@ -280,7 +287,6 @@ FORMAT 'text'
 ENCODING 'UTF-8'`)
 			})
 			It("prints a CREATE block for a table with error logging enabled", func() {
-				extTableDef.Location = "file://host:port/path/file"
 				extTableDef.ErrTable = "tablename"
 				backup.PrintExternalTableStatements(buffer, testTable, extTableDef)
 				testutils.ExpectRegexp(buffer, `LOCATION (
@@ -291,7 +297,6 @@ ENCODING 'UTF-8'
 LOG ERRORS`)
 			})
 			It("prints a CREATE block for a table with a row-based reject limit", func() {
-				extTableDef.Location = "file://host:port/path/file"
 				extTableDef.RejectLimit = 2
 				extTableDef.RejectLimitType = "r"
 				backup.PrintExternalTableStatements(buffer, testTable, extTableDef)
@@ -303,7 +308,6 @@ ENCODING 'UTF-8'
 SEGMENT REJECT LIMIT 2 ROWS`)
 			})
 			It("prints a CREATE block for a table with a percent-based reject limit", func() {
-				extTableDef.Location = "file://host:port/path/file"
 				extTableDef.RejectLimit = 2
 				extTableDef.RejectLimitType = "p"
 				backup.PrintExternalTableStatements(buffer, testTable, extTableDef)
@@ -315,7 +319,6 @@ ENCODING 'UTF-8'
 SEGMENT REJECT LIMIT 2 PERCENT`)
 			})
 			It("prints a CREATE block for a table with error logging and a row-based reject limit", func() {
-				extTableDef.Location = "file://host:port/path/file"
 				extTableDef.ErrTable = "tablename"
 				extTableDef.RejectLimit = 2
 				extTableDef.RejectLimitType = "r"

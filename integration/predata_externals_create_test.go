@@ -28,7 +28,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			extTable = backup.ExternalTableDefinition{
 				0, backup.FILE, "file://tmp/ext_table_file", "ALL_SEGMENTS",
 				"t", "delimiter '	' null '\\N' escape '\\'", "", "",
-				0, "", "", "UTF8", false}
+				0, "", "", "UTF8", false, []string{"file://tmp/ext_table_file"}}
 			testTable = backup.BasicRelation("public", "testtable")
 			tableDef = backup.TableDefinition{IsExternal: true}
 			os.Create("/tmp/ext_table_file")
@@ -56,6 +56,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			extTable.Type = backup.WRITABLE
 			extTable.Writable = true
 			extTable.Location = "gpfdist://outputhost:8081/data1.out"
+			extTable.URIs = []string{"gpfdist://outputhost:8081/data1.out"}
 			extTable.Protocol = backup.GPFDIST
 			tableDef.ExtTableDef = extTable
 

@@ -68,7 +68,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 `
 		)
 		BeforeEach(func() {
-			extTableEmpty = backup.ExternalTableDefinition{-2, -2, "", "ALL_SEGMENTS", "t", "", "", "", 0, "", "", "UTF-8", false}
+			extTableEmpty = backup.ExternalTableDefinition{-2, -2, "", "ALL_SEGMENTS", "t", "", "", "", 0, "", "", "UTF-8", false, nil}
 			testTable = backup.BasicRelation("public", "testtable")
 			tableDef = backup.TableDefinition{DistPolicy: "DISTRIBUTED RANDOMLY", ExtTableDef: extTableEmpty}
 		})
@@ -208,7 +208,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 	})
 	Describe("PrintPostCreateTableStatements", func() {
 		var (
-			extTableEmpty = backup.ExternalTableDefinition{-2, -2, "", "ALL_SEGMENTS", "t", "", "", "", 0, "", "", "UTF-8", false}
+			extTableEmpty = backup.ExternalTableDefinition{-2, -2, "", "ALL_SEGMENTS", "t", "", "", "", 0, "", "", "UTF-8", false, nil}
 			testTable     = backup.BasicRelation("public", "testtable")
 			tableRow      = backup.ColumnDefinition{1, "i", false, false, false, "integer", "", -1, "", ""}
 			tableDef      = backup.TableDefinition{DistPolicy: "DISTRIBUTED BY (i)", ColumnDefs: []backup.ColumnDefinition{tableRow}, ExtTableDef: extTableEmpty}

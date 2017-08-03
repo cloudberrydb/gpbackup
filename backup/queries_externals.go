@@ -9,8 +9,6 @@ import (
 	"fmt"
 
 	"github.com/greenplum-db/gpbackup/utils"
-
-	"github.com/pkg/errors"
 )
 
 func GetExternalTablesMap(connection *utils.DBConn) map[string]bool {
@@ -43,7 +41,7 @@ ORDER BY schemaname, relationname;`
 func GetExternalTableDefinition(connection *utils.DBConn, oid uint32) ExternalTableDefinition {
 	query := fmt.Sprintf(`
 SELECT
-	coalesce(array_to_string(urilocation, ','), '') AS location,
+	unnest(urilocation) AS location,
 	array_to_string(execlocation, ',') AS execlocation,
 	fmttype AS formattype,
 	fmtopts AS formatopts,
@@ -59,15 +57,21 @@ SELECT
 	pg_encoding_to_char(encoding) AS encoding,
 	writable
 FROM pg_exttable
-WHERE reloid = '%d';`, oid)
+WHERE reloid = %d;`, oid)
 
 	results := make([]ExternalTableDefinition, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	if len(results) == 1 {
+		results[0].URIs = []string{results[0].Location}
 		return results[0]
 	} else if len(results) > 1 {
-		logger.Fatal(errors.Errorf("Too many rows returned from query: got %d rows, expected 1 row", len(results)), "")
+		uris := make([]string, 0)
+		for _, ext := range results {
+			uris = append(uris, ext.Location)
+		}
+		results[0].URIs = uris
+		return results[0]
 	}
 	return ExternalTableDefinition{}
 }

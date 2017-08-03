@@ -42,6 +42,7 @@ type ExternalTableDefinition struct {
 	ErrTable        string
 	Encoding        string
 	Writable        bool
+	URIs            []string
 }
 
 func PrintExternalTableCreateStatement(predataFile io.Writer, table Relation, tableDef TableDefinition) {
@@ -75,6 +76,10 @@ func DetermineExternalTableCharacteristics(extTableDef ExternalTableDefinition) 
 			tableType = READABLE_WEB
 		}
 	} else {
+		/*
+		 * All data sources must use the same protocol, so we can use Location to determine
+		 * the table's protocol even though it only holds one data source URI.
+		 */
 		isWeb := strings.HasPrefix(extTableDef.Location, "http")
 		if isWeb && isWritable {
 			tableType = WRITABLE_WEB
@@ -108,12 +113,8 @@ func DetermineExternalTableCharacteristics(extTableDef ExternalTableDefinition) 
 
 func PrintExternalTableStatements(predataFile io.Writer, table Relation, extTableDef ExternalTableDefinition) {
 	if extTableDef.Type != WRITABLE_WEB {
-		if extTableDef.Location != "" {
-			locations := make([]string, 0)
-			for _, loc := range strings.Split(extTableDef.Location, ",") {
-				locations = append(locations, fmt.Sprintf("\t'%s'", loc))
-			}
-			utils.MustPrintf(predataFile, "LOCATION (\n%s\n)", strings.Join(locations, "\n"))
+		if len(extTableDef.URIs) > 0 {
+			utils.MustPrintf(predataFile, "LOCATION (\n\t'%s'\n)", strings.Join(extTableDef.URIs, "',\n\t'"))
 		}
 	}
 	if extTableDef.Type == READABLE || (extTableDef.Type == WRITABLE_WEB && extTableDef.Protocol == S3) {
