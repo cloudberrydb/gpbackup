@@ -32,30 +32,43 @@ var _ = Describe("backup/data tests", func() {
 		testutils.SetDefaultSegmentConfiguration()
 		tableOne := backup.Relation{0, 1234, "public", "foo", []string{}}
 		tableTwo := backup.Relation{0, 2345, "public", "foo|bar", []string{}}
-
-		It("writes a map file containing one table", func() {
+		var (
+			r           *os.File
+			w           *os.File
+			extTableMap map[string]bool
+		)
+		BeforeEach(func() {
 			filePath := ""
-			r, w, _ := os.Pipe()
+			r, w, _ = os.Pipe()
 			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) { filePath = name; return w, nil }
-			defer func() { utils.System.OpenFile = os.OpenFile }()
+			extTableMap = map[string]bool{}
+		})
+		AfterEach(func() {
+			utils.System.OpenFile = os.OpenFile
+		})
+		It("writes a map file containing one table", func() {
 			tables := []backup.Relation{tableOne}
-			backup.WriteTableMapFile(tables)
+			backup.WriteTableMapFile(tables, extTableMap)
 			w.Close()
 			output, _ := ioutil.ReadAll(r)
 			testutils.ExpectRegex(string(output), `public.foo: 1234
 `)
 		})
 		It("writes a map file containing multiple tables", func() {
-			filePath := ""
-			r, w, _ := os.Pipe()
-			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) { filePath = name; return w, nil }
-			defer func() { utils.System.OpenFile = os.OpenFile }()
 			tables := []backup.Relation{tableOne, tableTwo}
-			backup.WriteTableMapFile(tables)
+			backup.WriteTableMapFile(tables, extTableMap)
 			w.Close()
 			output, _ := ioutil.ReadAll(r)
 			testutils.ExpectRegex(string(output), `public.foo: 1234
 public."foo|bar": 2345`)
+		})
+		It("does not write external tables to the map file", func() {
+			tables := []backup.Relation{tableOne, tableTwo}
+			extTableMap[`public."foo|bar"`] = true
+			backup.WriteTableMapFile(tables, extTableMap)
+			w.Close()
+			output, _ := ioutil.ReadAll(r)
+			testutils.ExpectRegex(string(output), `public.foo: 1234`)
 		})
 	})
 })

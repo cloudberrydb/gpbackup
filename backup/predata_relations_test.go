@@ -17,8 +17,8 @@ var _ = Describe("backup/predata_relations tests", func() {
 	distSingle := "DISTRIBUTED BY (i)"
 	distComposite := "DISTRIBUTED BY (i, j)"
 
-	rowOne := backup.ColumnDefinition{1, "i", false, false, false, "integer", "", "", ""}
-	rowTwo := backup.ColumnDefinition{2, "j", false, false, false, "character varying(20)", "", "", ""}
+	rowOne := backup.ColumnDefinition{1, "i", false, false, false, "integer", "", -1, "", ""}
+	rowTwo := backup.ColumnDefinition{2, "j", false, false, false, "character varying(20)", "", -1, "", ""}
 
 	heapOpts := ""
 	aoOpts := "appendonly=true"
@@ -69,16 +69,17 @@ ENCODING 'UTF-8';`)
 		})
 	})
 	Describe("PrintRegularTableCreateStatement", func() {
-		rowDropped := backup.ColumnDefinition{2, "j", false, false, true, "character varying(20)", "", "", ""}
-		rowOneEncoding := backup.ColumnDefinition{1, "i", false, false, false, "integer", "compresstype=none,blocksize=32768,compresslevel=0", "", ""}
-		rowTwoEncoding := backup.ColumnDefinition{2, "j", false, false, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", "", ""}
-		rowNotNull := backup.ColumnDefinition{2, "j", true, false, false, "character varying(20)", "", "", ""}
-		rowEncodingNotNull := backup.ColumnDefinition{2, "j", true, false, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", "", ""}
-		rowOneDef := backup.ColumnDefinition{1, "i", false, true, false, "integer", "", "", "42"}
-		rowTwoDef := backup.ColumnDefinition{2, "j", false, true, false, "character varying(20)", "", "", "'bar'::text"}
-		rowTwoEncodingDef := backup.ColumnDefinition{2, "j", false, true, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", "", "'bar'::text"}
-		rowNotNullDef := backup.ColumnDefinition{2, "j", true, true, false, "character varying(20)", "", "", "'bar'::text"}
-		rowEncodingNotNullDef := backup.ColumnDefinition{2, "j", true, true, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", "", "'bar'::text"}
+		rowDropped := backup.ColumnDefinition{2, "j", false, false, true, "character varying(20)", "", -1, "", ""}
+		rowOneEncoding := backup.ColumnDefinition{1, "i", false, false, false, "integer", "compresstype=none,blocksize=32768,compresslevel=0", -1, "", ""}
+		rowTwoEncoding := backup.ColumnDefinition{2, "j", false, false, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", -1, "", ""}
+		rowNotNull := backup.ColumnDefinition{2, "j", true, false, false, "character varying(20)", "", -1, "", ""}
+		rowEncodingNotNull := backup.ColumnDefinition{2, "j", true, false, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", -1, "", ""}
+		rowOneDef := backup.ColumnDefinition{1, "i", false, true, false, "integer", "", -1, "", "42"}
+		rowTwoDef := backup.ColumnDefinition{2, "j", false, true, false, "character varying(20)", "", -1, "", "'bar'::text"}
+		rowTwoEncodingDef := backup.ColumnDefinition{2, "j", false, true, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", -1, "", "'bar'::text"}
+		rowNotNullDef := backup.ColumnDefinition{2, "j", true, true, false, "character varying(20)", "", -1, "", "'bar'::text"}
+		rowEncodingNotNullDef := backup.ColumnDefinition{2, "j", true, true, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", -1, "", "'bar'::text"}
+		rowStats := backup.ColumnDefinition{1, "i", false, false, false, "integer", "", 3, "", ""}
 
 		Context("No special table attributes", func() {
 			It("prints a CREATE TABLE block with one line", func() {
@@ -149,6 +150,16 @@ ENCODING 'UTF-8';`)
 	i integer DEFAULT 42,
 	j character varying(20) DEFAULT 'bar'::text
 ) DISTRIBUTED RANDOMLY;`)
+			})
+			It("prints a CREATE TABLE block followed by an ALTER COLUMN ... SET STATISTICS statement", func() {
+				col := []backup.ColumnDefinition{rowStats}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", col, false, extTableEmpty}
+				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
+				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
+	i integer
+) DISTRIBUTED RANDOMLY;
+
+ALTER TABLE ONLY public.tablename ALTER COLUMN i SET STATISTICS 3;`)
 			})
 		})
 		Context("Multiple special table attributes on one column", func() {
@@ -405,8 +416,8 @@ SET SUBPARTITION TEMPLATE
 	})
 	Describe("PrintPostCreateTableStatements", func() {
 		testTable := backup.BasicRelation("public", "tablename")
-		rowCommentOne := backup.ColumnDefinition{1, "i", false, false, false, "integer", "", "This is a column comment.", ""}
-		rowCommentTwo := backup.ColumnDefinition{2, "j", false, false, false, "integer", "", "This is another column comment.", ""}
+		rowCommentOne := backup.ColumnDefinition{1, "i", false, false, false, "integer", "", -1, "This is a column comment.", ""}
+		rowCommentTwo := backup.ColumnDefinition{2, "j", false, false, false, "integer", "", -1, "This is another column comment.", ""}
 
 		It("prints a block with a table comment", func() {
 			col := []backup.ColumnDefinition{rowOne}
@@ -465,12 +476,12 @@ COMMENT ON COLUMN public.tablename.j IS 'This is another column comment.';`)
 		})
 	})
 	Describe("ConsolidateColumnInfo", func() {
-		attsOne := backup.QueryTableAttributes{1, "i", false, false, false, "integer", "", ""}
-		attsTwo := backup.QueryTableAttributes{2, "j", false, false, false, "integer", "", ""}
-		attsThree := backup.QueryTableAttributes{3, "k", false, false, false, "integer", "", ""}
-		attsOneDef := backup.QueryTableAttributes{1, "i", false, true, false, "integer", "", ""}
-		attsTwoDef := backup.QueryTableAttributes{2, "j", false, true, false, "integer", "", ""}
-		attsThreeDef := backup.QueryTableAttributes{3, "k", false, true, false, "integer", "", ""}
+		attsOne := backup.QueryTableAttributes{1, "i", false, false, false, "integer", "", -1, ""}
+		attsTwo := backup.QueryTableAttributes{2, "j", false, false, false, "integer", "", -1, ""}
+		attsThree := backup.QueryTableAttributes{3, "k", false, false, false, "integer", "", -1, ""}
+		attsOneDef := backup.QueryTableAttributes{1, "i", false, true, false, "integer", "", -1, ""}
+		attsTwoDef := backup.QueryTableAttributes{2, "j", false, true, false, "integer", "", -1, ""}
+		attsThreeDef := backup.QueryTableAttributes{3, "k", false, true, false, "integer", "", -1, ""}
 
 		defaultsOne := backup.QueryTableDefault{1, "1"}
 		defaultsTwo := backup.QueryTableDefault{2, "2"}

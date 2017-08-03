@@ -142,14 +142,31 @@ var _ = Describe("backup integration create statement tests", func() {
 		BeforeEach(func() {
 			castMetadataMap = backup.MetadataMap{}
 		})
-		It("prints a basic cast", func() {
-			castDef := backup.QueryCastDefinition{0, "text", "integer", "public", "casttoint", "text", "a"}
+		It("prints a basic cast with a function", func() {
+			castDef := backup.QueryCastDefinition{0, "text", "int4", "public", "casttoint", "text", "a"}
 
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION casttoint(text) RETURNS integer STRICT IMMUTABLE LANGUAGE SQL AS 'SELECT cast($1 as integer);'")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION casttoint(text)")
 
 			backup.PrintCreateCastStatements(buffer, []backup.QueryCastDefinition{castDef}, castMetadataMap)
-			defer testutils.AssertQueryRuns(connection, "DROP CAST (text AS integer)")
+			defer testutils.AssertQueryRuns(connection, "DROP CAST (text AS int4)")
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+
+			resultCasts := backup.GetCastDefinitions(connection)
+			Expect(len(resultCasts)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&castDef, &resultCasts[0], "Oid")
+		})
+		It("prints a basic cast without a function", func() {
+			castDef := backup.QueryCastDefinition{0, "text", "casttesttype", "", "", "", "i"}
+
+			testutils.AssertQueryRuns(connection, "CREATE FUNCTION cast_in(cstring) RETURNS casttesttype AS $$textin$$ LANGUAGE internal STRICT NO SQL")
+			testutils.AssertQueryRuns(connection, "CREATE FUNCTION cast_out(casttesttype) RETURNS cstring AS $$textout$$ LANGUAGE internal STRICT NO SQL")
+			testutils.AssertQueryRuns(connection, "CREATE TYPE casttesttype (INTERNALLENGTH = variable, INPUT = cast_in, OUTPUT = cast_out)")
+			defer testutils.AssertQueryRuns(connection, "DROP TYPE casttesttype CASCADE")
+
+			backup.PrintCreateCastStatements(buffer, []backup.QueryCastDefinition{castDef}, castMetadataMap)
+			defer testutils.AssertQueryRuns(connection, "DROP CAST (text AS public.casttesttype)")
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
@@ -158,7 +175,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&castDef, &resultCasts[0], "Oid")
 		})
 		It("prints a cast with a comment", func() {
-			castDef := backup.QueryCastDefinition{1, "text", "integer", "public", "casttoint", "text", "a"}
+			castDef := backup.QueryCastDefinition{1, "text", "int4", "public", "casttoint", "text", "a"}
 			castMetadataMap = testutils.DefaultMetadataMap("CAST", false, false, true)
 			castMetadata := castMetadataMap[1]
 
@@ -166,7 +183,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION casttoint(text)")
 
 			backup.PrintCreateCastStatements(buffer, []backup.QueryCastDefinition{castDef}, castMetadataMap)
-			defer testutils.AssertQueryRuns(connection, "DROP CAST (text AS integer)")
+			defer testutils.AssertQueryRuns(connection, "DROP CAST (text AS int4)")
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 

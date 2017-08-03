@@ -92,6 +92,7 @@ type ColumnDefinition struct {
 	IsDropped  bool
 	TypeName   string
 	Encoding   string
+	StatTarget int
 	Comment    string
 	DefaultVal string
 }
@@ -162,6 +163,7 @@ func ConsolidateColumnInfo(atts []QueryTableAttributes, defs []QueryTableDefault
 			IsDropped:  atts[i].IsDropped,
 			TypeName:   atts[i].TypeName,
 			Encoding:   atts[i].Encoding,
+			StatTarget: atts[i].StatTarget,
 			Comment:    atts[i].Comment,
 			DefaultVal: defaultVal,
 		}
@@ -187,7 +189,7 @@ func PrintCreateTableStatement(predataFile io.Writer, table Relation, tableDef T
 
 func PrintRegularTableCreateStatement(predataFile io.Writer, table Relation, tableDef TableDefinition) {
 	utils.MustPrintf(predataFile, "\n\nCREATE TABLE %s (\n", table.ToString())
-	printColumnStatements(predataFile, table, tableDef.ColumnDefs)
+	printColumnDefinitions(predataFile, table, tableDef.ColumnDefs)
 	utils.MustPrintf(predataFile, ") ")
 	if len(table.DependsUpon) != 0 {
 		dependencyList := strings.Join(table.DependsUpon, ", ")
@@ -207,9 +209,10 @@ func PrintRegularTableCreateStatement(predataFile io.Writer, table Relation, tab
 	if tableDef.PartTemplateDef != "" {
 		utils.MustPrintf(predataFile, "%s;\n", strings.TrimSpace(tableDef.PartTemplateDef))
 	}
+	printColumnStatistics(predataFile, table, tableDef.ColumnDefs)
 }
 
-func printColumnStatements(predataFile io.Writer, table Relation, columnDefs []ColumnDefinition) {
+func printColumnDefinitions(predataFile io.Writer, table Relation, columnDefs []ColumnDefinition) {
 	lines := make([]string, 0)
 	for _, column := range columnDefs {
 		if !column.IsDropped {
@@ -228,6 +231,14 @@ func printColumnStatements(predataFile io.Writer, table Relation, columnDefs []C
 	}
 	if len(lines) > 0 {
 		utils.MustPrintln(predataFile, strings.Join(lines, ",\n"))
+	}
+}
+
+func printColumnStatistics(predataFile io.Writer, table Relation, columnDefs []ColumnDefinition) {
+	for _, column := range columnDefs {
+		if column.StatTarget > -1 {
+			utils.MustPrintf(predataFile, "\nALTER TABLE ONLY %s ALTER COLUMN %s SET STATISTICS %d;", table.ToString(), column.Name, column.StatTarget)
+		}
 	}
 }
 

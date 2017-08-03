@@ -37,7 +37,7 @@ func SetupTestLogger() (*utils.Logger, *gbytes.Buffer, *gbytes.Buffer, *gbytes.B
 	testStdout := gbytes.NewBuffer()
 	testStderr := gbytes.NewBuffer()
 	testLogfile := gbytes.NewBuffer()
-	testLogger := utils.NewLogger(testStdout, testStderr, testLogfile, utils.LOGINFO, "testProgram:testUser:testHost:000000-[%s]:-")
+	testLogger := utils.NewLogger(testStdout, testStderr, testLogfile, "gbytes.Buffer", utils.LOGINFO, "testProgram:testUser:testHost:000000-[%s]:-")
 	backup.SetLogger(testLogger)
 	utils.SetLogger(testLogger)
 	return testLogger, testStdout, testStderr, testLogfile

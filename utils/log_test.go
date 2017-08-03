@@ -53,7 +53,8 @@ var _ = Describe("utils/log tests", func() {
 	Describe("InitializeLogging", func() {
 		BeforeEach(func() {
 			testLogDir = ""
-			sampleLogger = utils.NewLogger(os.Stdout, os.Stderr, fakeFile, utils.LOGINFO, "testProgram:testUser:testHost:000000-[%s]:-")
+			sampleLogger = utils.NewLogger(os.Stdout, os.Stderr, fakeFile, "testDir/gpAdminLogs/testProgram_20170101.log",
+				utils.LOGINFO, "testProgram:testUser:testHost:000000-[%s]:-")
 		})
 		Context("Logger initialized with default log directory and Info log level", func() {
 			It("creates a new logger writing to gpAdminLogs and sets utils.logger to this new logger", func() {
@@ -71,6 +72,8 @@ var _ = Describe("utils/log tests", func() {
 		Context("Logger initialized with a specified log directory and Info log level", func() {
 			It("creates a new logger writing to the specified log directory and sets utils.logger to this new logger", func() {
 				testLogDir = "/tmp/log_dir"
+				sampleLogger = utils.NewLogger(os.Stdout, os.Stderr, fakeFile, "/tmp/log_dir/testProgram_20170101.log",
+					utils.LOGINFO, "testProgram:testUser:testHost:000000-[%s]:-")
 				newLogger := utils.InitializeLogging("testProgram", "/tmp/log_dir")
 				testLogger = utils.GetLogger()
 				if testLogger == nil || !(newLogger == testLogger) {

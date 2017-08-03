@@ -54,6 +54,7 @@ type QueryTableAttributes struct {
 	IsDropped  bool   `db:"attisdropped"`
 	TypeName   string `db:"atttypname"`
 	Encoding   string `db:"attencoding"`
+	StatTarget int    `db:"attstattarget"`
 	Comment    string `db:"attcomment"`
 }
 
@@ -67,6 +68,7 @@ SELECT a.attnum,
 	a.attisdropped,
 	pg_catalog.format_type(t.oid,a.atttypmod) AS atttypname,
 	coalesce(pg_catalog.array_to_string(e.attoptions, ','), '') AS attencoding,
+	a.attstattarget,
 	coalesce(pg_catalog.col_description(a.attrelid, a.attnum), '') AS attcomment
 FROM pg_catalog.pg_attribute a
 	LEFT JOIN pg_catalog.pg_type t ON a.atttypid = t.oid

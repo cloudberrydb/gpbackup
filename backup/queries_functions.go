@@ -166,21 +166,29 @@ type QueryCastDefinition struct {
 }
 
 func GetCastDefinitions(connection *utils.DBConn) []QueryCastDefinition {
+	/* This query retrieves all casts where either the source type, the target
+	 * type, or the cast function is user-defined.
+	 */
 	query := fmt.Sprintf(`
 SELECT
 	c.oid,
-	pg_catalog.format_type(c.castsource, NULL) AS sourcetype,
-	pg_catalog.format_type(c.casttarget, NULL) AS targettype,
+	st.typname AS sourcetype,
+	tt.typname AS targettype,
 	coalesce(n.nspname, '') AS functionschema,
 	coalesce(p.proname, '') AS functionname,
-	pg_get_function_arguments(p.oid) AS functionargs,
+	coalesce(pg_get_function_arguments(p.oid), '') AS functionargs,
 	c.castcontext
 FROM pg_cast c
+JOIN pg_type st ON c.castsource = st.oid
+JOIN pg_type tt ON c.casttarget = tt.oid
+JOIN pg_namespace sn ON st.typnamespace = sn.oid
+JOIN pg_namespace tn ON tt.typnamespace = tn.oid
 LEFT JOIN pg_proc p ON c.castfunc = p.oid
 LEFT JOIN pg_description d ON c.oid = d.objoid
-JOIN pg_namespace n ON p.pronamespace = n.oid
-WHERE %s
-ORDER BY 1, 2;`, NonUserSchemaFilterClause("n"))
+LEFT JOIN pg_namespace n ON p.pronamespace = n.oid
+WHERE (%s) OR (%s) OR (%s)
+ORDER BY 1, 2;
+`, NonUserSchemaFilterClause("sn"), NonUserSchemaFilterClause("tn"), NonUserSchemaFilterClause("n"))
 
 	results := make([]QueryCastDefinition, 0)
 	err := connection.Select(&results, query)

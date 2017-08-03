@@ -120,15 +120,30 @@ LANGUAGE SQL`)
 		})
 	})
 	Describe("GetCastDefinitions", func() {
-		It("returns a slice for a basic cast", func() {
+		It("returns a slice for a basic cast with a function", func() {
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION casttoint(text) RETURNS integer STRICT IMMUTABLE LANGUAGE SQL AS 'SELECT cast($1 as integer);'")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION casttoint(text)")
-			testutils.AssertQueryRuns(connection, "CREATE CAST (text AS integer) WITH FUNCTION casttoint(text) AS ASSIGNMENT")
-			defer testutils.AssertQueryRuns(connection, "DROP CAST (text AS integer)")
+			testutils.AssertQueryRuns(connection, "CREATE CAST (text AS int4) WITH FUNCTION casttoint(text) AS ASSIGNMENT")
+			defer testutils.AssertQueryRuns(connection, "DROP CAST (text AS int4)")
 
 			results := backup.GetCastDefinitions(connection)
 
-			castDef := backup.QueryCastDefinition{0, "text", "integer", "public", "casttoint", "text", "a"}
+			castDef := backup.QueryCastDefinition{0, "text", "int4", "public", "casttoint", "text", "a"}
+
+			Expect(len(results)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&castDef, &results[0], "Oid")
+		})
+		It("returns a slice for a basic cast without a function", func() {
+			testutils.AssertQueryRuns(connection, "CREATE FUNCTION cast_in(cstring) RETURNS casttesttype AS $$textin$$ LANGUAGE internal STRICT NO SQL")
+			testutils.AssertQueryRuns(connection, "CREATE FUNCTION cast_out(casttesttype) RETURNS cstring AS $$textout$$ LANGUAGE internal STRICT NO SQL")
+			testutils.AssertQueryRuns(connection, "CREATE TYPE casttesttype (INTERNALLENGTH = variable, INPUT = cast_in, OUTPUT = cast_out)")
+			defer testutils.AssertQueryRuns(connection, "DROP TYPE casttesttype CASCADE")
+			testutils.AssertQueryRuns(connection, "CREATE CAST (text AS public.casttesttype) WITHOUT FUNCTION AS IMPLICIT")
+			defer testutils.AssertQueryRuns(connection, "DROP CAST (text AS public.casttesttype)")
+
+			results := backup.GetCastDefinitions(connection)
+
+			castDef := backup.QueryCastDefinition{0, "text", "casttesttype", "", "", "", "i"}
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&castDef, &results[0], "Oid")
@@ -137,12 +152,12 @@ LANGUAGE SQL`)
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION casttoint(text) RETURNS integer STRICT IMMUTABLE LANGUAGE SQL AS 'SELECT cast($1 as integer);'")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION casttoint(text)")
 			testutils.AssertQueryRuns(connection, "CREATE CAST (text AS integer) WITH FUNCTION casttoint(text) AS ASSIGNMENT")
-			defer testutils.AssertQueryRuns(connection, "DROP CAST (text AS integer)")
-			testutils.AssertQueryRuns(connection, "COMMENT ON CAST (text AS integer) IS 'this is a cast comment'")
+			defer testutils.AssertQueryRuns(connection, "DROP CAST (text AS int4)")
+			testutils.AssertQueryRuns(connection, "COMMENT ON CAST (text AS int4) IS 'this is a cast comment'")
 
 			results := backup.GetCastDefinitions(connection)
 
-			castDef := backup.QueryCastDefinition{1, "text", "integer", "public", "casttoint", "text", "a"}
+			castDef := backup.QueryCastDefinition{1, "text", "int4", "public", "casttoint", "text", "a"}
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&castDef, &results[0], "Oid")

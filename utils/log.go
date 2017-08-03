@@ -56,11 +56,12 @@ const (
  */
 
 type Logger struct {
-	logStdout *log.Logger
-	logStderr *log.Logger
-	logFile   *log.Logger
-	verbosity int
-	header    string
+	logStdout   *log.Logger
+	logStderr   *log.Logger
+	logFile     *log.Logger
+	logFileName string
+	verbosity   int
+	header      string
 }
 
 /*
@@ -68,16 +69,17 @@ type Logger struct {
  */
 
 // stdout and stderr are passed in to this function to enable output redirection in tests.
-func NewLogger(stdout io.Writer, stderr io.Writer, logFile io.Writer, verbosity int, header string) *Logger {
+func NewLogger(stdout io.Writer, stderr io.Writer, logFile io.Writer, logFileName string, verbosity int, header string) *Logger {
 	if verbosity < LOGERROR || verbosity > LOGDEBUG {
 		Abort("Cannot create logger with an invalid logging level")
 	}
 	return &Logger{
-		logStdout: log.New(stdout, "", 0),
-		logStderr: log.New(stderr, "", 0),
-		logFile:   log.New(logFile, "", 0),
-		verbosity: verbosity,
-		header:    header,
+		logStdout:   log.New(stdout, "", 0),
+		logStderr:   log.New(stderr, "", 0),
+		logFile:     log.New(logFile, "", 0),
+		logFileName: logFileName,
+		verbosity:   verbosity,
+		header:      header,
 	}
 }
 
@@ -100,7 +102,7 @@ func InitializeLogging(program string, logdir string) *Logger {
 
 	// Create a temporary logger to start in case there are fatal errors during initialization
 	nullFile, _ := os.Open("/dev/null")
-	tempLogger := NewLogger(os.Stdout, os.Stderr, nullFile, LOGINFO, header)
+	tempLogger := NewLogger(os.Stdout, os.Stderr, nullFile, "/dev/null", LOGINFO, header)
 	SetLogger(tempLogger)
 
 	if logdir == "" {
@@ -111,7 +113,7 @@ func InitializeLogging(program string, logdir string) *Logger {
 	logfile := fmt.Sprintf("%s/%s_%s.log", logdir, program, CurrentTimestamp()[0:8])
 	logFileHandle := MustOpenFileForWriting(logfile)
 
-	logger := NewLogger(os.Stdout, os.Stderr, logFileHandle, LOGINFO, header)
+	logger := NewLogger(os.Stdout, os.Stderr, logFileHandle, logfile, LOGINFO, header)
 	SetLogger(logger)
 	return logger
 }
@@ -119,6 +121,10 @@ func InitializeLogging(program string, logdir string) *Logger {
 func (logger *Logger) GetLogPrefix(level string) string {
 	logTimestamp := System.Now().Format("20060102:15:04:05")
 	return fmt.Sprintf("%s %s", logTimestamp, fmt.Sprintf(logger.header, level))
+}
+
+func (logger *Logger) GetLogFileName() string {
+	return logger.logFileName
 }
 
 func (logger *Logger) GetVerbosity() int {

@@ -280,11 +280,20 @@ func backupData(tables []Relation, extTableMap map[string]bool) {
 			dumpFile := utils.GetTableDumpFilePath(table.RelationOid)
 			CopyTableOut(connection, table, dumpFile)
 		} else {
-			logger.Warn("Skipping data dump of table %s because it is an external table.", table.ToString())
+			logger.Verbose("Skipping data dump of table %s because it is an external table.", table.ToString())
 		}
 	}
+	numExtTables := len(extTableMap)
+	if numExtTables > 0 {
+		s := ""
+		if numExtTables > 1 {
+			s = "s"
+		}
+		logger.Warn("Skipped data dump of %d external table%s.", numExtTables, s)
+		logger.Warn("See %s for a complete list of skipped tables.", logger.GetLogFileName())
+	}
 	logger.Verbose("Writing table map file to %s", utils.GetTableMapFilePath())
-	WriteTableMapFile(tables)
+	WriteTableMapFile(tables, extTableMap)
 }
 
 func backupPostdata(filename string, tables []Relation, extTableMap map[string]bool) {
