@@ -73,9 +73,9 @@ var _ = Describe("backup integration create statement tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP LANGUAGE plperl")
 
 			resultProcLangs := backup.GetProceduralLanguages(connection)
-			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.ProcLangParams)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_PROCLANGUAGE)
 
-			plperlInfo.Oid = backup.OidFromObjectName(connection, "", "plperl", backup.ProcLangParams)
+			plperlInfo.Oid = backup.OidFromObjectName(connection, "", "plperl", backup.TYPE_PROCLANGUAGE)
 			Expect(len(resultProcLangs)).To(Equal(2))
 			resultMetadata := resultMetadataMap[plperlInfo.Oid]
 			testutils.ExpectStructsToMatchIncluding(&plpgsqlInfo, &resultProcLangs[0], "IsPl", "PlTrusted")
@@ -98,10 +98,10 @@ var _ = Describe("backup integration create statement tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP CONVERSION conv_two")
 
 			resultConversions := backup.GetConversions(connection)
-			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.ConversionParams)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_CONVERSION)
 
-			convOne.Oid = backup.OidFromObjectName(connection, "public", "conv_one", backup.ConversionParams)
-			convTwo.Oid = backup.OidFromObjectName(connection, "public", "conv_two", backup.ConversionParams)
+			convOne.Oid = backup.OidFromObjectName(connection, "public", "conv_one", backup.TYPE_CONVERSION)
+			convTwo.Oid = backup.OidFromObjectName(connection, "public", "conv_two", backup.TYPE_CONVERSION)
 			Expect(len(resultConversions)).To(Equal(2))
 			resultMetadata := resultMetadataMap[convOne.Oid]
 			testutils.ExpectStructsToMatch(&convOne, &resultConversions[0])
@@ -128,7 +128,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			checkConstraint = backup.Constraint{0, "check1", "c", "CHECK (a <> 42)", "public.testtable", false, false}
 			partitionCheckConstraint = backup.Constraint{0, "check1", "c", "CHECK (id <> 0)", "public.part", false, true}
 			testutils.AssertQueryRuns(connection, "CREATE TABLE public.testtable(a int, b text) DISTRIBUTED BY (b)")
-			tableOid = backup.OidFromObjectName(connection, "public", "testtable", backup.RelationParams)
+			tableOid = backup.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
 			conMetadataMap = backup.MetadataMap{}
 		})
 		AfterEach(func() {
@@ -280,7 +280,7 @@ PARTITION BY RANGE (year)
 
 			resultOperators := backup.GetOperators(connection)
 			Expect(len(resultOperators)).To(Equal(1))
-			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.OperatorParams)
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_OPERATOR)
 			resultMetadata := resultMetadataMap[resultOperators[0].Oid]
 			testutils.ExpectStructsToMatchExcluding(&operator, &resultOperators[0], "Oid")
 			testutils.ExpectStructsToMatchExcluding(&resultMetadata, &operatorMetadata, "Oid")
@@ -313,7 +313,7 @@ PARTITION BY RANGE (year)
 
 			resultOperatorFamilies := backup.GetOperatorFamilies(connection)
 			Expect(len(resultOperatorFamilies)).To(Equal(1))
-			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.OperatorFamilyParams)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_OPERATORFAMILY)
 			resultMetadata := resultMetadataMap[resultOperatorFamilies[0].Oid]
 			testutils.ExpectStructsToMatchExcluding(&operatorFamily, &resultOperatorFamilies[0], "Oid")
 			testutils.ExpectStructsToMatchExcluding(&resultMetadata, &operatorFamilyMetadata, "Oid")
@@ -362,7 +362,7 @@ PARTITION BY RANGE (year)
 			Expect(len(resultOperatorClasses)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&operatorClass, &resultOperatorClasses[0], "Oid")
 
-			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.OperatorClassParams)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_OPERATORCLASS)
 			resultMetadata := resultMetadataMap[resultOperatorClasses[0].Oid]
 			testutils.ExpectStructsToMatchExcluding(&resultMetadata, &operatorClassMetadata, "Oid")
 

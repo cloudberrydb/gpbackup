@@ -24,11 +24,11 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE baz")
 			testutils.AssertQueryRuns(connection, "GRANT ALL ON TABLE baz TO anothertestrole")
 
-			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.RelationParams)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_RELATION)
 
-			fooOid := backup.OidFromObjectName(connection, "public", "foo", backup.RelationParams)
-			barOid := backup.OidFromObjectName(connection, "public", "bar", backup.RelationParams)
-			bazOid := backup.OidFromObjectName(connection, "public", "baz", backup.RelationParams)
+			fooOid := backup.OidFromObjectName(connection, "public", "foo", backup.TYPE_RELATION)
+			barOid := backup.OidFromObjectName(connection, "public", "bar", backup.TYPE_RELATION)
+			bazOid := backup.OidFromObjectName(connection, "public", "baz", backup.TYPE_RELATION)
 			expectedFoo := backup.ObjectMetadata{Privileges: []backup.ACL{testutils.DefaultACLWithout("testrole", "TABLE", "DELETE")}, Owner: "testrole"}
 			expectedBar := backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "GRANTEE"}}, Owner: "testrole"}
 			expectedBaz := backup.ObjectMetadata{Privileges: []backup.ACL{testutils.DefaultACLForType("anothertestrole", "TABLE"), testutils.DefaultACLForType("testrole", "TABLE")}, Owner: "testrole"}
@@ -49,9 +49,9 @@ var _ = Describe("backup integration tests", func() {
 				{Grantee: "anothertestrole", Create: true, Temporary: true, Connect: true},
 			}, "anothertestrole", "This is a database comment."}
 
-			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.DatabaseParams)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_DATABASE)
 
-			oid := backup.OidFromObjectName(connection, "", "testdb", backup.DatabaseParams)
+			oid := backup.OidFromObjectName(connection, "", "testdb", backup.TYPE_DATABASE)
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 		})
@@ -62,9 +62,9 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "GRANT ALL ON TABLE testtable TO testrole")
 			testutils.AssertQueryRuns(connection, "COMMENT ON TABLE testtable IS 'This is a table comment.'")
 
-			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.RelationParams)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_RELATION)
 
-			oid := backup.OidFromObjectName(connection, "public", "testtable", backup.RelationParams)
+			oid := backup.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
 			expectedMetadata := testutils.DefaultMetadataMap("TABLE", true, true, true)[1]
 			Expect(len(resultMetadataMap)).To(Equal(1))
 			resultMetadata := resultMetadataMap[oid]
@@ -76,9 +76,9 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "GRANT ALL ON SEQUENCE testsequence TO testrole")
 			testutils.AssertQueryRuns(connection, "COMMENT ON SEQUENCE testsequence IS 'This is a sequence comment.'")
 
-			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.RelationParams)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_RELATION)
 
-			oid := backup.OidFromObjectName(connection, "public", "testsequence", backup.RelationParams)
+			oid := backup.OidFromObjectName(connection, "public", "testsequence", backup.TYPE_RELATION)
 			expectedMetadata := testutils.DefaultMetadataMap("SEQUENCE", true, true, true)[1]
 			Expect(len(resultMetadataMap)).To(Equal(1))
 			resultMetadata := resultMetadataMap[oid]
@@ -93,9 +93,9 @@ LANGUAGE SQL`)
 			testutils.AssertQueryRuns(connection, "REVOKE ALL ON FUNCTION add(integer, integer) FROM PUBLIC")
 			testutils.AssertQueryRuns(connection, "COMMENT ON FUNCTION add(integer, integer) IS 'This is a function comment.'")
 
-			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.FunctionParams)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_FUNCTION)
 
-			oid := backup.OidFromObjectName(connection, "public", "add", backup.FunctionParams)
+			oid := backup.OidFromObjectName(connection, "public", "add", backup.TYPE_FUNCTION)
 			expectedMetadata := testutils.DefaultMetadataMap("FUNCTION", true, true, true)[1]
 			Expect(len(resultMetadataMap)).To(Equal(1))
 			resultMetadata := resultMetadataMap[oid]
@@ -107,9 +107,9 @@ LANGUAGE SQL`)
 			testutils.AssertQueryRuns(connection, "GRANT ALL ON testview TO testrole")
 			testutils.AssertQueryRuns(connection, "COMMENT ON VIEW testview IS 'This is a view comment.'")
 
-			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.RelationParams)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_RELATION)
 
-			oid := backup.OidFromObjectName(connection, "public", "testview", backup.RelationParams)
+			oid := backup.OidFromObjectName(connection, "public", "testview", backup.TYPE_RELATION)
 			expectedMetadata := testutils.DefaultMetadataMap("VIEW", true, true, true)[1]
 			Expect(len(resultMetadataMap)).To(Equal(1))
 			resultMetadata := resultMetadataMap[oid]
@@ -121,9 +121,9 @@ LANGUAGE SQL`)
 			testutils.AssertQueryRuns(connection, "GRANT ALL ON SCHEMA testschema TO testrole")
 			testutils.AssertQueryRuns(connection, "COMMENT ON SCHEMA testschema IS 'This is a schema comment.'")
 
-			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.SchemaParams)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_SCHEMA)
 
-			oid := backup.OidFromObjectName(connection, "", "testschema", backup.SchemaParams)
+			oid := backup.OidFromObjectName(connection, "", "testschema", backup.TYPE_SCHEMA)
 			expectedMetadata := testutils.DefaultMetadataMap("SCHEMA", true, true, true)[1]
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
@@ -156,9 +156,9 @@ LANGUAGE SQL`)
 			defer testutils.AssertQueryRuns(connection, "DROP AGGREGATE public.agg_prefunc(numeric, numeric)")
 			testutils.AssertQueryRuns(connection, "COMMENT ON AGGREGATE agg_prefunc(numeric, numeric) IS 'This is an aggregate comment.'")
 
-			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.AggregateParams)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_AGGREGATE)
 
-			oid := backup.OidFromObjectName(connection, "", "agg_prefunc", backup.AggregateParams)
+			oid := backup.OidFromObjectName(connection, "", "agg_prefunc", backup.TYPE_AGGREGATE)
 			expectedMetadata := testutils.DefaultMetadataMap("AGGREGATE", false, true, true)[1]
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
@@ -168,9 +168,9 @@ LANGUAGE SQL`)
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE testtype")
 			testutils.AssertQueryRuns(connection, "COMMENT ON TYPE testtype IS 'This is a type comment.'")
 
-			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TypeParams)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_TYPE)
 
-			oid := backup.OidFromObjectName(connection, "", "testtype", backup.TypeParams)
+			oid := backup.OidFromObjectName(connection, "", "testtype", backup.TYPE_TYPE)
 			expectedMetadata := testutils.DefaultMetadataMap("TYPE", false, true, true)[1]
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
@@ -180,9 +180,9 @@ LANGUAGE SQL`)
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE domain_type")
 			testutils.AssertQueryRuns(connection, "COMMENT ON DOMAIN domain_type IS 'This is a domain comment.'")
 
-			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TypeParams)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_TYPE)
 
-			oid := backup.OidFromObjectName(connection, "", "domain_type", backup.TypeParams)
+			oid := backup.OidFromObjectName(connection, "", "domain_type", backup.TYPE_TYPE)
 			expectedMetadata := testutils.DefaultMetadataMap("DOMAIN", false, true, true)[1]
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
@@ -194,9 +194,9 @@ LANGUAGE SQL`)
 			defer testutils.AssertQueryRuns(connection, "DROP PROTOCOL s3_read")
 			testutils.AssertQueryRuns(connection, "GRANT ALL ON PROTOCOL s3_read TO testrole")
 
-			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.ProtocolParams)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_PROTOCOL)
 
-			oid := backup.OidFromObjectName(connection, "", "s3_read", backup.ProtocolParams)
+			oid := backup.OidFromObjectName(connection, "", "s3_read", backup.TYPE_PROTOCOL)
 			expectedMetadata := testutils.DefaultMetadataMap("PROTOCOL", true, true, false)[1]
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
@@ -207,9 +207,9 @@ LANGUAGE SQL`)
 			testutils.AssertQueryRuns(connection, "COMMENT ON TABLESPACE test_tablespace IS 'This is a tablespace comment.'")
 			testutils.AssertQueryRuns(connection, "GRANT ALL ON TABLESPACE test_tablespace TO testrole")
 
-			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TablespaceParams)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_TABLESPACE)
 
-			oid := backup.OidFromObjectName(connection, "", "test_tablespace", backup.TablespaceParams)
+			oid := backup.OidFromObjectName(connection, "", "test_tablespace", backup.TYPE_TABLESPACE)
 			expectedMetadata := testutils.DefaultMetadataMap("TABLESPACE", true, true, true)[1]
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
@@ -220,9 +220,9 @@ LANGUAGE SQL`)
 
 			testutils.AssertQueryRuns(connection, "COMMENT ON OPERATOR public.#### (bigint, NONE) IS 'This is an operator comment.'")
 
-			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.OperatorParams)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_OPERATOR)
 
-			oid := backup.OidFromObjectName(connection, "", "####", backup.OperatorParams)
+			oid := backup.OidFromObjectName(connection, "", "####", backup.TYPE_OPERATOR)
 			expectedMetadata := testutils.DefaultMetadataMap("OPERATOR", false, true, true)[1]
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
@@ -233,9 +233,9 @@ LANGUAGE SQL`)
 
 			testutils.AssertQueryRuns(connection, "COMMENT ON OPERATOR FAMILY testfam USING hash IS 'This is an operator family comment.'")
 
-			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.OperatorFamilyParams)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_OPERATORFAMILY)
 
-			oid := backup.OidFromObjectName(connection, "public", "testfam", backup.OperatorFamilyParams)
+			oid := backup.OidFromObjectName(connection, "public", "testfam", backup.TYPE_OPERATORFAMILY)
 			expectedMetadata := testutils.DefaultMetadataMap("OPERATOR FAMILY", false, true, true)[1]
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
@@ -246,9 +246,9 @@ LANGUAGE SQL`)
 
 			testutils.AssertQueryRuns(connection, "COMMENT ON OPERATOR CLASS testclass USING hash IS 'This is an operator class comment.'")
 
-			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.OperatorClassParams)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_OPERATORCLASS)
 
-			oid := backup.OidFromObjectName(connection, "public", "testclass", backup.OperatorClassParams)
+			oid := backup.OidFromObjectName(connection, "public", "testclass", backup.TYPE_OPERATORCLASS)
 			expectedMetadata := testutils.DefaultMetadataMap("OPERATOR CLASS", false, true, true)[1]
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
@@ -256,7 +256,7 @@ LANGUAGE SQL`)
 	})
 	Describe("GetCommentsForObjectType", func() {
 		It("returns a slice of default metadata for an index", func() {
-			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.IndexParams)
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_INDEX)
 			numIndexes := len(resultMetadataMap)
 
 			testutils.AssertQueryRuns(connection, `CREATE TABLE testtable(i int)`)
@@ -264,9 +264,9 @@ LANGUAGE SQL`)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE testtable")
 			testutils.AssertQueryRuns(connection, "COMMENT ON INDEX testindex IS 'This is an index comment.'")
 
-			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.IndexParams)
+			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.TYPE_INDEX)
 
-			oid := backup.OidFromObjectName(connection, "", "testindex", backup.IndexParams)
+			oid := backup.OidFromObjectName(connection, "", "testindex", backup.TYPE_INDEX)
 			expectedMetadataMap := testutils.DefaultMetadataMap("INDEX", false, false, true)
 			expectedMetadata := expectedMetadataMap[1]
 
@@ -275,7 +275,7 @@ LANGUAGE SQL`)
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 		})
 		It("returns a slice of default metadata for a rule", func() {
-			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.RuleParams)
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_RULE)
 			numRules := len(resultMetadataMap)
 
 			testutils.AssertQueryRuns(connection, `CREATE TABLE testtable(i int)`)
@@ -283,9 +283,9 @@ LANGUAGE SQL`)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE testtable")
 			testutils.AssertQueryRuns(connection, "COMMENT ON RULE update_notify IS 'This is a rule comment.'")
 
-			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.RuleParams)
+			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.TYPE_RULE)
 
-			oid := backup.OidFromObjectName(connection, "", "update_notify", backup.RuleParams)
+			oid := backup.OidFromObjectName(connection, "", "update_notify", backup.TYPE_RULE)
 			expectedMetadataMap := testutils.DefaultMetadataMap("RULE", false, false, true)
 			expectedMetadata := expectedMetadataMap[1]
 
@@ -294,7 +294,7 @@ LANGUAGE SQL`)
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 		})
 		It("returns a slice of default metadata for a trigger", func() {
-			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TriggerParams)
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_TRIGGER)
 			numTriggers := len(resultMetadataMap)
 
 			testutils.AssertQueryRuns(connection, `CREATE TABLE testtable(i int)`)
@@ -302,9 +302,9 @@ LANGUAGE SQL`)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE testtable")
 			testutils.AssertQueryRuns(connection, "COMMENT ON TRIGGER sync_testtable ON public.testtable IS 'This is a trigger comment.'")
 
-			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.TriggerParams)
+			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.TYPE_TRIGGER)
 
-			oid := backup.OidFromObjectName(connection, "", "sync_testtable", backup.TriggerParams)
+			oid := backup.OidFromObjectName(connection, "", "sync_testtable", backup.TYPE_TRIGGER)
 			expectedMetadataMap := testutils.DefaultMetadataMap("TRIGGER", false, false, true)
 			expectedMetadata := expectedMetadataMap[1]
 
@@ -313,7 +313,7 @@ LANGUAGE SQL`)
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 		})
 		It("returns a slice of default metadata for a cast", func() {
-			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.CastParams)
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_CAST)
 			numCasts := len(resultMetadataMap)
 
 			testutils.AssertQueryRuns(connection, `CREATE FUNCTION casttoint(text) RETURNS integer STRICT IMMUTABLE LANGUAGE SQL AS 'SELECT cast($1 as integer);'`)
@@ -321,10 +321,10 @@ LANGUAGE SQL`)
 			testutils.AssertQueryRuns(connection, "CREATE CAST (text AS int) WITH FUNCTION casttoint(text) AS ASSIGNMENT;")
 			testutils.AssertQueryRuns(connection, "COMMENT ON CAST (text AS int) IS 'This is a cast comment.'")
 
-			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.CastParams)
+			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.TYPE_CAST)
 
-			textOid := backup.OidFromObjectName(connection, "", "text", backup.CastParams)
-			intOid := backup.OidFromObjectName(connection, "", "int4", backup.CastParams)
+			textOid := backup.OidFromObjectName(connection, "", "text", backup.TYPE_CAST)
+			intOid := backup.OidFromObjectName(connection, "", "int4", backup.TYPE_CAST)
 			oid := testutils.OidFromCast(connection, textOid, intOid)
 			expectedMetadataMap := testutils.DefaultMetadataMap("CAST", false, false, true)
 			expectedMetadata := expectedMetadataMap[1]
@@ -334,16 +334,16 @@ LANGUAGE SQL`)
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 		})
 		It("returns a slice of default metadata for a constraint", func() {
-			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.ConParams)
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_CONSTRAINT)
 			numConstraints := len(resultMetadataMap)
 
 			testutils.AssertQueryRuns(connection, `CREATE TABLE testtable(i int UNIQUE)`)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE testtable")
 			testutils.AssertQueryRuns(connection, "COMMENT ON CONSTRAINT testtable_i_key ON public.testtable IS 'This is a constraint comment.'")
 
-			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.ConParams)
+			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.TYPE_CONSTRAINT)
 
-			oid := backup.OidFromObjectName(connection, "", "testtable_i_key", backup.ConParams)
+			oid := backup.OidFromObjectName(connection, "", "testtable_i_key", backup.TYPE_CONSTRAINT)
 			expectedMetadataMap := testutils.DefaultMetadataMap("CONSTRAINT", false, false, true)
 			expectedMetadata := expectedMetadataMap[1]
 
@@ -352,16 +352,16 @@ LANGUAGE SQL`)
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 		})
 		It("returns a slice of default metadata for a resource queue", func() {
-			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.ResQueueParams)
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_RESOURCEQUEUE)
 			numResQueues := len(resultMetadataMap)
 
 			testutils.AssertQueryRuns(connection, `CREATE RESOURCE QUEUE res_queue WITH (MAX_COST=32.8);`)
 			defer testutils.AssertQueryRuns(connection, "DROP RESOURCE QUEUE res_queue")
 			testutils.AssertQueryRuns(connection, "COMMENT ON RESOURCE QUEUE res_queue IS 'This is a resource queue comment.'")
 
-			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.ResQueueParams)
+			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.TYPE_RESOURCEQUEUE)
 
-			oid := backup.OidFromObjectName(connection, "", "res_queue", backup.ResQueueParams)
+			oid := backup.OidFromObjectName(connection, "", "res_queue", backup.TYPE_RESOURCEQUEUE)
 			expectedMetadataMap := testutils.DefaultMetadataMap("RESOURCE QUEUE", false, false, true)
 			expectedMetadata := expectedMetadataMap[1]
 
@@ -370,16 +370,16 @@ LANGUAGE SQL`)
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 		})
 		It("returns a slice of default metadata for a role", func() {
-			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.RoleParams)
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_ROLE)
 			numRoles := len(resultMetadataMap)
 
 			testutils.AssertQueryRuns(connection, `CREATE ROLE testuser`)
 			defer testutils.AssertQueryRuns(connection, "DROP ROLE testuser")
 			testutils.AssertQueryRuns(connection, "COMMENT ON ROLE testuser IS 'This is a role comment.'")
 
-			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.RoleParams)
+			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.TYPE_ROLE)
 
-			oid := backup.OidFromObjectName(connection, "", "testuser", backup.RoleParams)
+			oid := backup.OidFromObjectName(connection, "", "testuser", backup.TYPE_ROLE)
 			expectedMetadataMap := testutils.DefaultMetadataMap("ROLE", false, false, true)
 			expectedMetadata := expectedMetadataMap[1]
 
@@ -395,8 +395,8 @@ LANGUAGE SQL`)
 			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH PARSER testparser")
 			testutils.AssertQueryRuns(connection, "COMMENT ON TEXT SEARCH PARSER testparser IS 'This is a text search parser comment.'")
 
-			oid := backup.OidFromObjectName(connection, "public", "testparser", backup.TSParserParams)
-			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TSParserParams)
+			oid := backup.OidFromObjectName(connection, "public", "testparser", backup.TYPE_TSPARSER)
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_TSPARSER)
 
 			// There is a default text search parser
 			Expect(len(resultMetadataMap)).To(Equal(2))
@@ -404,7 +404,7 @@ LANGUAGE SQL`)
 			testutils.ExpectStructsToMatch(&parserMetadata, &resultMetadata)
 		})
 		It("returns a slice of default metadata for a text search dictionary", func() {
-			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TSDictionaryParams)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_TSDICTIONARY)
 			numTextSearchDictionaries := len(resultMetadataMap)
 			dictionaryMetadataMap := testutils.DefaultMetadataMap("TEXT SEARCH DICTIONARY", false, true, true)
 			dictionaryMetadata := dictionaryMetadataMap[1]
@@ -413,15 +413,15 @@ LANGUAGE SQL`)
 			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH DICTIONARY testdictionary")
 			testutils.AssertQueryRuns(connection, "COMMENT ON TEXT SEARCH DICTIONARY testdictionary IS 'This is a text search dictionary comment.'")
 
-			oid := backup.OidFromObjectName(connection, "public", "testdictionary", backup.TSDictionaryParams)
-			resultMetadataMap = backup.GetMetadataForObjectType(connection, backup.TSDictionaryParams)
+			oid := backup.OidFromObjectName(connection, "public", "testdictionary", backup.TYPE_TSDICTIONARY)
+			resultMetadataMap = backup.GetMetadataForObjectType(connection, backup.TYPE_TSDICTIONARY)
 
 			Expect(len(resultMetadataMap)).To(Equal(numTextSearchDictionaries + 1))
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatch(&dictionaryMetadata, &resultMetadata)
 		})
 		It("returns a slice of default metadata for a text search template", func() {
-			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TSTemplateParams)
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_TSTEMPLATE)
 			numTextSearchTemplates := len(resultMetadataMap)
 			templateMetadataMap := testutils.DefaultMetadataMap("TEXT SEARCH TEMPLATE", false, false, true)
 			templateMetadata := templateMetadataMap[1]
@@ -430,15 +430,15 @@ LANGUAGE SQL`)
 			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH TEMPLATE testtemplate")
 			testutils.AssertQueryRuns(connection, "COMMENT ON TEXT SEARCH TEMPLATE testtemplate IS 'This is a text search template comment.'")
 
-			oid := backup.OidFromObjectName(connection, "public", "testtemplate", backup.TSTemplateParams)
-			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.TSTemplateParams)
+			oid := backup.OidFromObjectName(connection, "public", "testtemplate", backup.TYPE_TSTEMPLATE)
+			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.TYPE_TSTEMPLATE)
 
 			Expect(len(resultMetadataMap)).To(Equal(numTextSearchTemplates + 1))
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatch(&templateMetadata, &resultMetadata)
 		})
 		It("returns a slice of default metadata for a text search configuration", func() {
-			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TSConfigurationParams)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_TSCONFIGURATION)
 			numTextSearchConfigurations := len(resultMetadataMap)
 			configurationMetadataMap := testutils.DefaultMetadataMap("TEXT SEARCH CONFIGURATION", false, true, true)
 			configurationMetadata := configurationMetadataMap[1]
@@ -447,8 +447,8 @@ LANGUAGE SQL`)
 			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH CONFIGURATION testconfiguration")
 			testutils.AssertQueryRuns(connection, "COMMENT ON TEXT SEARCH CONFIGURATION testconfiguration IS 'This is a text search configuration comment.'")
 
-			oid := backup.OidFromObjectName(connection, "public", "testconfiguration", backup.TSConfigurationParams)
-			resultMetadataMap = backup.GetMetadataForObjectType(connection, backup.TSConfigurationParams)
+			oid := backup.OidFromObjectName(connection, "public", "testconfiguration", backup.TYPE_TSCONFIGURATION)
+			resultMetadataMap = backup.GetMetadataForObjectType(connection, backup.TYPE_TSCONFIGURATION)
 
 			Expect(len(resultMetadataMap)).To(Equal(numTextSearchConfigurations + 1))
 			resultMetadata := resultMetadataMap[oid]

@@ -42,10 +42,10 @@ var _ = Describe("backup integration create statement tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH PARSER testparser")
 
 			resultParsers := backup.GetTextSearchParsers(connection)
-			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TSParserParams)
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_TSPARSER)
 
 			Expect(len(resultParsers)).To(Equal(1))
-			oid := backup.OidFromObjectName(connection, "public", "testparser", backup.TSParserParams)
+			oid := backup.OidFromObjectName(connection, "public", "testparser", backup.TYPE_TSPARSER)
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&parsers[0], &resultParsers[0], "Oid")
 			testutils.ExpectStructsToMatch(&parserMetadata, &resultMetadata)
@@ -76,10 +76,10 @@ var _ = Describe("backup integration create statement tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH TEMPLATE testtemplate")
 
 			resultTemplates := backup.GetTextSearchTemplates(connection)
-			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TSTemplateParams)
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_TSTEMPLATE)
 
 			Expect(len(resultTemplates)).To(Equal(1))
-			oid := backup.OidFromObjectName(connection, "public", "testtemplate", backup.TSTemplateParams)
+			oid := backup.OidFromObjectName(connection, "public", "testtemplate", backup.TYPE_TSTEMPLATE)
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&templates[0], &resultTemplates[0], "Oid")
 			testutils.ExpectStructsToMatch(&templateMetadata, &resultMetadata)
@@ -110,10 +110,10 @@ var _ = Describe("backup integration create statement tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH DICTIONARY testdictionary")
 
 			resultDictionaries := backup.GetTextSearchDictionaries(connection)
-			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TSDictionaryParams)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_TSDICTIONARY)
 
 			Expect(len(resultDictionaries)).To(Equal(1))
-			oid := backup.OidFromObjectName(connection, "public", "testdictionary", backup.TSDictionaryParams)
+			oid := backup.OidFromObjectName(connection, "public", "testdictionary", backup.TYPE_TSDICTIONARY)
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&dictionaries[0], &resultDictionaries[0], "Oid")
 			testutils.ExpectStructsToMatch(&dictionaryMetadata, &resultMetadata)
@@ -144,10 +144,10 @@ var _ = Describe("backup integration create statement tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH CONFIGURATION testconfiguration")
 
 			resultConfigurations := backup.GetTextSearchConfigurations(connection)
-			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TSConfigurationParams)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_TSCONFIGURATION)
 
 			Expect(len(resultConfigurations)).To(Equal(1))
-			oid := backup.OidFromObjectName(connection, "public", "testconfiguration", backup.TSConfigurationParams)
+			oid := backup.OidFromObjectName(connection, "public", "testconfiguration", backup.TYPE_TSCONFIGURATION)
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&configurations[0], &resultConfigurations[0], "Oid")
 			testutils.ExpectStructsToMatch(&configurationMetadata, &resultMetadata)

@@ -56,9 +56,9 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			indexes[0].Oid = backup.OidFromObjectName(connection, "", "index1", backup.IndexParams)
+			indexes[0].Oid = backup.OidFromObjectName(connection, "", "index1", backup.TYPE_INDEX)
 			resultIndexes := backup.GetIndexes(connection, indexNameMap)
-			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.IndexParams)
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_INDEX)
 			resultMetadata := resultMetadataMap[indexes[0].Oid]
 			Expect(len(resultIndexes)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&resultIndexes[0], &indexes[0], "Oid")
@@ -118,9 +118,9 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			rules[0].Oid = backup.OidFromObjectName(connection, "", "update_notify", backup.RuleParams)
+			rules[0].Oid = backup.OidFromObjectName(connection, "", "update_notify", backup.TYPE_RULE)
 			resultRules := backup.GetRules(connection)
-			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.RuleParams)
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_RULE)
 			resultMetadata := resultMetadataMap[rules[0].Oid]
 			Expect(len(resultRules)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&resultRules[0], &rules[0], "Oid")
@@ -162,9 +162,9 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			triggers[0].Oid = backup.OidFromObjectName(connection, "", "sync_testtable", backup.TriggerParams)
+			triggers[0].Oid = backup.OidFromObjectName(connection, "", "sync_testtable", backup.TYPE_TRIGGER)
 			resultTriggers := backup.GetTriggers(connection)
-			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TriggerParams)
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_TRIGGER)
 			resultMetadata := resultMetadataMap[triggers[0].Oid]
 			Expect(len(resultTriggers)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&resultTriggers[0], &triggers[0], "Oid")

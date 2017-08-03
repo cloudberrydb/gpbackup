@@ -82,7 +82,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
-			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.RelationParams)
+			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
 			resultTableDef := backup.ConstructDefinitionsForTable(connection, testTable, false)
 			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ExtTableDef")
 		})
@@ -94,7 +94,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
-			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.RelationParams)
+			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
 			resultTableDef := backup.ConstructDefinitionsForTable(connection, testTable, false)
 			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ExtTableDef")
 		})
@@ -107,7 +107,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
-			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.RelationParams)
+			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
 			resultTableDef := backup.ConstructDefinitionsForTable(connection, testTable, false)
 			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ExtTableDef")
 		})
@@ -120,7 +120,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
-			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.RelationParams)
+			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
 			resultTableDef := backup.ConstructDefinitionsForTable(connection, testTable, false)
 			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ExtTableDef")
 		})
@@ -133,7 +133,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
-			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.RelationParams)
+			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
 			resultTableDef := backup.ConstructDefinitionsForTable(connection, testTable, false)
 			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ExtTableDef")
 		})
@@ -147,7 +147,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
-			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.RelationParams)
+			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
 			resultTableDef := backup.ConstructDefinitionsForTable(connection, testTable, false)
 			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ExtTableDef")
 		})
@@ -162,7 +162,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE testtable2")
 
 			testutils.AssertQueryRuns(connection, buffer.String())
-			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable2", backup.RelationParams)
+			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable2", backup.TYPE_RELATION)
 			resultTableDef := backup.ConstructDefinitionsForTable(connection, testTable, false)
 			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ExtTableDef")
 		})
@@ -176,7 +176,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE public.testtable")
-			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.RelationParams)
+			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
 			tables := []backup.Relation{testTable}
 			tables = backup.ConstructTableDependencies(connection, tables)
 
@@ -196,7 +196,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE public.testtable")
-			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.RelationParams)
+			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
 			tables := []backup.Relation{testTable}
 			tables = backup.ConstructTableDependencies(connection, tables)
 
@@ -226,8 +226,8 @@ SET SUBPARTITION TEMPLATE  ` + `
 			backup.PrintPostCreateTableStatements(buffer, testTable, tableDef, tableMetadata)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
-			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.RelationParams)
-			resultMetadata := backup.GetMetadataForObjectType(connection, backup.RelationParams)
+			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
+			resultMetadata := backup.GetMetadataForObjectType(connection, backup.TYPE_RELATION)
 			resultTableMetadata := resultMetadata[testTable.RelationOid]
 			testutils.ExpectStructsToMatch(&tableMetadata, &resultTableMetadata)
 			resultTableDef := backup.ConstructDefinitionsForTable(connection, testTable, false)
@@ -240,10 +240,10 @@ SET SUBPARTITION TEMPLATE  ` + `
 			backup.PrintPostCreateTableStatements(buffer, testTable, tableDef, tableMetadata)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
-			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.RelationParams)
+			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
 			resultTableDef := backup.ConstructDefinitionsForTable(connection, testTable, false)
 			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ExtTableDef")
-			resultMetadata := backup.GetMetadataForObjectType(connection, backup.RelationParams)
+			resultMetadata := backup.GetMetadataForObjectType(connection, backup.TYPE_RELATION)
 			resultTableMetadata := resultMetadata[testTable.RelationOid]
 			testutils.ExpectStructsToMatch(&tableMetadata, &resultTableMetadata)
 		})
@@ -260,9 +260,9 @@ SET SUBPARTITION TEMPLATE  ` + `
 			defer testutils.AssertQueryRuns(connection, "DROP VIEW simpleview")
 
 			resultViews := backup.GetViews(connection)
-			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.RelationParams)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_RELATION)
 
-			viewDef.Oid = backup.OidFromObjectName(connection, "public", "simpleview", backup.RelationParams)
+			viewDef.Oid = backup.OidFromObjectName(connection, "public", "simpleview", backup.TYPE_RELATION)
 			Expect(len(resultViews)).To(Equal(1))
 			resultMetadata := resultMetadataMap[viewDef.Oid]
 			testutils.ExpectStructsToMatch(&viewDef, &resultViews[0])
@@ -318,8 +318,8 @@ SET SUBPARTITION TEMPLATE  ` + `
 			resultSequences := backup.GetAllSequences(connection)
 
 			Expect(len(resultSequences)).To(Equal(1))
-			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.RelationParams)
-			oid := backup.OidFromObjectName(connection, "public", "my_sequence", backup.RelationParams)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_RELATION)
+			oid := backup.OidFromObjectName(connection, "public", "my_sequence", backup.TYPE_RELATION)
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&sequence, &resultSequences[0].Relation, "SchemaOid", "RelationOid")
 			testutils.ExpectStructsToMatch(&sequenceDef.SequenceDefinition, &resultSequences[0].SequenceDefinition)

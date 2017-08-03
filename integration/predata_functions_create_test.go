@@ -126,10 +126,10 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP AGGREGATE agg_prefunc(numeric, numeric)")
 
-			oid := backup.OidFromObjectName(connection, "", "agg_prefunc", backup.AggregateParams)
+			oid := backup.OidFromObjectName(connection, "", "agg_prefunc", backup.TYPE_AGGREGATE)
 			resultAggregates := backup.GetAggregateDefinitions(connection)
 			Expect(len(resultAggregates)).To(Equal(1))
-			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.AggregateParams)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_AGGREGATE)
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&aggregateDef, &resultAggregates[0], "Oid", "TransitionFunction", "PreliminaryFunction")
 			testutils.ExpectStructsToMatch(&aggMetadata, &resultMetadata)
@@ -189,7 +189,7 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			resultCasts := backup.GetCastDefinitions(connection)
 			Expect(len(resultCasts)).To(Equal(1))
-			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.CastParams)
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_CAST)
 			resultMetadata := resultMetadataMap[resultCasts[0].Oid]
 			testutils.ExpectStructsToMatchExcluding(&castDef, &resultCasts[0], "Oid")
 			testutils.ExpectStructsToMatchExcluding(&resultMetadata, &castMetadata, "Oid")

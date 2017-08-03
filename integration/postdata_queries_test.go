@@ -60,8 +60,8 @@ var _ = Describe("backup integration tests", func() {
 			results := backup.GetIndexes(connection, indexNameMap)
 
 			Expect(len(results)).To(Equal(2))
-			results[0].Oid = backup.OidFromObjectName(connection, "", "simple_table_idx1", backup.IndexParams)
-			results[1].Oid = backup.OidFromObjectName(connection, "", "simple_table_idx2", backup.IndexParams)
+			results[0].Oid = backup.OidFromObjectName(connection, "", "simple_table_idx1", backup.TYPE_INDEX)
+			results[1].Oid = backup.OidFromObjectName(connection, "", "simple_table_idx2", backup.TYPE_INDEX)
 
 			testutils.ExpectStructsToMatchExcluding(&index1, &results[0], "Oid")
 			testutils.ExpectStructsToMatchExcluding(&index2, &results[1], "Oid")
@@ -120,7 +120,7 @@ PARTITION BY RANGE (date)
 			results := backup.GetIndexes(connection, indexNameMap)
 
 			Expect(len(results)).To(Equal(1))
-			results[0].Oid = backup.OidFromObjectName(connection, "", "simple_table_idx", backup.IndexParams)
+			results[0].Oid = backup.OidFromObjectName(connection, "", "simple_table_idx", backup.TYPE_INDEX)
 
 			testutils.ExpectStructsToMatchExcluding(&index1, &results[0], "Oid")
 		})

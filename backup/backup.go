@@ -119,12 +119,12 @@ func backupGlobal(filename string) {
 
 	logger.Verbose("Writing CREATE TABLESPACE statements to global file")
 	tablespaces := GetTablespaces(connection)
-	tablespaceMetadata := GetMetadataForObjectType(connection, TablespaceParams)
+	tablespaceMetadata := GetMetadataForObjectType(connection, TYPE_TABLESPACE)
 	PrintCreateTablespaceStatements(globalFile, tablespaces, tablespaceMetadata)
 
 	logger.Verbose("Writing CREATE DATABASE statement to global file")
 	dbnames := GetDatabaseNames(connection)
-	dbMetadata := GetMetadataForObjectType(connection, DatabaseParams)
+	dbMetadata := GetMetadataForObjectType(connection, TYPE_DATABASE)
 	PrintCreateDatabaseStatement(globalFile, connection.DBName, dbnames, dbMetadata, *dumpGlobals)
 
 	logger.Verbose("Writing database GUCs to global file")
@@ -133,12 +133,12 @@ func backupGlobal(filename string) {
 
 	logger.Verbose("Writing CREATE RESOURCE QUEUE statements to global file")
 	resQueues := GetResourceQueues(connection)
-	resQueueMetadata := GetCommentsForObjectType(connection, ResQueueParams)
+	resQueueMetadata := GetCommentsForObjectType(connection, TYPE_RESOURCEQUEUE)
 	PrintCreateResourceQueueStatements(globalFile, resQueues, resQueueMetadata)
 
 	logger.Verbose("Writing CREATE ROLE statements to global file")
 	roles := GetRoles(connection)
-	roleMetadata := GetCommentsForObjectType(connection, RoleParams)
+	roleMetadata := GetCommentsForObjectType(connection, TYPE_ROLE)
 	PrintCreateRoleStatements(globalFile, roles, roleMetadata)
 
 	logger.Verbose("Writing GRANT ROLE statements to global file")
@@ -156,14 +156,14 @@ func backupPredata(filename string, tables []Relation, extTableMap map[string]bo
 
 	logger.Verbose("Writing CREATE SCHEMA statements to predata file")
 	schemas := GetAllUserSchemas(connection)
-	schemaMetadata := GetMetadataForObjectType(connection, SchemaParams)
+	schemaMetadata := GetMetadataForObjectType(connection, TYPE_SCHEMA)
 	PrintCreateSchemaStatements(predataFile, schemas, schemaMetadata)
 
 	types := GetTypes(connection)
-	typeMetadata := GetMetadataForObjectType(connection, TypeParams)
+	typeMetadata := GetMetadataForObjectType(connection, TYPE_TYPE)
 	functions := GetFunctions(connection)
 	funcInfoMap := GetFunctionOidToInfoMap(connection)
-	functionMetadata := GetMetadataForObjectType(connection, FunctionParams)
+	functionMetadata := GetMetadataForObjectType(connection, TYPE_FUNCTION)
 	types, functions = ConstructDependencyLists(connection, types, functions)
 
 	logger.Verbose("Writing CREATE TYPE statements for shell types to predata file")
@@ -175,7 +175,7 @@ func backupPredata(filename string, tables []Relation, extTableMap map[string]bo
 	for _, langFunc := range langFuncs {
 		PrintCreateFunctionStatement(predataFile, langFunc, functionMetadata[langFunc.Oid])
 	}
-	procLangMetadata := GetMetadataForObjectType(connection, ProcLangParams)
+	procLangMetadata := GetMetadataForObjectType(connection, TYPE_PROCLANGUAGE)
 	PrintCreateLanguageStatements(predataFile, procLangs, funcInfoMap, procLangMetadata)
 
 	logger.Verbose("Writing CREATE TYPE statements for enum types to predata file")
@@ -188,60 +188,60 @@ func backupPredata(filename string, tables []Relation, extTableMap map[string]bo
 
 	logger.Verbose("Writing CREATE TEXT SEARCH PARSER statements to predata file")
 	parsers := GetTextSearchParsers(connection)
-	parserMetadata := GetCommentsForObjectType(connection, TSParserParams)
+	parserMetadata := GetCommentsForObjectType(connection, TYPE_TSPARSER)
 	PrintCreateTextSearchParserStatements(predataFile, parsers, parserMetadata)
 
 	logger.Verbose("Writing CREATE TEXT SEARCH TEMPLATE statements to predata file")
 	templates := GetTextSearchTemplates(connection)
-	templateMetadata := GetCommentsForObjectType(connection, TSTemplateParams)
+	templateMetadata := GetCommentsForObjectType(connection, TYPE_TSTEMPLATE)
 	PrintCreateTextSearchTemplateStatements(predataFile, templates, templateMetadata)
 
 	logger.Verbose("Writing CREATE TEXT SEARCH DICTIONARY statements to predata file")
 	dictionaries := GetTextSearchDictionaries(connection)
-	dictionaryMetadata := GetMetadataForObjectType(connection, TSDictionaryParams)
+	dictionaryMetadata := GetMetadataForObjectType(connection, TYPE_TSDICTIONARY)
 	PrintCreateTextSearchDictionaryStatements(predataFile, dictionaries, dictionaryMetadata)
 
 	logger.Verbose("Writing CREATE TEXT SEARCH CONFIGURATION statements to predata file")
 	configurations := GetTextSearchConfigurations(connection)
-	configurationMetadata := GetMetadataForObjectType(connection, TSConfigurationParams)
+	configurationMetadata := GetMetadataForObjectType(connection, TYPE_TSCONFIGURATION)
 	PrintCreateTextSearchConfigurationStatements(predataFile, configurations, configurationMetadata)
 
 	logger.Verbose("Writing CREATE PROTOCOL statements to predata file")
 	protocols := GetExternalProtocols(connection)
-	protoMetadata := GetMetadataForObjectType(connection, ProtocolParams)
+	protoMetadata := GetMetadataForObjectType(connection, TYPE_PROTOCOL)
 	PrintCreateExternalProtocolStatements(predataFile, protocols, funcInfoMap, protoMetadata)
 
 	logger.Verbose("Writing CREATE CONVERSION statements to predata file")
 	conversions := GetConversions(connection)
-	convMetadata := GetMetadataForObjectType(connection, ConversionParams)
+	convMetadata := GetMetadataForObjectType(connection, TYPE_CONVERSION)
 	PrintCreateConversionStatements(predataFile, conversions, convMetadata)
 
 	logger.Verbose("Writing CREATE OPERATOR statements to predata file")
 	operators := GetOperators(connection)
-	operatorMetadata := GetMetadataForObjectType(connection, OperatorParams)
+	operatorMetadata := GetMetadataForObjectType(connection, TYPE_OPERATOR)
 	PrintCreateOperatorStatements(predataFile, operators, operatorMetadata)
 
 	logger.Verbose("Writing CREATE OPERATOR FAMILY statements to predata file")
 	operatorFamilies := GetOperatorFamilies(connection)
-	operatorFamilyMetadata := GetMetadataForObjectType(connection, OperatorFamilyParams)
+	operatorFamilyMetadata := GetMetadataForObjectType(connection, TYPE_OPERATORFAMILY)
 	PrintCreateOperatorFamilyStatements(predataFile, operatorFamilies, operatorFamilyMetadata)
 
 	logger.Verbose("Writing CREATE OPERATOR CLASS statements to predata file")
 	operatorClasses := GetOperatorClasses(connection)
-	operatorClassMetadata := GetMetadataForObjectType(connection, OperatorClassParams)
+	operatorClassMetadata := GetMetadataForObjectType(connection, TYPE_OPERATORCLASS)
 	PrintCreateOperatorClassStatements(predataFile, operatorClasses, operatorClassMetadata)
 
 	logger.Verbose("Writing CREATE AGGREGATE statements to predata file")
 	aggDefs := GetAggregateDefinitions(connection)
-	aggMetadata := GetMetadataForObjectType(connection, AggregateParams)
+	aggMetadata := GetMetadataForObjectType(connection, TYPE_AGGREGATE)
 	PrintCreateAggregateStatements(predataFile, aggDefs, funcInfoMap, aggMetadata)
 
 	logger.Verbose("Writing CREATE CAST statements to predata file")
 	castDefs := GetCastDefinitions(connection)
-	castMetadata := GetCommentsForObjectType(connection, CastParams)
+	castMetadata := GetCommentsForObjectType(connection, TYPE_CAST)
 	PrintCreateCastStatements(predataFile, castDefs, castMetadata)
 
-	relationMetadata := GetMetadataForObjectType(connection, RelationParams)
+	relationMetadata := GetMetadataForObjectType(connection, TYPE_RELATION)
 
 	logger.Verbose("Writing CREATE SEQUENCE statements to predata file")
 	sequenceDefs := GetAllSequences(connection)
@@ -268,7 +268,7 @@ func backupPredata(filename string, tables []Relation, extTableMap map[string]bo
 
 	logger.Verbose("Writing ADD CONSTRAINT statements to predata file")
 	constraints := GetConstraints(connection)
-	conMetadata := GetCommentsForObjectType(connection, ConParams)
+	conMetadata := GetCommentsForObjectType(connection, TYPE_CONSTRAINT)
 	PrintConstraintStatements(predataFile, constraints, conMetadata)
 }
 
@@ -307,17 +307,17 @@ func backupPostdata(filename string, tables []Relation, extTableMap map[string]b
 	logger.Verbose("Writing CREATE INDEX statements to postdata file")
 	indexNameMap := ConstructImplicitIndexNames(connection)
 	indexes := GetIndexes(connection, indexNameMap)
-	indexMetadata := GetCommentsForObjectType(connection, IndexParams)
+	indexMetadata := GetCommentsForObjectType(connection, TYPE_INDEX)
 	PrintCreateIndexStatements(postdataFile, indexes, indexMetadata)
 
 	logger.Verbose("Writing CREATE RULE statements to postdata file")
 	rules := GetRules(connection)
-	ruleMetadata := GetCommentsForObjectType(connection, RuleParams)
+	ruleMetadata := GetCommentsForObjectType(connection, TYPE_RULE)
 	PrintCreateRuleStatements(postdataFile, rules, ruleMetadata)
 
 	logger.Verbose("Writing CREATE TRIGGER statements to postdata file")
 	triggers := GetTriggers(connection)
-	triggerMetadata := GetCommentsForObjectType(connection, TriggerParams)
+	triggerMetadata := GetCommentsForObjectType(connection, TYPE_TRIGGER)
 	PrintCreateTriggerStatements(postdataFile, triggers, triggerMetadata)
 }
 
