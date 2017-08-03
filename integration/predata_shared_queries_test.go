@@ -387,5 +387,72 @@ LANGUAGE SQL`)
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 		})
+		It("returns a slice of default metadata for a text search parser", func() {
+			parserMetadataMap := testutils.DefaultMetadataMap("TEXT SEARCH PARSER", false, false, true)
+			parserMetadata := parserMetadataMap[1]
+
+			testutils.AssertQueryRuns(connection, "CREATE TEXT SEARCH PARSER testparser(START = prsd_start, GETTOKEN = prsd_nexttoken, END = prsd_end, LEXTYPES = prsd_lextype);")
+			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH PARSER testparser")
+			testutils.AssertQueryRuns(connection, "COMMENT ON TEXT SEARCH PARSER testparser IS 'This is a text search parser comment.'")
+
+			oid := backup.OidFromObjectName(connection, "public", "testparser", backup.TSParserParams)
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TSParserParams)
+
+			// There is a default text search parser
+			Expect(len(resultMetadataMap)).To(Equal(2))
+			resultMetadata := resultMetadataMap[oid]
+			testutils.ExpectStructsToMatch(&parserMetadata, &resultMetadata)
+		})
+		It("returns a slice of default metadata for a text search dictionary", func() {
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TSDictionaryParams)
+			numTextSearchDictionaries := len(resultMetadataMap)
+			dictionaryMetadataMap := testutils.DefaultMetadataMap("TEXT SEARCH DICTIONARY", false, true, true)
+			dictionaryMetadata := dictionaryMetadataMap[1]
+
+			testutils.AssertQueryRuns(connection, "CREATE TEXT SEARCH DICTIONARY testdictionary(TEMPLATE = snowball, LANGUAGE = 'russian', STOPWORDS = 'russian');")
+			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH DICTIONARY testdictionary")
+			testutils.AssertQueryRuns(connection, "COMMENT ON TEXT SEARCH DICTIONARY testdictionary IS 'This is a text search dictionary comment.'")
+
+			oid := backup.OidFromObjectName(connection, "public", "testdictionary", backup.TSDictionaryParams)
+			resultMetadataMap = backup.GetMetadataForObjectType(connection, backup.TSDictionaryParams)
+
+			Expect(len(resultMetadataMap)).To(Equal(numTextSearchDictionaries + 1))
+			resultMetadata := resultMetadataMap[oid]
+			testutils.ExpectStructsToMatch(&dictionaryMetadata, &resultMetadata)
+		})
+		It("returns a slice of default metadata for a text search template", func() {
+			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TSTemplateParams)
+			numTextSearchTemplates := len(resultMetadataMap)
+			templateMetadataMap := testutils.DefaultMetadataMap("TEXT SEARCH TEMPLATE", false, false, true)
+			templateMetadata := templateMetadataMap[1]
+
+			testutils.AssertQueryRuns(connection, "CREATE TEXT SEARCH TEMPLATE testtemplate(LEXIZE = dsimple_lexize);")
+			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH TEMPLATE testtemplate")
+			testutils.AssertQueryRuns(connection, "COMMENT ON TEXT SEARCH TEMPLATE testtemplate IS 'This is a text search template comment.'")
+
+			oid := backup.OidFromObjectName(connection, "public", "testtemplate", backup.TSTemplateParams)
+			resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.TSTemplateParams)
+
+			Expect(len(resultMetadataMap)).To(Equal(numTextSearchTemplates + 1))
+			resultMetadata := resultMetadataMap[oid]
+			testutils.ExpectStructsToMatch(&templateMetadata, &resultMetadata)
+		})
+		It("returns a slice of default metadata for a text search configuration", func() {
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TSConfigurationParams)
+			numTextSearchConfigurations := len(resultMetadataMap)
+			configurationMetadataMap := testutils.DefaultMetadataMap("TEXT SEARCH CONFIGURATION", false, true, true)
+			configurationMetadata := configurationMetadataMap[1]
+
+			testutils.AssertQueryRuns(connection, `CREATE TEXT SEARCH CONFIGURATION testconfiguration (PARSER = pg_catalog."default");`)
+			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH CONFIGURATION testconfiguration")
+			testutils.AssertQueryRuns(connection, "COMMENT ON TEXT SEARCH CONFIGURATION testconfiguration IS 'This is a text search configuration comment.'")
+
+			oid := backup.OidFromObjectName(connection, "public", "testconfiguration", backup.TSConfigurationParams)
+			resultMetadataMap = backup.GetMetadataForObjectType(connection, backup.TSConfigurationParams)
+
+			Expect(len(resultMetadataMap)).To(Equal(numTextSearchConfigurations + 1))
+			resultMetadata := resultMetadataMap[oid]
+			testutils.ExpectStructsToMatch(&configurationMetadata, &resultMetadata)
+		})
 	})
 })
