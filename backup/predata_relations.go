@@ -84,19 +84,6 @@ func GetUniqueSchemas(schemas []Schema, tables []Relation) []Schema {
 	return uniqueSchemas
 }
 
-type ColumnDefinition struct {
-	Num        int
-	Name       string
-	NotNull    bool
-	HasDefault bool
-	IsDropped  bool
-	TypeName   string
-	Encoding   string
-	StatTarget int
-	Comment    string
-	DefaultVal string
-}
-
 type TableDefinition struct {
 	DistPolicy      string
 	PartDef         string
@@ -113,63 +100,31 @@ type TableDefinition struct {
  * single table and assembles the metadata into ColumnDef and TableDef structs
  * for more convenient handling in the PrintCreateTableStatement() function.
  */
-func ConstructDefinitionsForTable(connection *utils.DBConn, table Relation, isExternal bool) TableDefinition {
-	tableAttributes := GetTableAttributes(connection, table.RelationOid)
-	tableDefaults := GetTableDefaults(connection, table.RelationOid)
+func ConstructDefinitionsForTables(connection *utils.DBConn, tables []Relation) map[uint32]TableDefinition {
+	tableDefinitionMap := make(map[uint32]TableDefinition, 0)
 
-	distributionPolicy := GetDistributionPolicy(connection, table.RelationOid)
-	partitionDef := GetPartition(connection, table.RelationOid)
-	partTemplateDef := GetPartitionTemplate(connection, table.RelationOid)
-	storageOptions := GetStorageOptions(connection, table.RelationOid)
-	tablespaceName := GetTablespaceName(connection, table.RelationOid)
+	columnDefs := GetColumnDefinitions(connection)
+	distributionPolicies := GetDistributionPolicies(connection, tables)
+	partitionDefs := GetPartitionDefinitions(connection)
+	partTemplateDefs := GetPartitionTemplates(connection)
+	storageOptions := GetStorageOptions(connection)
+	tablespaceNames := GetTablespaceNames(connection)
+	extTableDefs := GetExternalTableDefinitions(connection)
 
-	columnDefs := ConsolidateColumnInfo(tableAttributes, tableDefaults)
-	var extTableDef ExternalTableDefinition
-	if isExternal {
-		extTableDef = GetExternalTableDefinition(connection, table.RelationOid)
-	}
-	tableDef := TableDefinition{distributionPolicy, partitionDef, partTemplateDef, storageOptions, tablespaceName, columnDefs, isExternal, extTableDef}
-	return tableDef
-}
-
-/*
- * This function zips up table attributes and column default information into
- * one struct, instead of performing an expensive join to get everything in
- * a single query.
- */
-func ConsolidateColumnInfo(atts []TableAttributes, defs []TableDefault) []ColumnDefinition {
-	colDefs := make([]ColumnDefinition, 0)
-	/*
-	 * The queries to get attributes and defaults ORDER BY oid and then attribute
-	 * number, so we can assume the arrays are in the same order without sorting.
-	 */
-	j := 0
-	for i := range atts {
-		defaultVal := ""
-		if atts[i].HasDefault {
-			for j < len(defs) {
-				if atts[i].AttNum == defs[j].AdNum {
-					defaultVal = defs[j].DefaultVal
-					break
-				}
-				j++
-			}
+	for _, table := range tables {
+		oid := table.RelationOid
+		tableDefinitionMap[oid] = TableDefinition{
+			distributionPolicies[oid],
+			partitionDefs[oid],
+			partTemplateDefs[oid],
+			storageOptions[oid],
+			tablespaceNames[oid],
+			columnDefs[oid],
+			(extTableDefs[oid].Oid != 0),
+			extTableDefs[oid],
 		}
-		colDef := ColumnDefinition{
-			Num:        atts[i].AttNum,
-			Name:       atts[i].Name,
-			NotNull:    atts[i].NotNull,
-			HasDefault: atts[i].HasDefault,
-			IsDropped:  atts[i].IsDropped,
-			TypeName:   atts[i].TypeName,
-			Encoding:   atts[i].Encoding,
-			StatTarget: atts[i].StatTarget,
-			Comment:    atts[i].Comment,
-			DefaultVal: defaultVal,
-		}
-		colDefs = append(colDefs, colDef)
 	}
-	return colDefs
+	return tableDefinitionMap
 }
 
 /*

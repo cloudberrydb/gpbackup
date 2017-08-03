@@ -26,7 +26,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		)
 		BeforeEach(func() {
 			extTable = backup.ExternalTableDefinition{
-				0, backup.FILE, "file://tmp/ext_table_file", "ALL_SEGMENTS",
+				0, 0, backup.FILE, "file://tmp/ext_table_file", "ALL_SEGMENTS",
 				"t", "delimiter '	' null '\\N' escape '\\'", "", "",
 				0, "", "", "UTF8", false, []string{"file://tmp/ext_table_file"}}
 			testTable = backup.BasicRelation("public", "testtable")
@@ -46,11 +46,12 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
-			resultTableDef := backup.GetExternalTableDefinition(connection, testTable.RelationOid)
+			oid := backup.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
+			resultTableDefs := backup.GetExternalTableDefinitions(connection)
+			resultTableDef := resultTableDefs[oid]
 			resultTableDef.Type, resultTableDef.Protocol = backup.DetermineExternalTableCharacteristics(resultTableDef)
 
-			testutils.ExpectStructsToMatch(&extTable, &resultTableDef)
+			testutils.ExpectStructsToMatchExcluding(&extTable, &resultTableDef, "Oid")
 		})
 		It("creates a WRITABLE EXTERNAL table", func() {
 			extTable.Type = backup.WRITABLE
@@ -64,11 +65,12 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
-			resultTableDef := backup.GetExternalTableDefinition(connection, testTable.RelationOid)
+			oid := backup.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
+			resultTableDefs := backup.GetExternalTableDefinitions(connection)
+			resultTableDef := resultTableDefs[oid]
 			resultTableDef.Type, resultTableDef.Protocol = backup.DetermineExternalTableCharacteristics(resultTableDef)
 
-			testutils.ExpectStructsToMatch(&extTable, &resultTableDef)
+			testutils.ExpectStructsToMatchExcluding(&extTable, &resultTableDef, "Oid")
 		})
 	})
 	Describe("PrintCreateExternalProtocolStatements", func() {

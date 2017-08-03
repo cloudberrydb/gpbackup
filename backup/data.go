@@ -14,11 +14,10 @@ var (
 	tableDelim = ","
 )
 
-func WriteTableMapFile(tables []Relation, extTableMap map[string]bool) {
+func WriteTableMapFile(tables []Relation, tableDefs map[uint32]TableDefinition) {
 	tableMapFile := utils.MustOpenFileForWriting(utils.GetTableMapFilePath())
 	for _, table := range tables {
-		isExternal := extTableMap[table.ToString()]
-		if !isExternal {
+		if !tableDefs[table.RelationOid].IsExternal {
 			utils.MustPrintf(tableMapFile, "%s: %d\n", table.ToString(), table.RelationOid)
 		}
 	}

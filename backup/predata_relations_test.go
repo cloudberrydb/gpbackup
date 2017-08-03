@@ -5,7 +5,6 @@ import (
 	"github.com/greenplum-db/gpbackup/testutils"
 
 	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 )
 
@@ -17,8 +16,8 @@ var _ = Describe("backup/predata_relations tests", func() {
 	distSingle := "DISTRIBUTED BY (i)"
 	distComposite := "DISTRIBUTED BY (i, j)"
 
-	rowOne := backup.ColumnDefinition{1, "i", false, false, false, "integer", "", -1, "", ""}
-	rowTwo := backup.ColumnDefinition{2, "j", false, false, false, "character varying(20)", "", -1, "", ""}
+	rowOne := backup.ColumnDefinition{0, 1, "i", false, false, false, "integer", "", -1, "", ""}
+	rowTwo := backup.ColumnDefinition{1, 2, "j", false, false, false, "character varying(20)", "", -1, "", ""}
 
 	heapOpts := ""
 	aoOpts := "appendonly=true"
@@ -29,7 +28,7 @@ var _ = Describe("backup/predata_relations tests", func() {
 	partDefEmpty := ""
 	partTemplateDefEmpty := ""
 	colDefsEmpty := []backup.ColumnDefinition{}
-	extTableEmpty := backup.ExternalTableDefinition{-2, -2, "", "ALL_SEGMENTS", "t", "", "", "", 0, "", "", "UTF-8", false, nil}
+	extTableEmpty := backup.ExternalTableDefinition{0, -2, -2, "", "ALL_SEGMENTS", "t", "", "", "", 0, "", "", "UTF-8", false, nil}
 
 	partDef := `PARTITION BY LIST(gender)
 	(
@@ -69,17 +68,17 @@ ENCODING 'UTF-8';`)
 		})
 	})
 	Describe("PrintRegularTableCreateStatement", func() {
-		rowDropped := backup.ColumnDefinition{2, "j", false, false, true, "character varying(20)", "", -1, "", ""}
-		rowOneEncoding := backup.ColumnDefinition{1, "i", false, false, false, "integer", "compresstype=none,blocksize=32768,compresslevel=0", -1, "", ""}
-		rowTwoEncoding := backup.ColumnDefinition{2, "j", false, false, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", -1, "", ""}
-		rowNotNull := backup.ColumnDefinition{2, "j", true, false, false, "character varying(20)", "", -1, "", ""}
-		rowEncodingNotNull := backup.ColumnDefinition{2, "j", true, false, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", -1, "", ""}
-		rowOneDef := backup.ColumnDefinition{1, "i", false, true, false, "integer", "", -1, "", "42"}
-		rowTwoDef := backup.ColumnDefinition{2, "j", false, true, false, "character varying(20)", "", -1, "", "'bar'::text"}
-		rowTwoEncodingDef := backup.ColumnDefinition{2, "j", false, true, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", -1, "", "'bar'::text"}
-		rowNotNullDef := backup.ColumnDefinition{2, "j", true, true, false, "character varying(20)", "", -1, "", "'bar'::text"}
-		rowEncodingNotNullDef := backup.ColumnDefinition{2, "j", true, true, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", -1, "", "'bar'::text"}
-		rowStats := backup.ColumnDefinition{1, "i", false, false, false, "integer", "", 3, "", ""}
+		rowDropped := backup.ColumnDefinition{0, 2, "j", false, false, true, "character varying(20)", "", -1, "", ""}
+		rowOneEncoding := backup.ColumnDefinition{0, 1, "i", false, false, false, "integer", "compresstype=none,blocksize=32768,compresslevel=0", -1, "", ""}
+		rowTwoEncoding := backup.ColumnDefinition{0, 2, "j", false, false, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", -1, "", ""}
+		rowNotNull := backup.ColumnDefinition{0, 2, "j", true, false, false, "character varying(20)", "", -1, "", ""}
+		rowEncodingNotNull := backup.ColumnDefinition{0, 2, "j", true, false, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", -1, "", ""}
+		rowOneDef := backup.ColumnDefinition{0, 1, "i", false, true, false, "integer", "", -1, "42", ""}
+		rowTwoDef := backup.ColumnDefinition{0, 2, "j", false, true, false, "character varying(20)", "", -1, "'bar'::text", ""}
+		rowTwoEncodingDef := backup.ColumnDefinition{0, 2, "j", false, true, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", -1, "'bar'::text", ""}
+		rowNotNullDef := backup.ColumnDefinition{0, 2, "j", true, true, false, "character varying(20)", "", -1, "'bar'::text", ""}
+		rowEncodingNotNullDef := backup.ColumnDefinition{0, 2, "j", true, true, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", -1, "'bar'::text", ""}
+		rowStats := backup.ColumnDefinition{0, 1, "i", false, false, false, "integer", "", 3, "", ""}
 
 		Context("No special table attributes", func() {
 			It("prints a CREATE TABLE block with one line", func() {
@@ -416,8 +415,8 @@ SET SUBPARTITION TEMPLATE
 	})
 	Describe("PrintPostCreateTableStatements", func() {
 		testTable := backup.BasicRelation("public", "tablename")
-		rowCommentOne := backup.ColumnDefinition{1, "i", false, false, false, "integer", "", -1, "This is a column comment.", ""}
-		rowCommentTwo := backup.ColumnDefinition{2, "j", false, false, false, "integer", "", -1, "This is another column comment.", ""}
+		rowCommentOne := backup.ColumnDefinition{0, 1, "i", false, false, false, "integer", "", -1, "", "This is a column comment."}
+		rowCommentTwo := backup.ColumnDefinition{0, 2, "j", false, false, false, "integer", "", -1, "", "This is another column comment."}
 
 		It("prints a block with a table comment", func() {
 			col := []backup.ColumnDefinition{rowOne}
@@ -473,82 +472,6 @@ COMMENT ON COLUMN public.tablename.i IS 'This is a column comment.';
 
 
 COMMENT ON COLUMN public.tablename.j IS 'This is another column comment.';`)
-		})
-	})
-	Describe("ConsolidateColumnInfo", func() {
-		attsOne := backup.TableAttributes{1, "i", false, false, false, "integer", "", -1, ""}
-		attsTwo := backup.TableAttributes{2, "j", false, false, false, "integer", "", -1, ""}
-		attsThree := backup.TableAttributes{3, "k", false, false, false, "integer", "", -1, ""}
-		attsOneDef := backup.TableAttributes{1, "i", false, true, false, "integer", "", -1, ""}
-		attsTwoDef := backup.TableAttributes{2, "j", false, true, false, "integer", "", -1, ""}
-		attsThreeDef := backup.TableAttributes{3, "k", false, true, false, "integer", "", -1, ""}
-
-		defaultsOne := backup.TableDefault{1, "1"}
-		defaultsTwo := backup.TableDefault{2, "2"}
-		defaultsThree := backup.TableDefault{3, "3"}
-		It("has no DEFAULT columns", func() {
-			atts := []backup.TableAttributes{attsOne, attsTwo, attsThree}
-			defaults := []backup.TableDefault{}
-			info := backup.ConsolidateColumnInfo(atts, defaults)
-			Expect(info[0].DefaultVal).To(Equal(""))
-			Expect(info[1].DefaultVal).To(Equal(""))
-			Expect(info[2].DefaultVal).To(Equal(""))
-		})
-		It("has one DEFAULT column (i)", func() {
-			atts := []backup.TableAttributes{attsOneDef, attsTwo, attsThree}
-			defaults := []backup.TableDefault{defaultsOne}
-			info := backup.ConsolidateColumnInfo(atts, defaults)
-			Expect(info[0].DefaultVal).To(Equal("1"))
-			Expect(info[1].DefaultVal).To(Equal(""))
-			Expect(info[2].DefaultVal).To(Equal(""))
-		})
-		It("has one DEFAULT column (j)", func() {
-			atts := []backup.TableAttributes{attsOne, attsTwoDef, attsThree}
-			defaults := []backup.TableDefault{defaultsTwo}
-			info := backup.ConsolidateColumnInfo(atts, defaults)
-			Expect(info[0].DefaultVal).To(Equal(""))
-			Expect(info[1].DefaultVal).To(Equal("2"))
-			Expect(info[2].DefaultVal).To(Equal(""))
-		})
-		It("has one DEFAULT column (k)", func() {
-			atts := []backup.TableAttributes{attsOne, attsTwo, attsThreeDef}
-			defaults := []backup.TableDefault{defaultsThree}
-			info := backup.ConsolidateColumnInfo(atts, defaults)
-			Expect(info[0].DefaultVal).To(Equal(""))
-			Expect(info[1].DefaultVal).To(Equal(""))
-			Expect(info[2].DefaultVal).To(Equal("3"))
-		})
-		It("has two DEFAULT columns (i and j)", func() {
-			atts := []backup.TableAttributes{attsOneDef, attsTwoDef, attsThree}
-			defaults := []backup.TableDefault{defaultsOne, defaultsTwo}
-			info := backup.ConsolidateColumnInfo(atts, defaults)
-			Expect(info[0].DefaultVal).To(Equal("1"))
-			Expect(info[1].DefaultVal).To(Equal("2"))
-			Expect(info[2].DefaultVal).To(Equal(""))
-		})
-		It("has two DEFAULT columns (j and k)", func() {
-			atts := []backup.TableAttributes{attsOne, attsTwoDef, attsThreeDef}
-			defaults := []backup.TableDefault{defaultsTwo, defaultsThree}
-			info := backup.ConsolidateColumnInfo(atts, defaults)
-			Expect(info[0].DefaultVal).To(Equal(""))
-			Expect(info[1].DefaultVal).To(Equal("2"))
-			Expect(info[2].DefaultVal).To(Equal("3"))
-		})
-		It("has two DEFAULT columns (i and k)", func() {
-			atts := []backup.TableAttributes{attsOneDef, attsTwo, attsThreeDef}
-			defaults := []backup.TableDefault{defaultsOne, defaultsThree}
-			info := backup.ConsolidateColumnInfo(atts, defaults)
-			Expect(info[0].DefaultVal).To(Equal("1"))
-			Expect(info[1].DefaultVal).To(Equal(""))
-			Expect(info[2].DefaultVal).To(Equal("3"))
-		})
-		It("has all DEFAULT columns", func() {
-			atts := []backup.TableAttributes{attsOneDef, attsTwoDef, attsThreeDef}
-			defaults := []backup.TableDefault{defaultsOne, defaultsTwo, defaultsThree}
-			info := backup.ConsolidateColumnInfo(atts, defaults)
-			Expect(info[0].DefaultVal).To(Equal("1"))
-			Expect(info[1].DefaultVal).To(Equal("2"))
-			Expect(info[2].DefaultVal).To(Equal("3"))
 		})
 	})
 	Describe("PrintCreateSequenceStatements", func() {

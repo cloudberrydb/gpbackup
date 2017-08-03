@@ -68,7 +68,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 `
 		)
 		BeforeEach(func() {
-			extTableEmpty = backup.ExternalTableDefinition{-2, -2, "", "ALL_SEGMENTS", "t", "", "", "", 0, "", "", "UTF-8", false, nil}
+			extTableEmpty = backup.ExternalTableDefinition{0, -2, -2, "", "ALL_SEGMENTS", "t", "", "", "", 0, "", "", "UTF-8", false, nil}
 			testTable = backup.BasicRelation("public", "testtable")
 			tableDef = backup.TableDefinition{DistPolicy: "DISTRIBUTED RANDOMLY", ExtTableDef: extTableEmpty}
 		})
@@ -77,30 +77,28 @@ SET SUBPARTITION TEMPLATE  ` + `
 			testutils.AssertQueryRuns(connection, "DROP TABLE IF EXISTS public.testtable")
 		})
 		It("creates a table with no attributes", func() {
-			tableDef.ColumnDefs = []backup.ColumnDefinition{}
-
 			backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
-			resultTableDef := backup.ConstructDefinitionsForTable(connection, testTable, false)
-			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ExtTableDef")
+			resultTableDef := backup.ConstructDefinitionsForTables(connection, []backup.Relation{testTable})[testTable.RelationOid]
+			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ColumnDefs.Oid", "ExtTableDef")
 		})
 		It("creates a basic heap table", func() {
-			rowOne := backup.ColumnDefinition{1, "i", false, false, false, "integer", "", -1, "", ""}
-			rowTwo := backup.ColumnDefinition{2, "j", false, false, false, "character varying(20)", "", -1, "", ""}
+			rowOne := backup.ColumnDefinition{0, 1, "i", false, false, false, "integer", "", -1, "", ""}
+			rowTwo := backup.ColumnDefinition{0, 2, "j", false, false, false, "character varying(20)", "", -1, "", ""}
 			tableDef.ColumnDefs = []backup.ColumnDefinition{rowOne, rowTwo}
 
 			backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
-			resultTableDef := backup.ConstructDefinitionsForTable(connection, testTable, false)
-			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ExtTableDef")
+			resultTableDef := backup.ConstructDefinitionsForTables(connection, []backup.Relation{testTable})[testTable.RelationOid]
+			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ColumnDefs.Oid", "ExtTableDef")
 		})
 		It("creates a complex heap table", func() {
-			rowOneDefault := backup.ColumnDefinition{1, "i", false, true, false, "integer", "", -1, "", "42"}
-			rowNotNullDefault := backup.ColumnDefinition{2, "j", true, true, false, "character varying(20)", "", -1, "", "'bar'::text"}
+			rowOneDefault := backup.ColumnDefinition{0, 1, "i", false, true, false, "integer", "", -1, "42", ""}
+			rowNotNullDefault := backup.ColumnDefinition{0, 2, "j", true, true, false, "character varying(20)", "", -1, "'bar'::text", ""}
 			tableDef.DistPolicy = "DISTRIBUTED BY (i, j)"
 			tableDef.ColumnDefs = []backup.ColumnDefinition{rowOneDefault, rowNotNullDefault}
 
@@ -108,12 +106,12 @@ SET SUBPARTITION TEMPLATE  ` + `
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
-			resultTableDef := backup.ConstructDefinitionsForTable(connection, testTable, false)
-			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ExtTableDef")
+			resultTableDef := backup.ConstructDefinitionsForTables(connection, []backup.Relation{testTable})[testTable.RelationOid]
+			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ColumnDefs.Oid", "ExtTableDef")
 		})
 		It("creates a basic append-optimized column-oriented table", func() {
-			rowOne := backup.ColumnDefinition{1, "i", false, false, false, "integer", "compresstype=zlib,blocksize=32768,compresslevel=1", -1, "", ""}
-			rowTwo := backup.ColumnDefinition{2, "j", false, false, false, "character varying(20)", "compresstype=zlib,blocksize=32768,compresslevel=1", -1, "", ""}
+			rowOne := backup.ColumnDefinition{0, 1, "i", false, false, false, "integer", "compresstype=zlib,blocksize=32768,compresslevel=1", -1, "", ""}
+			rowTwo := backup.ColumnDefinition{0, 2, "j", false, false, false, "character varying(20)", "compresstype=zlib,blocksize=32768,compresslevel=1", -1, "", ""}
 			tableDef.StorageOpts = "appendonly=true, orientation=column, fillfactor=42, compresstype=zlib, blocksize=32768, compresslevel=1"
 			tableDef.ColumnDefs = []backup.ColumnDefinition{rowOne, rowTwo}
 
@@ -121,12 +119,12 @@ SET SUBPARTITION TEMPLATE  ` + `
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
-			resultTableDef := backup.ConstructDefinitionsForTable(connection, testTable, false)
-			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ExtTableDef")
+			resultTableDef := backup.ConstructDefinitionsForTables(connection, []backup.Relation{testTable})[testTable.RelationOid]
+			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ColumnDefs.Oid", "ExtTableDef")
 		})
 		It("creates a one-level partition table", func() {
-			rowOne := backup.ColumnDefinition{1, "region", false, false, false, "text", "", -1, "", ""}
-			rowTwo := backup.ColumnDefinition{2, "gender", false, false, false, "text", "", -1, "", ""}
+			rowOne := backup.ColumnDefinition{0, 1, "region", false, false, false, "text", "", -1, "", ""}
+			rowTwo := backup.ColumnDefinition{0, 2, "gender", false, false, false, "text", "", -1, "", ""}
 			tableDef.PartDef = partitionDef
 			tableDef.ColumnDefs = []backup.ColumnDefinition{rowOne, rowTwo}
 
@@ -134,12 +132,12 @@ SET SUBPARTITION TEMPLATE  ` + `
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
-			resultTableDef := backup.ConstructDefinitionsForTable(connection, testTable, false)
-			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ExtTableDef")
+			resultTableDef := backup.ConstructDefinitionsForTables(connection, []backup.Relation{testTable})[testTable.RelationOid]
+			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ColumnDefs.Oid", "ExtTableDef")
 		})
 		It("creates a two-level partition table", func() {
-			rowOne := backup.ColumnDefinition{1, "region", false, false, false, "text", "", -1, "", ""}
-			rowTwo := backup.ColumnDefinition{2, "gender", false, false, false, "text", "", -1, "", ""}
+			rowOne := backup.ColumnDefinition{0, 1, "region", false, false, false, "text", "", -1, "", ""}
+			rowTwo := backup.ColumnDefinition{0, 2, "gender", false, false, false, "text", "", -1, "", ""}
 			tableDef.PartDef = subpartitionDef
 			tableDef.PartTemplateDef = partTemplateDef
 			tableDef.ColumnDefs = []backup.ColumnDefinition{rowOne, rowTwo}
@@ -148,12 +146,11 @@ SET SUBPARTITION TEMPLATE  ` + `
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
-			resultTableDef := backup.ConstructDefinitionsForTable(connection, testTable, false)
-			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ExtTableDef")
+			resultTableDef := backup.ConstructDefinitionsForTables(connection, []backup.Relation{testTable})[testTable.RelationOid]
+			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ColumnDefs.Oid", "ExtTableDef")
 		})
 		It("creates a table with a non-default tablespace", func() {
 			testTable = backup.BasicRelation("public", "testtable2")
-			tableDef.ColumnDefs = []backup.ColumnDefinition{}
 			testutils.AssertQueryRuns(connection, "CREATE TABLESPACE test_tablespace FILESPACE test_filespace")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")
 			tableDef.TablespaceName = "test_tablespace"
@@ -163,8 +160,8 @@ SET SUBPARTITION TEMPLATE  ` + `
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable2", backup.TYPE_RELATION)
-			resultTableDef := backup.ConstructDefinitionsForTable(connection, testTable, false)
-			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ExtTableDef")
+			resultTableDef := backup.ConstructDefinitionsForTables(connection, []backup.Relation{testTable})[testTable.RelationOid]
+			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ColumnDefs.Oid", "ExtTableDef")
 		})
 		It("creates a table that inherits from one table", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE public.parent (i int)")
@@ -208,9 +205,9 @@ SET SUBPARTITION TEMPLATE  ` + `
 	})
 	Describe("PrintPostCreateTableStatements", func() {
 		var (
-			extTableEmpty = backup.ExternalTableDefinition{-2, -2, "", "ALL_SEGMENTS", "t", "", "", "", 0, "", "", "UTF-8", false, nil}
+			extTableEmpty = backup.ExternalTableDefinition{0, -2, -2, "", "ALL_SEGMENTS", "t", "", "", "", 0, "", "", "UTF-8", false, nil}
 			testTable     = backup.BasicRelation("public", "testtable")
-			tableRow      = backup.ColumnDefinition{1, "i", false, false, false, "integer", "", -1, "", ""}
+			tableRow      = backup.ColumnDefinition{0, 1, "i", false, false, false, "integer", "", -1, "", ""}
 			tableDef      = backup.TableDefinition{DistPolicy: "DISTRIBUTED BY (i)", ColumnDefs: []backup.ColumnDefinition{tableRow}, ExtTableDef: extTableEmpty}
 			tableMetadata backup.ObjectMetadata
 		)
@@ -230,8 +227,8 @@ SET SUBPARTITION TEMPLATE  ` + `
 			resultMetadata := backup.GetMetadataForObjectType(connection, backup.TYPE_RELATION)
 			resultTableMetadata := resultMetadata[testTable.RelationOid]
 			testutils.ExpectStructsToMatch(&tableMetadata, &resultTableMetadata)
-			resultTableDef := backup.ConstructDefinitionsForTable(connection, testTable, false)
-			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ExtTableDef")
+			resultTableDef := backup.ConstructDefinitionsForTables(connection, []backup.Relation{testTable})[testTable.RelationOid]
+			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ColumnDefs.Oid", "ExtTableDef")
 		})
 		It("prints table comment, table owner, and column comments for a table with all three", func() {
 			tableMetadata.Owner = "testrole"
@@ -241,8 +238,8 @@ SET SUBPARTITION TEMPLATE  ` + `
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			testTable.RelationOid = backup.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
-			resultTableDef := backup.ConstructDefinitionsForTable(connection, testTable, false)
-			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ExtTableDef")
+			resultTableDef := backup.ConstructDefinitionsForTables(connection, []backup.Relation{testTable})[testTable.RelationOid]
+			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ColumnDefs.Oid", "ExtTableDef")
 			resultMetadata := backup.GetMetadataForObjectType(connection, backup.TYPE_RELATION)
 			resultTableMetadata := resultMetadata[testTable.RelationOid]
 			testutils.ExpectStructsToMatch(&tableMetadata, &resultTableMetadata)

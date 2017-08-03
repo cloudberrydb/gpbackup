@@ -21,7 +21,7 @@ var _ = Describe("backup/predata_externals tests", func() {
 	partDefEmpty := ""
 	partTemplateDefEmpty := ""
 	colDefsEmpty := []backup.ColumnDefinition{}
-	extTableEmpty := backup.ExternalTableDefinition{-2, -2, "", "ALL_SEGMENTS", "t", "", "", "", 0, "", "", "UTF-8", false, nil}
+	extTableEmpty := backup.ExternalTableDefinition{0, -2, -2, "", "ALL_SEGMENTS", "t", "", "", "", 0, "", "", "UTF-8", false, nil}
 
 	Describe("DetermineExternalTableCharacteristics", func() {
 		var extTableDef backup.ExternalTableDefinition
@@ -70,7 +70,7 @@ var _ = Describe("backup/predata_externals tests", func() {
 			})
 		})
 		DescribeTable("Protocol classification", func(location string, expectedType int, expectedProto int) {
-			extTableDef := backup.ExternalTableDefinition{-2, -2, "", "ALL_SEGMENTS", "t", "", "", "", 0, "", "", "UTF-8", false, nil}
+			extTableDef := extTableEmpty
 			extTableDef.Location = location
 			typ, proto := backup.DetermineExternalTableCharacteristics(extTableDef)
 			Expect(typ).To(Equal(expectedType))

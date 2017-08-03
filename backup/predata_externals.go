@@ -29,6 +29,7 @@ const (
 )
 
 type ExternalTableDefinition struct {
+	Oid             uint32
 	Type            int
 	Protocol        int
 	Location        string

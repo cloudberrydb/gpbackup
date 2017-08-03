@@ -48,7 +48,7 @@ PARTITION BY LIST (gender)
 			testutils.ExpectStructsToMatchExcluding(&tableRank, &tables[0], "SchemaOid", "RelationOid")
 		})
 	})
-	Describe("GetTableAttributes", func() {
+	Describe("GetColumnDefinitions", func() {
 		It("returns table attribute information for a heap table", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE atttable(a float, b text, c text NOT NULL, d int DEFAULT(5))")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE atttable")
@@ -56,105 +56,82 @@ PARTITION BY LIST (gender)
 			testutils.AssertQueryRuns(connection, "ALTER TABLE atttable DROP COLUMN b")
 			oid := backup.OidFromObjectName(connection, "public", "atttable", backup.TYPE_RELATION)
 
-			tableAtts := backup.GetTableAttributes(connection, oid)
+			tableAtts := backup.GetColumnDefinitions(connection)[oid]
 
-			columnA := backup.TableAttributes{1, "a", false, false, false, "double precision", "", -1, "att comment"}
-			columnC := backup.TableAttributes{3, "c", true, false, false, "text", "", -1, ""}
-			columnD := backup.TableAttributes{4, "d", false, true, false, "integer", "", -1, ""}
+			columnA := backup.ColumnDefinition{0, 1, "a", false, false, false, "double precision", "", -1, "", "att comment"}
+			columnC := backup.ColumnDefinition{0, 3, "c", true, false, false, "text", "", -1, "", ""}
+			columnD := backup.ColumnDefinition{0, 4, "d", false, true, false, "integer", "", -1, "5", ""}
 
 			Expect(len(tableAtts)).To(Equal(3))
 
-			testutils.ExpectStructsToMatch(&columnA, &tableAtts[0])
-			testutils.ExpectStructsToMatch(&columnC, &tableAtts[1])
-			testutils.ExpectStructsToMatch(&columnD, &tableAtts[2])
+			testutils.ExpectStructsToMatchExcluding(&columnA, &tableAtts[0], "Oid")
+			testutils.ExpectStructsToMatchExcluding(&columnC, &tableAtts[1], "Oid")
+			testutils.ExpectStructsToMatchExcluding(&columnD, &tableAtts[2], "Oid")
 		})
 		It("returns table attributes including encoding for a column oriented table", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE co_atttable(a float, b text ENCODING(blocksize=65536)) WITH (appendonly=true, orientation=column)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE co_atttable")
 			oid := backup.OidFromObjectName(connection, "public", "co_atttable", backup.TYPE_RELATION)
 
-			tableAtts := backup.GetTableAttributes(connection, uint32(oid))
+			tableAtts := backup.GetColumnDefinitions(connection)[oid]
 
-			columnA := backup.TableAttributes{1, "a", false, false, false, "double precision", "compresstype=none,blocksize=32768,compresslevel=0", -1, ""}
-			columnB := backup.TableAttributes{2, "b", false, false, false, "text", "blocksize=65536,compresstype=none,compresslevel=0", -1, ""}
+			columnA := backup.ColumnDefinition{0, 1, "a", false, false, false, "double precision", "compresstype=none,blocksize=32768,compresslevel=0", -1, "", ""}
+			columnB := backup.ColumnDefinition{0, 2, "b", false, false, false, "text", "blocksize=65536,compresstype=none,compresslevel=0", -1, "", ""}
 
 			Expect(len(tableAtts)).To(Equal(2))
 
-			testutils.ExpectStructsToMatch(&columnA, &tableAtts[0])
-			testutils.ExpectStructsToMatch(&columnB, &tableAtts[1])
+			testutils.ExpectStructsToMatchExcluding(&columnA, &tableAtts[0], "Oid")
+			testutils.ExpectStructsToMatchExcluding(&columnB, &tableAtts[1], "Oid")
 		})
 		It("returns an empty attribute array for a table with no columns", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE nocol_atttable()")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE nocol_atttable")
 			oid := backup.OidFromObjectName(connection, "public", "nocol_atttable", backup.TYPE_RELATION)
 
-			tableAtts := backup.GetTableAttributes(connection, uint32(oid))
+			tableAtts := backup.GetColumnDefinitions(connection)[oid]
 
 			Expect(len(tableAtts)).To(Equal(0))
 		})
 	})
-	Describe("GetTableDefaults", func() {
-		It("only returns defaults for columns that have them", func() {
-			testutils.AssertQueryRuns(connection, "CREATE TABLE default_table(a text DEFAULT('default text'), b float, c int DEFAULT(5))")
-			defer testutils.AssertQueryRuns(connection, "DROP TABLE default_table")
-			oid := backup.OidFromObjectName(connection, "public", "default_table", backup.TYPE_RELATION)
-
-			defaults := backup.GetTableDefaults(connection, oid)
-
-			Expect(len(defaults)).To(Equal(2))
-
-			Expect(defaults[0].AdNum).To(Equal(1))
-			Expect(defaults[0].DefaultVal).To(Equal("'default text'::text"))
-
-			Expect(defaults[1].AdNum).To(Equal(3))
-			Expect(defaults[1].DefaultVal).To(Equal("5"))
-		})
-		It("returns an empty default array for a table with no defaults", func() {
-			testutils.AssertQueryRuns(connection, "CREATE TABLE nodefault_table(a text, b float, c int)")
-			defer testutils.AssertQueryRuns(connection, "DROP TABLE nodefault_table")
-			oid := backup.OidFromObjectName(connection, "public", "nodefault_table", backup.TYPE_RELATION)
-
-			defaults := backup.GetTableDefaults(connection, oid)
-
-			Expect(len(defaults)).To(Equal(0))
-		})
-	})
-	Describe("GetDistributionPolicy", func() {
+	Describe("GetDistributionPolicies", func() {
 		It("returns distribution policy info for a table DISTRIBUTED RANDOMLY", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE dist_random(a int, b text) DISTRIBUTED RANDOMLY")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE dist_random")
 			oid := backup.OidFromObjectName(connection, "public", "dist_random", backup.TYPE_RELATION)
 
-			distPolicy := backup.GetDistributionPolicy(connection, oid)
+			tables := []backup.Relation{{RelationOid: oid}}
+			distPolicies := backup.GetDistributionPolicies(connection, tables)[oid]
 
-			Expect(distPolicy).To(Equal("DISTRIBUTED RANDOMLY"))
+			Expect(distPolicies).To(Equal("DISTRIBUTED RANDOMLY"))
 		})
 		It("returns distribution policy info for a table DISTRIBUTED BY one column", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE dist_one(a int, b text) DISTRIBUTED BY (a)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE dist_one")
 			oid := backup.OidFromObjectName(connection, "public", "dist_one", backup.TYPE_RELATION)
 
-			distPolicy := backup.GetDistributionPolicy(connection, oid)
+			tables := []backup.Relation{{RelationOid: oid}}
+			distPolicies := backup.GetDistributionPolicies(connection, tables)[oid]
 
-			Expect(distPolicy).To(Equal("DISTRIBUTED BY (a)"))
+			Expect(distPolicies).To(Equal("DISTRIBUTED BY (a)"))
 		})
 		It("returns distribution policy info for a table DISTRIBUTED BY two columns", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE dist_two(a int, b text) DISTRIBUTED BY (a, b)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE dist_two")
 			oid := backup.OidFromObjectName(connection, "public", "dist_two", backup.TYPE_RELATION)
 
-			distPolicy := backup.GetDistributionPolicy(connection, oid)
+			tables := []backup.Relation{{RelationOid: oid}}
+			distPolicies := backup.GetDistributionPolicies(connection, tables)[oid]
 
-			Expect(distPolicy).To(Equal("DISTRIBUTED BY (a, b)"))
+			Expect(distPolicies).To(Equal("DISTRIBUTED BY (a, b)"))
 		})
 	})
-	Describe("GetPartitionDefinition", func() {
+	Describe("GetPartitionDefinitions", func() {
 		It("returns empty string when no partition exists", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
 			oid := backup.OidFromObjectName(connection, "public", "simple_table", backup.TYPE_RELATION)
 
-			result := backup.GetPartition(connection, oid)
+			result := backup.GetPartitionDefinitions(connection)[oid]
 
 			Expect(result).To(Equal(""))
 		})
@@ -170,7 +147,7 @@ PARTITION BY LIST (gender)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE part_table")
 			oid := backup.OidFromObjectName(connection, "public", "part_table", backup.TYPE_RELATION)
 
-			result := backup.GetPartition(connection, oid)
+			result := backup.GetPartitionDefinitions(connection)[oid]
 
 			// The spacing is very specific here and is output from the postgres function
 			expectedResult := `PARTITION BY LIST(gender) 
@@ -182,13 +159,13 @@ PARTITION BY LIST (gender)
 			Expect(result).To(Equal(expectedResult))
 		})
 	})
-	Describe("GetPartitionDefinitionTemplate", func() {
+	Describe("GetPartitionTemplates", func() {
 		It("returns empty string when no partition definition template exists", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
 			oid := backup.OidFromObjectName(connection, "public", "simple_table", backup.TYPE_RELATION)
 
-			result := backup.GetPartitionTemplate(connection, oid)
+			result := backup.GetPartitionTemplates(connection)[oid]
 
 			Expect(result).To(Equal(""))
 		})
@@ -208,7 +185,7 @@ PARTITION BY LIST (gender)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE part_table")
 			oid := backup.OidFromObjectName(connection, "public", "part_table", backup.TYPE_RELATION)
 
-			result := backup.GetPartitionTemplate(connection, oid)
+			result := backup.GetPartitionTemplates(connection)[oid]
 
 			// The spacing is very specific here and is output from the postgres function
 			expectedResult := `ALTER TABLE part_table 
@@ -230,7 +207,7 @@ SET SUBPARTITION TEMPLATE
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
 			oid := backup.OidFromObjectName(connection, "public", "simple_table", backup.TYPE_RELATION)
 
-			result := backup.GetStorageOptions(connection, oid)
+			result := backup.GetStorageOptions(connection)[oid]
 
 			Expect(result).To(Equal(""))
 		})
@@ -239,7 +216,7 @@ SET SUBPARTITION TEMPLATE
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE ao_table")
 			oid := backup.OidFromObjectName(connection, "public", "ao_table", backup.TYPE_RELATION)
 
-			result := backup.GetStorageOptions(connection, oid)
+			result := backup.GetStorageOptions(connection)[oid]
 
 			Expect(result).To(Equal("appendonly=true"))
 		})

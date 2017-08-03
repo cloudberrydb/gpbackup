@@ -6,8 +6,6 @@ package backup
  */
 
 import (
-	"fmt"
-
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
@@ -38,9 +36,10 @@ ORDER BY schemaname, relationname;`
 	return extTableMap
 }
 
-func GetExternalTableDefinition(connection *utils.DBConn, oid uint32) ExternalTableDefinition {
-	query := fmt.Sprintf(`
+func GetExternalTableDefinitions(connection *utils.DBConn) map[uint32]ExternalTableDefinition {
+	query := `
 SELECT
+	reloid AS oid,
 	unnest(urilocation) AS location,
 	array_to_string(execlocation, ',') AS execlocation,
 	fmttype AS formattype,
@@ -56,22 +55,21 @@ SELECT
 	coalesce((SELECT relname FROM pg_class WHERE oid = fmterrtbl), '') AS errtable,
 	pg_encoding_to_char(encoding) AS encoding,
 	writable
-FROM pg_exttable
-WHERE reloid = %d;`, oid)
+FROM pg_exttable;`
 
 	results := make([]ExternalTableDefinition, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
-	if len(results) == 1 {
-		results[0].URIs = []string{results[0].Location}
-		return results[0]
-	} else if len(results) > 1 {
-		uris := make([]string, 0)
-		for _, ext := range results {
-			uris = append(uris, ext.Location)
+	resultMap := make(map[uint32]ExternalTableDefinition)
+	var extTableDef ExternalTableDefinition
+	for _, result := range results {
+		if resultMap[result.Oid].Oid != 0 {
+			extTableDef = resultMap[result.Oid]
+		} else {
+			extTableDef = result
 		}
-		results[0].URIs = uris
-		return results[0]
+		extTableDef.URIs = append(extTableDef.URIs, result.Location)
+		resultMap[result.Oid] = extTableDef
 	}
-	return ExternalTableDefinition{}
+	return resultMap
 }

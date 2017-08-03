@@ -31,24 +31,24 @@ var _ = Describe("backup/data tests", func() {
 	Describe("WriteTableMapFile", func() {
 		testutils.SetDefaultSegmentConfiguration()
 		tableOne := backup.Relation{0, 1234, "public", "foo", []string{}}
-		tableTwo := backup.Relation{0, 2345, "public", "foo|bar", []string{}}
+		tableTwo := backup.Relation{1, 2345, "public", "foo|bar", []string{}}
 		var (
-			r           *os.File
-			w           *os.File
-			extTableMap map[string]bool
+			r         *os.File
+			w         *os.File
+			tableDefs map[uint32]backup.TableDefinition
 		)
 		BeforeEach(func() {
 			filePath := ""
 			r, w, _ = os.Pipe()
 			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) { filePath = name; return w, nil }
-			extTableMap = map[string]bool{}
+			tableDefs = map[uint32]backup.TableDefinition{}
 		})
 		AfterEach(func() {
 			utils.System.OpenFile = os.OpenFile
 		})
 		It("writes a map file containing one table", func() {
 			tables := []backup.Relation{tableOne}
-			backup.WriteTableMapFile(tables, extTableMap)
+			backup.WriteTableMapFile(tables, tableDefs)
 			w.Close()
 			output, _ := ioutil.ReadAll(r)
 			testutils.ExpectRegex(string(output), `public.foo: 1234
@@ -56,7 +56,7 @@ var _ = Describe("backup/data tests", func() {
 		})
 		It("writes a map file containing multiple tables", func() {
 			tables := []backup.Relation{tableOne, tableTwo}
-			backup.WriteTableMapFile(tables, extTableMap)
+			backup.WriteTableMapFile(tables, tableDefs)
 			w.Close()
 			output, _ := ioutil.ReadAll(r)
 			testutils.ExpectRegex(string(output), `public.foo: 1234
@@ -64,8 +64,8 @@ public."foo|bar": 2345`)
 		})
 		It("does not write external tables to the map file", func() {
 			tables := []backup.Relation{tableOne, tableTwo}
-			extTableMap[`public."foo|bar"`] = true
-			backup.WriteTableMapFile(tables, extTableMap)
+			tableDefs[1] = backup.TableDefinition{IsExternal: true}
+			backup.WriteTableMapFile(tables, tableDefs)
 			w.Close()
 			output, _ := ioutil.ReadAll(r)
 			testutils.ExpectRegex(string(output), `public.foo: 1234`)

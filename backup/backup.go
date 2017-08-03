@@ -89,22 +89,22 @@ func DoBackup() {
 	connection.Exec("SET search_path TO pg_catalog")
 
 	tables := GetAllUserTables(connection)
-	extTableMap := GetExternalTablesMap(connection)
+	tableDefs := ConstructDefinitionsForTables(connection, tables)
 
 	logger.Info("Writing global database metadata to %s", globalFilename)
 	backupGlobal(globalFilename)
 	logger.Info("Global database metadata dump complete")
 
 	logger.Info("Writing pre-data metadata to %s", predataFilename)
-	backupPredata(predataFilename, tables, extTableMap)
+	backupPredata(predataFilename, tables, tableDefs)
 	logger.Info("Pre-data metadata dump complete")
 
 	logger.Info("Writing data to file")
-	backupData(tables, extTableMap)
+	backupData(tables, tableDefs)
 	logger.Info("Data dump complete")
 
 	logger.Info("Writing post-data metadata to %s", postdataFilename)
-	backupPostdata(postdataFilename, tables, extTableMap)
+	backupPostdata(postdataFilename, tables)
 	logger.Info("Post-data metadata dump complete")
 
 	connection.Commit()
@@ -146,7 +146,7 @@ func backupGlobal(filename string) {
 	PrintRoleMembershipStatements(globalFile, roleMembers)
 }
 
-func backupPredata(filename string, tables []Relation, extTableMap map[string]bool) {
+func backupPredata(filename string, tables []Relation, tableDefs map[uint32]TableDefinition) {
 	predataFile := utils.MustOpenFileForWriting(filename)
 	PrintConnectionString(predataFile, connection.DBName)
 
@@ -251,9 +251,7 @@ func backupPredata(filename string, tables []Relation, extTableMap map[string]bo
 	tables = ConstructTableDependencies(connection, tables)
 	tables = SortRelations(tables)
 	for _, table := range tables {
-		isExternal := extTableMap[table.ToString()]
-		tableDef := ConstructDefinitionsForTable(connection, table, isExternal)
-		PrintCreateTableStatement(predataFile, table, tableDef, relationMetadata[table.RelationOid])
+		PrintCreateTableStatement(predataFile, table, tableDefs[table.RelationOid], relationMetadata[table.RelationOid])
 	}
 
 	logger.Verbose("Writing ALTER SEQUENCE statements to predata file")
@@ -272,18 +270,18 @@ func backupPredata(filename string, tables []Relation, extTableMap map[string]bo
 	PrintConstraintStatements(predataFile, constraints, conMetadata)
 }
 
-func backupData(tables []Relation, extTableMap map[string]bool) {
+func backupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
+	numExtTables := 0
 	for _, table := range tables {
-		isExternal := extTableMap[table.ToString()]
-		if !isExternal {
+		if !tableDefs[table.RelationOid].IsExternal {
 			logger.Verbose("Writing data for table %s to file", table.ToString())
 			dumpFile := utils.GetTableDumpFilePath(table.RelationOid)
 			CopyTableOut(connection, table, dumpFile)
 		} else {
 			logger.Verbose("Skipping data dump of table %s because it is an external table.", table.ToString())
+			numExtTables++
 		}
 	}
-	numExtTables := len(extTableMap)
 	if numExtTables > 0 {
 		s := ""
 		if numExtTables > 1 {
@@ -293,10 +291,10 @@ func backupData(tables []Relation, extTableMap map[string]bool) {
 		logger.Warn("See %s for a complete list of skipped tables.", logger.GetLogFileName())
 	}
 	logger.Verbose("Writing table map file to %s", utils.GetTableMapFilePath())
-	WriteTableMapFile(tables, extTableMap)
+	WriteTableMapFile(tables, tableDefs)
 }
 
-func backupPostdata(filename string, tables []Relation, extTableMap map[string]bool) {
+func backupPostdata(filename string, tables []Relation) {
 	postdataFile := utils.MustOpenFileForWriting(filename)
 	PrintConnectionString(postdataFile, connection.DBName)
 

@@ -7,14 +7,13 @@ package backup
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
 func GetAllUserTables(connection *utils.DBConn) []Relation {
 	// This query is adapted from the getTables() function in pg_dump.c.
-	query := `
+	query := fmt.Sprintf(`
 SELECT
 	n.oid AS schemaoid,
 	c.oid AS relationoid,
@@ -27,7 +26,8 @@ LEFT JOIN pg_partition p
 	ON pr.paroid = p.oid
 LEFT JOIN pg_namespace n
 	ON c.relnamespace = n.oid
-WHERE relkind = 'r'
+WHERE %s
+AND relkind = 'r'
 AND c.oid NOT IN (SELECT
 	p.parchildrelid
 FROM pg_partition_rule p
@@ -35,9 +35,7 @@ LEFT
 JOIN pg_exttable e
 	ON p.parchildrelid = e.reloid
 WHERE e.reloid IS NULL)
-AND (c.relnamespace > 16384
-OR n.nspname = 'public')
-ORDER BY schemaname, relationname;`
+ORDER BY schemaname, relationname;`, NonUserSchemaFilterClause("n"))
 
 	results := make([]Relation, 0)
 
@@ -46,71 +44,81 @@ ORDER BY schemaname, relationname;`
 	return results
 }
 
-type TableAttributes struct {
-	AttNum     int
+type ColumnDefinition struct {
+	Oid        uint32 `db:"attrelid"`
+	Num        int    `db:"attnum"`
 	Name       string `db:"attname"`
 	NotNull    bool   `db:"attnotnull"`
-	HasDefault bool   `db:"atthasdefault"`
+	HasDefault bool   `db:"atthasdef"`
 	IsDropped  bool   `db:"attisdropped"`
-	TypeName   string `db:"atttypname"`
-	Encoding   string `db:"attencoding"`
-	StatTarget int    `db:"attstattarget"`
-	Comment    string `db:"attcomment"`
+	TypeName   string
+	Encoding   string
+	StatTarget int `db:"attstattarget"`
+	DefaultVal string
+	Comment    string
 }
 
-func GetTableAttributes(connection *utils.DBConn, oid uint32) []TableAttributes {
+func GetColumnDefinitions(connection *utils.DBConn) map[uint32][]ColumnDefinition {
 	// This query is adapted from the getTableAttrs() function in pg_dump.c.
 	query := fmt.Sprintf(`
-SELECT a.attnum,
+SELECT
+	a.attrelid,
+	a.attnum,
 	a.attname,
 	a.attnotnull,
-	a.atthasdef AS atthasdefault,
+	a.atthasdef,
 	a.attisdropped,
-	pg_catalog.format_type(t.oid,a.atttypmod) AS atttypname,
-	coalesce(pg_catalog.array_to_string(e.attoptions, ','), '') AS attencoding,
+	pg_catalog.format_type(t.oid,a.atttypmod) AS typename,
+	coalesce(pg_catalog.array_to_string(e.attoptions, ','), '') AS encoding,
 	a.attstattarget,
-	coalesce(pg_catalog.col_description(a.attrelid, a.attnum), '') AS attcomment
+	coalesce(pg_catalog.pg_get_expr(ad.adbin, ad.adrelid), '') AS defaultval,
+	coalesce(pg_catalog.col_description(a.attrelid, a.attnum), '') AS comment
 FROM pg_catalog.pg_attribute a
-	LEFT JOIN pg_catalog.pg_type t ON a.atttypid = t.oid
-	LEFT OUTER JOIN pg_catalog.pg_attribute_encoding e ON e.attrelid = a.attrelid
-	AND e.attnum = a.attnum
-WHERE a.attrelid = %d
-	AND a.attnum > 0::pg_catalog.int2
-	AND a.attisdropped = 'f'
-ORDER BY a.attrelid,
-	a.attnum;`, oid)
+JOIN pg_class c ON a.attrelid = c.oid
+JOIN pg_namespace n ON c.relnamespace = n.oid
+LEFT JOIN pg_catalog.pg_attrdef ad ON (a.attrelid = ad.adrelid AND a.attnum = ad.adnum)
+LEFT JOIN pg_catalog.pg_type t ON a.atttypid = t.oid
+LEFT OUTER JOIN pg_catalog.pg_attribute_encoding e ON e.attrelid = a.attrelid AND e.attnum = a.attnum
+WHERE %s
+AND a.attnum > 0::pg_catalog.int2
+AND a.attisdropped = 'f'
+ORDER BY a.attrelid, a.attnum;`, NonUserSchemaFilterClause("n"))
 
-	results := make([]TableAttributes, 0)
+	results := make([]ColumnDefinition, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
-	return results
+	resultMap := make(map[uint32][]ColumnDefinition, 0)
+	for _, result := range results {
+		resultMap[result.Oid] = append(resultMap[result.Oid], result)
+	}
+	return resultMap
 }
 
-type TableDefault struct {
-	AdNum      int
-	DefaultVal string
+type DistributionPolicy struct {
+	Oid    uint32
+	Policy string
 }
 
-func GetTableDefaults(connection *utils.DBConn, oid uint32) []TableDefault {
-	// This query is adapted from the hasdefaults == true case of the getTableAttrs() function in pg_dump.c.
-	query := fmt.Sprintf(`
-SELECT adnum,
-	pg_catalog.pg_get_expr(adbin, adrelid) AS defaultval
-FROM pg_catalog.pg_attrdef
-WHERE adrelid = %d
-ORDER BY adrelid,
-	adnum;`, oid)
-
-	results := make([]TableDefault, 0)
+func SelectAsOidToStringMap(connection *utils.DBConn, query string) map[uint32]string {
+	var results []struct {
+		Oid   uint32
+		Value string
+	}
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
-	return results
+	resultMap := make(map[uint32]string, 0)
+	for _, result := range results {
+		resultMap[result.Oid] = result.Value
+	}
+	return resultMap
 }
 
-func GetDistributionPolicy(connection *utils.DBConn, oid uint32) string {
+func GetDistributionPolicies(connection *utils.DBConn, tables []Relation) map[uint32]string {
 	// This query is adapted from the addDistributedBy() function in pg_dump.c.
-	query := fmt.Sprintf(`
-SELECT a.attname as string
+	query := `
+SELECT
+	a.attrelid AS oid,
+	'(' || array_to_string(array_agg(a.attname), ', ') || ')' AS value
 FROM pg_attribute a
 JOIN (
 	SELECT
@@ -119,51 +127,37 @@ JOIN (
 	FROM gp_distribution_policy
 ) p
 ON (p.localoid,p.attnum) = (a.attrelid,a.attnum)
-WHERE a.attrelid = %d;`, oid)
+GROUP BY a.attrelid ORDER BY a.attrelid;`
 
-	results := SelectStringSlice(connection, query)
-	if len(results) == 0 {
-		return "DISTRIBUTED RANDOMLY"
+	resultMap := SelectAsOidToStringMap(connection, query)
+	for _, table := range tables {
+		if resultMap[table.RelationOid] != "" {
+			resultMap[table.RelationOid] = fmt.Sprintf("DISTRIBUTED BY %s", resultMap[table.RelationOid])
+		} else {
+			resultMap[table.RelationOid] = "DISTRIBUTED RANDOMLY"
+		}
 	}
-	distCols := make([]string, 0)
-	for _, dist := range results {
-		distCols = append(distCols, utils.QuoteIdent(dist))
-	}
-	return fmt.Sprintf("DISTRIBUTED BY (%s)", strings.Join(distCols, ", "))
+	return resultMap
 }
 
-func GetPartition(connection *utils.DBConn, oid uint32) string {
-	/* This query is adapted from the gp_partitioning_available == true case of the dumpTableSchema
-	 * function in pg_dump.c.
-	 */
-	query := fmt.Sprintf("SELECT * FROM pg_get_partition_def(%d, true, true) AS string WHERE string IS NOT NULL", oid)
-	return SelectString(connection, query)
+func GetPartitionDefinitions(connection *utils.DBConn) map[uint32]string {
+	query := `SELECT parrelid AS oid, pg_get_partition_def(parrelid, true, true) AS value FROM pg_partition`
+	return SelectAsOidToStringMap(connection, query)
 }
 
-func GetPartitionTemplate(connection *utils.DBConn, oid uint32) string {
-	/* This query is adapted from the isTemplatesSupported == true case of the dumpTableSchema
-	 * function in pg_dump.c.
-	 */
-	query := fmt.Sprintf("SELECT * FROM pg_get_partition_template_def(%d, true, true) AS string WHERE string IS NOT NULL", oid)
-	return SelectString(connection, query)
+func GetPartitionTemplates(connection *utils.DBConn) map[uint32]string {
+	query := fmt.Sprintf("SELECT parrelid AS oid, pg_get_partition_template_def(parrelid, true, true) AS value FROM pg_partition")
+	return SelectAsOidToStringMap(connection, query)
 }
 
-func GetStorageOptions(connection *utils.DBConn, oid uint32) string {
-	query := fmt.Sprintf(`
-SELECT array_to_string(reloptions, ', ') as string
-FROM pg_class
-WHERE oid = %d AND reloptions IS NOT NULL;`, oid)
-	return SelectString(connection, query)
+func GetStorageOptions(connection *utils.DBConn) map[uint32]string {
+	query := ` SELECT oid, array_to_string(reloptions, ', ') AS value FROM pg_class WHERE reloptions IS NOT NULL;`
+	return SelectAsOidToStringMap(connection, query)
 }
 
-func GetTablespaceName(connection *utils.DBConn, oid uint32) string {
-	query := fmt.Sprintf(`
-SELECT ts.spcname AS string
-FROM pg_class c
-JOIN pg_tablespace ts
-ON ts.oid = c.reltablespace
-WHERE c.oid = %d;`, oid)
-	return SelectString(connection, query)
+func GetTablespaceNames(connection *utils.DBConn) map[uint32]string {
+	query := `SELECT c.oid, t.spcname AS value FROM pg_class c JOIN pg_tablespace t ON t.oid = c.reltablespace`
+	return SelectAsOidToStringMap(connection, query)
 }
 
 type Dependency struct {
@@ -175,7 +169,7 @@ func ConstructTableDependencies(connection *utils.DBConn, tables []Relation) []R
 	query := `
 SELECT
 	objid AS oid,
-	quote_ident(n.nspname) || '.' || quote_ident(p.relname) AS referencedobject 
+	quote_ident(n.nspname) || '.' || quote_ident(p.relname) AS referencedobject
 FROM pg_depend d
 JOIN pg_class p ON d.refobjid = p.oid AND p.relkind = 'r'
 JOIN pg_namespace n ON p.relnamespace = n.oid

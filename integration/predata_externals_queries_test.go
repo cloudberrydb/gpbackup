@@ -36,7 +36,7 @@ FORMAT 'TEXT' ( DELIMITER '|' NULL ' ')`)
 		})
 		// TODO: Add tests for external partitions
 	})
-	Describe("GetExternalTableDefinition", func() {
+	Describe("GetExternalTableDefinitions", func() {
 		It("returns a slice for a basic external table definition", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
@@ -46,15 +46,16 @@ FORMAT 'TEXT'`)
 			defer testutils.AssertQueryRuns(connection, "DROP EXTERNAL TABLE ext_table")
 			oid := backup.OidFromObjectName(connection, "public", "ext_table", backup.TYPE_RELATION)
 
-			result := backup.GetExternalTableDefinition(connection, oid)
+			results := backup.GetExternalTableDefinitions(connection)
+			result := results[oid]
 
 			extTable := backup.ExternalTableDefinition{
-				0, 0, "file://tmp/myfile.txt", "ALL_SEGMENTS",
+				0, 0, 0, "file://tmp/myfile.txt", "ALL_SEGMENTS",
 				"t", "delimiter '	' null '\\N' escape '\\'", "", "",
 				0, "", "", "UTF8", false, []string{"file://tmp/myfile.txt"},
 			}
 
-			testutils.ExpectStructsToMatchExcluding(&extTable, &result)
+			testutils.ExpectStructsToMatchExcluding(&extTable, &result, "Oid")
 		})
 		It("returns a slice for a complex external table definition", func() {
 			testutils.AssertQueryRuns(connection, `CREATE READABLE EXTERNAL TABLE ext_table(i int)
@@ -67,15 +68,16 @@ SEGMENT REJECT LIMIT 10 PERCENT
 			defer testutils.AssertQueryRuns(connection, "DROP EXTERNAL TABLE ext_table")
 			oid := backup.OidFromObjectName(connection, "public", "ext_table", backup.TYPE_RELATION)
 
-			result := backup.GetExternalTableDefinition(connection, oid)
+			results := backup.GetExternalTableDefinitions(connection)
+			result := results[oid]
 
 			extTable := backup.ExternalTableDefinition{
-				0, 0, "file://tmp/myfile.txt", "ALL_SEGMENTS",
+				0, 0, 0, "file://tmp/myfile.txt", "ALL_SEGMENTS",
 				"t", "delimiter '	' null '\\N' escape '\\'", "foo 'bar'", "",
 				10, "p", "ext_table", "UTF8", false, []string{"file://tmp/myfile.txt"},
 			}
 
-			testutils.ExpectStructsToMatchExcluding(&extTable, &result)
+			testutils.ExpectStructsToMatchExcluding(&extTable, &result, "Oid")
 		})
 		// TODO: Add tests for external partitions
 	})
