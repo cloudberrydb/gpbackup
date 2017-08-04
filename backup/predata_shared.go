@@ -22,6 +22,51 @@ func MakeFQN(schema string, object string) string {
 }
 
 /*
+ * There's no built-in function to generate constraint definitions like there is for other types of
+ * metadata, so this function constructs them.
+ */
+func PrintConstraintStatements(predataFile io.Writer, constraints []Constraint, conMetadata MetadataMap) {
+	allConstraints := make([]Constraint, 0)
+	allFkConstraints := make([]Constraint, 0)
+	/*
+	 * Because FOREIGN KEY constraints must be dumped after PRIMARY KEY
+	 * constraints, we separate the two types then concatenate the lists,
+	 * so FOREIGN KEY are guaranteed to be printed last.
+	 */
+	for _, constraint := range constraints {
+		if constraint.ConType == "f" {
+			allFkConstraints = append(allFkConstraints, constraint)
+		} else {
+			allConstraints = append(allConstraints, constraint)
+		}
+	}
+	constraints = append(allConstraints, allFkConstraints...)
+
+	alterStr := "\n\nALTER %s %s ADD CONSTRAINT %s %s;\n"
+	for _, constraint := range constraints {
+		objStr := "TABLE ONLY"
+		if constraint.IsDomainConstraint {
+			objStr = "DOMAIN"
+		} else if constraint.IsPartitionParent {
+			objStr = "TABLE"
+		}
+		conName := utils.QuoteIdent(constraint.ConName)
+		utils.MustPrintf(predataFile, alterStr, objStr, constraint.OwningObject, conName, constraint.ConDef)
+		PrintObjectMetadata(predataFile, conMetadata[constraint.Oid], conName, "CONSTRAINT", constraint.OwningObject)
+	}
+}
+
+func PrintCreateSchemaStatements(predataFile io.Writer, schemas []Schema, schemaMetadata MetadataMap) {
+	for _, schema := range schemas {
+		utils.MustPrintln(predataFile)
+		if schema.Name != "public" {
+			utils.MustPrintf(predataFile, "\nCREATE SCHEMA %s;", schema.ToString())
+		}
+		PrintObjectMetadata(predataFile, schemaMetadata[schema.Oid], schema.ToString(), "SCHEMA")
+	}
+}
+
+/*
  * Structs and functions relating to generic metadata handling.
  */
 
@@ -344,40 +389,6 @@ func (obj ObjectMetadata) GetCommentStatement(objectName string, objectType stri
 	return commentStr
 }
 
-func SortFunctionsAndTypesInDependencyOrder(types []Type, functions []Function) []Sortable {
-	objects := make([]Sortable, 0)
-	for _, typ := range types {
-		if typ.Type != "e" && typ.Type != "p" {
-			objects = append(objects, typ)
-		}
-	}
-	for _, function := range functions {
-		objects = append(objects, function)
-	}
-	sorted := TopologicalSort(objects)
-	return sorted
-}
-
-func ConstructDependencyLists(connection *utils.DBConn, types []Type, functions []Function) ([]Type, []Function) {
-	types = CoalesceCompositeTypes(types)
-	types = ConstructBaseTypeDependencies(connection, types)
-	types = ConstructDomainDependencies(connection, types)
-	types = ConstructCompositeTypeDependencies(connection, types)
-	functions = ConstructFunctionDependencies(connection, functions)
-	return types, functions
-}
-
-func ConstructFunctionAndTypeMetadataMap(types MetadataMap, functions MetadataMap) MetadataMap {
-	metadataMap := make(MetadataMap, 0)
-	for k, v := range types {
-		metadataMap[k] = v
-	}
-	for k, v := range functions {
-		metadataMap[k] = v
-	}
-	return metadataMap
-}
-
 func PrintCreateDependentTypeAndFunctionStatements(predataFile io.Writer, objects []Sortable, metadataMap MetadataMap) {
 	for _, object := range objects {
 		switch obj := object.(type) {
@@ -394,104 +405,4 @@ func PrintCreateDependentTypeAndFunctionStatements(predataFile io.Writer, object
 			PrintCreateFunctionStatement(predataFile, obj, metadataMap[obj.Oid])
 		}
 	}
-}
-
-/*
- * Structs and functions for topological sort
- */
-
-type Sortable interface {
-	Name() string
-	Dependencies() []string
-}
-
-func (r Relation) Name() string {
-	return r.ToString()
-}
-
-func (v View) Name() string {
-	return MakeFQN(v.SchemaName, v.ViewName)
-}
-
-func (f Function) Name() string {
-	return MakeFQN(f.SchemaName, f.FunctionName)
-}
-
-func (t Type) Name() string {
-	return MakeFQN(t.TypeSchema, t.TypeName)
-}
-
-func (r Relation) Dependencies() []string {
-	return r.DependsUpon
-}
-
-func (v View) Dependencies() []string {
-	return v.DependsUpon
-}
-
-func (f Function) Dependencies() []string {
-	return f.DependsUpon
-}
-
-func (t Type) Dependencies() []string {
-	return t.DependsUpon
-}
-
-func SortRelations(relations []Relation) []Relation {
-	sortable := make([]Sortable, len(relations))
-	for i := range relations {
-		sortable[i] = relations[i]
-	}
-	sortable = TopologicalSort(sortable)
-	for i := range sortable {
-		relations[i] = sortable[i].(Relation)
-	}
-	return relations
-}
-
-func SortViews(views []View) []View {
-	sortable := make([]Sortable, len(views))
-	for i := range views {
-		sortable[i] = views[i]
-	}
-	sortable = TopologicalSort(sortable)
-	for i := range views {
-		views[i] = sortable[i].(View)
-	}
-	return views
-}
-
-func TopologicalSort(slice []Sortable) []Sortable {
-	inDegrees := make(map[string]int, 0)
-	dependencyIndexes := make(map[string]int, 0)
-	isDependentOn := make(map[string][]string, 0)
-	queue := make([]Sortable, 0)
-	sorted := make([]Sortable, 0)
-	notVisited := make(map[string]bool)
-	for i, item := range slice {
-		name := item.Name()
-		deps := item.Dependencies()
-		notVisited[name] = true
-		inDegrees[name] = len(deps)
-		for _, dep := range deps {
-			isDependentOn[dep] = append(isDependentOn[dep], name)
-		}
-		dependencyIndexes[name] = i
-		if len(deps) == 0 {
-			queue = append(queue, item)
-		}
-	}
-	for len(queue) > 0 {
-		item := queue[0]
-		queue = queue[1:]
-		sorted = append(sorted, item)
-		delete(notVisited, item.Name())
-		for _, dep := range isDependentOn[item.Name()] {
-			inDegrees[dep]--
-			if inDegrees[dep] == 0 {
-				queue = append(queue, slice[dependencyIndexes[dep]])
-			}
-		}
-	}
-	return sorted
 }

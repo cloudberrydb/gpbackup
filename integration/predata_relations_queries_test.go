@@ -54,7 +54,7 @@ PARTITION BY LIST (gender)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE atttable")
 			testutils.AssertQueryRuns(connection, "COMMENT ON COLUMN atttable.a IS 'att comment'")
 			testutils.AssertQueryRuns(connection, "ALTER TABLE atttable DROP COLUMN b")
-			oid := backup.OidFromObjectName(connection, "public", "atttable", backup.TYPE_RELATION)
+			oid := testutils.OidFromObjectName(connection, "public", "atttable", backup.TYPE_RELATION)
 
 			tableAtts := backup.GetColumnDefinitions(connection)[oid]
 
@@ -71,7 +71,7 @@ PARTITION BY LIST (gender)
 		It("returns table attributes including encoding for a column oriented table", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE co_atttable(a float, b text ENCODING(blocksize=65536)) WITH (appendonly=true, orientation=column)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE co_atttable")
-			oid := backup.OidFromObjectName(connection, "public", "co_atttable", backup.TYPE_RELATION)
+			oid := testutils.OidFromObjectName(connection, "public", "co_atttable", backup.TYPE_RELATION)
 
 			tableAtts := backup.GetColumnDefinitions(connection)[oid]
 
@@ -86,7 +86,7 @@ PARTITION BY LIST (gender)
 		It("returns an empty attribute array for a table with no columns", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE nocol_atttable()")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE nocol_atttable")
-			oid := backup.OidFromObjectName(connection, "public", "nocol_atttable", backup.TYPE_RELATION)
+			oid := testutils.OidFromObjectName(connection, "public", "nocol_atttable", backup.TYPE_RELATION)
 
 			tableAtts := backup.GetColumnDefinitions(connection)[oid]
 
@@ -97,7 +97,7 @@ PARTITION BY LIST (gender)
 		It("returns distribution policy info for a table DISTRIBUTED RANDOMLY", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE dist_random(a int, b text) DISTRIBUTED RANDOMLY")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE dist_random")
-			oid := backup.OidFromObjectName(connection, "public", "dist_random", backup.TYPE_RELATION)
+			oid := testutils.OidFromObjectName(connection, "public", "dist_random", backup.TYPE_RELATION)
 
 			tables := []backup.Relation{{RelationOid: oid}}
 			distPolicies := backup.GetDistributionPolicies(connection, tables)[oid]
@@ -107,7 +107,7 @@ PARTITION BY LIST (gender)
 		It("returns distribution policy info for a table DISTRIBUTED BY one column", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE dist_one(a int, b text) DISTRIBUTED BY (a)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE dist_one")
-			oid := backup.OidFromObjectName(connection, "public", "dist_one", backup.TYPE_RELATION)
+			oid := testutils.OidFromObjectName(connection, "public", "dist_one", backup.TYPE_RELATION)
 
 			tables := []backup.Relation{{RelationOid: oid}}
 			distPolicies := backup.GetDistributionPolicies(connection, tables)[oid]
@@ -117,7 +117,7 @@ PARTITION BY LIST (gender)
 		It("returns distribution policy info for a table DISTRIBUTED BY two columns", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE dist_two(a int, b text) DISTRIBUTED BY (a, b)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE dist_two")
-			oid := backup.OidFromObjectName(connection, "public", "dist_two", backup.TYPE_RELATION)
+			oid := testutils.OidFromObjectName(connection, "public", "dist_two", backup.TYPE_RELATION)
 
 			tables := []backup.Relation{{RelationOid: oid}}
 			distPolicies := backup.GetDistributionPolicies(connection, tables)[oid]
@@ -129,7 +129,7 @@ PARTITION BY LIST (gender)
 		It("returns empty string when no partition exists", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
-			oid := backup.OidFromObjectName(connection, "public", "simple_table", backup.TYPE_RELATION)
+			oid := testutils.OidFromObjectName(connection, "public", "simple_table", backup.TYPE_RELATION)
 
 			result := backup.GetPartitionDefinitions(connection)[oid]
 
@@ -145,7 +145,7 @@ PARTITION BY LIST (gender)
   DEFAULT PARTITION other );
 			`)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE part_table")
-			oid := backup.OidFromObjectName(connection, "public", "part_table", backup.TYPE_RELATION)
+			oid := testutils.OidFromObjectName(connection, "public", "part_table", backup.TYPE_RELATION)
 
 			result := backup.GetPartitionDefinitions(connection)[oid]
 
@@ -163,7 +163,7 @@ PARTITION BY LIST (gender)
 		It("returns empty string when no partition definition template exists", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
-			oid := backup.OidFromObjectName(connection, "public", "simple_table", backup.TYPE_RELATION)
+			oid := testutils.OidFromObjectName(connection, "public", "simple_table", backup.TYPE_RELATION)
 
 			result := backup.GetPartitionTemplates(connection)[oid]
 
@@ -183,7 +183,7 @@ PARTITION BY LIST (gender)
     END (date '2014-04-01') EXCLUSIVE
     EVERY (INTERVAL '1 month') ) `)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE part_table")
-			oid := backup.OidFromObjectName(connection, "public", "part_table", backup.TYPE_RELATION)
+			oid := testutils.OidFromObjectName(connection, "public", "part_table", backup.TYPE_RELATION)
 
 			result := backup.GetPartitionTemplates(connection)[oid]
 
@@ -205,7 +205,7 @@ SET SUBPARTITION TEMPLATE
 		It("returns an empty string when no table storage options exist ", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
-			oid := backup.OidFromObjectName(connection, "public", "simple_table", backup.TYPE_RELATION)
+			oid := testutils.OidFromObjectName(connection, "public", "simple_table", backup.TYPE_RELATION)
 
 			result := backup.GetStorageOptions(connection)[oid]
 
@@ -214,7 +214,7 @@ SET SUBPARTITION TEMPLATE
 		It("returns a value for storage options of a table ", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE ao_table(i int) with (appendonly=true)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE ao_table")
-			oid := backup.OidFromObjectName(connection, "public", "ao_table", backup.TYPE_RELATION)
+			oid := testutils.OidFromObjectName(connection, "public", "ao_table", backup.TYPE_RELATION)
 
 			result := backup.GetStorageOptions(connection)[oid]
 
@@ -345,7 +345,7 @@ CYCLE`)
 			testutils.AssertQueryRuns(connection, "CREATE TABLE child() INHERITS (parent)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE child")
 
-			child.RelationOid = backup.OidFromObjectName(connection, "public", "child", backup.TYPE_RELATION)
+			child.RelationOid = testutils.OidFromObjectName(connection, "public", "child", backup.TYPE_RELATION)
 			tables := []backup.Relation{child}
 
 			tables = backup.ConstructTableDependencies(connection, tables)
@@ -362,8 +362,8 @@ CYCLE`)
 			testutils.AssertQueryRuns(connection, "CREATE TABLE child_two() INHERITS (parent)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE child_two")
 
-			childOne.RelationOid = backup.OidFromObjectName(connection, "public", "child_one", backup.TYPE_RELATION)
-			childTwo.RelationOid = backup.OidFromObjectName(connection, "public", "child_two", backup.TYPE_RELATION)
+			childOne.RelationOid = testutils.OidFromObjectName(connection, "public", "child_one", backup.TYPE_RELATION)
+			childTwo.RelationOid = testutils.OidFromObjectName(connection, "public", "child_two", backup.TYPE_RELATION)
 			tables := []backup.Relation{childOne, childTwo}
 
 			tables = backup.ConstructTableDependencies(connection, tables)
@@ -382,7 +382,7 @@ CYCLE`)
 			testutils.AssertQueryRuns(connection, "CREATE TABLE child() INHERITS (parent_one, parent_two)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE child")
 
-			child.RelationOid = backup.OidFromObjectName(connection, "public", "child", backup.TYPE_RELATION)
+			child.RelationOid = testutils.OidFromObjectName(connection, "public", "child", backup.TYPE_RELATION)
 			tables := []backup.Relation{child}
 
 			tables = backup.ConstructTableDependencies(connection, tables)
@@ -408,7 +408,7 @@ CYCLE`)
 			defer testutils.AssertQueryRuns(connection, "DROP VIEW child")
 
 			childView := backup.View{}
-			childView.Oid = backup.OidFromObjectName(connection, "public", "child", backup.TYPE_RELATION)
+			childView.Oid = testutils.OidFromObjectName(connection, "public", "child", backup.TYPE_RELATION)
 			views := []backup.View{childView}
 
 			views = backup.ConstructViewDependencies(connection, views)

@@ -56,7 +56,7 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			indexes[0].Oid = backup.OidFromObjectName(connection, "", "index1", backup.TYPE_INDEX)
+			indexes[0].Oid = testutils.OidFromObjectName(connection, "", "index1", backup.TYPE_INDEX)
 			resultIndexes := backup.GetIndexes(connection, indexNameMap)
 			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_INDEX)
 			resultMetadata := resultMetadataMap[indexes[0].Oid]
@@ -118,7 +118,7 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			rules[0].Oid = backup.OidFromObjectName(connection, "", "update_notify", backup.TYPE_RULE)
+			rules[0].Oid = testutils.OidFromObjectName(connection, "", "update_notify", backup.TYPE_RULE)
 			resultRules := backup.GetRules(connection)
 			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_RULE)
 			resultMetadata := resultMetadataMap[rules[0].Oid]
@@ -162,7 +162,7 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			triggers[0].Oid = backup.OidFromObjectName(connection, "", "sync_testtable", backup.TYPE_TRIGGER)
+			triggers[0].Oid = testutils.OidFromObjectName(connection, "", "sync_testtable", backup.TYPE_TRIGGER)
 			resultTriggers := backup.GetTriggers(connection)
 			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_TRIGGER)
 			resultMetadata := resultMetadataMap[triggers[0].Oid]

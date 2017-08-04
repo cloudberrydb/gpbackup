@@ -194,6 +194,70 @@ ORDER BY 1, 2;
 	return results
 }
 
+type ProceduralLanguage struct {
+	Oid       uint32
+	Name      string `db:"lanname"`
+	Owner     string
+	IsPl      bool   `db:"lanispl"`
+	PlTrusted bool   `db:"lanpltrusted"`
+	Handler   uint32 `db:"lanplcallfoid"`
+	Inline    uint32 `db:"laninline"`
+	Validator uint32 `db:"lanvalidator"`
+}
+
+func GetProceduralLanguages(connection *utils.DBConn) []ProceduralLanguage {
+	results := make([]ProceduralLanguage, 0)
+	query := `
+SELECT
+	oid,
+	l.lanname,
+	pg_get_userbyid(l.lanowner) as owner,
+	l.lanispl,
+	l.lanpltrusted,
+	l.lanplcallfoid::regprocedure::oid,
+	l.laninline::regprocedure::oid,
+	l.lanvalidator::regprocedure::oid
+FROM pg_language l
+WHERE l.lanispl='t';
+`
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
+}
+
+type Conversion struct {
+	Oid                uint32
+	Schema             string `db:"nspname"`
+	Name               string `db:"conname"`
+	ForEncoding        string
+	ToEncoding         string
+	ConversionFunction string
+	IsDefault          bool `db:"condefault"`
+}
+
+func GetConversions(connection *utils.DBConn) []Conversion {
+	results := make([]Conversion, 0)
+	query := fmt.Sprintf(`
+SELECT
+	c.oid,
+	n.nspname,
+	c.conname,
+	pg_encoding_to_char(c.conforencoding) AS forencoding,
+	pg_encoding_to_char(c.contoencoding) AS toencoding,
+	quote_ident(fn.nspname) || '.' || quote_ident(p.proname) AS conversionfunction,
+	c.condefault
+FROM pg_conversion c
+JOIN pg_namespace n ON c.connamespace = n.oid
+JOIN pg_proc p ON c.conproc = p.oid
+JOIN pg_namespace fn ON p.pronamespace = fn.oid
+WHERE %s
+ORDER BY n.nspname, c.conname;`, NonUserSchemaFilterClause("n"))
+
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
+}
+
 /*
  * When we retrieve function dependencies, we don't record a dependency of a
  * function on a base type if the function is part of the definition of the

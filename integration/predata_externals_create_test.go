@@ -46,7 +46,7 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			oid := backup.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
+			oid := testutils.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
 			resultTableDefs := backup.GetExternalTableDefinitions(connection)
 			resultTableDef := resultTableDefs[oid]
 			resultTableDef.Type, resultTableDef.Protocol = backup.DetermineExternalTableCharacteristics(resultTableDef)
@@ -65,7 +65,7 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			oid := backup.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
+			oid := testutils.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
 			resultTableDefs := backup.GetExternalTableDefinitions(connection)
 			resultTableDef := resultTableDefs[oid]
 			resultTableDef.Type, resultTableDef.Protocol = backup.DetermineExternalTableCharacteristics(resultTableDef)

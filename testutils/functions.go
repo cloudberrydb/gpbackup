@@ -243,3 +243,21 @@ func OidFromCast(connection *utils.DBConn, castSource uint32, castTarget uint32)
 	utils.CheckError(err)
 	return result.Oid
 }
+
+func OidFromObjectName(dbconn *utils.DBConn, schemaName string, objectName string, params backup.MetadataQueryParams) uint32 {
+	catalogTable := params.CatalogTable
+	if params.OidTable != "" {
+		catalogTable = params.OidTable
+	}
+	schemaStr := ""
+	if schemaName != "" {
+		schemaStr = fmt.Sprintf(" AND %s = (SELECT oid FROM pg_namespace WHERE nspname = '%s')", params.SchemaField, schemaName)
+	}
+	query := fmt.Sprintf("SELECT oid FROM %s WHERE %s ='%s'%s", catalogTable, params.NameField, objectName, schemaStr)
+	result := struct {
+		Oid uint32
+	}{}
+	err := dbconn.Get(&result, query)
+	utils.CheckError(err)
+	return result.Oid
+}

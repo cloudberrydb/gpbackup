@@ -1,11 +1,8 @@
 package backup_test
 
 import (
-	"fmt"
-
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -18,64 +15,213 @@ var _ = Describe("backup/predata_shared tests", func() {
 	BeforeEach(func() {
 		buffer = gbytes.BufferWithBytes([]byte(""))
 	})
-	Describe("QuoteIdent", func() {
-		It("does not quote a string that contains no special characters", func() {
-			name := `_tablename1`
-			output := utils.QuoteIdent(name)
-			Expect(output).To(Equal(`_tablename1`))
+
+	Describe("PrintConstraintStatements", func() {
+		var (
+			uniqueOne        backup.Constraint
+			uniqueTwo        backup.Constraint
+			primarySingle    backup.Constraint
+			primaryComposite backup.Constraint
+			foreignOne       backup.Constraint
+			foreignTwo       backup.Constraint
+			emptyMetadataMap backup.MetadataMap
+		)
+		BeforeEach(func() {
+			uniqueOne = backup.Constraint{1, "tablename_i_key", "u", "UNIQUE (i)", "public.tablename", false, false}
+			uniqueTwo = backup.Constraint{0, "tablename_j_key", "u", "UNIQUE (j)", "public.tablename", false, false}
+			primarySingle = backup.Constraint{0, "tablename_pkey", "p", "PRIMARY KEY (i)", "public.tablename", false, false}
+			primaryComposite = backup.Constraint{0, "tablename_pkey", "p", "PRIMARY KEY (i, j)", "public.tablename", false, false}
+			foreignOne = backup.Constraint{0, "tablename_i_fkey", "f", "FOREIGN KEY (i) REFERENCES other_tablename(a)", "public.tablename", false, false}
+			foreignTwo = backup.Constraint{0, "tablename_j_fkey", "f", "FOREIGN KEY (j) REFERENCES other_tablename(b)", "public.tablename", false, false}
+			emptyMetadataMap = backup.MetadataMap{}
 		})
-		It("replaces double quotes with pairs of double quotes", func() {
-			name := `table"name`
-			output := utils.QuoteIdent(name)
-			Expect(output).To(Equal(`"table""name"`))
+
+		Context("No constraints", func() {
+			It("doesn't print anything", func() {
+				constraints := []backup.Constraint{}
+				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
+				testutils.NotExpectRegexp(buffer, `CONSTRAINT`)
+			})
 		})
-		It("replaces backslashes with pairs of backslashes", func() {
-			name := `table\name`
-			output := utils.QuoteIdent(name)
-			Expect(output).To(Equal(`"table\\name"`))
+		Context("Constraints involving different columns", func() {
+			It("prints an ADD CONSTRAINT statement for one UNIQUE constraint with a comment", func() {
+				constraints := []backup.Constraint{uniqueOne}
+				constraintMetadataMap := testutils.DefaultMetadataMap("CONSTRAINT", false, false, true)
+				backup.PrintConstraintStatements(buffer, constraints, constraintMetadataMap)
+				testutils.ExpectRegexp(buffer, `
+
+ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_key UNIQUE (i);
+
+
+COMMENT ON CONSTRAINT tablename_i_key ON public.tablename IS 'This is a constraint comment.';
+`)
+			})
+			It("prints an ADD CONSTRAINT statement for one UNIQUE constraint", func() {
+				constraints := []backup.Constraint{uniqueOne}
+				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
+				testutils.ExpectRegexp(buffer, `
+
+ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_key UNIQUE (i);
+`)
+			})
+			It("prints ADD CONSTRAINT statements for two UNIQUE constraints", func() {
+				constraints := []backup.Constraint{uniqueOne, uniqueTwo}
+				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
+				testutils.ExpectRegexp(buffer, `
+
+ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_key UNIQUE (i);
+
+
+ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_j_key UNIQUE (j);
+`)
+			})
+			It("prints an ADD CONSTRAINT statement for one PRIMARY KEY constraint on one column", func() {
+				constraints := []backup.Constraint{primarySingle}
+				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
+				testutils.ExpectRegexp(buffer, `
+
+ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_pkey PRIMARY KEY (i);
+`)
+			})
+			It("prints an ADD CONSTRAINT statement for one composite PRIMARY KEY constraint on two columns", func() {
+				constraints := []backup.Constraint{primaryComposite}
+				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
+				testutils.ExpectRegexp(buffer, `
+
+ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_pkey PRIMARY KEY (i, j);
+`)
+			})
+			It("prints an ADD CONSTRAINT statement for one FOREIGN KEY constraint", func() {
+				constraints := []backup.Constraint{foreignOne}
+				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
+				testutils.ExpectRegexp(buffer, `
+
+ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_fkey FOREIGN KEY (i) REFERENCES other_tablename(a);
+`)
+			})
+			It("prints ADD CONSTRAINT statements for two FOREIGN KEY constraints", func() {
+				constraints := []backup.Constraint{foreignOne, foreignTwo}
+				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
+				testutils.ExpectRegexp(buffer, `
+
+ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_fkey FOREIGN KEY (i) REFERENCES other_tablename(a);
+
+
+ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_j_fkey FOREIGN KEY (j) REFERENCES other_tablename(b);
+`)
+			})
+			It("prints ADD CONSTRAINT statements for one UNIQUE constraint and one FOREIGN KEY constraint", func() {
+				constraints := []backup.Constraint{foreignTwo, uniqueOne}
+				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
+				testutils.ExpectRegexp(buffer, `
+
+ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_key UNIQUE (i);
+
+
+ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_j_fkey FOREIGN KEY (j) REFERENCES other_tablename(b);
+`)
+			})
+			It("prints ADD CONSTRAINT statements for one PRIMARY KEY constraint and one FOREIGN KEY constraint", func() {
+				constraints := []backup.Constraint{foreignTwo, primarySingle}
+				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
+				testutils.ExpectRegexp(buffer, `
+
+ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_pkey PRIMARY KEY (i);
+
+
+ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_j_fkey FOREIGN KEY (j) REFERENCES other_tablename(b);
+`)
+			})
+			It("prints ADD CONSTRAINT statements for one two-column composite PRIMARY KEY constraint and one FOREIGN KEY constraint", func() {
+				constraints := []backup.Constraint{foreignTwo, primaryComposite}
+				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
+				testutils.ExpectRegexp(buffer, `
+
+ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_pkey PRIMARY KEY (i, j);
+
+
+ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_j_fkey FOREIGN KEY (j) REFERENCES other_tablename(b);
+`)
+			})
 		})
-		It("properly escapes capital letters", func() {
-			names := []string{"Relationname", "TABLENAME", "TaBlEnAmE"}
-			expected := []string{`"Relationname"`, `"TABLENAME"`, `"TaBlEnAmE"`}
-			for i := range names {
-				output := utils.QuoteIdent(names[i])
-				Expect(output).To(Equal(expected[i]))
-			}
+		Context("Constraints involving the same column", func() {
+			It("prints ADD CONSTRAINT statements for one UNIQUE constraint and one FOREIGN KEY constraint", func() {
+				constraints := []backup.Constraint{foreignOne, uniqueOne}
+				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
+				testutils.ExpectRegexp(buffer, `
+
+ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_key UNIQUE (i);
+
+
+ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_fkey FOREIGN KEY (i) REFERENCES other_tablename(a);
+`)
+			})
+			It("prints ADD CONSTRAINT statements for one PRIMARY KEY constraint and one FOREIGN KEY constraint", func() {
+				constraints := []backup.Constraint{foreignOne, primarySingle}
+				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
+				testutils.ExpectRegexp(buffer, `
+
+ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_pkey PRIMARY KEY (i);
+
+
+ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_fkey FOREIGN KEY (i) REFERENCES other_tablename(a);
+`)
+			})
+			It("prints ADD CONSTRAINT statements for a two-column composite PRIMARY KEY constraint and one FOREIGN KEY constraint", func() {
+				constraints := []backup.Constraint{foreignOne, primaryComposite}
+				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
+				testutils.ExpectRegexp(buffer, `
+
+ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_pkey PRIMARY KEY (i, j);
+
+
+ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_fkey FOREIGN KEY (i) REFERENCES other_tablename(a);
+`)
+			})
+			It("prints ADD CONSTRAINT statement for domain check constraint", func() {
+				domainCheckConstraint := backup.Constraint{0, "check1", "c", "CHECK (VALUE <> 42::numeric)", "public.domain1", true, false}
+				constraints := []backup.Constraint{domainCheckConstraint}
+				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
+				testutils.ExpectRegexp(buffer, `
+
+ALTER DOMAIN public.domain1 ADD CONSTRAINT check1 CHECK (VALUE <> 42::numeric);
+`)
+			})
+			It("prints an ADD CONSTRAINT statement for a parent partition table", func() {
+				uniqueOne.IsPartitionParent = true
+				constraints := []backup.Constraint{uniqueOne}
+				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
+				testutils.ExpectRegexp(buffer, `
+
+ALTER TABLE public.tablename ADD CONSTRAINT tablename_i_key UNIQUE (i);
+`)
+			})
 		})
-		It("properly escapes shell-significant special characters", func() {
-			special := `.,!$/` + "`"
-			for _, spec := range special {
-				name := fmt.Sprintf(`table%cname`, spec)
-				expected := fmt.Sprintf(`"table%cname"`, spec)
-				output := utils.QuoteIdent(name)
-				Expect(output).To(Equal(expected))
-			}
+	})
+	Describe("PrintCreateSchemaStatements", func() {
+		It("can print a basic schema", func() {
+			schemas := []backup.Schema{{0, "schemaname"}}
+			emptyMetadataMap := backup.MetadataMap{}
+
+			backup.PrintCreateSchemaStatements(buffer, schemas, emptyMetadataMap)
+			testutils.ExpectRegexp(buffer, `CREATE SCHEMA schemaname;`)
 		})
-		It("properly escapes whitespace", func() {
-			names := []string{"table name", "table\tname", "table\nname"}
-			expected := []string{`"table name"`, "\"table\tname\"", "\"table\nname\""}
-			for i := range names {
-				output := utils.QuoteIdent(names[i])
-				Expect(output).To(Equal(expected[i]))
-			}
-		})
-		It("properly escapes all other punctuation", func() {
-			special := `'~@#$%^&*()-+[]{}><|;:?`
-			for _, spec := range special {
-				name := fmt.Sprintf(`table%cname`, spec)
-				expected := fmt.Sprintf(`"table%cname"`, spec)
-				output := utils.QuoteIdent(name)
-				Expect(output).To(Equal(expected))
-			}
-		})
-		It("properly escapes Unicode characters", func() {
-			special := `Ää表`
-			for _, spec := range special {
-				name := fmt.Sprintf(`table%cname`, spec)
-				expected := fmt.Sprintf(`"table%cname"`, spec)
-				output := utils.QuoteIdent(name)
-				Expect(output).To(Equal(expected))
-			}
+		It("can print a schema with privileges, an owner, and a comment", func() {
+			schemas := []backup.Schema{{1, "schemaname"}}
+			schemaMetadataMap := testutils.DefaultMetadataMap("SCHEMA", true, true, true)
+
+			backup.PrintCreateSchemaStatements(buffer, schemas, schemaMetadataMap)
+			testutils.ExpectRegexp(buffer, `CREATE SCHEMA schemaname;
+
+COMMENT ON SCHEMA schemaname IS 'This is a schema comment.';
+
+
+ALTER SCHEMA schemaname OWNER TO testrole;
+
+
+REVOKE ALL ON SCHEMA schemaname FROM PUBLIC;
+REVOKE ALL ON SCHEMA schemaname FROM testrole;
+GRANT ALL ON SCHEMA schemaname TO testrole;`)
 		})
 	})
 	Describe("Schema.ToString", func() {
@@ -292,73 +438,6 @@ REVOKE ALL ON TABLE public.tablename FROM testrole;
 GRANT ALL ON TABLE public.tablename TO anothertestrole;
 GRANT SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES ON TABLE public.tablename TO testrole;
 GRANT TRIGGER ON TABLE public.tablename TO PUBLIC;`)
-		})
-	})
-	Describe("TopologicalSort", func() {
-		It("returns the original slice if there are no dependencies among objects", func() {
-			relations := []backup.Sortable{
-				backup.Relation{SchemaName: "public", RelationName: "relation1", DependsUpon: []string{}},
-				backup.Relation{SchemaName: "public", RelationName: "relation2", DependsUpon: []string{}},
-				backup.Relation{SchemaName: "public", RelationName: "relation3", DependsUpon: []string{}},
-			}
-
-			relations = backup.TopologicalSort(relations)
-
-			Expect(relations[0].Name()).To(Equal("public.relation1"))
-			Expect(relations[1].Name()).To(Equal("public.relation2"))
-			Expect(relations[2].Name()).To(Equal("public.relation3"))
-		})
-		It("sorts the slice correctly if there is an object dependent on one other object", func() {
-			relations := []backup.Sortable{
-				backup.Relation{SchemaName: "public", RelationName: "relation1", DependsUpon: []string{"public.relation3"}},
-				backup.Relation{SchemaName: "public", RelationName: "relation2", DependsUpon: []string{}},
-				backup.Relation{SchemaName: "public", RelationName: "relation3", DependsUpon: []string{}},
-			}
-
-			relations = backup.TopologicalSort(relations)
-
-			Expect(relations[0].Name()).To(Equal("public.relation2"))
-			Expect(relations[1].Name()).To(Equal("public.relation3"))
-			Expect(relations[2].Name()).To(Equal("public.relation1"))
-		})
-		It("sorts the slice correctly if there are two objects dependent on one other object", func() {
-			views := []backup.Sortable{
-				backup.View{SchemaName: "public", ViewName: "view1", DependsUpon: []string{"public.view2"}},
-				backup.View{SchemaName: "public", ViewName: "view2", DependsUpon: []string{}},
-				backup.View{SchemaName: "public", ViewName: "view3", DependsUpon: []string{"public.view2"}},
-			}
-
-			views = backup.TopologicalSort(views)
-
-			Expect(views[0].Name()).To(Equal("public.view2"))
-			Expect(views[1].Name()).To(Equal("public.view1"))
-			Expect(views[2].Name()).To(Equal("public.view3"))
-		})
-		It("sorts the slice correctly if there is one object dependent on two other objects", func() {
-			types := []backup.Sortable{
-				backup.Type{TypeSchema: "public", TypeName: "type1", DependsUpon: []string{}},
-				backup.Type{TypeSchema: "public", TypeName: "type2", DependsUpon: []string{"public.type1", "public.type3"}},
-				backup.Type{TypeSchema: "public", TypeName: "type3", DependsUpon: []string{}},
-			}
-
-			types = backup.TopologicalSort(types)
-
-			Expect(types[0].Name()).To(Equal("public.type1"))
-			Expect(types[1].Name()).To(Equal("public.type3"))
-			Expect(types[2].Name()).To(Equal("public.type2"))
-		})
-		It("sorts the slice correctly if there are complex dependencies", func() {
-			sortable := []backup.Sortable{
-				backup.Type{TypeSchema: "public", TypeName: "type1", DependsUpon: []string{}},
-				backup.Type{TypeSchema: "public", TypeName: "type2", DependsUpon: []string{"public.type1", "public.function3"}},
-				backup.Function{SchemaName: "public", FunctionName: "function3", DependsUpon: []string{"public.type1"}},
-			}
-
-			sortable = backup.TopologicalSort(sortable)
-
-			Expect(sortable[0].Name()).To(Equal("public.type1"))
-			Expect(sortable[1].Name()).To(Equal("public.function3"))
-			Expect(sortable[2].Name()).To(Equal("public.type2"))
 		})
 	})
 })

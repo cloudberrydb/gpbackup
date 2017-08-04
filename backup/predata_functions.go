@@ -144,3 +144,79 @@ func PrintCreateCastStatements(predataFile io.Writer, castDefs []Cast, castMetad
 		PrintObjectMetadata(predataFile, castMetadata[castDef.Oid], castStr, "CAST")
 	}
 }
+
+/*
+ * This function separates out functions related to procedural languages from
+ * any other functions, so that language-related functions can be dumped before
+ * the languages themselves and we can avoid sorting languages and functions
+ * together to resolve dependencies.
+ */
+func ExtractLanguageFunctions(funcDefs []Function, procLangs []ProceduralLanguage) ([]Function, []Function) {
+	isLangFuncMap := make(map[uint32]bool, 0)
+	for _, procLang := range procLangs {
+		for _, funcDef := range funcDefs {
+			isLangFuncMap[funcDef.Oid] = (funcDef.Oid == procLang.Handler ||
+				funcDef.Oid == procLang.Inline ||
+				funcDef.Oid == procLang.Validator)
+		}
+	}
+	langFuncs := make([]Function, 0)
+	otherFuncs := make([]Function, 0)
+	for _, funcDef := range funcDefs {
+		if isLangFuncMap[funcDef.Oid] {
+			langFuncs = append(langFuncs, funcDef)
+		} else {
+			otherFuncs = append(otherFuncs, funcDef)
+		}
+	}
+	return langFuncs, otherFuncs
+}
+
+func PrintCreateLanguageStatements(predataFile io.Writer, procLangs []ProceduralLanguage,
+	funcInfoMap map[uint32]FunctionInfo, procLangMetadata MetadataMap) {
+	for _, procLang := range procLangs {
+		quotedOwner := utils.QuoteIdent(procLang.Owner)
+		quotedLanguage := utils.QuoteIdent(procLang.Name)
+		utils.MustPrintf(predataFile, "\n\nCREATE ")
+		if procLang.PlTrusted {
+			utils.MustPrintf(predataFile, "TRUSTED ")
+		}
+		utils.MustPrintf(predataFile, "PROCEDURAL LANGUAGE %s;", quotedLanguage)
+		/*
+		 * If the handler, validator, and inline functions are in pg_pltemplate, we can
+		 * dump a CREATE LANGUAGE command without specifying them individually.
+		 *
+		 * The schema of the handler function should match the schema of the language itself, but
+		 * the inline and validator functions can be in a different schema and must be schema-qualified.
+		 */
+
+		if procLang.Handler != 0 {
+			handlerInfo := funcInfoMap[procLang.Handler]
+			utils.MustPrintf(predataFile, "\nALTER FUNCTION %s(%s) OWNER TO %s;", handlerInfo.QualifiedName, handlerInfo.Arguments, quotedOwner)
+		}
+		if procLang.Inline != 0 {
+			inlineInfo := funcInfoMap[procLang.Inline]
+			utils.MustPrintf(predataFile, "\nALTER FUNCTION %s(%s) OWNER TO %s;", inlineInfo.QualifiedName, inlineInfo.Arguments, quotedOwner)
+		}
+		if procLang.Validator != 0 {
+			validatorInfo := funcInfoMap[procLang.Validator]
+			utils.MustPrintf(predataFile, "\nALTER FUNCTION %s(%s) OWNER TO %s;", validatorInfo.QualifiedName, validatorInfo.Arguments, quotedOwner)
+		}
+		PrintObjectMetadata(predataFile, procLangMetadata[procLang.Oid], utils.QuoteIdent(procLang.Name), "LANGUAGE")
+		utils.MustPrintln(predataFile)
+	}
+}
+
+func PrintCreateConversionStatements(predataFile io.Writer, conversions []Conversion, conversionMetadata MetadataMap) {
+	for _, conversion := range conversions {
+		convFQN := MakeFQN(conversion.Schema, conversion.Name)
+		defaultStr := ""
+		if conversion.IsDefault {
+			defaultStr = " DEFAULT"
+		}
+		utils.MustPrintf(predataFile, "\n\nCREATE%s CONVERSION %s FOR '%s' TO '%s' FROM %s;",
+			defaultStr, convFQN, conversion.ForEncoding, conversion.ToEncoding, conversion.ConversionFunction)
+		PrintObjectMetadata(predataFile, conversionMetadata[conversion.Oid], convFQN, "CONVERSION")
+		utils.MustPrintln(predataFile)
+	}
+}

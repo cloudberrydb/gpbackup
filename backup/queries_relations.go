@@ -188,6 +188,78 @@ JOIN pg_class c ON d.objid = c.oid AND c.relkind = 'r';`
 	return tables
 }
 
+func GetAllSequenceRelations(connection *utils.DBConn) []Relation {
+	query := `SELECT
+	n.oid AS schemaoid,
+	c.oid AS relationoid,
+	n.nspname AS schemaname,
+	c.relname AS relationname
+FROM pg_class c
+LEFT JOIN pg_namespace n
+	ON c.relnamespace = n.oid
+WHERE relkind = 'S'
+ORDER BY schemaname, relationname;`
+
+	results := make([]Relation, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
+}
+
+type SequenceDefinition struct {
+	Name      string `db:"sequence_name"`
+	LastVal   int64  `db:"last_value"`
+	Increment int64  `db:"increment_by"`
+	MaxVal    int64  `db:"max_value"`
+	MinVal    int64  `db:"min_value"`
+	CacheVal  int64  `db:"cache_value"`
+	LogCnt    int64  `db:"log_cnt"`
+	IsCycled  bool   `db:"is_cycled"`
+	IsCalled  bool   `db:"is_called"`
+}
+
+func GetSequenceDefinition(connection *utils.DBConn, seqName string) SequenceDefinition {
+	query := fmt.Sprintf("SELECT * FROM %s", seqName)
+	result := SequenceDefinition{}
+	err := connection.Get(&result, query)
+	utils.CheckError(err)
+	return result
+}
+
+func GetSequenceColumnOwnerMap(connection *utils.DBConn) map[string]string {
+	query := `SELECT
+	n.nspname,
+	s.relname AS sequencename,
+	t.relname AS tablename,
+	a.attname
+FROM pg_depend d
+JOIN pg_attribute a
+	ON a.attrelid = d.refobjid AND a.attnum = d.refobjsubid
+JOIN pg_class s
+	ON s.oid = d.objid
+JOIN pg_class t
+	ON t.oid = d.refobjid
+JOIN pg_namespace n
+	ON n.oid = s.relnamespace
+WHERE s.relkind = 'S';`
+
+	results := make([]struct {
+		SchemaName   string `db:"nspname"`
+		SequenceName string
+		TableName    string
+		ColumnName   string `db:"attname"`
+	}, 0)
+	sequenceOwners := make(map[string]string, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	for _, seqOwner := range results {
+		seqFQN := MakeFQN(seqOwner.SchemaName, seqOwner.SequenceName)
+		columnFQN := fmt.Sprintf("%s.%s", MakeFQN(seqOwner.SchemaName, seqOwner.TableName), utils.QuoteIdent(seqOwner.ColumnName))
+		sequenceOwners[seqFQN] = columnFQN
+	}
+	return sequenceOwners
+}
+
 type View struct {
 	Oid         uint32
 	SchemaName  string

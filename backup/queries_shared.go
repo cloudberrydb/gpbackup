@@ -27,6 +27,78 @@ import (
  * package (especially Table and Schema) are intended for more general use.
  */
 
+func GetAllUserSchemas(connection *utils.DBConn) []Schema {
+	/*
+	 * This query is constructed from scratch, but the list of schemas to exclude
+	 * is copied from gpcrondump so that gpbackup exhibits similar behavior regarding
+	 * which schemas are dumped.
+	 */
+	query := fmt.Sprintf(`
+SELECT
+	oid,
+	nspname AS name
+FROM pg_namespace n
+WHERE %s
+ORDER BY name;`, NonUserSchemaFilterClause("n"))
+	results := make([]Schema, 0)
+
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
+}
+
+type Constraint struct {
+	Oid                uint32
+	ConName            string
+	ConType            string
+	ConDef             string
+	OwningObject       string
+	IsDomainConstraint bool
+	IsPartitionParent  bool
+}
+
+func GetConstraints(connection *utils.DBConn) []Constraint {
+	// This query is adapted from the queries underlying \d in psql.
+	query := fmt.Sprintf(`
+SELECT
+	c.oid,
+	conname,
+	contype,
+	pg_get_constraintdef(c.oid, TRUE) AS condef,
+	CASE
+		WHEN r.relname IS NULL THEN quote_ident(n.nspname) || '.' || quote_ident(t.typname)
+		ELSE  quote_ident(n.nspname) || '.' || quote_ident(r.relname)
+	END AS owningobject,
+	CASE
+		WHEN r.relname IS NULL THEN 't'
+		ELSE 'f'
+	END AS isdomainconstraint,
+	CASE
+		WHEN pt.parrelid IS NULL THEN 'f'
+		ELSE 't'
+	END AS ispartitionparent
+FROM pg_constraint c
+LEFT JOIN pg_class r
+	ON c.conrelid = r.oid
+LEFT JOIN pg_partition_rule pr
+	ON c.conrelid = pr.parchildrelid
+LEFT JOIN pg_partition pt
+	ON c.conrelid = pt.parrelid
+LEFT JOIN pg_type t
+	ON c.contypid = t.oid
+JOIN pg_namespace n
+	ON n.oid = c.connamespace
+WHERE %s
+AND pr.parchildrelid IS NULL
+GROUP BY c.oid, conname, contype, r.relname, n.nspname, t.typname, pt.parrelid
+ORDER BY conname;`, NonUserSchemaFilterClause("n"))
+
+	results := make([]Constraint, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
+}
+
 /*
  * Generic functions and structs relating to schemas and relations.
  */
@@ -116,24 +188,6 @@ var (
 // A list of schemas we don't ever want to dump, formatted for use in a WHERE clause
 func NonUserSchemaFilterClause(namespace string) string {
 	return fmt.Sprintf(`%s.nspname NOT LIKE 'pg_temp_%%' AND %s.nspname NOT LIKE 'pg_toast%%' AND %s.nspname NOT IN ('gp_toolkit', 'information_schema', 'pg_aoseg', 'pg_bitmapindex', 'pg_catalog')`, namespace, namespace, namespace)
-}
-
-func OidFromObjectName(dbconn *utils.DBConn, schemaName string, objectName string, params MetadataQueryParams) uint32 {
-	catalogTable := params.CatalogTable
-	if params.OidTable != "" {
-		catalogTable = params.OidTable
-	}
-	schemaStr := ""
-	if schemaName != "" {
-		schemaStr = fmt.Sprintf(" AND %s = (SELECT oid FROM pg_namespace WHERE nspname = '%s')", params.SchemaField, schemaName)
-	}
-	query := fmt.Sprintf("SELECT oid FROM %s WHERE %s ='%s'%s", catalogTable, params.NameField, objectName, schemaStr)
-	result := struct {
-		Oid uint32
-	}{}
-	err := dbconn.Get(&result, query)
-	utils.CheckError(err)
-	return result.Oid
 }
 
 func GetMetadataForObjectType(connection *utils.DBConn, params MetadataQueryParams) MetadataMap {

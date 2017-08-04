@@ -126,7 +126,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP AGGREGATE agg_prefunc(numeric, numeric)")
 
-			oid := backup.OidFromObjectName(connection, "", "agg_prefunc", backup.TYPE_AGGREGATE)
+			oid := testutils.OidFromObjectName(connection, "", "agg_prefunc", backup.TYPE_AGGREGATE)
 			resultAggregates := backup.GetAggregates(connection)
 			Expect(len(resultAggregates)).To(Equal(1))
 			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_AGGREGATE)
@@ -193,6 +193,64 @@ var _ = Describe("backup integration create statement tests", func() {
 			resultMetadata := resultMetadataMap[resultCasts[0].Oid]
 			testutils.ExpectStructsToMatchExcluding(&castDef, &resultCasts[0], "Oid")
 			testutils.ExpectStructsToMatchExcluding(&resultMetadata, &castMetadata, "Oid")
+		})
+	})
+	Describe("PrintCreateLanguageStatements", func() {
+		It("creates procedural languages", func() {
+			funcInfoMap := map[uint32]backup.FunctionInfo{
+				1: {"pg_catalog.plpgsql_validator", "oid", true},
+				2: {"pg_catalog.plpgsql_inline_handler", "internal", true},
+				3: {"pg_catalog.plpgsql_call_handler", "", true},
+				4: {"pg_catalog.plperl_validator", "oid", true},
+				5: {"pg_catalog.plperl_inline_handler", "internal", true},
+				6: {"pg_catalog.plperl_call_handler", "", true},
+			}
+			plpgsqlInfo := backup.ProceduralLanguage{0, "plpgsql", "testrole", true, true, 1, 2, 3}
+			plperlInfo := backup.ProceduralLanguage{1, "plperl", "testrole", true, true, 4, 5, 6}
+			procLangs := []backup.ProceduralLanguage{plpgsqlInfo, plperlInfo}
+			langMetadataMap := testutils.DefaultMetadataMap("LANGUAGE", true, true, true)
+			langMetadata := langMetadataMap[1]
+
+			backup.PrintCreateLanguageStatements(buffer, procLangs, funcInfoMap, langMetadataMap)
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, "DROP LANGUAGE plperl")
+
+			resultProcLangs := backup.GetProceduralLanguages(connection)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_PROCLANGUAGE)
+
+			plperlInfo.Oid = testutils.OidFromObjectName(connection, "", "plperl", backup.TYPE_PROCLANGUAGE)
+			Expect(len(resultProcLangs)).To(Equal(2))
+			resultMetadata := resultMetadataMap[plperlInfo.Oid]
+			testutils.ExpectStructsToMatchIncluding(&plpgsqlInfo, &resultProcLangs[0], "IsPl", "PlTrusted")
+			testutils.ExpectStructsToMatchIncluding(&plperlInfo, &resultProcLangs[1], "IsPl", "PlTrusted")
+			testutils.ExpectStructsToMatch(&langMetadata, &resultMetadata)
+		})
+	})
+	Describe("PrintCreateConversionStatements", func() {
+		It("creates conversions", func() {
+			convOne := backup.Conversion{1, "public", "conv_one", "LATIN1", "MULE_INTERNAL", "pg_catalog.latin1_to_mic", false}
+			convTwo := backup.Conversion{0, "public", "conv_two", "LATIN1", "MULE_INTERNAL", "pg_catalog.latin1_to_mic", true}
+			conversions := []backup.Conversion{convOne, convTwo}
+			convMetadataMap := testutils.DefaultMetadataMap("CONVERSION", false, true, true)
+			convMetadata := convMetadataMap[1]
+
+			backup.PrintCreateConversionStatements(buffer, conversions, convMetadataMap)
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, "DROP CONVERSION conv_one")
+			defer testutils.AssertQueryRuns(connection, "DROP CONVERSION conv_two")
+
+			resultConversions := backup.GetConversions(connection)
+			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_CONVERSION)
+
+			convOne.Oid = testutils.OidFromObjectName(connection, "public", "conv_one", backup.TYPE_CONVERSION)
+			convTwo.Oid = testutils.OidFromObjectName(connection, "public", "conv_two", backup.TYPE_CONVERSION)
+			Expect(len(resultConversions)).To(Equal(2))
+			resultMetadata := resultMetadataMap[convOne.Oid]
+			testutils.ExpectStructsToMatch(&convOne, &resultConversions[0])
+			testutils.ExpectStructsToMatch(&convTwo, &resultConversions[1])
+			testutils.ExpectStructsToMatch(&convMetadata, &resultMetadata)
 		})
 	})
 })

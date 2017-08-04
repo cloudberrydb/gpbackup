@@ -406,4 +406,136 @@ AS ASSIGNMENT;`)
 COMMENT ON CAST (src AS dst) IS 'This is a cast comment.';`)
 		})
 	})
+	Describe("ExtractLanguageFunctions", func() {
+		customLang := backup.ProceduralLanguage{1, "custom_language", "testrole", true, true, 3, 4, 5}
+		procLangs := []backup.ProceduralLanguage{customLang}
+		langFunc := backup.Function{Oid: 3, FunctionName: "custom_handler"}
+		nonLangFunc := backup.Function{Oid: 2, FunctionName: "random_function"}
+		It("handles a case where all functions are language-associated functions", func() {
+			funcDefs := []backup.Function{langFunc}
+			langFuncs, otherFuncs := backup.ExtractLanguageFunctions(funcDefs, procLangs)
+			Expect(len(langFuncs)).To(Equal(1))
+			Expect(len(otherFuncs)).To(Equal(0))
+			Expect(langFuncs[0].FunctionName).To(Equal("custom_handler"))
+		})
+		It("handles a case where no functions are language-associated functions", func() {
+			funcDefs := []backup.Function{nonLangFunc}
+			langFuncs, otherFuncs := backup.ExtractLanguageFunctions(funcDefs, procLangs)
+			Expect(len(langFuncs)).To(Equal(0))
+			Expect(len(otherFuncs)).To(Equal(1))
+			Expect(otherFuncs[0].FunctionName).To(Equal("random_function"))
+		})
+		It("handles a case where some functions are language-associated functions", func() {
+			funcDefs := []backup.Function{langFunc, nonLangFunc}
+			langFuncs, otherFuncs := backup.ExtractLanguageFunctions(funcDefs, procLangs)
+			Expect(len(langFuncs)).To(Equal(1))
+			Expect(len(otherFuncs)).To(Equal(1))
+			Expect(langFuncs[0].FunctionName).To(Equal("custom_handler"))
+			Expect(otherFuncs[0].FunctionName).To(Equal("random_function"))
+		})
+	})
+	Describe("PrintCreateLanguageStatements", func() {
+		plUntrustedHandlerOnly := backup.ProceduralLanguage{1, "plpythonu", "testrole", true, false, 4, 0, 0}
+		plAllFields := backup.ProceduralLanguage{1, "plpgsql", "testrole", true, true, 1, 2, 3}
+		plComment := backup.ProceduralLanguage{1, "plpythonu", "testrole", true, false, 4, 0, 0}
+		funcInfoMap := map[uint32]backup.FunctionInfo{
+			1: {QualifiedName: "pg_catalog.plpgsql_call_handler", Arguments: "", IsInternal: true},
+			2: {QualifiedName: "pg_catalog.plpgsql_inline_handler", Arguments: "internal", IsInternal: true},
+			3: {QualifiedName: "pg_catalog.plpgsql_validator", Arguments: "oid", IsInternal: true},
+			4: {QualifiedName: "pg_catalog.plpython_call_handler", Arguments: "", IsInternal: true},
+		}
+		emptyMetadataMap := backup.MetadataMap{}
+
+		It("prints untrusted language with a handler only", func() {
+			langs := []backup.ProceduralLanguage{plUntrustedHandlerOnly}
+
+			backup.PrintCreateLanguageStatements(buffer, langs, funcInfoMap, emptyMetadataMap)
+			testutils.ExpectRegexp(buffer, `CREATE PROCEDURAL LANGUAGE plpythonu;
+ALTER FUNCTION pg_catalog.plpython_call_handler() OWNER TO testrole;`)
+		})
+		It("prints trusted language with handler, inline, and validator", func() {
+			langs := []backup.ProceduralLanguage{plAllFields}
+
+			backup.PrintCreateLanguageStatements(buffer, langs, funcInfoMap, emptyMetadataMap)
+			testutils.ExpectRegexp(buffer, `CREATE TRUSTED PROCEDURAL LANGUAGE plpgsql;
+ALTER FUNCTION pg_catalog.plpgsql_call_handler() OWNER TO testrole;
+ALTER FUNCTION pg_catalog.plpgsql_inline_handler(internal) OWNER TO testrole;
+ALTER FUNCTION pg_catalog.plpgsql_validator(oid) OWNER TO testrole;`)
+		})
+		It("prints multiple create language statements", func() {
+			langs := []backup.ProceduralLanguage{plUntrustedHandlerOnly, plAllFields}
+
+			backup.PrintCreateLanguageStatements(buffer, langs, funcInfoMap, emptyMetadataMap)
+			testutils.ExpectRegexp(buffer, `CREATE PROCEDURAL LANGUAGE plpythonu;
+ALTER FUNCTION pg_catalog.plpython_call_handler() OWNER TO testrole;
+
+
+CREATE TRUSTED PROCEDURAL LANGUAGE plpgsql;
+ALTER FUNCTION pg_catalog.plpgsql_call_handler() OWNER TO testrole;
+ALTER FUNCTION pg_catalog.plpgsql_inline_handler(internal) OWNER TO testrole;
+ALTER FUNCTION pg_catalog.plpgsql_validator(oid) OWNER TO testrole;`)
+		})
+		It("prints a language with privileges, an owner, and a comment", func() {
+			langs := []backup.ProceduralLanguage{plComment}
+			langMetadataMap := testutils.DefaultMetadataMap("LANGUAGE", true, true, true)
+
+			backup.PrintCreateLanguageStatements(buffer, langs, funcInfoMap, langMetadataMap)
+			testutils.ExpectRegexp(buffer, `CREATE PROCEDURAL LANGUAGE plpythonu;
+ALTER FUNCTION pg_catalog.plpython_call_handler() OWNER TO testrole;
+
+COMMENT ON LANGUAGE plpythonu IS 'This is a language comment.';
+
+
+ALTER LANGUAGE plpythonu OWNER TO testrole;
+
+
+REVOKE ALL ON LANGUAGE plpythonu FROM PUBLIC;
+REVOKE ALL ON LANGUAGE plpythonu FROM testrole;
+GRANT ALL ON LANGUAGE plpythonu TO testrole;`)
+		})
+	})
+	Describe("PrintCreateConversionStatements", func() {
+		var (
+			convOne     backup.Conversion
+			convTwo     backup.Conversion
+			metadataMap backup.MetadataMap
+		)
+		BeforeEach(func() {
+			convOne = backup.Conversion{1, "public", "conv_one", "UTF8", "LATIN1", "public.converter", false}
+			convTwo = backup.Conversion{0, "public", "conv_two", "UTF8", "LATIN1", "public.converter", true}
+			metadataMap = backup.MetadataMap{}
+		})
+
+		It("prints a non-default conversion", func() {
+			conversions := []backup.Conversion{convOne}
+			backup.PrintCreateConversionStatements(buffer, conversions, metadataMap)
+			testutils.ExpectRegexp(buffer, `CREATE CONVERSION public.conv_one FOR 'UTF8' TO 'LATIN1' FROM public.converter;`)
+		})
+		It("prints a default conversion", func() {
+			conversions := []backup.Conversion{convTwo}
+			backup.PrintCreateConversionStatements(buffer, conversions, metadataMap)
+			testutils.ExpectRegexp(buffer, `CREATE DEFAULT CONVERSION public.conv_two FOR 'UTF8' TO 'LATIN1' FROM public.converter;`)
+		})
+		It("prints multiple create conversion statements", func() {
+			conversions := []backup.Conversion{convOne, convTwo}
+			backup.PrintCreateConversionStatements(buffer, conversions, metadataMap)
+			testutils.ExpectRegexp(buffer, `
+
+CREATE CONVERSION public.conv_one FOR 'UTF8' TO 'LATIN1' FROM public.converter;
+
+
+CREATE DEFAULT CONVERSION public.conv_two FOR 'UTF8' TO 'LATIN1' FROM public.converter;`)
+		})
+		It("prints a conversion with an owner and a comment", func() {
+			conversions := []backup.Conversion{convOne}
+			metadataMap = testutils.DefaultMetadataMap("CONVERSION", false, true, true)
+			backup.PrintCreateConversionStatements(buffer, conversions, metadataMap)
+			testutils.ExpectRegexp(buffer, `CREATE CONVERSION public.conv_one FOR 'UTF8' TO 'LATIN1' FROM public.converter;
+
+COMMENT ON CONVERSION public.conv_one IS 'This is a conversion comment.';
+
+
+ALTER CONVERSION public.conv_one OWNER TO testrole;`)
+		})
+	})
 })

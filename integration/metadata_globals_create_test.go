@@ -34,7 +34,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.AssertQueryRuns(connection, hunks[1])
 
 			resultResourceQueues := backup.GetResourceQueues(connection)
-			resQueueOid := backup.OidFromObjectName(connection, "", "basicQueue", backup.TYPE_RESOURCEQUEUE)
+			resQueueOid := testutils.OidFromObjectName(connection, "", "basicQueue", backup.TYPE_RESOURCEQUEUE)
 			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_RESOURCEQUEUE)
 			resultMetadata := resultMetadataMap[resQueueOid]
 			testutils.ExpectStructsToMatch(&resultMetadata, &resQueueMetadata)
@@ -93,7 +93,7 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, `DROP ROLE "role1"`)
-			role1.Oid = backup.OidFromObjectName(connection, "", "role1", backup.TYPE_ROLE)
+			role1.Oid = testutils.OidFromObjectName(connection, "", "role1", backup.TYPE_ROLE)
 
 			resultRoles := backup.GetRoles(connection)
 			for _, role := range resultRoles {
@@ -144,7 +144,7 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, `DROP ROLE "role1"`)
-			role1.Oid = backup.OidFromObjectName(connection, "", "role1", backup.TYPE_ROLE)
+			role1.Oid = testutils.OidFromObjectName(connection, "", "role1", backup.TYPE_ROLE)
 
 			resultRoles := backup.GetRoles(connection)
 			for _, role := range resultRoles {
@@ -231,7 +231,7 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			resultTablespaces := backup.GetTablespaces(connection)
 			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_TABLESPACE)
-			oid := backup.OidFromObjectName(connection, "", "test_tablespace", backup.TYPE_TABLESPACE)
+			oid := testutils.OidFromObjectName(connection, "", "test_tablespace", backup.TYPE_TABLESPACE)
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&tablespaceMetadata, &resultMetadata, "Oid")
 			Expect(len(resultTablespaces)).To(Equal(numTablespaces + 1))

@@ -80,8 +80,8 @@ CREATE AGGREGATE agg_prefunc(numeric, numeric) (
 `)
 			defer testutils.AssertQueryRuns(connection, "DROP AGGREGATE agg_prefunc(numeric, numeric)")
 
-			transitionOid := backup.OidFromObjectName(connection, "public", "mysfunc_accum", backup.TYPE_FUNCTION)
-			prelimOid := backup.OidFromObjectName(connection, "public", "mypre_accum", backup.TYPE_FUNCTION)
+			transitionOid := testutils.OidFromObjectName(connection, "public", "mysfunc_accum", backup.TYPE_FUNCTION)
+			prelimOid := testutils.OidFromObjectName(connection, "public", "mypre_accum", backup.TYPE_FUNCTION)
 
 			result := backup.GetAggregates(connection)
 
@@ -105,7 +105,7 @@ LANGUAGE SQL`)
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION add(integer, integer)")
 
 			result = backup.GetFunctionOidToInfoMap(connection)
-			oid := backup.OidFromObjectName(connection, "public", "add", backup.TYPE_FUNCTION)
+			oid := testutils.OidFromObjectName(connection, "public", "add", backup.TYPE_FUNCTION)
 			Expect(len(result)).To(Equal(initialLength + 1))
 			Expect(result[oid].QualifiedName).To(Equal("public.add"))
 			Expect(result[oid].Arguments).To(Equal("integer, integer"))
@@ -114,7 +114,7 @@ LANGUAGE SQL`)
 		It("returns a map containing an internal function", func() {
 			result := backup.GetFunctionOidToInfoMap(connection)
 
-			oid := backup.OidFromObjectName(connection, "pg_catalog", "boolin", backup.TYPE_FUNCTION)
+			oid := testutils.OidFromObjectName(connection, "pg_catalog", "boolin", backup.TYPE_FUNCTION)
 			Expect(result[oid].QualifiedName).To(Equal("pg_catalog.boolin"))
 			Expect(result[oid].IsInternal).To(BeTrue())
 		})
@@ -161,6 +161,42 @@ LANGUAGE SQL`)
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&castDef, &results[0], "Oid")
+		})
+	})
+	Describe("GetProceduralLanguages", func() {
+		It("returns a slice of procedural languages", func() {
+			testutils.AssertQueryRuns(connection, "CREATE LANGUAGE plperl")
+			defer testutils.AssertQueryRuns(connection, "DROP LANGUAGE plperl")
+
+			pgsqlHandlerOid := testutils.OidFromObjectName(connection, "pg_catalog", "plpgsql_call_handler", backup.TYPE_FUNCTION)
+			pgsqlInlineOid := testutils.OidFromObjectName(connection, "pg_catalog", "plpgsql_inline_handler", backup.TYPE_FUNCTION)
+			pgsqlValidatorOid := testutils.OidFromObjectName(connection, "pg_catalog", "plpgsql_validator", backup.TYPE_FUNCTION)
+
+			perlHandlerOid := testutils.OidFromObjectName(connection, "pg_catalog", "plperl_call_handler", backup.TYPE_FUNCTION)
+			perlInlineOid := testutils.OidFromObjectName(connection, "pg_catalog", "plperl_inline_handler", backup.TYPE_FUNCTION)
+			perlValidatorOid := testutils.OidFromObjectName(connection, "pg_catalog", "plperl_validator", backup.TYPE_FUNCTION)
+
+			expectedPlpgsqlInfo := backup.ProceduralLanguage{0, "plpgsql", "testrole", true, true, pgsqlHandlerOid, pgsqlInlineOid, pgsqlValidatorOid}
+			expectedPlperlInfo := backup.ProceduralLanguage{1, "plperl", "testrole", true, true, perlHandlerOid, perlInlineOid, perlValidatorOid}
+
+			resultProcLangs := backup.GetProceduralLanguages(connection)
+
+			Expect(len(resultProcLangs)).To(Equal(2))
+			testutils.ExpectStructsToMatchExcluding(&expectedPlpgsqlInfo, &resultProcLangs[0], "Oid", "Owner")
+			testutils.ExpectStructsToMatchExcluding(&expectedPlperlInfo, &resultProcLangs[1], "Oid", "Owner")
+		})
+	})
+	Describe("GetConversions", func() {
+		It("returns a slice of conversions", func() {
+			testutils.AssertQueryRuns(connection, "CREATE CONVERSION testconv FOR 'LATIN1' TO 'MULE_INTERNAL' FROM latin1_to_mic")
+			defer testutils.AssertQueryRuns(connection, "DROP CONVERSION testconv")
+
+			expectedConversion := backup.Conversion{0, "public", "testconv", "LATIN1", "MULE_INTERNAL", "pg_catalog.latin1_to_mic", false}
+
+			resultConversions := backup.GetConversions(connection)
+
+			Expect(len(resultConversions)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&expectedConversion, &resultConversions[0], "Oid")
 		})
 	})
 	Describe("ConstructFunctionDependencies", func() {

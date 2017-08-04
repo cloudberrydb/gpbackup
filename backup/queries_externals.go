@@ -75,3 +75,31 @@ FROM pg_exttable;`
 	}
 	return resultMap
 }
+
+type ExternalProtocol struct {
+	Oid           uint32
+	Name          string `db:"ptcname"`
+	Owner         string
+	Trusted       bool   `db:"ptctrusted"`
+	ReadFunction  uint32 `db:"ptcreadfn"`
+	WriteFunction uint32 `db:"ptcwritefn"`
+	Validator     uint32 `db:"ptcvalidatorfn"`
+}
+
+func GetExternalProtocols(connection *utils.DBConn) []ExternalProtocol {
+	results := make([]ExternalProtocol, 0)
+	query := `
+SELECT
+	p.oid,
+	p.ptcname,
+	pg_get_userbyid(p.ptcowner) as owner,
+	p.ptctrusted,
+	p.ptcreadfn,
+	p.ptcwritefn,
+	p.ptcvalidatorfn
+FROM pg_extprotocol p;
+`
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
+}

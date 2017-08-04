@@ -45,7 +45,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_TSPARSER)
 
 			Expect(len(resultParsers)).To(Equal(1))
-			oid := backup.OidFromObjectName(connection, "public", "testparser", backup.TYPE_TSPARSER)
+			oid := testutils.OidFromObjectName(connection, "public", "testparser", backup.TYPE_TSPARSER)
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&parsers[0], &resultParsers[0], "Oid")
 			testutils.ExpectStructsToMatch(&parserMetadata, &resultMetadata)
@@ -79,7 +79,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_TSTEMPLATE)
 
 			Expect(len(resultTemplates)).To(Equal(1))
-			oid := backup.OidFromObjectName(connection, "public", "testtemplate", backup.TYPE_TSTEMPLATE)
+			oid := testutils.OidFromObjectName(connection, "public", "testtemplate", backup.TYPE_TSTEMPLATE)
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&templates[0], &resultTemplates[0], "Oid")
 			testutils.ExpectStructsToMatch(&templateMetadata, &resultMetadata)
@@ -113,7 +113,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_TSDICTIONARY)
 
 			Expect(len(resultDictionaries)).To(Equal(1))
-			oid := backup.OidFromObjectName(connection, "public", "testdictionary", backup.TYPE_TSDICTIONARY)
+			oid := testutils.OidFromObjectName(connection, "public", "testdictionary", backup.TYPE_TSDICTIONARY)
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&dictionaries[0], &resultDictionaries[0], "Oid")
 			testutils.ExpectStructsToMatch(&dictionaryMetadata, &resultMetadata)
@@ -147,7 +147,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_TSCONFIGURATION)
 
 			Expect(len(resultConfigurations)).To(Equal(1))
-			oid := backup.OidFromObjectName(connection, "public", "testconfiguration", backup.TYPE_TSCONFIGURATION)
+			oid := testutils.OidFromObjectName(connection, "public", "testconfiguration", backup.TYPE_TSCONFIGURATION)
 			resultMetadata := resultMetadataMap[oid]
 			testutils.ExpectStructsToMatchExcluding(&configurations[0], &resultConfigurations[0], "Oid")
 			testutils.ExpectStructsToMatch(&configurationMetadata, &resultMetadata)
