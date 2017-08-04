@@ -40,7 +40,7 @@ func GetExternalTableDefinitions(connection *utils.DBConn) map[uint32]ExternalTa
 	query := `
 SELECT
 	reloid AS oid,
-	unnest(urilocation) AS location,
+	CASE WHEN urilocation IS NOT NULL THEN unnest(urilocation) ELSE '' END AS location,
 	array_to_string(execlocation, ',') AS execlocation,
 	fmttype AS formattype,
 	fmtopts AS formatopts,
@@ -68,7 +68,9 @@ FROM pg_exttable;`
 		} else {
 			extTableDef = result
 		}
-		extTableDef.URIs = append(extTableDef.URIs, result.Location)
+		if result.Location != "" {
+			extTableDef.URIs = append(extTableDef.URIs, result.Location)
+		}
 		resultMap[result.Oid] = extTableDef
 	}
 	return resultMap

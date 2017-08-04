@@ -57,6 +57,26 @@ FORMAT 'TEXT'`)
 
 			testutils.ExpectStructsToMatchExcluding(&extTable, &result, "Oid")
 		})
+		It("returns a slice for a basic external web table definition", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
+			testutils.AssertQueryRuns(connection, `CREATE READABLE EXTERNAL WEB TABLE ext_table(i int)
+EXECUTE 'hostname'
+FORMAT 'TEXT'`)
+			defer testutils.AssertQueryRuns(connection, "DROP EXTERNAL WEB TABLE ext_table")
+			oid := backup.OidFromObjectName(connection, "public", "ext_table", backup.TYPE_RELATION)
+
+			results := backup.GetExternalTableDefinitions(connection)
+			result := results[oid]
+
+			extTable := backup.ExternalTableDefinition{
+				0, 0, 0, "", "ALL_SEGMENTS",
+				"t", "delimiter '	' null '\\N' escape '\\'", "", "hostname",
+				0, "", "", "UTF8", false, nil,
+			}
+
+			testutils.ExpectStructsToMatchExcluding(&extTable, &result, "Oid")
+		})
 		It("returns a slice for a complex external table definition", func() {
 			testutils.AssertQueryRuns(connection, `CREATE READABLE EXTERNAL TABLE ext_table(i int)
 LOCATION ('file://tmp/myfile.txt')
