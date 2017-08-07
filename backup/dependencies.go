@@ -2,6 +2,7 @@ package backup
 
 import (
 	"github.com/greenplum-db/gpbackup/utils"
+	"github.com/pkg/errors"
 )
 
 func SortFunctionsAndTypesInDependencyOrder(types []Type, functions []Function) []Sortable {
@@ -134,6 +135,10 @@ func TopologicalSort(slice []Sortable) []Sortable {
 				queue = append(queue, slice[dependencyIndexes[dep]])
 			}
 		}
+	}
+	if len(slice) != len(sorted) {
+		logger.Verbose("Failed to sort %v", slice)
+		logger.Fatal(errors.Errorf("Dependency resolution failed. This is a bug, please report."), "")
 	}
 	return sorted
 }

@@ -2,6 +2,7 @@ package backup_test
 
 import (
 	"github.com/greenplum-db/gpbackup/backup"
+	"github.com/greenplum-db/gpbackup/testutils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -79,6 +80,15 @@ var _ = Describe("backup/dependencies tests", func() {
 			Expect(sortable[0].Name()).To(Equal("public.type1"))
 			Expect(sortable[1].Name()).To(Equal("public.function3"))
 			Expect(sortable[2].Name()).To(Equal("public.type2"))
+		})
+		It("aborts if dependencies are not met", func() {
+			sortable := []backup.Sortable{
+				backup.Type{TypeSchema: "public", TypeName: "type1", DependsUpon: []string{"missing_thing, public.type2"}},
+				backup.Type{TypeSchema: "public", TypeName: "type2", DependsUpon: []string{}},
+			}
+
+			defer testutils.ShouldPanicWithMessage("Dependency resolution failed. This is a bug, please report.")
+			sortable = backup.TopologicalSort(sortable)
 		})
 	})
 })
