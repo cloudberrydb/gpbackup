@@ -143,7 +143,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			castMetadataMap = backup.MetadataMap{}
 		})
 		It("prints a basic cast with a function", func() {
-			castDef := backup.Cast{0, "text", "int4", "public", "casttoint", "text", "a"}
+			castDef := backup.Cast{0, "pg_catalog.text", "pg_catalog.int4", "public", "casttoint", "text", "a"}
 
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION casttoint(text) RETURNS integer STRICT IMMUTABLE LANGUAGE SQL AS 'SELECT cast($1 as integer);'")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION casttoint(text)")
@@ -158,7 +158,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&castDef, &resultCasts[0], "Oid")
 		})
 		It("prints a basic cast without a function", func() {
-			castDef := backup.Cast{0, "text", "casttesttype", "", "", "", "i"}
+			castDef := backup.Cast{0, "pg_catalog.text", "public.casttesttype", "", "", "", "i"}
 
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION cast_in(cstring) RETURNS casttesttype AS $$textin$$ LANGUAGE internal STRICT NO SQL")
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION cast_out(casttesttype) RETURNS cstring AS $$textout$$ LANGUAGE internal STRICT NO SQL")
@@ -175,7 +175,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&castDef, &resultCasts[0], "Oid")
 		})
 		It("prints a cast with a comment", func() {
-			castDef := backup.Cast{1, "text", "int4", "public", "casttoint", "text", "a"}
+			castDef := backup.Cast{1, "pg_catalog.text", "pg_catalog.int4", "public", "casttoint", "text", "a"}
 			castMetadataMap = testutils.DefaultMetadataMap("CAST", false, false, true)
 			castMetadata := castMetadataMap[1]
 

@@ -128,7 +128,7 @@ LANGUAGE SQL`)
 
 			results := backup.GetCasts(connection)
 
-			castDef := backup.Cast{0, "text", "int4", "public", "casttoint", "text", "a"}
+			castDef := backup.Cast{0, "pg_catalog.text", "pg_catalog.int4", "public", "casttoint", "text", "a"}
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&castDef, &results[0], "Oid")
@@ -143,7 +143,7 @@ LANGUAGE SQL`)
 
 			results := backup.GetCasts(connection)
 
-			castDef := backup.Cast{0, "text", "casttesttype", "", "", "", "i"}
+			castDef := backup.Cast{0, "pg_catalog.text", "public.casttesttype", "", "", "", "i"}
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&castDef, &results[0], "Oid")
@@ -157,7 +157,26 @@ LANGUAGE SQL`)
 
 			results := backup.GetCasts(connection)
 
-			castDef := backup.Cast{1, "text", "int4", "public", "casttoint", "text", "a"}
+			castDef := backup.Cast{1, "pg_catalog.text", "pg_catalog.int4", "public", "casttoint", "text", "a"}
+
+			Expect(len(results)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&castDef, &results[0], "Oid")
+		})
+		It("returns a slice for a cast with source and target types in different schemas", func() {
+			testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema1")
+			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema1")
+			testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema2")
+			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema2")
+			testutils.AssertQueryRuns(connection, "CREATE TYPE testschema1.casttesttype1 AS (t text)")
+			defer testutils.AssertQueryRuns(connection, "DROP TYPE testschema1.casttesttype1 CASCADE")
+			testutils.AssertQueryRuns(connection, "CREATE TYPE testschema2.casttesttype2 AS (t text)")
+			defer testutils.AssertQueryRuns(connection, "DROP TYPE testschema2.casttesttype2 CASCADE")
+			testutils.AssertQueryRuns(connection, "CREATE CAST (testschema1.casttesttype1 AS testschema2.casttesttype2) WITHOUT FUNCTION AS IMPLICIT")
+			defer testutils.AssertQueryRuns(connection, "DROP CAST (testschema1.casttesttype1 AS testschema2.casttesttype2)")
+
+			results := backup.GetCasts(connection)
+
+			castDef := backup.Cast{0, "testschema1.casttesttype1", "testschema2.casttesttype2", "", "", "", "i"}
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&castDef, &results[0], "Oid")

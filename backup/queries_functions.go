@@ -155,8 +155,8 @@ LEFT JOIN pg_namespace n ON p.pronamespace = n.oid;
 
 type Cast struct {
 	Oid            uint32
-	SourceType     string
-	TargetType     string
+	SourceTypeFQN  string
+	TargetTypeFQN  string
 	FunctionSchema string
 	FunctionName   string
 	FunctionArgs   string
@@ -170,8 +170,8 @@ func GetCasts(connection *utils.DBConn) []Cast {
 	query := fmt.Sprintf(`
 SELECT
 	c.oid,
-	st.typname AS sourcetype,
-	tt.typname AS targettype,
+	quote_ident(sn.nspname) || '.' || quote_ident(st.typname) AS sourcetypefqn,
+	quote_ident(tn.nspname) || '.' || quote_ident(tt.typname) AS targettypefqn,
 	coalesce(n.nspname, '') AS functionschema,
 	coalesce(p.proname, '') AS functionname,
 	coalesce(pg_get_function_arguments(p.oid), '') AS functionargs,
