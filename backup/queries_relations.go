@@ -45,17 +45,25 @@ ORDER BY schemaname, relationname;`, NonUserSchemaFilterClause("n"))
 }
 
 type ColumnDefinition struct {
-	Oid        uint32 `db:"attrelid"`
-	Num        int    `db:"attnum"`
-	Name       string `db:"attname"`
-	NotNull    bool   `db:"attnotnull"`
-	HasDefault bool   `db:"atthasdef"`
-	IsDropped  bool   `db:"attisdropped"`
-	TypeName   string
-	Encoding   string
-	StatTarget int `db:"attstattarget"`
-	DefaultVal string
-	Comment    string
+	Oid         uint32 `db:"attrelid"`
+	Num         int    `db:"attnum"`
+	Name        string `db:"attname"`
+	NotNull     bool   `db:"attnotnull"`
+	HasDefault  bool   `db:"atthasdef"`
+	IsDropped   bool   `db:"attisdropped"`
+	TypeName    string
+	Encoding    string
+	StatTarget  int `db:"attstattarget"`
+	StorageType string
+	DefaultVal  string
+	Comment     string
+}
+
+var storageTypeCodes = map[string]string{
+	"e": "EXTERNAL",
+	"m": "MAIN",
+	"p": "PLAIN",
+	"x": "EXTENDED",
 }
 
 func GetColumnDefinitions(connection *utils.DBConn) map[uint32][]ColumnDefinition {
@@ -71,6 +79,7 @@ SELECT
 	pg_catalog.format_type(t.oid,a.atttypmod) AS typename,
 	coalesce(pg_catalog.array_to_string(e.attoptions, ','), '') AS encoding,
 	a.attstattarget,
+	CASE WHEN a.attstorage != t.typstorage THEN a.attstorage ELSE '' END AS storagetype,
 	coalesce(pg_catalog.pg_get_expr(ad.adbin, ad.adrelid), '') AS defaultval,
 	coalesce(pg_catalog.col_description(a.attrelid, a.attnum), '') AS comment
 FROM pg_catalog.pg_attribute a
@@ -89,6 +98,7 @@ ORDER BY a.attrelid, a.attnum;`, NonUserSchemaFilterClause("n"))
 	utils.CheckError(err)
 	resultMap := make(map[uint32][]ColumnDefinition, 0)
 	for _, result := range results {
+		result.StorageType = storageTypeCodes[result.StorageType]
 		resultMap[result.Oid] = append(resultMap[result.Oid], result)
 	}
 	return resultMap

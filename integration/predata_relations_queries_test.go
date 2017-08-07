@@ -50,23 +50,26 @@ PARTITION BY LIST (gender)
 	})
 	Describe("GetColumnDefinitions", func() {
 		It("returns table attribute information for a heap table", func() {
-			testutils.AssertQueryRuns(connection, "CREATE TABLE atttable(a float, b text, c text NOT NULL, d int DEFAULT(5))")
+			testutils.AssertQueryRuns(connection, "CREATE TABLE atttable(a float, b text, c text NOT NULL, d int DEFAULT(5), e text)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE atttable")
 			testutils.AssertQueryRuns(connection, "COMMENT ON COLUMN atttable.a IS 'att comment'")
 			testutils.AssertQueryRuns(connection, "ALTER TABLE atttable DROP COLUMN b")
+			testutils.AssertQueryRuns(connection, "ALTER TABLE atttable ALTER COLUMN e SET STORAGE PLAIN")
 			oid := testutils.OidFromObjectName(connection, "public", "atttable", backup.TYPE_RELATION)
 
 			tableAtts := backup.GetColumnDefinitions(connection)[oid]
 
-			columnA := backup.ColumnDefinition{0, 1, "a", false, false, false, "double precision", "", -1, "", "att comment"}
-			columnC := backup.ColumnDefinition{0, 3, "c", true, false, false, "text", "", -1, "", ""}
-			columnD := backup.ColumnDefinition{0, 4, "d", false, true, false, "integer", "", -1, "5", ""}
+			columnA := backup.ColumnDefinition{0, 1, "a", false, false, false, "double precision", "", -1, "", "", "att comment"}
+			columnC := backup.ColumnDefinition{0, 3, "c", true, false, false, "text", "", -1, "", "", ""}
+			columnD := backup.ColumnDefinition{0, 4, "d", false, true, false, "integer", "", -1, "", "5", ""}
+			columnE := backup.ColumnDefinition{0, 5, "e", false, false, false, "text", "", -1, "PLAIN", "", ""}
 
-			Expect(len(tableAtts)).To(Equal(3))
+			Expect(len(tableAtts)).To(Equal(4))
 
 			testutils.ExpectStructsToMatchExcluding(&columnA, &tableAtts[0], "Oid")
 			testutils.ExpectStructsToMatchExcluding(&columnC, &tableAtts[1], "Oid")
 			testutils.ExpectStructsToMatchExcluding(&columnD, &tableAtts[2], "Oid")
+			testutils.ExpectStructsToMatchExcluding(&columnE, &tableAtts[3], "Oid")
 		})
 		It("returns table attributes including encoding for a column oriented table", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE co_atttable(a float, b text ENCODING(blocksize=65536)) WITH (appendonly=true, orientation=column)")
@@ -75,8 +78,8 @@ PARTITION BY LIST (gender)
 
 			tableAtts := backup.GetColumnDefinitions(connection)[oid]
 
-			columnA := backup.ColumnDefinition{0, 1, "a", false, false, false, "double precision", "compresstype=none,blocksize=32768,compresslevel=0", -1, "", ""}
-			columnB := backup.ColumnDefinition{0, 2, "b", false, false, false, "text", "blocksize=65536,compresstype=none,compresslevel=0", -1, "", ""}
+			columnA := backup.ColumnDefinition{0, 1, "a", false, false, false, "double precision", "compresstype=none,blocksize=32768,compresslevel=0", -1, "", "", ""}
+			columnB := backup.ColumnDefinition{0, 2, "b", false, false, false, "text", "blocksize=65536,compresstype=none,compresslevel=0", -1, "", "", ""}
 
 			Expect(len(tableAtts)).To(Equal(2))
 

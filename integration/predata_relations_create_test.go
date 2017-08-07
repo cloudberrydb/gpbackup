@@ -85,8 +85,8 @@ SET SUBPARTITION TEMPLATE  ` + `
 			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ColumnDefs.Oid", "ExtTableDef")
 		})
 		It("creates a basic heap table", func() {
-			rowOne := backup.ColumnDefinition{0, 1, "i", false, false, false, "integer", "", -1, "", ""}
-			rowTwo := backup.ColumnDefinition{0, 2, "j", false, false, false, "character varying(20)", "", -1, "", ""}
+			rowOne := backup.ColumnDefinition{0, 1, "i", false, false, false, "integer", "", -1, "", "", ""}
+			rowTwo := backup.ColumnDefinition{0, 2, "j", false, false, false, "character varying(20)", "", -1, "", "", ""}
 			tableDef.ColumnDefs = []backup.ColumnDefinition{rowOne, rowTwo}
 
 			backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
@@ -97,10 +97,11 @@ SET SUBPARTITION TEMPLATE  ` + `
 			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ColumnDefs.Oid", "ExtTableDef")
 		})
 		It("creates a complex heap table", func() {
-			rowOneDefault := backup.ColumnDefinition{0, 1, "i", false, true, false, "integer", "", -1, "42", ""}
-			rowNotNullDefault := backup.ColumnDefinition{0, 2, "j", true, true, false, "character varying(20)", "", -1, "'bar'::text", ""}
+			rowOneDefault := backup.ColumnDefinition{0, 1, "i", false, true, false, "integer", "", -1, "", "42", ""}
+			rowNotNullDefault := backup.ColumnDefinition{0, 2, "j", true, true, false, "character varying(20)", "", -1, "", "'bar'::text", ""}
+			rowNonDefaultStorageAndStats := backup.ColumnDefinition{0, 3, "k", false, false, false, "text", "", 3, "PLAIN", "", ""}
 			tableDef.DistPolicy = "DISTRIBUTED BY (i, j)"
-			tableDef.ColumnDefs = []backup.ColumnDefinition{rowOneDefault, rowNotNullDefault}
+			tableDef.ColumnDefs = []backup.ColumnDefinition{rowOneDefault, rowNotNullDefault, rowNonDefaultStorageAndStats}
 
 			backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 
@@ -110,8 +111,8 @@ SET SUBPARTITION TEMPLATE  ` + `
 			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ColumnDefs.Oid", "ExtTableDef")
 		})
 		It("creates a basic append-optimized column-oriented table", func() {
-			rowOne := backup.ColumnDefinition{0, 1, "i", false, false, false, "integer", "compresstype=zlib,blocksize=32768,compresslevel=1", -1, "", ""}
-			rowTwo := backup.ColumnDefinition{0, 2, "j", false, false, false, "character varying(20)", "compresstype=zlib,blocksize=32768,compresslevel=1", -1, "", ""}
+			rowOne := backup.ColumnDefinition{0, 1, "i", false, false, false, "integer", "compresstype=zlib,blocksize=32768,compresslevel=1", -1, "", "", ""}
+			rowTwo := backup.ColumnDefinition{0, 2, "j", false, false, false, "character varying(20)", "compresstype=zlib,blocksize=32768,compresslevel=1", -1, "", "", ""}
 			tableDef.StorageOpts = "appendonly=true, orientation=column, fillfactor=42, compresstype=zlib, blocksize=32768, compresslevel=1"
 			tableDef.ColumnDefs = []backup.ColumnDefinition{rowOne, rowTwo}
 
@@ -123,8 +124,8 @@ SET SUBPARTITION TEMPLATE  ` + `
 			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ColumnDefs.Oid", "ExtTableDef")
 		})
 		It("creates a one-level partition table", func() {
-			rowOne := backup.ColumnDefinition{0, 1, "region", false, false, false, "text", "", -1, "", ""}
-			rowTwo := backup.ColumnDefinition{0, 2, "gender", false, false, false, "text", "", -1, "", ""}
+			rowOne := backup.ColumnDefinition{0, 1, "region", false, false, false, "text", "", -1, "", "", ""}
+			rowTwo := backup.ColumnDefinition{0, 2, "gender", false, false, false, "text", "", -1, "", "", ""}
 			tableDef.PartDef = partitionDef
 			tableDef.ColumnDefs = []backup.ColumnDefinition{rowOne, rowTwo}
 
@@ -136,8 +137,8 @@ SET SUBPARTITION TEMPLATE  ` + `
 			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ColumnDefs.Oid", "ExtTableDef")
 		})
 		It("creates a two-level partition table", func() {
-			rowOne := backup.ColumnDefinition{0, 1, "region", false, false, false, "text", "", -1, "", ""}
-			rowTwo := backup.ColumnDefinition{0, 2, "gender", false, false, false, "text", "", -1, "", ""}
+			rowOne := backup.ColumnDefinition{0, 1, "region", false, false, false, "text", "", -1, "", "", ""}
+			rowTwo := backup.ColumnDefinition{0, 2, "gender", false, false, false, "text", "", -1, "", "", ""}
 			tableDef.PartDef = subpartitionDef
 			tableDef.PartTemplateDef = partTemplateDef
 			tableDef.ColumnDefs = []backup.ColumnDefinition{rowOne, rowTwo}
@@ -207,7 +208,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 		var (
 			extTableEmpty = backup.ExternalTableDefinition{0, -2, -2, "", "ALL_SEGMENTS", "t", "", "", "", 0, "", "", "UTF-8", false, nil}
 			testTable     = backup.BasicRelation("public", "testtable")
-			tableRow      = backup.ColumnDefinition{0, 1, "i", false, false, false, "integer", "", -1, "", ""}
+			tableRow      = backup.ColumnDefinition{0, 1, "i", false, false, false, "integer", "", -1, "", "", ""}
 			tableDef      = backup.TableDefinition{DistPolicy: "DISTRIBUTED BY (i)", ColumnDefs: []backup.ColumnDefinition{tableRow}, ExtTableDef: extTableEmpty}
 			tableMetadata backup.ObjectMetadata
 		)

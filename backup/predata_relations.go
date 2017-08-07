@@ -164,7 +164,7 @@ func PrintRegularTableCreateStatement(predataFile io.Writer, table Relation, tab
 	if tableDef.PartTemplateDef != "" {
 		utils.MustPrintf(predataFile, "%s;\n", strings.TrimSpace(tableDef.PartTemplateDef))
 	}
-	printColumnStatistics(predataFile, table, tableDef.ColumnDefs)
+	printAlterColumnStatements(predataFile, table, tableDef.ColumnDefs)
 }
 
 func printColumnDefinitions(predataFile io.Writer, table Relation, columnDefs []ColumnDefinition) {
@@ -189,10 +189,13 @@ func printColumnDefinitions(predataFile io.Writer, table Relation, columnDefs []
 	}
 }
 
-func printColumnStatistics(predataFile io.Writer, table Relation, columnDefs []ColumnDefinition) {
+func printAlterColumnStatements(predataFile io.Writer, table Relation, columnDefs []ColumnDefinition) {
 	for _, column := range columnDefs {
 		if column.StatTarget > -1 {
 			utils.MustPrintf(predataFile, "\nALTER TABLE ONLY %s ALTER COLUMN %s SET STATISTICS %d;", table.ToString(), column.Name, column.StatTarget)
+		}
+		if column.StorageType != "" {
+			utils.MustPrintf(predataFile, "\nALTER TABLE ONLY %s ALTER COLUMN %s SET STORAGE %s;", table.ToString(), column.Name, column.StorageType)
 		}
 	}
 }

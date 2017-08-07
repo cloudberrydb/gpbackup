@@ -16,8 +16,8 @@ var _ = Describe("backup/predata_relations tests", func() {
 	distSingle := "DISTRIBUTED BY (i)"
 	distComposite := "DISTRIBUTED BY (i, j)"
 
-	rowOne := backup.ColumnDefinition{0, 1, "i", false, false, false, "integer", "", -1, "", ""}
-	rowTwo := backup.ColumnDefinition{1, 2, "j", false, false, false, "character varying(20)", "", -1, "", ""}
+	rowOne := backup.ColumnDefinition{0, 1, "i", false, false, false, "integer", "", -1, "", "", ""}
+	rowTwo := backup.ColumnDefinition{1, 2, "j", false, false, false, "character varying(20)", "", -1, "", "", ""}
 
 	heapOpts := ""
 	aoOpts := "appendonly=true"
@@ -68,17 +68,18 @@ ENCODING 'UTF-8';`)
 		})
 	})
 	Describe("PrintRegularTableCreateStatement", func() {
-		rowDropped := backup.ColumnDefinition{0, 2, "j", false, false, true, "character varying(20)", "", -1, "", ""}
-		rowOneEncoding := backup.ColumnDefinition{0, 1, "i", false, false, false, "integer", "compresstype=none,blocksize=32768,compresslevel=0", -1, "", ""}
-		rowTwoEncoding := backup.ColumnDefinition{0, 2, "j", false, false, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", -1, "", ""}
-		rowNotNull := backup.ColumnDefinition{0, 2, "j", true, false, false, "character varying(20)", "", -1, "", ""}
-		rowEncodingNotNull := backup.ColumnDefinition{0, 2, "j", true, false, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", -1, "", ""}
-		rowOneDef := backup.ColumnDefinition{0, 1, "i", false, true, false, "integer", "", -1, "42", ""}
-		rowTwoDef := backup.ColumnDefinition{0, 2, "j", false, true, false, "character varying(20)", "", -1, "'bar'::text", ""}
-		rowTwoEncodingDef := backup.ColumnDefinition{0, 2, "j", false, true, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", -1, "'bar'::text", ""}
-		rowNotNullDef := backup.ColumnDefinition{0, 2, "j", true, true, false, "character varying(20)", "", -1, "'bar'::text", ""}
-		rowEncodingNotNullDef := backup.ColumnDefinition{0, 2, "j", true, true, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", -1, "'bar'::text", ""}
-		rowStats := backup.ColumnDefinition{0, 1, "i", false, false, false, "integer", "", 3, "", ""}
+		rowDropped := backup.ColumnDefinition{0, 2, "j", false, false, true, "character varying(20)", "", -1, "", "", ""}
+		rowOneEncoding := backup.ColumnDefinition{0, 1, "i", false, false, false, "integer", "compresstype=none,blocksize=32768,compresslevel=0", -1, "", "", ""}
+		rowTwoEncoding := backup.ColumnDefinition{0, 2, "j", false, false, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", -1, "", "", ""}
+		rowNotNull := backup.ColumnDefinition{0, 2, "j", true, false, false, "character varying(20)", "", -1, "", "", ""}
+		rowEncodingNotNull := backup.ColumnDefinition{0, 2, "j", true, false, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", -1, "", "", ""}
+		rowOneDef := backup.ColumnDefinition{0, 1, "i", false, true, false, "integer", "", -1, "", "42", ""}
+		rowTwoDef := backup.ColumnDefinition{0, 2, "j", false, true, false, "character varying(20)", "", -1, "", "'bar'::text", ""}
+		rowTwoEncodingDef := backup.ColumnDefinition{0, 2, "j", false, true, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", -1, "", "'bar'::text", ""}
+		rowNotNullDef := backup.ColumnDefinition{0, 2, "j", true, true, false, "character varying(20)", "", -1, "", "'bar'::text", ""}
+		rowEncodingNotNullDef := backup.ColumnDefinition{0, 2, "j", true, true, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", -1, "", "'bar'::text", ""}
+		rowStats := backup.ColumnDefinition{0, 1, "i", false, false, false, "integer", "", 3, "", "", ""}
+		colStorageType := backup.ColumnDefinition{0, 1, "i", false, false, false, "integer", "", -1, "PLAIN", "", ""}
 
 		Context("No special table attributes", func() {
 			It("prints a CREATE TABLE block with one line", func() {
@@ -159,6 +160,16 @@ ENCODING 'UTF-8';`)
 ) DISTRIBUTED RANDOMLY;
 
 ALTER TABLE ONLY public.tablename ALTER COLUMN i SET STATISTICS 3;`)
+			})
+			It("prints a CREATE TABLE block followed by an ALTER COLUMN ... SET STORAGE statement", func() {
+				col := []backup.ColumnDefinition{colStorageType}
+				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", col, false, extTableEmpty}
+				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
+				testutils.ExpectRegexp(buffer, `CREATE TABLE public.tablename (
+	i integer
+) DISTRIBUTED RANDOMLY;
+
+ALTER TABLE ONLY public.tablename ALTER COLUMN i SET STORAGE PLAIN;`)
 			})
 		})
 		Context("Multiple special table attributes on one column", func() {
@@ -415,8 +426,8 @@ SET SUBPARTITION TEMPLATE
 	})
 	Describe("PrintPostCreateTableStatements", func() {
 		testTable := backup.BasicRelation("public", "tablename")
-		rowCommentOne := backup.ColumnDefinition{0, 1, "i", false, false, false, "integer", "", -1, "", "This is a column comment."}
-		rowCommentTwo := backup.ColumnDefinition{0, 2, "j", false, false, false, "integer", "", -1, "", "This is another column comment."}
+		rowCommentOne := backup.ColumnDefinition{0, 1, "i", false, false, false, "integer", "", -1, "", "", "This is a column comment."}
+		rowCommentTwo := backup.ColumnDefinition{0, 2, "j", false, false, false, "integer", "", -1, "", "", "This is another column comment."}
 
 		It("prints a block with a table comment", func() {
 			col := []backup.ColumnDefinition{rowOne}
