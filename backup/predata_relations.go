@@ -19,7 +19,8 @@ type Relation struct {
 	RelationOid  uint32
 	SchemaName   string
 	RelationName string
-	DependsUpon  []string
+	DependsUpon  []string // Used for dependency sorting
+	Inherits     []string // Only used for printing INHERITS statement
 }
 
 /*
@@ -146,8 +147,8 @@ func PrintRegularTableCreateStatement(predataFile io.Writer, table Relation, tab
 	utils.MustPrintf(predataFile, "\n\nCREATE TABLE %s (\n", table.ToString())
 	printColumnDefinitions(predataFile, table, tableDef.ColumnDefs)
 	utils.MustPrintf(predataFile, ") ")
-	if len(table.DependsUpon) != 0 {
-		dependencyList := strings.Join(table.DependsUpon, ", ")
+	if len(table.Inherits) != 0 {
+		dependencyList := strings.Join(table.Inherits, ", ")
 		utils.MustPrintf(predataFile, "INHERITS (%s) ", dependencyList)
 	}
 	if tableDef.StorageOpts != "" {

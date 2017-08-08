@@ -21,7 +21,7 @@ var _ = Describe("backup/data tests", func() {
 	})
 	Describe("CopyTableOut", func() {
 		It("will dump a table to its own file", func() {
-			testTable := backup.Relation{2345, 3456, "public", "foo", []string{}}
+			testTable := backup.Relation{2345, 3456, "public", "foo", nil, nil}
 			execStr := "COPY public.foo TO '<SEG_DATA_DIR>/backups/20170101/20170101010101/gpbackup_<SEGID>_20170101010101_3456' WITH CSV DELIMITER ',' ON SEGMENT;"
 			mock.ExpectExec(execStr).WillReturnResult(sqlmock.NewResult(10, 0))
 			filename := "<SEG_DATA_DIR>/backups/20170101/20170101010101/gpbackup_<SEGID>_20170101010101_3456"
@@ -30,8 +30,8 @@ var _ = Describe("backup/data tests", func() {
 	})
 	Describe("WriteTableMapFile", func() {
 		testutils.SetDefaultSegmentConfiguration()
-		tableOne := backup.Relation{0, 1234, "public", "foo", []string{}}
-		tableTwo := backup.Relation{1, 2345, "public", "foo|bar", []string{}}
+		tableOne := backup.Relation{0, 1234, "public", "foo", nil, nil}
+		tableTwo := backup.Relation{1, 2345, "public", "foo|bar", nil, nil}
 		var (
 			r         *os.File
 			w         *os.File

@@ -402,9 +402,11 @@ SET SUBPARTITION TEMPLATE
 		Context("Inheritance", func() {
 			AfterEach(func() {
 				testTable.DependsUpon = []string{}
+				testTable.Inherits = []string{}
 			})
 			It("prints a CREATE TABLE block with a single-inheritance INHERITS clause", func() {
 				testTable.DependsUpon = []string{"public.parent"}
+				testTable.Inherits = []string{"public.parent"}
 				col := []backup.ColumnDefinition{rowOne}
 				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
@@ -414,6 +416,7 @@ SET SUBPARTITION TEMPLATE
 			})
 			It("prints a CREATE TABLE block with a multiple-inheritance INHERITS clause", func() {
 				testTable.DependsUpon = []string{"public.parent_one", "public.parent_two"}
+				testTable.Inherits = []string{"public.parent_one", "public.parent_two"}
 				col := []backup.ColumnDefinition{rowOne, rowTwo}
 				tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", col, false, extTableEmpty}
 				backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
@@ -486,7 +489,7 @@ COMMENT ON COLUMN public.tablename.j IS 'This is another column comment.';`)
 		})
 	})
 	Describe("PrintCreateSequenceStatements", func() {
-		baseSequence := backup.Relation{0, 1, "public", "seq_name", []string{}}
+		baseSequence := backup.Relation{0, 1, "public", "seq_name", nil, nil}
 		seqDefault := backup.Sequence{baseSequence, backup.SequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, true}}
 		seqNegIncr := backup.Sequence{baseSequence, backup.SequenceDefinition{"seq_name", 7, -1, -1, -9223372036854775807, 5, 42, false, true}}
 		seqMaxPos := backup.Sequence{baseSequence, backup.SequenceDefinition{"seq_name", 7, 1, 100, 1, 5, 42, false, true}}

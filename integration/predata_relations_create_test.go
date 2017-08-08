@@ -74,6 +74,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 		})
 		AfterEach(func() {
 			testTable.DependsUpon = []string{}
+			testTable.Inherits = []string{}
 			testutils.AssertQueryRuns(connection, "DROP TABLE IF EXISTS public.testtable")
 		})
 		It("creates a table with no attributes", func() {
@@ -169,6 +170,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE public.parent")
 			tableDef.ColumnDefs = []backup.ColumnDefinition{}
 			testTable.DependsUpon = []string{"public.parent"}
+			testTable.Inherits = []string{"public.parent"}
 
 			backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 
@@ -180,7 +182,9 @@ SET SUBPARTITION TEMPLATE  ` + `
 
 			Expect(len(tables)).To(Equal(1))
 			Expect(len(tables[0].DependsUpon)).To(Equal(1))
+			Expect(len(tables[0].Inherits)).To(Equal(1))
 			Expect(tables[0].DependsUpon[0]).To(Equal("public.parent"))
+			Expect(tables[0].Inherits[0]).To(Equal("public.parent"))
 		})
 		It("creates a table that inherits from two tables", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE public.parent_one (i int)")
@@ -189,6 +193,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE public.parent_two")
 			tableDef.ColumnDefs = []backup.ColumnDefinition{}
 			testTable.DependsUpon = []string{"public.parent_one", "public.parent_two"}
+			testTable.Inherits = []string{"public.parent_one", "public.parent_two"}
 
 			backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
 
@@ -202,6 +207,9 @@ SET SUBPARTITION TEMPLATE  ` + `
 			Expect(len(tables[0].DependsUpon)).To(Equal(2))
 			Expect(tables[0].DependsUpon[0]).To(Equal("public.parent_one"))
 			Expect(tables[0].DependsUpon[1]).To(Equal("public.parent_two"))
+			Expect(len(tables[0].Inherits)).To(Equal(2))
+			Expect(tables[0].Inherits[0]).To(Equal("public.parent_one"))
+			Expect(tables[0].Inherits[1]).To(Equal("public.parent_two"))
 		})
 	})
 	Describe("PrintPostCreateTableStatements", func() {
@@ -274,7 +282,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			sequenceMetadataMap backup.MetadataMap
 		)
 		BeforeEach(func() {
-			sequence = backup.Relation{0, 1, "public", "my_sequence", nil}
+			sequence = backup.Relation{0, 1, "public", "my_sequence", nil, nil}
 			sequenceDef = backup.Sequence{Relation: sequence}
 			sequenceMetadataMap = backup.MetadataMap{}
 		})
@@ -326,7 +334,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 	})
 	Describe("PrintAlterSequenceStatements", func() {
 		It("creates a sequence owned by a table column", func() {
-			sequenceDef := backup.Sequence{Relation: backup.Relation{0, 1, "public", "my_sequence", nil}}
+			sequenceDef := backup.Sequence{Relation: backup.Relation{0, 1, "public", "my_sequence", nil, nil}}
 			columnOwnerMap := map[string]string{"public.my_sequence": "public.sequence_table.a"}
 
 			sequenceDef.SequenceDefinition = backup.SequenceDefinition{Name: "my_sequence",

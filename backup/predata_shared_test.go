@@ -307,11 +307,11 @@ GRANT ALL ON SCHEMA schemaname TO testrole;`)
 		})
 	})
 	Describe("GetUniqueSchemas", func() {
-		alphabeticalAFoo := backup.Relation{1, 0, "otherschema", "foo", []string{}}
-		alphabeticalABar := backup.Relation{1, 0, "otherschema", "bar", []string{}}
+		alphabeticalAFoo := backup.Relation{1, 0, "otherschema", "foo", nil, nil}
+		alphabeticalABar := backup.Relation{1, 0, "otherschema", "bar", nil, nil}
 		schemaOther := backup.Schema{2, "otherschema"}
-		alphabeticalBFoo := backup.Relation{2, 0, "public", "foo", []string{}}
-		alphabeticalBBar := backup.Relation{2, 0, "public", "bar", []string{}}
+		alphabeticalBFoo := backup.Relation{2, 0, "public", "foo", nil, nil}
+		alphabeticalBBar := backup.Relation{2, 0, "public", "bar", nil, nil}
 		schemaPublic := backup.Schema{1, "public"}
 		schemas := []backup.Schema{schemaOther, schemaPublic}
 

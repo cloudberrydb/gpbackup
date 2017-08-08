@@ -176,24 +176,45 @@ type Dependency struct {
 }
 
 func ConstructTableDependencies(connection *utils.DBConn, tables []Relation) []Relation {
-	query := `
+	query := fmt.Sprintf(`
 SELECT
 	objid AS oid,
-	quote_ident(n.nspname) || '.' || quote_ident(p.relname) AS referencedobject
+	quote_ident(n.nspname) || '.' || quote_ident(p.typname) AS referencedobject,
+	'f' AS istable
+FROM pg_depend d
+JOIN pg_type p ON d.refobjid = p.oid
+JOIN pg_namespace n ON p.typnamespace = n.oid
+JOIN pg_class c ON d.objid = c.oid AND c.relkind = 'r'
+WHERE %s
+UNION
+SELECT
+	objid AS oid,
+	quote_ident(n.nspname) || '.' || quote_ident(p.relname) AS referencedobject,
+	't' AS istable
 FROM pg_depend d
 JOIN pg_class p ON d.refobjid = p.oid AND p.relkind = 'r'
 JOIN pg_namespace n ON p.relnamespace = n.oid
-JOIN pg_class c ON d.objid = c.oid AND c.relkind = 'r';`
+JOIN pg_class c ON d.objid = c.oid AND c.relkind = 'r';
+`, NonUserSchemaFilterClause("n"))
 
-	results := make([]Dependency, 0)
+	results := make([]struct {
+		Oid              uint32
+		ReferencedObject string
+		IsTable          bool
+	}, 0)
 	dependencyMap := make(map[uint32][]string, 0)
+	inheritanceMap := make(map[uint32][]string, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	for _, dependency := range results {
 		dependencyMap[dependency.Oid] = append(dependencyMap[dependency.Oid], dependency.ReferencedObject)
+		if dependency.IsTable {
+			inheritanceMap[dependency.Oid] = append(inheritanceMap[dependency.Oid], dependency.ReferencedObject)
+		}
 	}
 	for i := 0; i < len(tables); i++ {
 		tables[i].DependsUpon = dependencyMap[tables[i].RelationOid]
+		tables[i].Inherits = inheritanceMap[tables[i].RelationOid]
 	}
 	return tables
 }
