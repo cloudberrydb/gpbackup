@@ -389,7 +389,7 @@ func (obj ObjectMetadata) GetCommentStatement(objectName string, objectType stri
 	return commentStr
 }
 
-func PrintCreateDependentTypeAndFunctionStatements(predataFile io.Writer, objects []Sortable, metadataMap MetadataMap) {
+func PrintCreateDependentTypeAndFunctionAndTablesStatements(predataFile io.Writer, objects []Sortable, metadataMap MetadataMap, tableDefsMap map[uint32]TableDefinition) {
 	for _, object := range objects {
 		switch obj := object.(type) {
 		case Type:
@@ -403,6 +403,8 @@ func PrintCreateDependentTypeAndFunctionStatements(predataFile io.Writer, object
 			}
 		case Function:
 			PrintCreateFunctionStatement(predataFile, obj, metadataMap[obj.Oid])
+		case Relation:
+			PrintCreateTableStatement(predataFile, obj, tableDefsMap[obj.RelationOid], metadataMap[obj.RelationOid])
 		}
 	}
 }

@@ -181,10 +181,22 @@ func backupPredata(filename string, tables []Relation, tableDefs map[uint32]Tabl
 	logger.Verbose("Writing CREATE TYPE statements for enum types to predata file")
 	PrintCreateEnumTypeStatements(predataFile, types, typeMetadata)
 
+	relationMetadata := GetMetadataForObjectType(connection, TYPE_RELATION)
+	logger.Verbose("Writing CREATE SEQUENCE statements to predata file")
+	sequenceDefs := GetAllSequences(connection)
+	PrintCreateSequenceStatements(predataFile, sequenceDefs, relationMetadata)
+
+	logger.Verbose("Writing CREATE TABLE statements to predata file")
+	tables = ConstructTableDependencies(connection, tables)
+
 	logger.Verbose("Writing CREATE FUNCTION statements and CREATE TYPE statements for base, composite, and domain types to predata file")
-	sortedSlice := SortFunctionsAndTypesInDependencyOrder(types, otherFuncs)
-	filteredMetadata := ConstructFunctionAndTypeMetadataMap(typeMetadata, functionMetadata)
-	PrintCreateDependentTypeAndFunctionStatements(predataFile, sortedSlice, filteredMetadata)
+	sortedSlice := SortFunctionsAndTypesAndTablesInDependencyOrder(types, otherFuncs, tables)
+	filteredMetadata := ConstructFunctionAndTypeAndTableMetadataMap(typeMetadata, functionMetadata, relationMetadata)
+	PrintCreateDependentTypeAndFunctionAndTablesStatements(predataFile, sortedSlice, filteredMetadata, tableDefs)
+
+	logger.Verbose("Writing ALTER SEQUENCE statements to predata file")
+	sequenceColumnOwners := GetSequenceColumnOwnerMap(connection)
+	PrintAlterSequenceStatements(predataFile, sequenceDefs, sequenceColumnOwners)
 
 	logger.Verbose("Writing CREATE TEXT SEARCH PARSER statements to predata file")
 	parsers := GetTextSearchParsers(connection)
@@ -240,23 +252,6 @@ func backupPredata(filename string, tables []Relation, tableDefs map[uint32]Tabl
 	castDefs := GetCasts(connection)
 	castMetadata := GetCommentsForObjectType(connection, TYPE_CAST)
 	PrintCreateCastStatements(predataFile, castDefs, castMetadata)
-
-	relationMetadata := GetMetadataForObjectType(connection, TYPE_RELATION)
-
-	logger.Verbose("Writing CREATE SEQUENCE statements to predata file")
-	sequenceDefs := GetAllSequences(connection)
-	PrintCreateSequenceStatements(predataFile, sequenceDefs, relationMetadata)
-
-	logger.Verbose("Writing CREATE TABLE statements to predata file")
-	tables = ConstructTableDependencies(connection, tables)
-	tables = SortRelations(tables)
-	for _, table := range tables {
-		PrintCreateTableStatement(predataFile, table, tableDefs[table.RelationOid], relationMetadata[table.RelationOid])
-	}
-
-	logger.Verbose("Writing ALTER SEQUENCE statements to predata file")
-	sequenceColumnOwners := GetSequenceColumnOwnerMap(connection)
-	PrintAlterSequenceStatements(predataFile, sequenceDefs, sequenceColumnOwners)
 
 	logger.Verbose("Writing CREATE VIEW statements to predata file")
 	views := GetViews(connection)

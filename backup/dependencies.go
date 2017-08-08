@@ -5,7 +5,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func SortFunctionsAndTypesInDependencyOrder(types []Type, functions []Function) []Sortable {
+func SortFunctionsAndTypesAndTablesInDependencyOrder(types []Type, functions []Function, tables []Relation) []Sortable {
 	objects := make([]Sortable, 0)
 	for _, typ := range types {
 		if typ.Type != "e" && typ.Type != "p" {
@@ -14,6 +14,9 @@ func SortFunctionsAndTypesInDependencyOrder(types []Type, functions []Function) 
 	}
 	for _, function := range functions {
 		objects = append(objects, function)
+	}
+	for _, table := range tables {
+		objects = append(objects, table)
 	}
 	sorted := TopologicalSort(objects)
 	return sorted
@@ -28,12 +31,15 @@ func ConstructDependencyLists(connection *utils.DBConn, types []Type, functions 
 	return types, functions
 }
 
-func ConstructFunctionAndTypeMetadataMap(types MetadataMap, functions MetadataMap) MetadataMap {
+func ConstructFunctionAndTypeAndTableMetadataMap(types MetadataMap, functions MetadataMap, tables MetadataMap) MetadataMap {
 	metadataMap := make(MetadataMap, 0)
 	for k, v := range types {
 		metadataMap[k] = v
 	}
 	for k, v := range functions {
+		metadataMap[k] = v
+	}
+	for k, v := range tables {
 		metadataMap[k] = v
 	}
 	return metadataMap
@@ -137,7 +143,7 @@ func TopologicalSort(slice []Sortable) []Sortable {
 		}
 	}
 	if len(slice) != len(sorted) {
-		logger.Verbose("Failed to sort %v", slice)
+		logger.Verbose("Failed to sort %+v", slice)
 		logger.Fatal(errors.Errorf("Dependency resolution failed. This is a bug, please report."), "")
 	}
 	return sorted

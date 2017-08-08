@@ -14,6 +14,7 @@ var _ = Describe("backup/dependencies tests", func() {
 
 	BeforeEach(func() {
 		buffer = gbytes.BufferWithBytes([]byte(""))
+		testutils.SetupTestLogger()
 	})
 	Describe("TopologicalSort", func() {
 		It("returns the original slice if there are no dependencies among objects", func() {
@@ -80,6 +81,16 @@ var _ = Describe("backup/dependencies tests", func() {
 			Expect(sortable[0].Name()).To(Equal("public.type1"))
 			Expect(sortable[1].Name()).To(Equal("public.function3"))
 			Expect(sortable[2].Name()).To(Equal("public.type2"))
+		})
+		It("aborts if dependency loop (this shouldn't be possible)", func() {
+			sortable := []backup.Sortable{
+				backup.Type{TypeSchema: "public", TypeName: "type1", DependsUpon: []string{"public.type3"}},
+				backup.Type{TypeSchema: "public", TypeName: "type2", DependsUpon: []string{"public.type1"}},
+				backup.Type{TypeSchema: "public", TypeName: "type3", DependsUpon: []string{"public.type2"}},
+			}
+
+			defer testutils.ShouldPanicWithMessage("Dependency resolution failed. This is a bug, please report.")
+			sortable = backup.TopologicalSort(sortable)
 		})
 		It("aborts if dependencies are not met", func() {
 			sortable := []backup.Sortable{
