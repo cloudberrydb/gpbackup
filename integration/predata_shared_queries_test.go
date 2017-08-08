@@ -33,6 +33,7 @@ var _ = Describe("backup integration tests", func() {
 			pkConstraint             = backup.Constraint{0, "pk1", "p", "PRIMARY KEY (b)", "public.constraints_table", false, false}
 			checkConstraint          = backup.Constraint{0, "check1", "c", "CHECK (a <> 42)", "public.constraints_table", false, false}
 			partitionCheckConstraint = backup.Constraint{0, "check1", "c", "CHECK (id <> 0)", "public.part", false, true}
+			domainConstraint         = backup.Constraint{0, "check1", "c", "CHECK (VALUE <> 42)", "public.constraint_domain", true, false}
 		)
 		Context("No constraints", func() {
 			It("returns an empty constraint array for a table with no constraints", func() {
@@ -105,6 +106,43 @@ PARTITION BY RANGE (date)
 
 				Expect(len(constraints)).To(Equal(1))
 				testutils.ExpectStructsToMatchExcluding(&constraints[0], &partitionCheckConstraint, "Oid")
+			})
+			It("returns a constraint array for a domain", func() {
+				testutils.AssertQueryRuns(connection, "CREATE DOMAIN constraint_domain AS int")
+				defer testutils.AssertQueryRuns(connection, "DROP DOMAIN constraint_domain")
+				testutils.AssertQueryRuns(connection, "ALTER DOMAIN constraint_domain ADD CONSTRAINT check1 CHECK (VALUE <> 42)")
+
+				constraints := backup.GetConstraints(connection)
+
+				Expect(len(constraints)).To(Equal(1))
+				testutils.ExpectStructsToMatchExcluding(&constraints[0], &domainConstraint, "Oid")
+			})
+			It("does not return a constraint array for a table that inherits a constraint from another table", func() {
+				testutils.AssertQueryRuns(connection, "CREATE TABLE constraints_table(a int, b text, c float)")
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE constraints_table")
+				testutils.AssertQueryRuns(connection, "ALTER TABLE ONLY constraints_table ADD CONSTRAINT check1 CHECK (a <> 42)")
+
+				testutils.AssertQueryRuns(connection, "CREATE TABLE constraints_child_table(a int, b text, c float) INHERITS (constraints_table)")
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE constraints_child_table")
+
+				constraints := backup.GetConstraints(connection)
+
+				Expect(len(constraints)).To(Equal(1))
+				testutils.ExpectStructsToMatchExcluding(&constraints[0], &checkConstraint, "Oid")
+			})
+			It("returns a constraint array for a table that inherits from another table and has an additional constraint", func() {
+				testutils.AssertQueryRuns(connection, "CREATE TABLE parent_table(a int, b text, c float)")
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE parent_table")
+
+				testutils.AssertQueryRuns(connection, "CREATE TABLE constraints_table(a int, b text, c float) INHERITS (parent_table)")
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE constraints_table")
+
+				testutils.AssertQueryRuns(connection, "ALTER TABLE ONLY constraints_table ADD CONSTRAINT check1 CHECK (a <> 42)")
+
+				constraints := backup.GetConstraints(connection)
+
+				Expect(len(constraints)).To(Equal(1))
+				testutils.ExpectStructsToMatchExcluding(&constraints[0], &checkConstraint, "Oid")
 			})
 		})
 		Context("Multiple constraints", func() {

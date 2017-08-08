@@ -65,33 +65,37 @@ SELECT
 	conname,
 	contype,
 	pg_get_constraintdef(c.oid, TRUE) AS condef,
-	CASE
-		WHEN r.relname IS NULL THEN quote_ident(n.nspname) || '.' || quote_ident(t.typname)
-		ELSE  quote_ident(n.nspname) || '.' || quote_ident(r.relname)
-	END AS owningobject,
-	CASE
-		WHEN r.relname IS NULL THEN 't'
-		ELSE 'f'
-	END AS isdomainconstraint,
+	quote_ident(n.nspname) || '.' || quote_ident(r.relname) AS owningobject,
+	'f' AS isdomainconstraint,
 	CASE
 		WHEN pt.parrelid IS NULL THEN 'f'
 		ELSE 't'
 	END AS ispartitionparent
 FROM pg_constraint c
-LEFT JOIN pg_class r
-	ON c.conrelid = r.oid
-LEFT JOIN pg_partition_rule pr
-	ON c.conrelid = pr.parchildrelid
-LEFT JOIN pg_partition pt
-	ON c.conrelid = pt.parrelid
-LEFT JOIN pg_type t
-	ON c.contypid = t.oid
-JOIN pg_namespace n
-	ON n.oid = c.connamespace
+LEFT JOIN pg_class r ON c.conrelid = r.oid
+LEFT JOIN pg_partition pt ON c.conrelid = pt.parrelid
+JOIN pg_namespace n ON n.oid = c.connamespace
 WHERE %s
-AND pr.parchildrelid IS NULL
-GROUP BY c.oid, conname, contype, r.relname, n.nspname, t.typname, pt.parrelid
-ORDER BY conname;`, NonUserSchemaFilterClause("n"))
+AND r.relname IS NOT NULL
+AND conrelid NOT IN (SELECT parchildrelid FROM pg_partition_rule)
+AND (conrelid, conname) NOT IN (SELECT i.inhrelid, c.conname FROM pg_inherits i JOIN pg_constraint c ON i.inhrelid = c.conrelid JOIN pg_constraint p ON i.inhparent = p.conrelid WHERE c.conname = p.conname)
+GROUP BY c.oid, conname, contype, r.relname, n.nspname, pt.parrelid
+UNION
+SELECT
+	c.oid,
+	conname,
+	contype,
+	pg_get_constraintdef(c.oid, TRUE) AS condef,
+	quote_ident(n.nspname) || '.' || quote_ident(t.typname) AS owningobject,
+	't' AS isdomainconstraint,
+	'f' AS ispartitionparent
+FROM pg_constraint c
+LEFT JOIN pg_type t ON c.contypid = t.oid
+JOIN pg_namespace n ON n.oid = c.connamespace
+WHERE %s
+AND t.typname IS NOT NULL
+GROUP BY c.oid, conname, contype, n.nspname, t.typname
+ORDER BY conname;`, NonUserSchemaFilterClause("n"), NonUserSchemaFilterClause("n"))
 
 	results := make([]Constraint, 0)
 	err := connection.Select(&results, query)
