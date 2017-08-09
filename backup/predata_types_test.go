@@ -176,19 +176,26 @@ CREATE TYPE public.base_type2;`)
 	})
 	Describe("PrintCreateDomainStatement", func() {
 		emptyMetadata := backup.ObjectMetadata{}
+		emptyConstraint := []backup.Constraint{}
+		checkConstraint := []backup.Constraint{{ConName: "domain1_check", ConDef: "CHECK (VALUE > 2)", OwningObject: "public.domain1"}}
 		domainOne := testutils.DefaultTypeDefinition("d", "domain1")
 		domainOne.DefaultVal = "4"
 		domainOne.BaseType = "numeric"
 		domainOne.NotNull = true
 		domainTwo := testutils.DefaultTypeDefinition("d", "domain2")
 		domainTwo.BaseType = "varchar"
-		It("prints a basic domain type", func() {
-			backup.PrintCreateDomainStatement(buffer, domainOne, emptyMetadata)
+		It("prints a basic domain with a constraint", func() {
+			backup.PrintCreateDomainStatement(buffer, domainOne, emptyMetadata, checkConstraint)
+			testutils.ExpectRegexp(buffer, `CREATE DOMAIN public.domain1 AS numeric DEFAULT 4 NOT NULL
+	CONSTRAINT domain1_check CHECK (VALUE > 2);`)
+		})
+		It("prints a basic domain without constraint", func() {
+			backup.PrintCreateDomainStatement(buffer, domainOne, emptyMetadata, emptyConstraint)
 			testutils.ExpectRegexp(buffer, `CREATE DOMAIN public.domain1 AS numeric DEFAULT 4 NOT NULL;`)
 		})
-		It("prints a domain type with comment and owner", func() {
+		It("prints a domain without constraint with comment and owner", func() {
 			typeMetadata = testutils.DefaultMetadataMap("DOMAIN", false, true, true)[1]
-			backup.PrintCreateDomainStatement(buffer, domainTwo, typeMetadata)
+			backup.PrintCreateDomainStatement(buffer, domainTwo, typeMetadata, emptyConstraint)
 			testutils.ExpectRegexp(buffer, `CREATE DOMAIN public.domain2 AS varchar;
 
 

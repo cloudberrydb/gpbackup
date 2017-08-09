@@ -123,7 +123,8 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&baseType, &resultTypes[0], "Oid")
 		})
 		It("creates domain types", func() {
-			backup.PrintCreateDomainStatement(buffer, domainType, typeMetadata)
+			constraints := []backup.Constraint{}
+			backup.PrintCreateDomainStatement(buffer, domainType, typeMetadata, constraints)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE domain_type")

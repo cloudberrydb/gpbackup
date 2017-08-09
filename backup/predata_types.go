@@ -31,7 +31,7 @@ func PrintCreateShellTypeStatements(predataFile io.Writer, types []Type) {
 	}
 }
 
-func PrintCreateDomainStatement(predataFile io.Writer, domain Type, typeMetadata ObjectMetadata) {
+func PrintCreateDomainStatement(predataFile io.Writer, domain Type, typeMetadata ObjectMetadata, constraints []Constraint) {
 	typeFQN := MakeFQN(domain.TypeSchema, domain.TypeName)
 	utils.MustPrintf(predataFile, "\nCREATE DOMAIN %s AS %s", typeFQN, domain.BaseType)
 	if domain.DefaultVal != "" {
@@ -39,6 +39,9 @@ func PrintCreateDomainStatement(predataFile io.Writer, domain Type, typeMetadata
 	}
 	if domain.NotNull {
 		utils.MustPrintf(predataFile, " NOT NULL")
+	}
+	for _, constraint := range constraints {
+		utils.MustPrintf(predataFile, "\n\tCONSTRAINT %s %s", constraint.ConName, constraint.ConDef)
 	}
 	utils.MustPrintln(predataFile, ";")
 	PrintObjectMetadata(predataFile, typeMetadata, typeFQN, "DOMAIN")

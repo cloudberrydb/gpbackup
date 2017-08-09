@@ -178,14 +178,11 @@ ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_pkey PRIMARY KEY (i, 
 ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_fkey FOREIGN KEY (i) REFERENCES other_tablename(a);
 `)
 			})
-			It("prints ADD CONSTRAINT statement for domain check constraint", func() {
+			It("doesn't print an ADD CONSTRAINT statement for domain check constraint", func() {
 				domainCheckConstraint := backup.Constraint{0, "check1", "c", "CHECK (VALUE <> 42::numeric)", "public.domain1", true, false}
 				constraints := []backup.Constraint{domainCheckConstraint}
 				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
-				testutils.ExpectRegexp(buffer, `
-
-ALTER DOMAIN public.domain1 ADD CONSTRAINT check1 CHECK (VALUE <> 42::numeric);
-`)
+				testutils.NotExpectRegexp(buffer, `ALTER DOMAIN`)
 			})
 			It("prints an ADD CONSTRAINT statement for a parent partition table", func() {
 				uniqueOne.IsPartitionParent = true

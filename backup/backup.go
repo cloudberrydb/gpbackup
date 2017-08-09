@@ -189,10 +189,13 @@ func backupPredata(filename string, tables []Relation, tableDefs map[uint32]Tabl
 	logger.Verbose("Writing CREATE TABLE statements to predata file")
 	tables = ConstructTableDependencies(connection, tables)
 
+	constraints := GetConstraints(connection)
+	conMetadata := GetCommentsForObjectType(connection, TYPE_CONSTRAINT)
+
 	logger.Verbose("Writing CREATE FUNCTION statements and CREATE TYPE statements for base, composite, and domain types to predata file")
 	sortedSlice := SortFunctionsAndTypesAndTablesInDependencyOrder(types, otherFuncs, tables)
 	filteredMetadata := ConstructFunctionAndTypeAndTableMetadataMap(typeMetadata, functionMetadata, relationMetadata)
-	PrintCreateDependentTypeAndFunctionAndTablesStatements(predataFile, sortedSlice, filteredMetadata, tableDefs)
+	PrintCreateDependentTypeAndFunctionAndTablesStatements(predataFile, sortedSlice, filteredMetadata, tableDefs, constraints)
 
 	logger.Verbose("Writing ALTER SEQUENCE statements to predata file")
 	sequenceColumnOwners := GetSequenceColumnOwnerMap(connection)
@@ -260,8 +263,6 @@ func backupPredata(filename string, tables []Relation, tableDefs map[uint32]Tabl
 	PrintCreateViewStatements(predataFile, views, relationMetadata)
 
 	logger.Verbose("Writing ADD CONSTRAINT statements to predata file")
-	constraints := GetConstraints(connection)
-	conMetadata := GetCommentsForObjectType(connection, TYPE_CONSTRAINT)
 	PrintConstraintStatements(predataFile, constraints, conMetadata)
 }
 

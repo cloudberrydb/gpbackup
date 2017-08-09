@@ -141,19 +141,14 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&fkConstraint, &resultConstraints[2], "Oid")
 			testutils.ExpectStructsToMatchExcluding(&uniqueConstraint, &resultConstraints[3], "Oid")
 		})
-		It("creates a check constraint on a domain", func() {
+		It("doesn't create a check constraint on a domain", func() {
 			testutils.AssertQueryRuns(connection, "CREATE DOMAIN domain1 AS numeric")
 			defer testutils.AssertQueryRuns(connection, "DROP DOMAIN domain1")
 			domainCheckConstraint := backup.Constraint{0, "check1", "c", "CHECK (VALUE <> 42::numeric)", "public.domain1", true, false}
 			constraints := []backup.Constraint{domainCheckConstraint}
 			backup.PrintConstraintStatements(buffer, constraints, conMetadataMap)
 
-			testutils.AssertQueryRuns(connection, buffer.String())
-
-			resultConstraints := backup.GetConstraints(connection)
-
-			Expect(len(resultConstraints)).To(Equal(1))
-			testutils.ExpectStructsToMatchExcluding(&domainCheckConstraint, &resultConstraints[0], "Oid")
+			Expect(buffer.String()).To(Equal(""))
 		})
 		It("creates a check constraint on a parent partition table", func() {
 			constraints := []backup.Constraint{partitionCheckConstraint}

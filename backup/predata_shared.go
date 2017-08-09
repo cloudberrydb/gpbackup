@@ -44,10 +44,11 @@ func PrintConstraintStatements(predataFile io.Writer, constraints []Constraint, 
 
 	alterStr := "\n\nALTER %s %s ADD CONSTRAINT %s %s;\n"
 	for _, constraint := range constraints {
-		objStr := "TABLE ONLY"
 		if constraint.IsDomainConstraint {
-			objStr = "DOMAIN"
-		} else if constraint.IsPartitionParent {
+			continue
+		}
+		objStr := "TABLE ONLY"
+		if constraint.IsPartitionParent {
 			objStr = "TABLE"
 		}
 		conName := utils.QuoteIdent(constraint.ConName)
@@ -389,7 +390,11 @@ func (obj ObjectMetadata) GetCommentStatement(objectName string, objectType stri
 	return commentStr
 }
 
-func PrintCreateDependentTypeAndFunctionAndTablesStatements(predataFile io.Writer, objects []Sortable, metadataMap MetadataMap, tableDefsMap map[uint32]TableDefinition) {
+func PrintCreateDependentTypeAndFunctionAndTablesStatements(predataFile io.Writer, objects []Sortable, metadataMap MetadataMap, tableDefsMap map[uint32]TableDefinition, constraints []Constraint) {
+	conMap := make(map[string][]Constraint)
+	for _, constraint := range constraints {
+		conMap[constraint.OwningObject] = append(conMap[constraint.OwningObject], constraint)
+	}
 	for _, object := range objects {
 		switch obj := object.(type) {
 		case Type:
@@ -399,7 +404,8 @@ func PrintCreateDependentTypeAndFunctionAndTablesStatements(predataFile io.Write
 			case "c":
 				PrintCreateCompositeTypeStatement(predataFile, obj, metadataMap[obj.Oid])
 			case "d":
-				PrintCreateDomainStatement(predataFile, obj, metadataMap[obj.Oid])
+				domainName := MakeFQN(obj.TypeSchema, obj.TypeName)
+				PrintCreateDomainStatement(predataFile, obj, metadataMap[obj.Oid], conMap[domainName])
 			}
 		case Function:
 			PrintCreateFunctionStatement(predataFile, obj, metadataMap[obj.Oid])
