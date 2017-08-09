@@ -23,6 +23,15 @@ var _ = Describe("backup/postdata tests", func() {
 
 CREATE INDEX testindex ON public.testtable USING btree(i);`)
 		})
+		It("can print an index with a tablespace", func() {
+			indexes := []backup.QuerySimpleDefinition{{1, "testindex", "public", "testtable", "test_tablespace", "CREATE INDEX testindex ON public.testtable USING btree(i)"}}
+			emptyMetadataMap := backup.MetadataMap{}
+			backup.PrintCreateIndexStatements(buffer, indexes, emptyMetadataMap)
+			testutils.ExpectRegexp(buffer, `
+
+CREATE INDEX testindex ON public.testtable USING btree(i);
+ALTER INDEX testindex SET TABLESPACE test_tablespace;`)
+		})
 		It("can print an index with a comment", func() {
 			indexes := []backup.QuerySimpleDefinition{{1, "testindex", "public", "testtable", "", "CREATE INDEX testindex ON public.testtable USING btree(i)"}}
 			indexMetadataMap := backup.MetadataMap{1: {Comment: "This is an index comment."}}

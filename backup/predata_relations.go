@@ -50,7 +50,7 @@ func RelationFromString(name string) Relation {
 			table = utils.ReplacerUnescape.Replace(matches[4])
 		}
 	} else {
-		logger.Fatal(errors.Errorf("\"%s\" is not a valid fully-qualified table expression", name), "")
+		logger.Fatal(errors.Errorf("%s is not a valid fully-qualified table expression", name), "")
 	}
 	return BasicRelation(schema, table)
 }

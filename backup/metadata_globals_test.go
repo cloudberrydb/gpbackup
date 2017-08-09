@@ -35,8 +35,11 @@ SET default_with_oids = false`)
 			testutils.ExpectRegexp(buffer, `CREATE DATABASE testdb;`)
 		})
 		It("prints a CREATE DATABASE statement with privileges, an owner, and a comment", func() {
-			dbs := []backup.DatabaseName{{1, "testdb", "pg_default"}, {2, "otherdb", "pg_default"}}
 			dbMetadataMap := testutils.DefaultMetadataMap("DATABASE", true, true, true)
+			dbMetadata := dbMetadataMap[1]
+			dbMetadata.Privileges[0].Create = false
+			dbMetadataMap[1] = dbMetadata
+			dbs := []backup.DatabaseName{{1, "testdb", "pg_default"}, {2, "otherdb", "pg_default"}}
 			backup.PrintCreateDatabaseStatement(buffer, "testdb", dbs, dbMetadataMap, false)
 			testutils.ExpectRegexp(buffer, `CREATE DATABASE testdb;
 
@@ -48,12 +51,18 @@ ALTER DATABASE testdb OWNER TO testrole;
 
 REVOKE ALL ON DATABASE testdb FROM PUBLIC;
 REVOKE ALL ON DATABASE testdb FROM testrole;
-GRANT ALL ON DATABASE testdb TO testrole;`)
+GRANT TEMPORARY,CONNECT ON DATABASE testdb TO testrole;`)
 		})
 		It("prints a CREATE DATABASE statement with privileges for testdb and only prints privileges for otherdb", func() {
-			dbs := []backup.DatabaseName{{1, "testdb", "pg_default"}, {2, "otherdb", "pg_default"}}
-			dbMetadataMap := testutils.DefaultMetadataMap("DATABASE", true, true, true)
-			dbMetadataMap[2] = backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "testrole", Create: true}}}
+			dbMetadataMap := backup.MetadataMap{
+				1: backup.ObjectMetadata{
+					Privileges: []backup.ACL{{Grantee: "testrole", TemporaryWithGrant: true, ConnectWithGrant: true}},
+					Owner:      "testrole",
+					Comment:    "This is a database comment."},
+				2: backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "testrole", Create: true}}},
+				3: backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "testrole", CreateWithGrant: true}}},
+			}
+			dbs := []backup.DatabaseName{{1, "testdb", "pg_default"}, {2, "otherdb", "pg_default"}, {3, "anotherdb", "pg_default"}}
 			backup.PrintCreateDatabaseStatement(buffer, "testdb", dbs, dbMetadataMap, true)
 			testutils.ExpectRegexp(buffer, `CREATE DATABASE testdb;
 
@@ -65,11 +74,15 @@ ALTER DATABASE testdb OWNER TO testrole;
 
 REVOKE ALL ON DATABASE testdb FROM PUBLIC;
 REVOKE ALL ON DATABASE testdb FROM testrole;
-GRANT ALL ON DATABASE testdb TO testrole;
+GRANT TEMPORARY,CONNECT ON DATABASE testdb TO testrole WITH GRANT OPTION;
 
 
 REVOKE ALL ON DATABASE otherdb FROM PUBLIC;
-GRANT CREATE ON DATABASE otherdb TO testrole;`)
+GRANT CREATE ON DATABASE otherdb TO testrole;
+
+
+REVOKE ALL ON DATABASE anotherdb FROM PUBLIC;
+GRANT CREATE ON DATABASE anotherdb TO testrole WITH GRANT OPTION;`)
 		})
 		It("prints a CREATE DATABASE statement with a TABLESPACE", func() {
 			dbs := []backup.DatabaseName{{1, "testdb", "test_tablespace"}}

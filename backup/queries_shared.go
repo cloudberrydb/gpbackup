@@ -104,49 +104,6 @@ ORDER BY conname;`, NonUserSchemaFilterClause("n"), NonUserSchemaFilterClause("n
 }
 
 /*
- * Generic functions and structs relating to schemas and relations.
- */
-type Schema struct {
-	Oid  uint32
-	Name string
-}
-
-func (s Schema) ToString() string {
-	return utils.QuoteIdent(s.Name)
-}
-
-func SchemaFromString(name string) Schema {
-	var schema string
-	var matches []string
-	if matches = utils.QuotedIdentifier.FindStringSubmatch(name); len(matches) != 0 {
-		schema = utils.ReplacerUnescape.Replace(matches[1])
-	} else if matches = utils.UnquotedIdentifier.FindStringSubmatch(name); len(matches) != 0 {
-		schema = utils.ReplacerUnescape.Replace(matches[1])
-	} else {
-		logger.Fatal(errors.Errorf("\"%s\" is not a valid identifier", name), "")
-	}
-	return Schema{0, schema}
-}
-
-type Schemas []Schema
-
-func (slice Schemas) Len() int {
-	return len(slice)
-}
-
-func (slice Schemas) Less(i int, j int) bool {
-	return slice[i].Name < slice[j].Name
-}
-
-func (slice Schemas) Swap(i int, j int) {
-	slice[i], slice[j] = slice[j], slice[i]
-}
-
-func SortSchemas(objects Schemas) {
-	sort.Sort(objects)
-}
-
-/*
  * Structs and functions relating to generic metadata handling.
  */
 

@@ -246,61 +246,10 @@ GRANT ALL ON SCHEMA schemaname TO testrole;`)
 			Expect(newSchema.Oid).To(Equal(uint32(0)))
 			Expect(newSchema.Name).To(Equal(`schema,name`))
 		})
-	})
-	Describe("Relation.ToString", func() {
-		It("remains unquoted if neither the schema nor the table name contains special characters", func() {
-			testTable := backup.BasicRelation(`schemaname`, `tablename`)
-			expected := `schemaname.tablename`
-			Expect(testTable.ToString()).To(Equal(expected))
-		})
-		It("is quoted if the schema name contains special characters", func() {
-			testTable := backup.BasicRelation(`schema,name`, `tablename`)
-			expected := `"schema,name".tablename`
-			Expect(testTable.ToString()).To(Equal(expected))
-		})
-		It("is quoted if the table name contains special characters", func() {
-			testTable := backup.BasicRelation(`schemaname`, `table,name`)
-			expected := `schemaname."table,name"`
-			Expect(testTable.ToString()).To(Equal(expected))
-		})
-		It("is quoted if both the schema and the table name contain special characters", func() {
-			testTable := backup.BasicRelation(`schema,name`, `table,name`)
-			expected := `"schema,name"."table,name"`
-			Expect(testTable.ToString()).To(Equal(expected))
-		})
-	})
-	Describe("RelationFromString", func() {
-		It("can parse an unquoted string", func() {
-			testString := `schemaname.tablename`
-			newTable := backup.RelationFromString(testString)
-			Expect(newTable.SchemaOid).To(Equal(uint32(0)))
-			Expect(newTable.RelationOid).To(Equal(uint32(0)))
-			Expect(newTable.SchemaName).To(Equal(`schemaname`))
-			Expect(newTable.RelationName).To(Equal(`tablename`))
-		})
-		It("can parse a string with a quoted schema", func() {
-			testString := `"schema,name".tablename`
-			newTable := backup.RelationFromString(testString)
-			Expect(newTable.SchemaOid).To(Equal(uint32(0)))
-			Expect(newTable.RelationOid).To(Equal(uint32(0)))
-			Expect(newTable.SchemaName).To(Equal(`schema,name`))
-			Expect(newTable.RelationName).To(Equal(`tablename`))
-		})
-		It("can parse a string with a quoted table", func() {
-			testString := `schemaname."table,name"`
-			newTable := backup.RelationFromString(testString)
-			Expect(newTable.SchemaOid).To(Equal(uint32(0)))
-			Expect(newTable.RelationOid).To(Equal(uint32(0)))
-			Expect(newTable.SchemaName).To(Equal(`schemaname`))
-			Expect(newTable.RelationName).To(Equal(`table,name`))
-		})
-		It("can parse a string with both schema and table quoted", func() {
-			testString := `"schema,name"."table,name"`
-			newTable := backup.RelationFromString(testString)
-			Expect(newTable.SchemaOid).To(Equal(uint32(0)))
-			Expect(newTable.RelationOid).To(Equal(uint32(0)))
-			Expect(newTable.SchemaName).To(Equal(`schema,name`))
-			Expect(newTable.RelationName).To(Equal(`table,name`))
+		It("panics if given an invalid string", func() {
+			testString := `schema.name`
+			defer testutils.ShouldPanicWithMessage(`schema.name is not a valid identifier`)
+			backup.SchemaFromString(testString)
 		})
 	})
 	Describe("GetUniqueSchemas", func() {
@@ -435,6 +384,57 @@ REVOKE ALL ON TABLE public.tablename FROM testrole;
 GRANT ALL ON TABLE public.tablename TO anothertestrole;
 GRANT SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES ON TABLE public.tablename TO testrole;
 GRANT TRIGGER ON TABLE public.tablename TO PUBLIC;`)
+		})
+	})
+	Describe("ParseACL", func() {
+		It("parses an ACL string representing default privileges", func() {
+			aclStr := ""
+			result := backup.ParseACL(aclStr)
+			Expect(result).To(BeNil())
+		})
+		It("parses an ACL string representing no privileges", func() {
+			aclStr := "GRANTEE=/GRANTOR"
+			expected := backup.ACL{Grantee: "GRANTEE"}
+			result := backup.ParseACL(aclStr)
+			testutils.ExpectStructsToMatch(&expected, result)
+		})
+		It("parses an ACL string containing a role with multiple privileges", func() {
+			aclStr := "testrole=arwdDxt/gpadmin"
+			expected := testutils.DefaultACLForType("testrole", "TABLE")
+			result := backup.ParseACL(aclStr)
+			testutils.ExpectStructsToMatch(&expected, result)
+		})
+		It("parses an ACL string containing a role with one privilege", func() {
+			aclStr := "testrole=a/gpadmin"
+			expected := backup.ACL{Grantee: "testrole", Insert: true}
+			result := backup.ParseACL(aclStr)
+			testutils.ExpectStructsToMatch(&expected, result)
+		})
+		It("parses an ACL string containing a role name with special characters", func() {
+			aclStr := `"test|role"=a/gpadmin`
+			expected := backup.ACL{Grantee: `test|role`, Insert: true}
+			result := backup.ParseACL(aclStr)
+			testutils.ExpectStructsToMatch(&expected, result)
+		})
+		It("parses an ACL string containing a role with some privileges with GRANT and some without including GRANT", func() {
+			aclStr := "testrole=ar*w*d*tXUCTc/gpadmin"
+			expected := backup.ACL{Grantee: "testrole", Insert: true, SelectWithGrant: true, UpdateWithGrant: true,
+				DeleteWithGrant: true, Trigger: true, Execute: true, Usage: true, Create: true, Temporary: true, Connect: true}
+			result := backup.ParseACL(aclStr)
+			testutils.ExpectStructsToMatch(&expected, result)
+		})
+		It("parses an ACL string containing a role with all privileges including GRANT", func() {
+			aclStr := "testrole=a*D*x*t*X*U*C*T*c*/gpadmin"
+			expected := backup.ACL{Grantee: "testrole", InsertWithGrant: true, TruncateWithGrant: true, ReferencesWithGrant: true,
+				TriggerWithGrant: true, ExecuteWithGrant: true, UsageWithGrant: true, CreateWithGrant: true, TemporaryWithGrant: true, ConnectWithGrant: true}
+			result := backup.ParseACL(aclStr)
+			testutils.ExpectStructsToMatch(&expected, result)
+		})
+		It("parses an ACL string granting privileges to PUBLIC", func() {
+			aclStr := "=a/gpadmin"
+			expected := backup.ACL{Grantee: "", Insert: true}
+			result := backup.ParseACL(aclStr)
+			testutils.ExpectStructsToMatch(&expected, result)
 		})
 	})
 })

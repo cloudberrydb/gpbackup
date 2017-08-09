@@ -5,6 +5,7 @@ import (
 	"github.com/greenplum-db/gpbackup/testutils"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 )
 
@@ -44,6 +45,51 @@ COMMENT ON TYPE public.enum_type IS 'This is a type comment.';
 
 
 ALTER TYPE public.enum_type OWNER TO testrole;`)
+		})
+	})
+	Describe("CoalesceCompositeTypes", func() {
+		var (
+			baseType  backup.Type
+			compOne   backup.Type
+			compTwo   backup.Type
+			compThree backup.Type
+		)
+		BeforeEach(func() {
+			baseType = backup.Type{Oid: 0, TypeSchema: "public", TypeName: "base_type", Type: "b"}
+			compOne = backup.Type{Oid: 0, TypeSchema: "public", TypeName: "composite_one", AttName: "foo", AttType: "integer", Type: "c"}
+			compTwo = backup.Type{Oid: 0, TypeSchema: "public", TypeName: "composite_one", AttName: "bar", AttType: "text", Type: "c"}
+			compThree = backup.Type{Oid: 0, TypeSchema: "public", TypeName: "composite_two", AttName: "baz", AttType: "character varying(20)", Type: "c"}
+		})
+		It("coalesces a composite type with one attribute", func() {
+			inputTypes := []backup.Type{compOne}
+			resultTypes := backup.CoalesceCompositeTypes(inputTypes)
+			Expect(len(resultTypes)).To(Equal(1))
+			compOne.CompositeAtts = []backup.CompositeTypeAttribute{{"foo", "integer"}}
+			testutils.ExpectStructsToMatch(&compOne, &resultTypes[0])
+		})
+		It("coalesces a composite type with two attributes", func() {
+			inputTypes := []backup.Type{compOne, compTwo}
+			resultTypes := backup.CoalesceCompositeTypes(inputTypes)
+			Expect(len(resultTypes)).To(Equal(1))
+			compOne.CompositeAtts = []backup.CompositeTypeAttribute{{"foo", "integer"}, {"bar", "text"}}
+			testutils.ExpectStructsToMatch(&compOne, &resultTypes[0])
+		})
+		It("coalesces two composite types", func() {
+			inputTypes := []backup.Type{compOne, compTwo, compThree}
+			resultTypes := backup.CoalesceCompositeTypes(inputTypes)
+			Expect(len(resultTypes)).To(Equal(2))
+			compOne.CompositeAtts = []backup.CompositeTypeAttribute{{"foo", "integer"}, {"bar", "text"}}
+			compThree.CompositeAtts = []backup.CompositeTypeAttribute{{"baz", "character varying(20)"}}
+			testutils.ExpectStructsToMatch(&compOne, &resultTypes[0])
+			testutils.ExpectStructsToMatch(&compThree, &resultTypes[1])
+		})
+		It("coalesces composite types and leaves other types alone", func() {
+			inputTypes := []backup.Type{baseType, compOne, compTwo}
+			resultTypes := backup.CoalesceCompositeTypes(inputTypes)
+			Expect(len(resultTypes)).To(Equal(2))
+			compOne.CompositeAtts = []backup.CompositeTypeAttribute{{"foo", "integer"}, {"bar", "text"}}
+			testutils.ExpectStructsToMatch(&baseType, &resultTypes[0])
+			testutils.ExpectStructsToMatch(&compOne, &resultTypes[1])
 		})
 	})
 	Describe("PrintCreateCompositeTypeStatement", func() {

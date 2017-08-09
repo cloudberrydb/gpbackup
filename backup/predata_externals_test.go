@@ -331,6 +331,19 @@ ENCODING 'UTF-8'
 LOG ERRORS
 SEGMENT REJECT LIMIT 2 ROWS`)
 			})
+			It("prints a CREATE block for a table with custom options", func() {
+				extTableDef.Options = "foo 'bar'\n\tbar 'baz'"
+				backup.PrintExternalTableStatements(buffer, testTable, extTableDef)
+				testutils.ExpectRegexp(buffer, `LOCATION (
+	'file://host:port/path/file'
+)
+FORMAT 'text'
+OPTIONS (
+	foo 'bar'
+	bar 'baz'
+)
+ENCODING 'UTF-8'`)
+			})
 		})
 	})
 	Describe("PrintExternalProtocolStatements", func() {

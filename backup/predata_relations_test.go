@@ -5,6 +5,7 @@ import (
 	"github.com/greenplum-db/gpbackup/testutils"
 
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 )
 
@@ -50,6 +51,67 @@ SET SUBPARTITION TEMPLATE
 
 	noMetadata := backup.ObjectMetadata{}
 
+	Describe("Relation.ToString", func() {
+		It("remains unquoted if neither the schema nor the table name contains special characters", func() {
+			testTable := backup.BasicRelation(`schemaname`, `tablename`)
+			expected := `schemaname.tablename`
+			Expect(testTable.ToString()).To(Equal(expected))
+		})
+		It("is quoted if the schema name contains special characters", func() {
+			testTable := backup.BasicRelation(`schema,name`, `tablename`)
+			expected := `"schema,name".tablename`
+			Expect(testTable.ToString()).To(Equal(expected))
+		})
+		It("is quoted if the table name contains special characters", func() {
+			testTable := backup.BasicRelation(`schemaname`, `table,name`)
+			expected := `schemaname."table,name"`
+			Expect(testTable.ToString()).To(Equal(expected))
+		})
+		It("is quoted if both the schema and the table name contain special characters", func() {
+			testTable := backup.BasicRelation(`schema,name`, `table,name`)
+			expected := `"schema,name"."table,name"`
+			Expect(testTable.ToString()).To(Equal(expected))
+		})
+	})
+	Describe("RelationFromString", func() {
+		It("can parse an unquoted string", func() {
+			testString := `schemaname.tablename`
+			newTable := backup.RelationFromString(testString)
+			Expect(newTable.SchemaOid).To(Equal(uint32(0)))
+			Expect(newTable.RelationOid).To(Equal(uint32(0)))
+			Expect(newTable.SchemaName).To(Equal(`schemaname`))
+			Expect(newTable.RelationName).To(Equal(`tablename`))
+		})
+		It("can parse a string with a quoted schema", func() {
+			testString := `"schema,name".tablename`
+			newTable := backup.RelationFromString(testString)
+			Expect(newTable.SchemaOid).To(Equal(uint32(0)))
+			Expect(newTable.RelationOid).To(Equal(uint32(0)))
+			Expect(newTable.SchemaName).To(Equal(`schema,name`))
+			Expect(newTable.RelationName).To(Equal(`tablename`))
+		})
+		It("can parse a string with a quoted table", func() {
+			testString := `schemaname."table,name"`
+			newTable := backup.RelationFromString(testString)
+			Expect(newTable.SchemaOid).To(Equal(uint32(0)))
+			Expect(newTable.RelationOid).To(Equal(uint32(0)))
+			Expect(newTable.SchemaName).To(Equal(`schemaname`))
+			Expect(newTable.RelationName).To(Equal(`table,name`))
+		})
+		It("can parse a string with both schema and table quoted", func() {
+			testString := `"schema,name"."table,name"`
+			newTable := backup.RelationFromString(testString)
+			Expect(newTable.SchemaOid).To(Equal(uint32(0)))
+			Expect(newTable.RelationOid).To(Equal(uint32(0)))
+			Expect(newTable.SchemaName).To(Equal(`schema,name`))
+			Expect(newTable.RelationName).To(Equal(`table,name`))
+		})
+		It("panics if given an invalid string", func() {
+			testString := `schema.name.table.name`
+			defer testutils.ShouldPanicWithMessage(`schema.name.table.name is not a valid fully-qualified table expression`)
+			backup.RelationFromString(testString)
+		})
+	})
 	Describe("PrintCreateTableStatement", func() {
 		tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", colDefsEmpty, false, extTableEmpty}
 		It("calls PrintRegularTableCreateStatement for a regular table", func() {
@@ -499,7 +561,6 @@ COMMENT ON COLUMN public.tablename.j IS 'This is another column comment.';`)
 		seqCycle := backup.Sequence{baseSequence, backup.SequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, true, true}}
 		seqStart := backup.Sequence{baseSequence, backup.SequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, false}}
 		emptySequenceMetadataMap := backup.MetadataMap{}
-		sequenceMetadataMap := testutils.DefaultMetadataMap("SEQUENCE", true, true, true)
 
 		It("can print a sequence with all default options", func() {
 			sequences := []backup.Sequence{seqDefault}
@@ -592,6 +653,10 @@ SELECT pg_catalog.setval('public.seq_name', 7, true);`)
 SELECT pg_catalog.setval('public.seq_name', 7, false);`)
 		})
 		It("can print a sequence with privileges, an owner, and a comment", func() {
+			sequenceMetadataMap := testutils.DefaultMetadataMap("SEQUENCE", true, true, true)
+			sequenceMetadata := sequenceMetadataMap[1]
+			sequenceMetadata.Privileges[0].Update = false
+			sequenceMetadataMap[1] = sequenceMetadata
 			sequences := []backup.Sequence{seqDefault}
 			backup.PrintCreateSequenceStatements(buffer, sequences, sequenceMetadataMap)
 			testutils.ExpectRegexp(buffer, `CREATE SEQUENCE public.seq_name
@@ -611,7 +676,27 @@ ALTER TABLE public.seq_name OWNER TO testrole;
 
 REVOKE ALL ON SEQUENCE public.seq_name FROM PUBLIC;
 REVOKE ALL ON SEQUENCE public.seq_name FROM testrole;
-GRANT ALL ON SEQUENCE public.seq_name TO testrole;`)
+GRANT SELECT,USAGE ON SEQUENCE public.seq_name TO testrole;`)
+		})
+		It("can print a sequence with privileges WITH GRANT OPTION", func() {
+			sequenceMetadataMap := backup.MetadataMap{
+				1: {Privileges: []backup.ACL{testutils.DefaultACLWithGrantWithout("testrole", "SEQUENCE", "UPDATE")}}}
+			sequenceMetadata := sequenceMetadataMap[1]
+			sequenceMetadata.Privileges[0].Update = false
+			sequenceMetadataMap[1] = sequenceMetadata
+			sequences := []backup.Sequence{seqDefault}
+			backup.PrintCreateSequenceStatements(buffer, sequences, sequenceMetadataMap)
+			testutils.ExpectRegexp(buffer, `CREATE SEQUENCE public.seq_name
+	INCREMENT BY 1
+	NO MAXVALUE
+	NO MINVALUE
+	CACHE 5;
+
+SELECT pg_catalog.setval('public.seq_name', 7, true);
+
+
+REVOKE ALL ON SEQUENCE public.seq_name FROM PUBLIC;
+GRANT SELECT,USAGE ON SEQUENCE public.seq_name TO testrole WITH GRANT OPTION;`)
 		})
 	})
 	Describe("PrintCreateViewStatements", func() {

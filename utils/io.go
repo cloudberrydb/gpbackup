@@ -32,7 +32,7 @@ var (
 	UnquotedIdentifier = regexp.MustCompile(`^([a-z_][a-z0-9_]*)$`)
 	QuotedIdentifier   = regexp.MustCompile(`^"(.+)"$`)
 
-	QuotedOrUnquotedString = regexp.MustCompile(`^(?:\"(.*)\"|(.*))\.(?:\"(.*)\"|(.*))$`)
+	QuotedOrUnquotedString = regexp.MustCompile(`^(?:\"(.*)\"|([^.]*))\.(?:\"(.*)\"|([^.]*))$`)
 
 	// Swap between double quotes and paired double quotes, and between literal whitespace characters and escape sequences
 	ReplacerEscape   = strings.NewReplacer(`"`, `""`, `\`, `\\`)

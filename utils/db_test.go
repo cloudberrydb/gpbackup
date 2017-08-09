@@ -1,6 +1,7 @@
 package utils_test
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -54,10 +55,21 @@ var _ = Describe("utils/db tests", func() {
 			It("connects successfully", func() {
 				var mockdb *sqlx.DB
 				mockdb, mock = testutils.CreateMockDB()
-				driver := testutils.TestDriver{DBExists: true, RoleExists: true, DB: mockdb, User: "testrole"}
+				driver := testutils.TestDriver{DB: mockdb, User: "testrole"}
 				connection = utils.NewDBConn("testdb")
 				connection.Driver = driver
 				Expect(connection.DBName).To(Equal("testdb"))
+				connection.Connect()
+			})
+			It("does not connect if the connection is refused", func() {
+				var mockdb *sqlx.DB
+				mockdb, mock = testutils.CreateMockDB()
+				driver := testutils.TestDriver{ErrToReturn: fmt.Errorf("pq: connection refused"), DB: mockdb, User: "testrole"}
+				connection = utils.NewDBConn("testdb")
+				connection.Driver = driver
+				defer testutils.ShouldPanicWithMessage(`could not connect to server: Connection refused
+	Is the server running on host "localhost" and accepting
+	TCP/IP connections on port 15432?`)
 				connection.Connect()
 			})
 		})
@@ -65,7 +77,7 @@ var _ = Describe("utils/db tests", func() {
 			It("fails", func() {
 				var mockdb *sqlx.DB
 				mockdb, mock = testutils.CreateMockDB()
-				driver := testutils.TestDriver{DBExists: false, RoleExists: true, DB: mockdb, DBName: "testdb", User: "testrole"}
+				driver := testutils.TestDriver{ErrToReturn: fmt.Errorf("pq: database \"testdb\" does not exist"), DB: mockdb, DBName: "testdb", User: "testrole"}
 				connection = utils.NewDBConn("testdb")
 				connection.Driver = driver
 				Expect(connection.DBName).To(Equal("testdb"))
@@ -77,7 +89,7 @@ var _ = Describe("utils/db tests", func() {
 			It("fails", func() {
 				var mockdb *sqlx.DB
 				mockdb, mock = testutils.CreateMockDB()
-				driver := testutils.TestDriver{DBExists: true, RoleExists: false, DB: mockdb, DBName: "testdb", User: "nonexistent"}
+				driver := testutils.TestDriver{ErrToReturn: fmt.Errorf("pq: role \"nonexistent\" does not exist"), DB: mockdb, DBName: "testdb", User: "nonexistent"}
 
 				oldPgUser := os.Getenv("PGUSER")
 				os.Setenv("PGUSER", "nonexistent")
@@ -202,6 +214,36 @@ var _ = Describe("utils/db tests", func() {
 			Expect(testSlice[0].Tablename).To(Equal("table1"))
 			Expect(testSlice[1].Schemaname).To(Equal("schema2"))
 			Expect(testSlice[1].Tablename).To(Equal("table2"))
+		})
+	})
+	Describe("DBConn.Begin", func() {
+		It("successfully executes a BEGIN outside a transaction", func() {
+			connection, mock = testutils.CreateAndConnectMockDB()
+			testutils.ExpectBegin(mock)
+			connection.Begin()
+			Expect(connection.Tx).To(Not(BeNil()))
+		})
+		It("panics if it executes a BEGIN in a transaction", func() {
+			connection, mock = testutils.CreateAndConnectMockDB()
+			testutils.ExpectBegin(mock)
+			connection.Begin()
+			defer testutils.ShouldPanicWithMessage("Cannot begin transaction; there is already a transaction in progress")
+			connection.Begin()
+		})
+	})
+	Describe("DBConn.Commit", func() {
+		It("successfully executes a COMMIT in a transaction", func() {
+			connection, mock = testutils.CreateAndConnectMockDB()
+			testutils.ExpectBegin(mock)
+			mock.ExpectCommit()
+			connection.Begin()
+			connection.Commit()
+			Expect(connection.Tx).To(BeNil())
+		})
+		It("panics if it executes a COMMIT outside a transaction", func() {
+			connection, mock = testutils.CreateAndConnectMockDB()
+			defer testutils.ShouldPanicWithMessage("Cannot commit transaction; there is no transaction in progress")
+			connection.Commit()
 		})
 	})
 })
