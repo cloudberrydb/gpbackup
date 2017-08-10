@@ -3,6 +3,7 @@ package restore
 import (
 	"flag"
 	"fmt"
+	"os"
 
 	"github.com/greenplum-db/gpbackup/utils"
 
@@ -12,6 +13,7 @@ import (
 var (
 	connection *utils.DBConn
 	logger     *utils.Logger
+	version    string
 )
 
 var ( // Command-line flags
@@ -21,6 +23,7 @@ var ( // Command-line flags
 	timestamp      *string
 	verbose        *bool
 	restoreGlobals *bool
+	printVersion   *bool
 )
 
 // We define and initialize flags separately to avoid import conflicts in tests
@@ -31,6 +34,7 @@ func initializeFlags() {
 	timestamp = flag.String("timestamp", "", "The timestamp to be restored, in the format YYYYMMDDHHMMSS")
 	verbose = flag.Bool("verbose", false, "Print verbose log messages")
 	restoreGlobals = flag.Bool("globals", false, "Restore global metadata")
+	printVersion = flag.Bool("version", false, "Print version number and exit")
 }
 
 // This function handles setup that can be done before parsing flags.
@@ -49,6 +53,10 @@ func SetLogger(log *utils.Logger) {
 func DoValidation() {
 	initializeFlags()
 	flag.Parse()
+	if *printVersion {
+		fmt.Printf("gprestore %s\n", version)
+		os.Exit(0)
+	}
 	utils.CheckExclusiveFlags("debug", "quiet", "verbose")
 	utils.CheckMandatoryFlags("timestamp")
 	if !utils.IsValidTimestamp(*timestamp) {

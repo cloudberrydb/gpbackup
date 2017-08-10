@@ -3,6 +3,7 @@ package backup
 import (
 	"flag"
 	"fmt"
+	"os"
 
 	"github.com/greenplum-db/gpbackup/utils"
 )
@@ -10,15 +11,17 @@ import (
 var (
 	connection *utils.DBConn
 	logger     *utils.Logger
+	version    string
 )
 
 var ( // Command-line flags
-	dbname      *string
-	debug       *bool
-	dumpDir     *string
-	quiet       *bool
-	verbose     *bool
-	dumpGlobals *bool
+	dbname       *string
+	debug        *bool
+	dumpDir      *string
+	quiet        *bool
+	verbose      *bool
+	dumpGlobals  *bool
+	printVersion *bool
 )
 
 // We define and initialize flags separately to avoid import conflicts in tests
@@ -29,6 +32,7 @@ func initializeFlags() {
 	quiet = flag.Bool("quiet", false, "Suppress non-warning, non-error log messages")
 	verbose = flag.Bool("verbose", false, "Print verbose log messages")
 	dumpGlobals = flag.Bool("globals", false, "Dump global metadata")
+	printVersion = flag.Bool("version", false, "Print version number and exit")
 }
 
 // This function handles setup that can be done before parsing flags.
@@ -47,6 +51,10 @@ func SetLogger(log *utils.Logger) {
 func DoValidation() {
 	initializeFlags()
 	flag.Parse()
+	if *printVersion {
+		fmt.Printf("gpbackup %s\n", version)
+		os.Exit(0)
+	}
 	utils.CheckExclusiveFlags("debug", "quiet", "verbose")
 }
 
