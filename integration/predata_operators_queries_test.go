@@ -9,9 +9,6 @@ import (
 )
 
 var _ = Describe("backup integration tests", func() {
-	BeforeEach(func() {
-		testutils.SetupTestLogger()
-	})
 	Describe("GetOperators", func() {
 		It("returns a slice of operators", func() {
 			testutils.AssertQueryRuns(connection, "CREATE OPERATOR ## (LEFTARG = bigint, PROCEDURE = numeric_fac)")

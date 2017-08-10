@@ -9,9 +9,6 @@ import (
 )
 
 var _ = Describe("backup integration tests", func() {
-	BeforeEach(func() {
-		testutils.SetupTestLogger()
-	})
 	Describe("GetFunctionDefinitions", func() {
 		It("returns a slice of function definitions", func() {
 			testutils.AssertQueryRuns(connection, `CREATE FUNCTION add(integer, integer) RETURNS integer

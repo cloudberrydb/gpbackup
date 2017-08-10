@@ -6,15 +6,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("backup/predata_functions tests", func() {
-	buffer := gbytes.NewBuffer()
-
-	BeforeEach(func() {
-		buffer = gbytes.BufferWithBytes([]byte(""))
-	})
 	Describe("Functions involved in printing CREATE FUNCTION statements", func() {
 		var funcDef backup.Function
 		funcDefault := backup.Function{1, "public", "func_name", false, "add_two_ints", "", "integer, integer", "integer, integer", "integer",

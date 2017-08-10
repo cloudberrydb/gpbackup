@@ -9,9 +9,6 @@ import (
 )
 
 var _ = Describe("backup integration tests", func() {
-	BeforeEach(func() {
-		testutils.SetupTestLogger()
-	})
 	Describe("GetExternalTablesMap", func() {
 		It("returns empty map when there are no external tables", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int)")

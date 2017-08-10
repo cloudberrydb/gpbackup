@@ -9,9 +9,6 @@ import (
 )
 
 var _ = Describe("backup integration tests", func() {
-	BeforeEach(func() {
-		testutils.SetupTestLogger()
-	})
 	Describe("GetTextSearchParsers", func() {
 		It("returns a text search parser without a headline", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TEXT SEARCH PARSER testparser(START = prsd_start, GETTOKEN = prsd_nexttoken, END = prsd_end, LEXTYPES = prsd_lextype);")

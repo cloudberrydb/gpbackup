@@ -19,88 +19,73 @@ var mock sqlmock.Sqlmock
 
 var _ = Describe("utils/db tests", func() {
 	BeforeEach(func() {
-		testutils.SetupTestLogger()
 		utils.System.Now = func() time.Time { return time.Date(2017, time.January, 1, 1, 1, 1, 1, time.Local) }
 	})
 	Describe("NewDBConn", func() {
-		Context("Database given with -dbname flag", func() {
-			It("gets the DBName from dbname argument", func() {
-				connection = utils.NewDBConn("testdb")
-				Expect(connection.DBName).To(Equal("testdb"))
-			})
+		It("gets the DBName from the dbname flag if it is set", func() {
+			connection = utils.NewDBConn("testdb")
+			Expect(connection.DBName).To(Equal("testdb"))
 		})
-		Context("No database given with -dbname flag but PGDATABASE set", func() {
-			It("gets the DBName from PGDATABASE", func() {
-				oldPgDatabase := os.Getenv("PGDATABASE")
-				os.Setenv("PGDATABASE", "testdb")
-				defer os.Setenv("PGDATABASE", oldPgDatabase)
+		It("gets the DBName from PGDATABASE if the dbname flag is not set", func() {
+			oldPgDatabase := os.Getenv("PGDATABASE")
+			os.Setenv("PGDATABASE", "testdb")
+			defer os.Setenv("PGDATABASE", oldPgDatabase)
 
-				connection = utils.NewDBConn("")
-				Expect(connection.DBName).To(Equal("testdb"))
-			})
+			connection = utils.NewDBConn("")
+			Expect(connection.DBName).To(Equal("testdb"))
 		})
-		Context("No database given with either -dbname or PGDATABASE", func() {
-			It("fails", func() {
-				oldPgDatabase := os.Getenv("PGDATABASE")
-				os.Setenv("PGDATABASE", "")
-				defer os.Setenv("PGDATABASE", oldPgDatabase)
+		It("fails if no database is given with either -dbname or PGDATABASE", func() {
+			oldPgDatabase := os.Getenv("PGDATABASE")
+			os.Setenv("PGDATABASE", "")
+			defer os.Setenv("PGDATABASE", oldPgDatabase)
 
-				defer testutils.ShouldPanicWithMessage("No database provided and PGDATABASE not set")
-				connection = utils.NewDBConn("")
-			})
+			defer testutils.ShouldPanicWithMessage("No database provided and PGDATABASE not set")
+			connection = utils.NewDBConn("")
 		})
 	})
 	Describe("DBConn.Connect", func() {
-		Context("The database exists", func() {
-			It("connects successfully", func() {
-				var mockdb *sqlx.DB
-				mockdb, mock = testutils.CreateMockDB()
-				driver := testutils.TestDriver{DB: mockdb, User: "testrole"}
-				connection = utils.NewDBConn("testdb")
-				connection.Driver = driver
-				Expect(connection.DBName).To(Equal("testdb"))
-				connection.Connect()
-			})
-			It("does not connect if the connection is refused", func() {
-				var mockdb *sqlx.DB
-				mockdb, mock = testutils.CreateMockDB()
-				driver := testutils.TestDriver{ErrToReturn: fmt.Errorf("pq: connection refused"), DB: mockdb, User: "testrole"}
-				connection = utils.NewDBConn("testdb")
-				connection.Driver = driver
-				defer testutils.ShouldPanicWithMessage(`could not connect to server: Connection refused
-	Is the server running on host "localhost" and accepting
-	TCP/IP connections on port 15432?`)
-				connection.Connect()
-			})
+		It("connects successfully if the database exists", func() {
+			var mockdb *sqlx.DB
+			mockdb, mock = testutils.CreateMockDB()
+			driver := testutils.TestDriver{DB: mockdb, User: "testrole"}
+			connection = utils.NewDBConn("testdb")
+			connection.Driver = driver
+			Expect(connection.DBName).To(Equal("testdb"))
+			connection.Connect()
 		})
-		Context("The database does not exist", func() {
-			It("fails", func() {
-				var mockdb *sqlx.DB
-				mockdb, mock = testutils.CreateMockDB()
-				driver := testutils.TestDriver{ErrToReturn: fmt.Errorf("pq: database \"testdb\" does not exist"), DB: mockdb, DBName: "testdb", User: "testrole"}
-				connection = utils.NewDBConn("testdb")
-				connection.Driver = driver
-				Expect(connection.DBName).To(Equal("testdb"))
-				defer testutils.ShouldPanicWithMessage("Database \"testdb\" does not exist, exiting")
-				connection.Connect()
-			})
+		It("does not connect if the database exists but the connection is refused", func() {
+			var mockdb *sqlx.DB
+			mockdb, mock = testutils.CreateMockDB()
+			driver := testutils.TestDriver{ErrToReturn: fmt.Errorf("pq: connection refused"), DB: mockdb, User: "testrole"}
+			connection = utils.NewDBConn("testdb")
+			connection.Driver = driver
+			defer testutils.ShouldPanicWithMessage(`could not connect to server: Connection refused`)
+			connection.Connect()
 		})
-		Context("The role does not exist", func() {
-			It("fails", func() {
-				var mockdb *sqlx.DB
-				mockdb, mock = testutils.CreateMockDB()
-				driver := testutils.TestDriver{ErrToReturn: fmt.Errorf("pq: role \"nonexistent\" does not exist"), DB: mockdb, DBName: "testdb", User: "nonexistent"}
+		It("fails if the database does not exist", func() {
+			var mockdb *sqlx.DB
+			mockdb, mock = testutils.CreateMockDB()
+			driver := testutils.TestDriver{ErrToReturn: fmt.Errorf("pq: database \"testdb\" does not exist"), DB: mockdb, DBName: "testdb", User: "testrole"}
+			connection = utils.NewDBConn("testdb")
+			connection.Driver = driver
+			Expect(connection.DBName).To(Equal("testdb"))
+			defer testutils.ShouldPanicWithMessage("Database \"testdb\" does not exist, exiting")
+			connection.Connect()
+		})
+		It("fails if the role does not exist", func() {
+			var mockdb *sqlx.DB
+			mockdb, mock = testutils.CreateMockDB()
+			driver := testutils.TestDriver{ErrToReturn: fmt.Errorf("pq: role \"nonexistent\" does not exist"), DB: mockdb, DBName: "testdb", User: "nonexistent"}
 
-				oldPgUser := os.Getenv("PGUSER")
-				os.Setenv("PGUSER", "nonexistent")
-				defer os.Setenv("PGUSER", oldPgUser)
+			oldPgUser := os.Getenv("PGUSER")
+			os.Setenv("PGUSER", "nonexistent")
+			defer os.Setenv("PGUSER", oldPgUser)
 
-				connection = utils.NewDBConn("testdb")
-				connection.Driver = driver
-				Expect(connection.User).To(Equal("nonexistent"))
-				defer testutils.ShouldPanicWithMessage("Role \"nonexistent\" does not exist, exiting")
-				connection.Connect()
-			})
+			connection = utils.NewDBConn("testdb")
+			connection.Driver = driver
+			Expect(connection.User).To(Equal("nonexistent"))
+			defer testutils.ShouldPanicWithMessage("Role \"nonexistent\" does not exist, exiting")
+			connection.Connect()
 		})
 	})
 	Describe("DBConn.Exec", func() {

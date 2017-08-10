@@ -6,15 +6,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	//. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("backup/predata_textsearch tests", func() {
-	buffer := gbytes.NewBuffer()
-
-	BeforeEach(func() {
-		buffer = gbytes.BufferWithBytes([]byte(""))
-	})
 	Describe("PrintCreateTextSearchParserStatements", func() {
 		It("prints a basic text search parser", func() {
 			parsers := []backup.TextSearchParser{{0, "public", "testparser", "start_func", "token_func", "end_func", "lextypes_func", ""}}

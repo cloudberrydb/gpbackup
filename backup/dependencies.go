@@ -5,15 +5,15 @@ import (
 	"github.com/pkg/errors"
 )
 
-func SortFunctionsAndTypesAndTablesInDependencyOrder(types []Type, functions []Function, tables []Relation) []Sortable {
+func SortFunctionsAndTypesAndTablesInDependencyOrder(functions []Function, types []Type, tables []Relation) []Sortable {
 	objects := make([]Sortable, 0)
+	for _, function := range functions {
+		objects = append(objects, function)
+	}
 	for _, typ := range types {
 		if typ.Type != "e" && typ.Type != "p" {
 			objects = append(objects, typ)
 		}
-	}
-	for _, function := range functions {
-		objects = append(objects, function)
 	}
 	for _, table := range tables {
 		objects = append(objects, table)
@@ -22,21 +22,27 @@ func SortFunctionsAndTypesAndTablesInDependencyOrder(types []Type, functions []F
 	return sorted
 }
 
-func ConstructDependencyLists(connection *utils.DBConn, types []Type, functions []Function) ([]Type, []Function) {
+func ConstructFunctionAndTypeDependencyLists(connection *utils.DBConn, functions []Function, types []Type) ([]Function, []Type) {
+	functions = ConstructFunctionDependencies(connection, functions)
 	types = CoalesceCompositeTypes(types)
+	/*
+	 * Each of the Construct[...]TypeDependencies functions adds dependency information
+	 * to the appropriate types in-place, without modifying the slice or the order of
+	 * elements, so we re-use the same slice for each call and after all three calls
+	 * all of the types will have their dependencies set.
+	 */
 	types = ConstructBaseTypeDependencies(connection, types)
 	types = ConstructDomainDependencies(connection, types)
 	types = ConstructCompositeTypeDependencies(connection, types)
-	functions = ConstructFunctionDependencies(connection, functions)
-	return types, functions
+	return functions, types
 }
 
-func ConstructFunctionAndTypeAndTableMetadataMap(types MetadataMap, functions MetadataMap, tables MetadataMap) MetadataMap {
+func ConstructFunctionAndTypeAndTableMetadataMap(functions MetadataMap, types MetadataMap, tables MetadataMap) MetadataMap {
 	metadataMap := make(MetadataMap, 0)
-	for k, v := range types {
+	for k, v := range functions {
 		metadataMap[k] = v
 	}
-	for k, v := range functions {
+	for k, v := range types {
 		metadataMap[k] = v
 	}
 	for k, v := range tables {
@@ -84,18 +90,6 @@ func (f Function) Dependencies() []string {
 
 func (t Type) Dependencies() []string {
 	return t.DependsUpon
-}
-
-func SortRelations(relations []Relation) []Relation {
-	sortable := make([]Sortable, len(relations))
-	for i := range relations {
-		sortable[i] = relations[i]
-	}
-	sortable = TopologicalSort(sortable)
-	for i := range sortable {
-		relations[i] = sortable[i].(Relation)
-	}
-	return relations
 }
 
 func SortViews(views []View) []View {

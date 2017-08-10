@@ -6,16 +6,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("backup/predata_shared tests", func() {
-	buffer := gbytes.NewBuffer()
-
-	BeforeEach(func() {
-		buffer = gbytes.BufferWithBytes([]byte(""))
-	})
-
 	Describe("PrintConstraintStatements", func() {
 		var (
 			uniqueOne        backup.Constraint
@@ -435,6 +428,118 @@ GRANT TRIGGER ON TABLE public.tablename TO PUBLIC;`)
 			expected := backup.ACL{Grantee: "", Insert: true}
 			result := backup.ParseACL(aclStr)
 			testutils.ExpectStructsToMatch(&expected, result)
+		})
+	})
+	Describe("PrintCreateDependentTypeAndFunctionAndTablesStatements", func() {
+		var (
+			objects      []backup.Sortable
+			metadataMap  backup.MetadataMap
+			tableDefsMap map[uint32]backup.TableDefinition
+		)
+		BeforeEach(func() {
+			objects = []backup.Sortable{
+				backup.Function{Oid: 1, SchemaName: "public", FunctionName: "function", FunctionBody: "SELECT $1 + $2",
+					Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "integer", Language: "sql"},
+				backup.Type{Oid: 2, TypeSchema: "public", TypeName: "base", Type: "b", Input: "typin", Output: "typout"},
+				backup.Type{Oid: 3, TypeSchema: "public", TypeName: "composite", AttName: "foo", AttType: "integer", Type: "c"},
+				backup.Type{Oid: 4, TypeSchema: "public", TypeName: "domain", Type: "d", BaseType: "numeric"},
+				backup.Relation{RelationOid: 5, SchemaName: "public", RelationName: "relation"},
+			}
+			metadataMap = backup.MetadataMap{
+				1: backup.ObjectMetadata{Comment: "function"},
+				2: backup.ObjectMetadata{Comment: "base type"},
+				3: backup.ObjectMetadata{Comment: "composite type"},
+				4: backup.ObjectMetadata{Comment: "domain"},
+				5: backup.ObjectMetadata{Comment: "relation"},
+			}
+			tableDefsMap = map[uint32]backup.TableDefinition{
+				5: {DistPolicy: "DISTRIBUTED RANDOMLY", ColumnDefs: []backup.ColumnDefinition{}},
+			}
+		})
+		It("prints create statements for dependent types, functions, and tables (domain has a constraint)", func() {
+			constraints := []backup.Constraint{
+				{ConName: "check_constraint", ConDef: "CHECK (VALUE > 2)", OwningObject: "public.domain"},
+			}
+			backup.PrintCreateDependentTypeAndFunctionAndTablesStatements(buffer, objects, metadataMap, tableDefsMap, constraints)
+			testutils.ExpectRegexp(buffer, `
+CREATE FUNCTION public.function(integer, integer) RETURNS integer AS
+$_$SELECT $1 + $2$_$
+LANGUAGE sql
+COST 0;
+
+
+COMMENT ON FUNCTION public.function(integer, integer) IS 'function';
+
+
+CREATE TYPE public.base (
+	INPUT = typin,
+	OUTPUT = typout
+);
+
+
+COMMENT ON TYPE public.base IS 'base type';
+
+
+CREATE TYPE public.composite AS (
+
+);
+
+COMMENT ON TYPE public.composite IS 'composite type';
+
+CREATE DOMAIN public.domain AS numeric
+	CONSTRAINT check_constraint CHECK (VALUE > 2);
+
+
+COMMENT ON DOMAIN public.domain IS 'domain';
+
+
+CREATE TABLE public.relation (
+) DISTRIBUTED RANDOMLY;
+
+
+COMMENT ON TABLE public.relation IS 'relation';
+`)
+		})
+		It("prints create statements for dependent types, functions, and tables (no domain constraint)", func() {
+			constraints := []backup.Constraint{}
+			backup.PrintCreateDependentTypeAndFunctionAndTablesStatements(buffer, objects, metadataMap, tableDefsMap, constraints)
+			testutils.ExpectRegexp(buffer, `
+CREATE FUNCTION public.function(integer, integer) RETURNS integer AS
+$_$SELECT $1 + $2$_$
+LANGUAGE sql
+COST 0;
+
+
+COMMENT ON FUNCTION public.function(integer, integer) IS 'function';
+
+
+CREATE TYPE public.base (
+	INPUT = typin,
+	OUTPUT = typout
+);
+
+
+COMMENT ON TYPE public.base IS 'base type';
+
+
+CREATE TYPE public.composite AS (
+
+);
+
+COMMENT ON TYPE public.composite IS 'composite type';
+
+CREATE DOMAIN public.domain AS numeric;
+
+
+COMMENT ON DOMAIN public.domain IS 'domain';
+
+
+CREATE TABLE public.relation (
+) DISTRIBUTED RANDOMLY;
+
+
+COMMENT ON TABLE public.relation IS 'relation';
+`)
 		})
 	})
 })

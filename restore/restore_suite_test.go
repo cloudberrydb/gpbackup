@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"testing"
 
+	"github.com/greenplum-db/gpbackup/testutils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
@@ -31,3 +32,7 @@ func TestRestore(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "restore tests")
 }
+
+var _ = BeforeSuite(func() {
+	testutils.SetupTestLogger()
+})

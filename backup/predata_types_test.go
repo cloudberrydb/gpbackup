@@ -6,16 +6,13 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("backup/predata_types tests", func() {
-	buffer := gbytes.NewBuffer()
 	typeMetadata := backup.ObjectMetadata{}
 	typeMetadataMap := backup.MetadataMap{}
 
 	BeforeEach(func() {
-		buffer = gbytes.BufferWithBytes([]byte(""))
 		typeMetadata = backup.ObjectMetadata{}
 		typeMetadataMap = backup.MetadataMap{}
 	})

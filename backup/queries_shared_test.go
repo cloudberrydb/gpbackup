@@ -18,7 +18,6 @@ var _ = Describe("backup/queries_shared tests", func() {
 	var mock sqlmock.Sqlmock
 	BeforeEach(func() {
 		connection, mock = testutils.CreateAndConnectMockDB()
-		testutils.SetupTestLogger()
 	})
 
 	Describe("SelectString", func() {

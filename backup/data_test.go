@@ -17,7 +17,6 @@ var _ = Describe("backup/data tests", func() {
 	var mock sqlmock.Sqlmock
 	BeforeEach(func() {
 		connection, mock = testutils.CreateAndConnectMockDB()
-		testutils.SetupTestLogger()
 	})
 	Describe("CopyTableOut", func() {
 		It("will dump a table to its own file", func() {

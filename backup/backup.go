@@ -172,7 +172,7 @@ func backupPredata(filename string, tables []Relation, tableDefs map[uint32]Tabl
 	functions := GetFunctions(connection)
 	funcInfoMap := GetFunctionOidToInfoMap(connection)
 	functionMetadata := GetMetadataForObjectType(connection, TYPE_FUNCTION)
-	types, functions = ConstructDependencyLists(connection, types, functions)
+	functions, types = ConstructFunctionAndTypeDependencyLists(connection, functions, types)
 
 	logger.Verbose("Writing CREATE TYPE statements for shell types to predata file")
 	PrintCreateShellTypeStatements(predataFile, types)
@@ -201,8 +201,8 @@ func backupPredata(filename string, tables []Relation, tableDefs map[uint32]Tabl
 	conMetadata := GetCommentsForObjectType(connection, TYPE_CONSTRAINT)
 
 	logger.Verbose("Writing CREATE FUNCTION statements and CREATE TYPE statements for base, composite, and domain types to predata file")
-	sortedSlice := SortFunctionsAndTypesAndTablesInDependencyOrder(types, otherFuncs, tables)
-	filteredMetadata := ConstructFunctionAndTypeAndTableMetadataMap(typeMetadata, functionMetadata, relationMetadata)
+	sortedSlice := SortFunctionsAndTypesAndTablesInDependencyOrder(otherFuncs, types, tables)
+	filteredMetadata := ConstructFunctionAndTypeAndTableMetadataMap(functionMetadata, typeMetadata, relationMetadata)
 	PrintCreateDependentTypeAndFunctionAndTablesStatements(predataFile, sortedSlice, filteredMetadata, tableDefs, constraints)
 
 	logger.Verbose("Writing ALTER SEQUENCE statements to predata file")

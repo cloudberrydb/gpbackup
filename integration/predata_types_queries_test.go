@@ -11,9 +11,6 @@ import (
 )
 
 var _ = Describe("backup integration tests", func() {
-	BeforeEach(func() {
-		testutils.SetupTestLogger()
-	})
 	Describe("GetTypeDefinitions", func() {
 		var (
 			shellType         backup.Type

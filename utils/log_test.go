@@ -12,7 +12,6 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/onsi/gomega/gbytes"
 	"github.com/pkg/errors"
 )
 
@@ -23,15 +22,9 @@ var _ = Describe("utils/log tests", func() {
 		testLogDir   string
 		fakeFile     *os.File
 		fakeInfo     os.FileInfo
-
-		logger  *utils.Logger
-		stdout  *Buffer
-		stderr  *Buffer
-		logfile *Buffer
 	)
 
 	BeforeEach(func() {
-		logger, stdout, stderr, logfile = testutils.SetupTestLogger()
 		err := utils.System.MkdirAll("/tmp/log_dir", 0755)
 		Expect(err).ToNot(HaveOccurred())
 		fakeInfo, err = os.Stat("/tmp/log_dir")
@@ -48,6 +41,7 @@ var _ = Describe("utils/log tests", func() {
 	})
 	AfterEach(func() {
 		utils.System = utils.InitializeSystemFunctions()
+		utils.SetLogger(logger)
 	})
 
 	Describe("InitializeLogging", func() {

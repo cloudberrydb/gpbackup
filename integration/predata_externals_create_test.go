@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"bytes"
 	"os"
 
 	"github.com/greenplum-db/gpbackup/backup"
@@ -12,12 +11,6 @@ import (
 )
 
 var _ = Describe("backup integration create statement tests", func() {
-	var buffer *bytes.Buffer
-
-	BeforeEach(func() {
-		buffer = bytes.NewBuffer([]byte(""))
-		testutils.SetupTestLogger()
-	})
 	Describe("PrintExternalTableCreateStatement", func() {
 		var (
 			extTable  backup.ExternalTableDefinition

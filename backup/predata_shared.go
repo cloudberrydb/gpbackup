@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"regexp"
-	"sort"
 	"strings"
 
 	"github.com/greenplum-db/gpbackup/utils"
@@ -40,24 +39,6 @@ func SchemaFromString(name string) Schema {
 		logger.Fatal(errors.Errorf("%s is not a valid identifier", name), "")
 	}
 	return Schema{0, schema}
-}
-
-type Schemas []Schema
-
-func (slice Schemas) Len() int {
-	return len(slice)
-}
-
-func (slice Schemas) Less(i int, j int) bool {
-	return slice[i].Name < slice[j].Name
-}
-
-func (slice Schemas) Swap(i int, j int) {
-	slice[i], slice[j] = slice[j], slice[i]
-}
-
-func SortSchemas(objects Schemas) {
-	sort.Sort(objects)
 }
 
 func MakeFQN(schema string, object string) string {
@@ -335,9 +316,10 @@ func (obj ObjectMetadata) GetPrivilegesStatements(objectName string, objectType 
 				if acl.Trigger {
 					privList = append(privList, "TRIGGER")
 				}
-				if acl.Execute {
-					privList = append(privList, "EXECUTE")
-				}
+				/*
+				 * We skip checking whether acl.Execute is set here because only Functions have Execute,
+				 * and functions only have Execute, so Execute == hasAllPrivileges for Functions.
+				 */
 				if acl.Usage {
 					privList = append(privList, "USAGE")
 				}
@@ -377,9 +359,7 @@ func (obj ObjectMetadata) GetPrivilegesStatements(objectName string, objectType 
 				if acl.TriggerWithGrant {
 					privWithGrantList = append(privWithGrantList, "TRIGGER")
 				}
-				if acl.ExecuteWithGrant {
-					privWithGrantList = append(privWithGrantList, "EXECUTE")
-				}
+				// The comment above regarding Execute applies to ExecuteWithGrant as well.
 				if acl.UsageWithGrant {
 					privWithGrantList = append(privWithGrantList, "USAGE")
 				}

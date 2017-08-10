@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"bytes"
 	"regexp"
 
 	"github.com/greenplum-db/gpbackup/backup"
@@ -12,12 +11,6 @@ import (
 )
 
 var _ = Describe("backup integration create statement tests", func() {
-	var buffer *bytes.Buffer
-
-	BeforeEach(func() {
-		buffer = bytes.NewBuffer([]byte(""))
-		testutils.SetupTestLogger()
-	})
 	Describe("PrintCreateResourceQueueStatements", func() {
 		It("creates a basic resource queue with a comment", func() {
 			basicQueue := backup.ResourceQueue{1, "basicQueue", -1, "32.80", false, "0.00", "medium", "-1"}

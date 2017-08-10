@@ -9,9 +9,6 @@ import (
 )
 
 var _ = Describe("backup integration tests", func() {
-	BeforeEach(func() {
-		testutils.SetupTestLogger()
-	})
 	Describe("GetSessionGUCs", func() {
 		It("returns a slice of values for session level GUCs", func() {
 			/*
@@ -34,6 +31,27 @@ var _ = Describe("backup integration tests", func() {
 			Expect(len(results)).To(Equal(2))
 			Expect(results[0]).To(Equal("SET default_with_oids TO true"))
 			Expect(results[1]).To(Equal("SET search_path TO public, pg_catalog"))
+		})
+	})
+	Describe("GetDatabaseNames", func() {
+		It("returns a slice of database names", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLESPACE test_tablespace FILESPACE test_filespace")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")
+			testutils.AssertQueryRuns(connection, `CREATE DATABASE other_testdb TABLESPACE test_tablespace`)
+			defer testutils.AssertQueryRuns(connection, `DROP DATABASE other_testdb`)
+
+			results := backup.GetDatabaseNames(connection)
+
+			testdbExpected := backup.DatabaseName{0, "testdb", "pg_default"}
+			othertestdbExpected := backup.DatabaseName{0, "other_testdb", "test_tablespace"}
+			for _, dbname := range results {
+				if dbname.DatabaseName == "testdb" {
+					testutils.ExpectStructsToMatchExcluding(&testdbExpected, &dbname, "Oid")
+				}
+				if dbname.DatabaseName == "other_testdb" {
+					testutils.ExpectStructsToMatchExcluding(&othertestdbExpected, &dbname, "Oid")
+				}
+			}
 		})
 	})
 	Describe("GetResourceQueues", func() {

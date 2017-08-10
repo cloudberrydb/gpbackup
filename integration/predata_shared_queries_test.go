@@ -9,9 +9,6 @@ import (
 )
 
 var _ = Describe("backup integration tests", func() {
-	BeforeEach(func() {
-		testutils.SetupTestLogger()
-	})
 	Describe("GetAllUserSchemas", func() {
 		It("returns user schema information", func() {
 			testutils.AssertQueryRuns(connection, "CREATE SCHEMA bar")

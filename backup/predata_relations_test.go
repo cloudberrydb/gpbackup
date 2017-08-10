@@ -6,11 +6,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("backup/predata_relations tests", func() {
-	buffer := gbytes.NewBuffer()
 	testTable := backup.BasicRelation("public", "tablename")
 
 	distRandom := "DISTRIBUTED RANDOMLY"

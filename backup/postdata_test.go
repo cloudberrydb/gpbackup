@@ -5,15 +5,9 @@ import (
 	"github.com/greenplum-db/gpbackup/testutils"
 
 	. "github.com/onsi/ginkgo"
-	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("backup/postdata tests", func() {
-	var buffer *gbytes.Buffer
-	BeforeEach(func() {
-		buffer = gbytes.NewBuffer()
-		testutils.SetupTestLogger()
-	})
 	Context("PrintCreateIndexStatements", func() {
 		It("can print a basic index", func() {
 			indexes := []backup.QuerySimpleDefinition{{1, "testindex", "public", "testtable", "", "CREATE INDEX testindex ON public.testtable USING btree(i)"}}

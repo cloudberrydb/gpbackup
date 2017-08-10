@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 
@@ -16,6 +17,7 @@ import (
 )
 
 var (
+	buffer     *bytes.Buffer
 	connection *utils.DBConn
 )
 
@@ -41,6 +43,10 @@ var _ = BeforeSuite(func() {
 	testutils.AssertQueryRuns(connection, "ALTER SCHEMA public OWNER TO anothertestrole")
 	testutils.AssertQueryRuns(connection, "DROP PROTOCOL IF EXISTS gphdfs")
 	setupTestFilespace()
+})
+
+var _ = BeforeEach(func() {
+	buffer = bytes.NewBuffer([]byte(""))
 })
 
 var _ = AfterSuite(func() {

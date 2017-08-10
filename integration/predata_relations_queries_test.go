@@ -9,9 +9,6 @@ import (
 )
 
 var _ = Describe("backup integration tests", func() {
-	BeforeEach(func() {
-		testutils.SetupTestLogger()
-	})
 	Describe("GetAllUserTables", func() {
 		It("returns user table information for basic heap tables", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE foo(i int)")

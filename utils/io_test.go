@@ -11,7 +11,6 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
 	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
 
@@ -21,7 +20,6 @@ var _ = Describe("utils/io tests", func() {
 
 	BeforeEach(func() {
 		connection, mock = testutils.CreateAndConnectMockDB()
-		testutils.SetupTestLogger()
 		utils.DumpTimestamp = "20170101010101"
 	})
 	Describe("QuoteIdent", func() {
@@ -242,7 +240,6 @@ var _ = Describe("utils/io tests", func() {
 	})
 	Describe("MustPrintf", func() {
 		It("writes to a writable file", func() {
-			buffer := gbytes.NewBuffer()
 			utils.MustPrintf(buffer, "%s", "text")
 			Expect(string(buffer.Contents())).To(Equal("text"))
 		})
@@ -253,7 +250,6 @@ var _ = Describe("utils/io tests", func() {
 	})
 	Describe("MustPrintln", func() {
 		It("writes to a writable file", func() {
-			buffer := gbytes.NewBuffer()
 			utils.MustPrintln(buffer, "text")
 			Expect(string(buffer.Contents())).To(Equal("text\n"))
 		})

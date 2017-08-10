@@ -1,8 +1,6 @@
 package integration
 
 import (
-	"bytes"
-
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
 
@@ -11,12 +9,6 @@ import (
 )
 
 var _ = Describe("backup integration create statement tests", func() {
-	var buffer *bytes.Buffer
-
-	BeforeEach(func() {
-		buffer = bytes.NewBuffer([]byte(""))
-		testutils.SetupTestLogger()
-	})
 	Describe("PrintCreateOperatorStatements", func() {
 		It("creates operator", func() {
 			testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")

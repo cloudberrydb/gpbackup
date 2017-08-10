@@ -5,15 +5,9 @@ import (
 	"github.com/greenplum-db/gpbackup/testutils"
 
 	. "github.com/onsi/ginkgo"
-	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("backup/predata_operators tests", func() {
-	buffer := gbytes.NewBuffer()
-
-	BeforeEach(func() {
-		buffer = gbytes.BufferWithBytes([]byte(""))
-	})
 	Describe("PrintCreateOperatorStatements", func() {
 		It("prints a basic operator", func() {
 			operator := backup.Operator{0, "public", "##", "public.path_inter", "public.path", "public.path", "0", "0", "-", "-", false, false}

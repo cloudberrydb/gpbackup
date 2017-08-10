@@ -9,9 +9,6 @@ import (
 )
 
 var _ = Describe("backup integration tests", func() {
-	BeforeEach(func() {
-		testutils.SetupTestLogger()
-	})
 	Describe("ConstructImplicitIndexNames", func() {
 		It("returns an empty map if there are no implicit indexes", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int)")

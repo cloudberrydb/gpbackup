@@ -5,15 +5,9 @@ import (
 	"github.com/greenplum-db/gpbackup/testutils"
 
 	. "github.com/onsi/ginkgo"
-	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("backup/metadata_globals tests", func() {
-	buffer := gbytes.NewBuffer()
-
-	BeforeEach(func() {
-		buffer = gbytes.BufferWithBytes([]byte(""))
-	})
 	Describe("PrintSessionGUCs", func() {
 		It("prints session GUCs", func() {
 			gucs := backup.SessionGUCs{"UTF8", "on", "false"}

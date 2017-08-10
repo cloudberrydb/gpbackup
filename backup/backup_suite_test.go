@@ -9,12 +9,17 @@ import (
 	"os/exec"
 	"testing"
 
+	"github.com/greenplum-db/gpbackup/testutils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 )
 
-var gpbackupPath = ""
+var (
+	buffer       = gbytes.NewBuffer()
+	gpbackupPath = ""
+)
 
 /* This function is a helper function to execute gpbackup and return a session
  * to allow checking its output.
@@ -31,3 +36,11 @@ func TestBackup(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "backup tests")
 }
+
+var _ = BeforeSuite(func() {
+	testutils.SetupTestLogger()
+})
+
+var _ = BeforeEach(func() {
+	buffer = gbytes.NewBuffer()
+})
