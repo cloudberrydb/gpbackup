@@ -50,9 +50,9 @@ func execCommand(cmdArgs []string) error {
 
 func (cluster *Cluster) GetTableBackupFilePathForCopyCommand(tableOid uint32) string {
 	if cluster.RootBackupDir != "" {
-		return fmt.Sprintf("%s/gpbackup_<SEGID>_%s_%d", cluster.RootBackupDir, cluster.Timestamp, tableOid)
+		return fmt.Sprintf("%s/backups/%s/%s/gpbackup_<SEGID>_%s_%d", cluster.RootBackupDir, cluster.Timestamp[0:8], cluster.Timestamp, cluster.Timestamp, tableOid)
 	}
-	return fmt.Sprintf("<SEG_DATA_DIR>/gpbackup_<SEGID>_%s_%d", cluster.Timestamp, tableOid)
+	return fmt.Sprintf("<SEG_DATA_DIR>/backups/%s/%s/gpbackup_<SEGID>_%s_%d", cluster.Timestamp[0:8], cluster.Timestamp, cluster.Timestamp, tableOid)
 }
 
 func (cluster *Cluster) ExecuteClusterCommand(commandMap map[int][]string) map[int]error {

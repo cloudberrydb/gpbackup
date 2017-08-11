@@ -103,7 +103,7 @@ var _ = Describe("utils/io tests", func() {
 		Context("when base dir is not overridden", func() {
 			It("generates table file path for copy command", func() {
 				cluster := utils.NewCluster(nil, "", "20170101010101")
-				Expect(cluster.GetTableBackupFilePathForCopyCommand(1234)).To(Equal("<SEG_DATA_DIR>/gpbackup_<SEGID>_20170101010101_1234"))
+				Expect(cluster.GetTableBackupFilePathForCopyCommand(1234)).To(Equal("<SEG_DATA_DIR>/backups/20170101/20170101010101/gpbackup_<SEGID>_20170101010101_1234"))
 			})
 
 			It("sets up the configuration for a single-host, single-segment cluster", func() {
@@ -142,7 +142,7 @@ var _ = Describe("utils/io tests", func() {
 			})
 			It("GetTableBackupFilePathForCopyCommand() uses RootBackupDir for table backup file", func() {
 				cluster := utils.NewCluster(nil, "/foo/bar", "20170101010101")
-				Expect(cluster.GetTableBackupFilePathForCopyCommand(1234)).To(Equal("/foo/bar/gpbackup_<SEGID>_20170101010101_1234"))
+				Expect(cluster.GetTableBackupFilePathForCopyCommand(1234)).To(Equal("/foo/bar/backups/20170101/20170101010101/gpbackup_<SEGID>_20170101010101_1234"))
 			})
 		})
 	})
