@@ -72,13 +72,9 @@ func DoSetup() {
 	connection.Connect()
 	connection.Exec("SET application_name TO 'gpbackup'")
 
-	rootBackupDir := ""
-	if *dumpDir != "" {
-		rootBackupDir = *dumpDir
-	}
 	logger.Verbose("Creating dump directories")
 	segConfig := utils.GetSegmentConfiguration(connection)
-	globalCluster = utils.NewCluster(segConfig, rootBackupDir, utils.CurrentTimestamp())
+	globalCluster = utils.NewCluster(segConfig, *dumpDir, utils.CurrentTimestamp())
 	globalCluster.CreateDirectoriesOnAllHosts()
 }
 

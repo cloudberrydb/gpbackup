@@ -78,13 +78,9 @@ func DoSetup() {
 	connection.Connect()
 	connection.Exec("SET application_name TO 'gprestore'")
 
-	rootBackupDir := ""
-	if *dumpDir != "" {
-		rootBackupDir = *dumpDir
-	}
 	logger.Verbose("Gathering information on dump directories")
 	segConfig := utils.GetSegmentConfiguration(connection)
-	globalCluster = utils.NewCluster(segConfig, rootBackupDir, *timestamp)
+	globalCluster = utils.NewCluster(segConfig, *dumpDir, *timestamp)
 }
 
 func DoRestore() {

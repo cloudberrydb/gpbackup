@@ -134,15 +134,23 @@ var _ = Describe("utils/io tests", func() {
 				Expect(cluster.GetDirForContent(1)).To(Equal("/data/gpseg1/backups/20170101/20170101010101"))
 				Expect(cluster.GetHostForContent(1)).To(Equal("remotehost"))
 			})
+			It("GetTableMapFilePath() uses segment configuration for backup directory", func() {
+				cluster := utils.NewCluster([]utils.SegConfig{masterSeg}, "", "20170101010101")
+				Expect(cluster.GetTableMapFilePath()).To(Equal("/data/gpseg-1/backups/20170101/20170101010101/gpbackup_20170101010101_table_map"))
+			})
 		})
 		Context("when base dir is overridden", func() {
-			It("GetDirForContent() ignores BLAH using RootBackupDir instead", func() {
+			It("GetDirForContent() uses user specified path for the content directory", func() {
 				cluster := utils.NewCluster([]utils.SegConfig{masterSeg}, "/foo/bar", "20170101010101")
-				Expect(cluster.GetDirForContent(-1)).To(Equal("/foo/bar/backups/20170101/20170101010101"))
+				Expect(cluster.GetDirForContent(-1)).To(Equal("/foo/bar/gpseg-1/backups/20170101/20170101010101"))
 			})
-			It("GetTableBackupFilePathForCopyCommand() uses RootBackupDir for table backup file", func() {
+			It("GetTableBackupFilePathForCopyCommand() uses user specified path for table backup file", func() {
 				cluster := utils.NewCluster(nil, "/foo/bar", "20170101010101")
-				Expect(cluster.GetTableBackupFilePathForCopyCommand(1234)).To(Equal("/foo/bar/backups/20170101/20170101010101/gpbackup_<SEGID>_20170101010101_1234"))
+				Expect(cluster.GetTableBackupFilePathForCopyCommand(1234)).To(Equal("/foo/bar/gpseg<SEGID>/backups/20170101/20170101010101/gpbackup_<SEGID>_20170101010101_1234"))
+			})
+			It("GetTableMapFilePath() uses user specified path for table backup file", func() {
+				cluster := utils.NewCluster(nil, "/foo/bar", "20170101010101")
+				Expect(cluster.GetTableMapFilePath()).To(Equal("/foo/bar/gpseg-1/backups/20170101/20170101010101/gpbackup_20170101010101_table_map"))
 			})
 		})
 	})

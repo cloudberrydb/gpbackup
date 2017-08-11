@@ -9,24 +9,23 @@ import (
 	"fmt"
 	"os/exec"
 	"path"
-	"strings"
 
 	"github.com/pkg/errors"
 )
 
 type Cluster struct {
-	ContentIDs    []int
-	SegDirMap     map[int]string
-	SegHostMap    map[int]string
-	RootBackupDir string
-	Timestamp     string
+	ContentIDs             []int
+	SegDirMap              map[int]string
+	SegHostMap             map[int]string
+	UserSpecifiedBackupDir string
+	Timestamp              string
 }
 
-func NewCluster(segConfigs []SegConfig, rootBackupDir string, timestamp string) Cluster {
+func NewCluster(segConfigs []SegConfig, userSpecifiedBackupDir string, timestamp string) Cluster {
 	cluster := Cluster{}
 	cluster.SegHostMap = make(map[int]string, 0)
 	cluster.SegDirMap = make(map[int]string, 0)
-	cluster.RootBackupDir = rootBackupDir
+	cluster.UserSpecifiedBackupDir = userSpecifiedBackupDir
 	cluster.Timestamp = timestamp
 	for _, seg := range segConfigs {
 		cluster.ContentIDs = append(cluster.ContentIDs, seg.ContentID)
@@ -36,23 +35,13 @@ func NewCluster(segConfigs []SegConfig, rootBackupDir string, timestamp string) 
 	return cluster
 }
 
+func (cluster *Cluster) IsUserSpecifiedBackupDir() bool {
+	return cluster.UserSpecifiedBackupDir != ""
+}
+
 func ConstructSSHCommand(host string, cmd string) []string {
 	currentUser, _, _ := GetUserAndHostInfo()
 	return []string{"ssh", "-o", "StrictHostKeyChecking=no", fmt.Sprintf("%s@%s", currentUser, host), cmd}
-}
-
-// This is a simple wrapper function to simplify testing
-func execCommand(cmdArgs []string) error {
-	logger.Debug("Executing command %s", strings.Join(cmdArgs, " "))
-	_, err := exec.Command(cmdArgs[0], cmdArgs[1:]...).CombinedOutput()
-	return err
-}
-
-func (cluster *Cluster) GetTableBackupFilePathForCopyCommand(tableOid uint32) string {
-	if cluster.RootBackupDir != "" {
-		return fmt.Sprintf("%s/backups/%s/%s/gpbackup_<SEGID>_%s_%d", cluster.RootBackupDir, cluster.Timestamp[0:8], cluster.Timestamp, cluster.Timestamp, tableOid)
-	}
-	return fmt.Sprintf("<SEG_DATA_DIR>/backups/%s/%s/gpbackup_<SEGID>_%s_%d", cluster.Timestamp[0:8], cluster.Timestamp, cluster.Timestamp, tableOid)
 }
 
 func (cluster *Cluster) ExecuteClusterCommand(commandMap map[int][]string) map[int]error {
@@ -65,7 +54,7 @@ func (cluster *Cluster) ExecuteClusterCommand(commandMap map[int][]string) map[i
 	errorList := make([]error, len(contentIDs))
 	for i, contentID := range contentIDs {
 		go func(index int, segCommand []string) {
-			errorList[index] = execCommand(segCommand)
+			_, errorList[index] = exec.Command(segCommand[0], segCommand[1:]...).CombinedOutput()
 			finished <- index
 		}(i, commandMap[contentID])
 	}
@@ -84,10 +73,10 @@ func (cluster *Cluster) VerifyDirectoriesExistOnAllHosts() {
 		return fmt.Sprintf("test -d %s", cluster.GetDirForContent(contentID))
 	})
 	errMap := cluster.ExecuteClusterCommand(commandMap)
-	if len(errMap) == 0 {
+	numErrors := len(errMap)
+	if numErrors == 0 {
 		return
 	}
-	numErrors := len(errMap)
 	s := ""
 	if numErrors != 1 {
 		s = "s"
@@ -98,11 +87,11 @@ func (cluster *Cluster) VerifyDirectoriesExistOnAllHosts() {
 	logger.Fatal(errors.Errorf("Directories missing or inaccessible on %d host%s.  See %s for a complete list of hosts with errors.", numErrors, s, logger.GetLogFileName()), "")
 }
 
-func (cluster *Cluster) GenerateSSHCommandMap(gen func(int) string) map[int][]string {
+func (cluster *Cluster) GenerateSSHCommandMap(generateCommand func(int) string) map[int][]string {
 	commandMap := make(map[int][]string, len(cluster.ContentIDs))
 	for _, contentID := range cluster.ContentIDs {
 		host := cluster.GetHostForContent(contentID)
-		cmdStr := gen(contentID)
+		cmdStr := generateCommand(contentID)
 		commandMap[contentID] = ConstructSSHCommand(host, cmdStr)
 	}
 	return commandMap
@@ -112,12 +101,11 @@ func (cluster *Cluster) CreateDirectoriesOnAllHosts() {
 	commandMap := cluster.GenerateSSHCommandMap(func(contentID int) string {
 		return fmt.Sprintf("mkdir -p %s", cluster.GetDirForContent(contentID))
 	})
-
 	errMap := cluster.ExecuteClusterCommand(commandMap)
-	if len(errMap) == 0 {
+	numErrors := len(errMap)
+	if numErrors == 0 {
 		return
 	}
-	numErrors := len(errMap)
 	s := ""
 	if numErrors != 1 {
 		s = "s"
@@ -137,12 +125,22 @@ func (cluster *Cluster) GetHostForContent(contentID int) string {
 }
 
 func (cluster *Cluster) GetDirForContent(contentID int) string {
-	if cluster.RootBackupDir != "" {
-		return path.Join(cluster.RootBackupDir, "backups", cluster.Timestamp[0:8], cluster.Timestamp)
+	if cluster.IsUserSpecifiedBackupDir() {
+		segDir := fmt.Sprintf("gpseg%d", contentID)
+		return path.Join(cluster.UserSpecifiedBackupDir, segDir, "backups", cluster.Timestamp[0:8], cluster.Timestamp)
 	}
 	return path.Join(cluster.SegDirMap[contentID], "backups", cluster.Timestamp[0:8], cluster.Timestamp)
 }
 
 func (cluster *Cluster) GetTableMapFilePath() string {
-	return fmt.Sprintf("%s/gpbackup_%s_table_map", cluster.GetDirForContent(-1), cluster.Timestamp)
+	return path.Join(cluster.GetDirForContent(-1), fmt.Sprintf("gpbackup_%s_table_map", cluster.Timestamp))
+}
+
+func (cluster *Cluster) GetTableBackupFilePathForCopyCommand(tableOid uint32) string {
+	backupFilename := fmt.Sprintf("gpbackup_<SEGID>_%s_%d", cluster.Timestamp, tableOid)
+	baseDir := "<SEG_DATA_DIR>"
+	if cluster.IsUserSpecifiedBackupDir() {
+		baseDir = path.Join(cluster.UserSpecifiedBackupDir, "gpseg<SEGID>")
+	}
+	return path.Join(baseDir, "backups", cluster.Timestamp[0:8], cluster.Timestamp, backupFilename)
 }
