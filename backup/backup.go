@@ -9,9 +9,10 @@ import (
 )
 
 var (
-	connection *utils.DBConn
-	logger     *utils.Logger
-	version    string
+	connection    *utils.DBConn
+	logger        *utils.Logger
+	globalCluster utils.Cluster
+	version       string
 )
 
 var ( // Command-line flags
@@ -71,23 +72,22 @@ func DoSetup() {
 	connection.Connect()
 	connection.Exec("SET application_name TO 'gpbackup'")
 
-	utils.SetDumpTimestamp("")
-
+	rootBackupDir := ""
 	if *dumpDir != "" {
-		utils.BaseDumpDir = *dumpDir
+		rootBackupDir = *dumpDir
 	}
 	logger.Verbose("Creating dump directories")
 	segConfig := utils.GetSegmentConfiguration(connection)
-	utils.SetupSegmentConfiguration(segConfig)
-	utils.CreateDumpDirs()
+	globalCluster = utils.NewCluster(segConfig, rootBackupDir, utils.CurrentTimestamp())
+	globalCluster.CreateDirectoriesOnAllHosts()
 }
 
 func DoBackup() {
-	logger.Info("Dump Key = %s", utils.DumpTimestamp)
+	logger.Info("Dump Key = %s", globalCluster.Timestamp)
 	logger.Info("Dump Database = %s", utils.QuoteIdent(connection.DBName))
 	logger.Info("Database Size = %s", connection.GetDBSize())
 
-	masterDumpDir := utils.GetDirForContent(-1)
+	masterDumpDir := globalCluster.GetDirForContent(-1)
 
 	globalFilename := fmt.Sprintf("%s/global.sql", masterDumpDir)
 	predataFilename := fmt.Sprintf("%s/predata.sql", masterDumpDir)
@@ -279,7 +279,7 @@ func backupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
 	for _, table := range tables {
 		if !tableDefs[table.RelationOid].IsExternal {
 			logger.Verbose("Writing data for table %s to file", table.ToString())
-			dumpFile := utils.GetTableDumpFilePath(table.RelationOid)
+			dumpFile := globalCluster.GetTableBackupFilePathForCopyCommand(table.RelationOid)
 			CopyTableOut(connection, table, dumpFile)
 		} else {
 			logger.Verbose("Skipping data dump of table %s because it is an external table.", table.ToString())
@@ -294,8 +294,8 @@ func backupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
 		logger.Warn("Skipped data dump of %d external table%s.", numExtTables, s)
 		logger.Warn("See %s for a complete list of skipped tables.", logger.GetLogFileName())
 	}
-	logger.Verbose("Writing table map file to %s", utils.GetTableMapFilePath())
-	WriteTableMapFile(tables, tableDefs)
+	logger.Verbose("Writing table map file to %s", globalCluster.GetTableMapFilePath())
+	WriteTableMapFile(globalCluster.GetTableMapFilePath(), tables, tableDefs)
 }
 
 func backupPostdata(filename string, tables []Relation) {

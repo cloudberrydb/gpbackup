@@ -10,10 +10,6 @@ import (
 	"strings"
 )
 
-var (
-	DumpTimestamp string
-)
-
 /*
  * Abort() is for handling critical errors.  It panic()s to unwind the call stack
  * until the panic is caught by the recover() in DoTeardown() in backup.go, at
@@ -54,15 +50,6 @@ func TryEnv(varname string, defval string) string {
 		return defval
 	}
 	return val
-}
-
-func SetDumpTimestamp(timestamp string) string {
-	if timestamp != "" {
-		DumpTimestamp = timestamp
-	} else {
-		DumpTimestamp = CurrentTimestamp()
-	}
-	return DumpTimestamp
 }
 
 // Dollar-quoting logic is based on appendStringLiteralDQ() in pg_dump.

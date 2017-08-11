@@ -11,9 +11,10 @@ import (
 )
 
 var (
-	connection *utils.DBConn
-	logger     *utils.Logger
-	version    string
+	connection    *utils.DBConn
+	logger        *utils.Logger
+	globalCluster utils.Cluster
+	version       string
 )
 
 var ( // Command-line flags
@@ -77,22 +78,21 @@ func DoSetup() {
 	connection.Connect()
 	connection.Exec("SET application_name TO 'gprestore'")
 
-	utils.SetDumpTimestamp(*timestamp)
-
+	rootBackupDir := ""
 	if *dumpDir != "" {
-		utils.BaseDumpDir = *dumpDir
+		rootBackupDir = *dumpDir
 	}
 	logger.Verbose("Gathering information on dump directories")
 	segConfig := utils.GetSegmentConfiguration(connection)
-	utils.SetupSegmentConfiguration(segConfig)
+	globalCluster = utils.NewCluster(segConfig, rootBackupDir, *timestamp)
 }
 
 func DoRestore() {
-	logger.Info("Restore Key = %s", utils.DumpTimestamp)
+	logger.Info("Restore Key = %s", globalCluster.Timestamp)
 
-	utils.AssertDumpDirsExist()
+	globalCluster.VerifyDirectoriesExistOnAllHosts()
 
-	masterDumpDir := utils.GetDirForContent(-1)
+	masterDumpDir := globalCluster.GetDirForContent(-1)
 	globalFilename := fmt.Sprintf("%s/global.sql", masterDumpDir)
 	predataFilename := fmt.Sprintf("%s/predata.sql", masterDumpDir)
 	postdataFilename := fmt.Sprintf("%s/postdata.sql", masterDumpDir)
@@ -131,10 +131,10 @@ func restorePredata(filename string) {
 }
 
 func restoreData() {
-	tableMap := ReadTableMapFile()
+	tableMap := ReadTableMapFile(globalCluster.GetTableMapFilePath())
 	for name, oid := range tableMap {
 		logger.Verbose("Reading data for table %s from file", name)
-		dumpFile := utils.GetTableDumpFilePath(oid)
+		dumpFile := globalCluster.GetTableBackupFilePathForCopyCommand(oid)
 		CopyTableIn(connection, name, dumpFile)
 	}
 }

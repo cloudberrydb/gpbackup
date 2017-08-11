@@ -27,7 +27,7 @@ var _ = Describe("restore/data tests", func() {
 		})
 	})
 	Describe("ReadTableMapFile", func() {
-		testutils.SetDefaultSegmentConfiguration()
+		cluster := testutils.SetDefaultSegmentConfiguration()
 		tableMapFileContents := []byte(`public.foo: 1234
 public."bar%baz": 2345
 public."contains: delimiter": 3456`)
@@ -40,7 +40,7 @@ public."contains: delimiter": 3456`)
 			defer func() { utils.System.OpenFile = os.OpenFile }()
 			w.Write(tableMapFileContents)
 			w.Close()
-			tableMap := restore.ReadTableMapFile()
+			tableMap := restore.ReadTableMapFile(cluster.GetTableMapFilePath())
 			Expect(tableMap).To(Equal(expectedTableMap))
 		})
 	})

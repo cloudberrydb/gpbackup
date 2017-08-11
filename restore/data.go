@@ -17,8 +17,8 @@ var (
 	tableDelim = ","
 )
 
-func ReadTableMapFile() map[string]uint32 {
-	tableMapFile := utils.MustOpenFileForReading(utils.GetTableMapFilePath())
+func ReadTableMapFile(tableMapFilePath string) map[string]uint32 {
+	tableMapFile := utils.MustOpenFileForReading(tableMapFilePath)
 	tableMap := make(map[string]uint32, 0)
 	scanner := bufio.NewScanner(tableMapFile)
 	for scanner.Scan() {

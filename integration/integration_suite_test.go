@@ -42,7 +42,10 @@ var _ = BeforeSuite(func() {
 	testutils.AssertQueryRuns(connection, "ALTER DATABASE testdb OWNER TO anothertestrole")
 	testutils.AssertQueryRuns(connection, "ALTER SCHEMA public OWNER TO anothertestrole")
 	testutils.AssertQueryRuns(connection, "DROP PROTOCOL IF EXISTS gphdfs")
-	setupTestFilespace()
+	testutils.SetupTestLogger()
+	segConfig := utils.GetSegmentConfiguration(connection)
+	cluster := utils.NewCluster(segConfig, "/tmp/test_filespace", "20170101010101")
+	setupTestFilespace(cluster)
 })
 
 var _ = BeforeEach(func() {
@@ -64,8 +67,8 @@ var _ = AfterSuite(func() {
 	connection1.Close()
 })
 
-func setupTestFilespace() {
-	utils.DirectoryMustExist("/tmp/test_filespace")
+func setupTestFilespace(cluster utils.Cluster) {
+	cluster.CreateDirectoriesOnAllHosts()
 	// Construct a filespace config like the one that gpfilespace generates
 	filespaceConfigQuery := `COPY (SELECT hostname || ':' || dbid || ':/tmp/test_filespace/' || preferred_role || content FROM gp_segment_configuration AS subselect) TO '/tmp/temp_filespace_config';`
 	testutils.AssertQueryRuns(connection, filespaceConfigQuery)

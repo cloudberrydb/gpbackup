@@ -28,7 +28,7 @@ var _ = Describe("backup/data tests", func() {
 		})
 	})
 	Describe("WriteTableMapFile", func() {
-		testutils.SetDefaultSegmentConfiguration()
+		cluster := testutils.SetDefaultSegmentConfiguration()
 		tableOne := backup.Relation{0, 1234, "public", "foo", nil, nil}
 		tableTwo := backup.Relation{1, 2345, "public", "foo|bar", nil, nil}
 		var (
@@ -47,7 +47,7 @@ var _ = Describe("backup/data tests", func() {
 		})
 		It("writes a map file containing one table", func() {
 			tables := []backup.Relation{tableOne}
-			backup.WriteTableMapFile(tables, tableDefs)
+			backup.WriteTableMapFile(cluster.GetTableMapFilePath(), tables, tableDefs)
 			w.Close()
 			output, _ := ioutil.ReadAll(r)
 			testutils.ExpectRegex(string(output), `public.foo: 1234
@@ -55,7 +55,7 @@ var _ = Describe("backup/data tests", func() {
 		})
 		It("writes a map file containing multiple tables", func() {
 			tables := []backup.Relation{tableOne, tableTwo}
-			backup.WriteTableMapFile(tables, tableDefs)
+			backup.WriteTableMapFile(cluster.GetTableMapFilePath(), tables, tableDefs)
 			w.Close()
 			output, _ := ioutil.ReadAll(r)
 			testutils.ExpectRegex(string(output), `public.foo: 1234
@@ -64,7 +64,7 @@ public."foo|bar": 2345`)
 		It("does not write external tables to the map file", func() {
 			tables := []backup.Relation{tableOne, tableTwo}
 			tableDefs[1] = backup.TableDefinition{IsExternal: true}
-			backup.WriteTableMapFile(tables, tableDefs)
+			backup.WriteTableMapFile(cluster.GetTableMapFilePath(), tables, tableDefs)
 			w.Close()
 			output, _ := ioutil.ReadAll(r)
 			testutils.ExpectRegex(string(output), `public.foo: 1234`)

@@ -2,6 +2,7 @@ package testutils
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 
@@ -52,13 +53,12 @@ func CreateMockDB() (*sqlx.DB, sqlmock.Sqlmock) {
 	return mockdb, mock
 }
 
-func SetDefaultSegmentConfiguration() {
-	utils.BaseDumpDir = utils.DefaultSegmentDir
-	utils.DumpTimestamp = "20170101010101"
-	configMaster := utils.QuerySegConfig{-1, "localhost", "/data/gpseg-1"}
-	configSegOne := utils.QuerySegConfig{0, "localhost", "/data/gpseg0"}
-	configSegTwo := utils.QuerySegConfig{1, "localhost", "/data/gpseg1"}
-	utils.SetupSegmentConfiguration([]utils.QuerySegConfig{configMaster, configSegOne, configSegTwo})
+func SetDefaultSegmentConfiguration() utils.Cluster {
+	configMaster := utils.SegConfig{-1, "localhost", "gpseg-1"}
+	configSegOne := utils.SegConfig{0, "localhost", "gpseg0"}
+	configSegTwo := utils.SegConfig{1, "localhost", "gpseg1"}
+	cluster := utils.NewCluster([]utils.SegConfig{configMaster, configSegOne, configSegTwo}, "", "20170101010101")
+	return cluster
 }
 
 // objType should be an all-caps string like TABLE, INDEX, etc.
@@ -216,6 +216,12 @@ func NotExpectRegexp(buffer *gbytes.Buffer, testStr string) {
 
 func ExpectRegex(result string, testStr string) {
 	Expect(result).Should(MatchRegexp(regexp.QuoteMeta(testStr)))
+}
+
+func ExpectPathToExist(path string) {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		Fail(fmt.Sprintf("Expected %s to exist", path))
+	}
 }
 
 func ShouldPanicWithMessage(message string) {
