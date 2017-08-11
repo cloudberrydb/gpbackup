@@ -15,6 +15,9 @@ RESTORE_VERSION_STR="-X github.com/greenplum-db/gpbackup/restore.version=$(GIT_V
 DEST = .
 
 GOFLAGS :=
+
+.PHONY : coverage integration update_pipeline
+
 dependencies :
 		go get github.com/jmoiron/sqlx
 		go get github.com/lib/pq
@@ -43,6 +46,9 @@ integration :
 
 test : lint unit integration
 
+coverage :
+		@./show_coverage.sh
+
 depend : dependencies
 
 build :
@@ -64,15 +70,19 @@ installdirs :
 		$(MKDIR_P) '$(DESTDIR)$(bindir)'
 
 clean :
+		# Build artifacts
 		rm -f $(BIN_DIR)/$(BACKUP)
 		rm -f $(BIN_DIR)/$(RESTORE)
+		# Test artifacts
 		rm -rf /tmp/go-build*
 		rm -rf /tmp/ginkgo*
+		rm -rf /tmp/ginkgo*
+		# Code coverage files
+		rm -rf /tmp/cover*
+		rm -rf /tmp/unit*
 
 update_pipeline :
 	fly -t gpdb set-pipeline -p gpbackup -c ci/pipeline.yml -l <(lpass show "Concourse Credentials" --notes)
 
 push : format
 	git pull -r && make test && git push
-
-.PHONY : update_pipeline integration
