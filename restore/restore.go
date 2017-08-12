@@ -63,6 +63,7 @@ func DoValidation() {
 	if !utils.IsValidTimestamp(*timestamp) {
 		logger.Fatal(errors.Errorf("Timestamp %s is invalid.  Timestamps must be in the format YYYYMMDDHHMMSS.", *timestamp), "")
 	}
+	logger.Info("Restore Key = %s", *timestamp)
 }
 
 // This function handles setup that must be done after parsing flags.
@@ -84,9 +85,10 @@ func DoSetup() {
 }
 
 func DoRestore() {
-	logger.Info("Restore Key = %s", globalCluster.Timestamp)
-
 	globalCluster.VerifyDirectoriesExistOnAllHosts()
+	tableMap := ReadTableMapFile(globalCluster.GetTableMapFilePath())
+	backupFileCount := len(tableMap)
+	globalCluster.VerifyBackupFileCountOnSegments(backupFileCount)
 
 	masterDumpDir := globalCluster.GetDirForContent(-1)
 	globalFilename := fmt.Sprintf("%s/global.sql", masterDumpDir)
@@ -110,7 +112,7 @@ func DoRestore() {
 	logger.Info("Pre-data metadata restore complete")
 
 	logger.Info("Restoring data")
-	restoreData()
+	restoreData(tableMap)
 	logger.Info("Data restore complete")
 
 	logger.Info("Restoring post-data metadata from %s", postdataFilename)
@@ -126,8 +128,7 @@ func restorePredata(filename string) {
 	utils.ExecuteSQLFile(connection, filename)
 }
 
-func restoreData() {
-	tableMap := ReadTableMapFile(globalCluster.GetTableMapFilePath())
+func restoreData(tableMap map[string]uint32) {
 	for name, oid := range tableMap {
 		logger.Verbose("Reading data for table %s from file", name)
 		dumpFile := globalCluster.GetTableBackupFilePathForCopyCommand(oid)

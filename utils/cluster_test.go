@@ -25,6 +25,51 @@ var _ = Describe("utils/io tests", func() {
 		utils.System.Hostname = func() (string, error) { return "testHost", nil }
 
 	})
+	Describe("ConstructSSHCommand", func() {
+		It("constructs an ssh command", func() {
+			cmd := utils.ConstructSSHCommand("some-host", "ls")
+			Expect(cmd).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@some-host", "ls"}))
+		})
+	})
+	Describe("GenerateSSHCommandMap", func() {
+		It("Returns a map of ssh commands for a single segment", func() {
+			cluster := utils.NewCluster([]utils.SegConfig{remoteSegOne}, "", "20170101010101")
+			commandMap := cluster.GenerateSSHCommandMap(func(_ int) string {
+				return "ls"
+			})
+			Expect(len(commandMap)).To(Equal(1))
+			Expect(commandMap[1]).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@remotehost1", "ls"}))
+		})
+		It("Returns a map of ssh commands for two segments on the same host", func() {
+			cluster := utils.NewCluster([]utils.SegConfig{masterSeg, localSegOne}, "", "20170101010101")
+			commandMap := cluster.GenerateSSHCommandMap(func(_ int) string {
+				return "ls"
+			})
+			Expect(len(commandMap)).To(Equal(2))
+			Expect(commandMap[-1]).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@localhost", "ls"}))
+			Expect(commandMap[0]).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@localhost", "ls"}))
+		})
+		It("Returns a map of ssh commands for three segments on different hosts", func() {
+			cluster := utils.NewCluster([]utils.SegConfig{localSegOne, remoteSegOne, remoteSegTwo}, "", "20170101010101")
+			commandMap := cluster.GenerateSSHCommandMap(func(contentID int) string {
+				return fmt.Sprintf("mkdir -p %s", cluster.GetDirForContent(contentID))
+			})
+			Expect(len(commandMap)).To(Equal(3))
+			Expect(commandMap[0]).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@localhost", "mkdir -p /data/gpseg0/backups/20170101/20170101010101"}))
+			Expect(commandMap[1]).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@remotehost1", "mkdir -p /data/gpseg1/backups/20170101/20170101010101"}))
+			Expect(commandMap[2]).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@remotehost2", "mkdir -p /data/gpseg2/backups/20170101/20170101010101"}))
+		})
+	})
+	Describe("GenerateFileVerificationCommandMap", func() {
+		It("creates a command map for segments only", func() {
+			cluster := utils.NewCluster([]utils.SegConfig{masterSeg, localSegOne, remoteSegOne}, "", "20170101010101")
+			commandMap := cluster.GenerateFileVerificationCommandMap(13)
+
+			Expect(len(commandMap)).To(Equal(2))
+			Expect(commandMap[0]).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@localhost", "find /data/gpseg0/backups/20170101/20170101010101 -type f | wc -l | grep 13"}))
+			Expect(commandMap[1]).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@remotehost1", "find /data/gpseg1/backups/20170101/20170101010101 -type f | wc -l | grep 13"}))
+		})
+	})
 	Describe("ExecuteClusterCommand", func() {
 		BeforeEach(func() {
 			os.MkdirAll("/tmp/backup_and_restore_test", 0777)
@@ -56,39 +101,16 @@ var _ = Describe("utils/io tests", func() {
 			Expect(errMap[0].Error()).To(Equal("exec: \"some-non-existant-command\": executable file not found in $PATH"))
 		})
 	})
-	Describe("ConstructSSHCommand", func() {
-		It("constructs an ssh command", func() {
-			cmd := utils.ConstructSSHCommand("some-host", "ls")
-			Expect(cmd).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@some-host", "ls"}))
+	Describe("LogFatalError", func() {
+		It("logs an error for 1 segment", func() {
+			cluster := utils.NewCluster(nil, "", "20170101010101")
+			defer testutils.ShouldPanicWithMessage("Error occurred on 1 segment. See gbytes.Buffer for a complete list of segments with errors.")
+			cluster.LogFatalError("Error occurred", 1)
 		})
-	})
-	Describe("GenerateCommandMap", func() {
-		It("Returns a map of ssh commands for a single segment", func() {
-			cluster := utils.NewCluster([]utils.SegConfig{remoteSegOne}, "", "20170101010101")
-			commandMap := cluster.GenerateSSHCommandMap(func(_ int) string {
-				return "ls"
-			})
-			Expect(len(commandMap)).To(Equal(1))
-			Expect(commandMap[1]).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@remotehost1", "ls"}))
-		})
-		It("Returns a map of ssh commands for two segments on the same host", func() {
-			cluster := utils.NewCluster([]utils.SegConfig{masterSeg, localSegOne}, "", "20170101010101")
-			commandMap := cluster.GenerateSSHCommandMap(func(_ int) string {
-				return "ls"
-			})
-			Expect(len(commandMap)).To(Equal(2))
-			Expect(commandMap[-1]).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@localhost", "ls"}))
-			Expect(commandMap[0]).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@localhost", "ls"}))
-		})
-		It("Returns a map of ssh commands for three segments on different hosts", func() {
-			cluster := utils.NewCluster([]utils.SegConfig{localSegOne, remoteSegOne, remoteSegTwo}, "", "20170101010101")
-			commandMap := cluster.GenerateSSHCommandMap(func(contentID int) string {
-				return fmt.Sprintf("mkdir -p %s", cluster.GetDirForContent(contentID))
-			})
-			Expect(len(commandMap)).To(Equal(3))
-			Expect(commandMap[0]).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@localhost", "mkdir -p /data/gpseg0/backups/20170101/20170101010101"}))
-			Expect(commandMap[1]).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@remotehost1", "mkdir -p /data/gpseg1/backups/20170101/20170101010101"}))
-			Expect(commandMap[2]).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@remotehost2", "mkdir -p /data/gpseg2/backups/20170101/20170101010101"}))
+		It("logs an error for more than 1 segment", func() {
+			cluster := utils.NewCluster(nil, "", "20170101010101")
+			defer testutils.ShouldPanicWithMessage("Error occurred on 2 segments. See gbytes.Buffer for a complete list of segments with errors.")
+			cluster.LogFatalError("Error occurred", 2)
 		})
 	})
 	Describe("Cluster", func() {

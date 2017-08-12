@@ -44,6 +44,24 @@ func ConstructSSHCommand(host string, cmd string) []string {
 	return []string{"ssh", "-o", "StrictHostKeyChecking=no", fmt.Sprintf("%s@%s", currentUser, host), cmd}
 }
 
+func (cluster *Cluster) GenerateSSHCommandMap(generateCommand func(int) string) map[int][]string {
+	commandMap := make(map[int][]string, len(cluster.ContentIDs))
+	for _, contentID := range cluster.ContentIDs {
+		host := cluster.GetHostForContent(contentID)
+		cmdStr := generateCommand(contentID)
+		commandMap[contentID] = ConstructSSHCommand(host, cmdStr)
+	}
+	return commandMap
+}
+
+func (cluster *Cluster) GenerateFileVerificationCommandMap(fileCount int) map[int][]string {
+	commandMap := cluster.GenerateSSHCommandMap(func(contentID int) string {
+		return fmt.Sprintf("find %s -type f | wc -l | grep %d", cluster.GetDirForContent(contentID), fileCount)
+	})
+	delete(commandMap, -1) //The master host will have no backup files
+	return commandMap
+}
+
 func (cluster *Cluster) ExecuteClusterCommand(commandMap map[int][]string) map[int]error {
 	errMap := make(map[int]error)
 	finished := make(chan int)
@@ -68,6 +86,23 @@ func (cluster *Cluster) ExecuteClusterCommand(commandMap map[int][]string) map[i
 	return errMap
 }
 
+func (cluster *Cluster) VerifyBackupFileCountOnSegments(fileCount int) {
+	commandMap := cluster.GenerateFileVerificationCommandMap(fileCount)
+	errMap := cluster.ExecuteClusterCommand(commandMap)
+	numErrors := len(errMap)
+	if numErrors == 0 {
+		return
+	}
+	s := ""
+	if fileCount != 1 {
+		s = "s"
+	}
+	for contentID := range errMap {
+		logger.Verbose("Expected to see %d backup file%s on segment %d, but some were missing.", fileCount, s, contentID)
+	}
+	cluster.LogFatalError("Backup files missing", numErrors)
+}
+
 func (cluster *Cluster) VerifyDirectoriesExistOnAllHosts() {
 	commandMap := cluster.GenerateSSHCommandMap(func(contentID int) string {
 		return fmt.Sprintf("test -d %s", cluster.GetDirForContent(contentID))
@@ -77,24 +112,10 @@ func (cluster *Cluster) VerifyDirectoriesExistOnAllHosts() {
 	if numErrors == 0 {
 		return
 	}
-	s := ""
-	if numErrors != 1 {
-		s = "s"
-	}
 	for contentID := range errMap {
-		logger.Verbose("Directory %s missing or inaccessible on host %s", cluster.GetDirForContent(contentID), cluster.GetHostForContent(contentID))
+		logger.Verbose("Directory %s missing or inaccessible for segment %d on host %s", cluster.GetDirForContent(contentID), contentID, cluster.GetHostForContent(contentID))
 	}
-	logger.Fatal(errors.Errorf("Directories missing or inaccessible on %d host%s.  See %s for a complete list of hosts with errors.", numErrors, s, logger.GetLogFileName()), "")
-}
-
-func (cluster *Cluster) GenerateSSHCommandMap(generateCommand func(int) string) map[int][]string {
-	commandMap := make(map[int][]string, len(cluster.ContentIDs))
-	for _, contentID := range cluster.ContentIDs {
-		host := cluster.GetHostForContent(contentID)
-		cmdStr := generateCommand(contentID)
-		commandMap[contentID] = ConstructSSHCommand(host, cmdStr)
-	}
-	return commandMap
+	cluster.LogFatalError("Directories missing or inaccessible", numErrors)
 }
 
 func (cluster *Cluster) CreateDirectoriesOnAllHosts() {
@@ -106,14 +127,18 @@ func (cluster *Cluster) CreateDirectoriesOnAllHosts() {
 	if numErrors == 0 {
 		return
 	}
+	for contentID := range errMap {
+		logger.Verbose("Unable to create directory %s for segment %d on host %s", cluster.GetDirForContent(contentID), contentID, cluster.GetHostForContent(contentID))
+	}
+	cluster.LogFatalError("Unable to create directories", numErrors)
+}
+
+func (cluster *Cluster) LogFatalError(errMessage string, numErrors int) {
 	s := ""
 	if numErrors != 1 {
 		s = "s"
 	}
-	for contentID := range errMap {
-		logger.Verbose("Unable to create directory %s on host %s", cluster.GetDirForContent(contentID), cluster.GetHostForContent(contentID))
-	}
-	logger.Fatal(errors.Errorf("Unable to create directory on %d host%s.  See %s for a complete list of hosts with errors.", numErrors, s, logger.GetLogFileName()), "")
+	logger.Fatal(errors.Errorf("%s on %d segment%s. See %s for a complete list of segments with errors.", errMessage, numErrors, s, logger.GetLogFileName()), "")
 }
 
 func (cluster *Cluster) GetContentList() []int {
