@@ -17,13 +17,14 @@ import (
 )
 
 type DBConn struct {
-	Conn   *sqlx.DB
-	Driver DBDriver
-	User   string
-	DBName string
-	Host   string
-	Port   int
-	Tx     *sqlx.Tx
+	Conn        *sqlx.DB
+	Driver      DBDriver
+	User        string
+	DBName      string
+	Host        string
+	Port        int
+	Tx          *sqlx.Tx
+	GPDBVersion string
 }
 
 func NewDBConn(dbname string) *DBConn {
@@ -151,4 +152,14 @@ func (dbconn *DBConn) GetDBSize() string {
 	err := dbconn.Get(&size, sizeQuery)
 	CheckError(err)
 	return size.DBSize
+}
+
+func (dbconn *DBConn) GetAndStoreGPDBVersion() {
+	dbversion := struct{ Version string }{}
+	err := dbconn.Get(&dbversion, "SELECT version()")
+	CheckError(err)
+	version := dbversion.Version
+	versionStart := strings.Index(version, "(Greenplum Database ") + len("(Greenplum Database ")
+	versionEnd := strings.Index(version, ")")
+	dbconn.GPDBVersion = version[versionStart:versionEnd]
 }

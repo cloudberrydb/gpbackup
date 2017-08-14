@@ -231,4 +231,16 @@ var _ = Describe("utils/db tests", func() {
 			connection.Commit()
 		})
 	})
+	Describe("Dbconn.GetAndStoreGPDBVersion", func() {
+		It("parses GPDB version string", func() {
+			connection, mock = testutils.CreateAndConnectMockDB()
+			versionString := sqlmock.NewRows([]string{"version"}).AddRow(" PostgreSQL 8.3.23 (Greenplum Database 5.0.0-beta.5+dev.65.g2a47ec9bfa build dev) on x86_64-apple-darwin16.5.0, compiled by GCC Apple LLVM version 8.1.0 (clang-802.0.42) compiled on Aug  4 2017 11:36:54")
+			mock.ExpectQuery("SELECT (.*)").WillReturnRows(versionString)
+
+			connection.GetAndStoreGPDBVersion()
+
+			Expect(connection.GPDBVersion).To(Equal("5.0.0-beta.5+dev.65.g2a47ec9bfa build dev"))
+
+		})
+	})
 })

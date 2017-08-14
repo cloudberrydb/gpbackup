@@ -13,6 +13,7 @@ var (
 	logger        *utils.Logger
 	globalCluster utils.Cluster
 	version       string
+	objectCounts  map[string]int
 )
 
 var ( // Command-line flags
@@ -71,6 +72,7 @@ func DoSetup() {
 	connection = utils.NewDBConn(*dbname)
 	connection.Connect()
 	connection.Exec("SET application_name TO 'gpbackup'")
+	connection.GetAndStoreGPDBVersion()
 
 	logger.Verbose("Creating dump directories")
 	segConfig := utils.GetSegmentConfiguration(connection)
@@ -84,6 +86,7 @@ func DoBackup() {
 	logger.Info("Database Size = %s", connection.GetDBSize())
 
 	masterDumpDir := globalCluster.GetDirForContent(-1)
+	objectCounts = make(map[string]int, 0)
 
 	globalFilename := fmt.Sprintf("%s/global.sql", masterDumpDir)
 	predataFilename := fmt.Sprintf("%s/predata.sql", masterDumpDir)
@@ -93,14 +96,15 @@ func DoBackup() {
 	connection.Exec("SET search_path TO pg_catalog")
 
 	tables := GetAllUserTables(connection)
+	objectCounts["Tables"] = len(tables)
 	tableDefs := ConstructDefinitionsForTables(connection, tables)
 
 	logger.Info("Writing global database metadata to %s", globalFilename)
-	backupGlobal(globalFilename)
+	backupGlobal(globalFilename, objectCounts)
 	logger.Info("Global database metadata dump complete")
 
 	logger.Info("Writing pre-data metadata to %s", predataFilename)
-	backupPredata(predataFilename, tables, tableDefs)
+	backupPredata(predataFilename, tables, tableDefs, objectCounts)
 	logger.Info("Pre-data metadata dump complete")
 
 	logger.Info("Writing data to file")
@@ -108,13 +112,13 @@ func DoBackup() {
 	logger.Info("Data dump complete")
 
 	logger.Info("Writing post-data metadata to %s", postdataFilename)
-	backupPostdata(postdataFilename, tables)
+	backupPostdata(postdataFilename, tables, objectCounts)
 	logger.Info("Post-data metadata dump complete")
 
 	connection.Commit()
 }
 
-func backupGlobal(filename string) {
+func backupGlobal(filename string, objectCount map[string]int) {
 	globalFile := utils.MustOpenFileForWriting(filename)
 
 	logger.Verbose("Writing session GUCs to global file")
@@ -123,6 +127,7 @@ func backupGlobal(filename string) {
 
 	logger.Verbose("Writing CREATE TABLESPACE statements to global file")
 	tablespaces := GetTablespaces(connection)
+	objectCount["Tablespaces"] = len(tablespaces)
 	tablespaceMetadata := GetMetadataForObjectType(connection, TYPE_TABLESPACE)
 	PrintCreateTablespaceStatements(globalFile, tablespaces, tablespaceMetadata)
 
@@ -133,15 +138,18 @@ func backupGlobal(filename string) {
 
 	logger.Verbose("Writing database GUCs to global file")
 	databaseGucs := GetDatabaseGUCs(connection)
+	objectCount["Database GUCs"] = len(databaseGucs)
 	PrintDatabaseGUCs(globalFile, databaseGucs, connection.DBName)
 
 	logger.Verbose("Writing CREATE RESOURCE QUEUE statements to global file")
 	resQueues := GetResourceQueues(connection)
+	objectCount["Resource Queues"] = len(resQueues)
 	resQueueMetadata := GetCommentsForObjectType(connection, TYPE_RESOURCEQUEUE)
 	PrintCreateResourceQueueStatements(globalFile, resQueues, resQueueMetadata)
 
 	logger.Verbose("Writing CREATE ROLE statements to global file")
 	roles := GetRoles(connection)
+	objectCount["Roles"] = len(roles)
 	roleMetadata := GetCommentsForObjectType(connection, TYPE_ROLE)
 	PrintCreateRoleStatements(globalFile, roles, roleMetadata)
 
@@ -150,7 +158,7 @@ func backupGlobal(filename string) {
 	PrintRoleMembershipStatements(globalFile, roleMembers)
 }
 
-func backupPredata(filename string, tables []Relation, tableDefs map[uint32]TableDefinition) {
+func backupPredata(filename string, tables []Relation, tableDefs map[uint32]TableDefinition, objectCount map[string]int) {
 	predataFile := utils.MustOpenFileForWriting(filename)
 	PrintConnectionString(predataFile, connection.DBName)
 
@@ -160,12 +168,15 @@ func backupPredata(filename string, tables []Relation, tableDefs map[uint32]Tabl
 
 	logger.Verbose("Writing CREATE SCHEMA statements to predata file")
 	schemas := GetAllUserSchemas(connection)
+	objectCount["Schemas"] = len(schemas)
 	schemaMetadata := GetMetadataForObjectType(connection, TYPE_SCHEMA)
 	PrintCreateSchemaStatements(predataFile, schemas, schemaMetadata)
 
 	types := GetTypes(connection)
+	objectCount["Types"] = len(types)
 	typeMetadata := GetMetadataForObjectType(connection, TYPE_TYPE)
 	functions := GetFunctions(connection)
+	objectCount["Functions"] = len(functions)
 	funcInfoMap := GetFunctionOidToInfoMap(connection)
 	functionMetadata := GetMetadataForObjectType(connection, TYPE_FUNCTION)
 	functions, types = ConstructFunctionAndTypeDependencyLists(connection, functions, types)
@@ -175,6 +186,7 @@ func backupPredata(filename string, tables []Relation, tableDefs map[uint32]Tabl
 
 	logger.Verbose("Writing CREATE PROCEDURAL LANGUAGE statements to predata file")
 	procLangs := GetProceduralLanguages(connection)
+	objectCount["Procedural Languages"] = len(procLangs)
 	langFuncs, otherFuncs := ExtractLanguageFunctions(functions, procLangs)
 	for _, langFunc := range langFuncs {
 		PrintCreateFunctionStatement(predataFile, langFunc, functionMetadata[langFunc.Oid])
@@ -187,8 +199,9 @@ func backupPredata(filename string, tables []Relation, tableDefs map[uint32]Tabl
 
 	relationMetadata := GetMetadataForObjectType(connection, TYPE_RELATION)
 	logger.Verbose("Writing CREATE SEQUENCE statements to predata file")
-	sequenceDefs := GetAllSequences(connection)
-	PrintCreateSequenceStatements(predataFile, sequenceDefs, relationMetadata)
+	sequences := GetAllSequences(connection)
+	objectCount["Sequences"] = len(sequences)
+	PrintCreateSequenceStatements(predataFile, sequences, relationMetadata)
 
 	logger.Verbose("Writing CREATE TABLE statements to predata file")
 	tables = ConstructTableDependencies(connection, tables)
@@ -203,65 +216,77 @@ func backupPredata(filename string, tables []Relation, tableDefs map[uint32]Tabl
 
 	logger.Verbose("Writing ALTER SEQUENCE statements to predata file")
 	sequenceColumnOwners := GetSequenceColumnOwnerMap(connection)
-	PrintAlterSequenceStatements(predataFile, sequenceDefs, sequenceColumnOwners)
+	PrintAlterSequenceStatements(predataFile, sequences, sequenceColumnOwners)
 
 	logger.Verbose("Writing CREATE TEXT SEARCH PARSER statements to predata file")
 	parsers := GetTextSearchParsers(connection)
+	objectCount["Text Search Parsers"] = len(parsers)
 	parserMetadata := GetCommentsForObjectType(connection, TYPE_TSPARSER)
 	PrintCreateTextSearchParserStatements(predataFile, parsers, parserMetadata)
 
 	logger.Verbose("Writing CREATE TEXT SEARCH TEMPLATE statements to predata file")
 	templates := GetTextSearchTemplates(connection)
+	objectCount["Text Search Templates"] = len(templates)
 	templateMetadata := GetCommentsForObjectType(connection, TYPE_TSTEMPLATE)
 	PrintCreateTextSearchTemplateStatements(predataFile, templates, templateMetadata)
 
 	logger.Verbose("Writing CREATE TEXT SEARCH DICTIONARY statements to predata file")
 	dictionaries := GetTextSearchDictionaries(connection)
+	objectCount["Text Search Dictionaries"] = len(dictionaries)
 	dictionaryMetadata := GetMetadataForObjectType(connection, TYPE_TSDICTIONARY)
 	PrintCreateTextSearchDictionaryStatements(predataFile, dictionaries, dictionaryMetadata)
 
 	logger.Verbose("Writing CREATE TEXT SEARCH CONFIGURATION statements to predata file")
 	configurations := GetTextSearchConfigurations(connection)
+	objectCount["Text Search Configurations"] = len(configurations)
 	configurationMetadata := GetMetadataForObjectType(connection, TYPE_TSCONFIGURATION)
 	PrintCreateTextSearchConfigurationStatements(predataFile, configurations, configurationMetadata)
 
 	logger.Verbose("Writing CREATE PROTOCOL statements to predata file")
 	protocols := GetExternalProtocols(connection)
+	objectCount["Protocols"] = len(protocols)
 	protoMetadata := GetMetadataForObjectType(connection, TYPE_PROTOCOL)
 	PrintCreateExternalProtocolStatements(predataFile, protocols, funcInfoMap, protoMetadata)
 
 	logger.Verbose("Writing CREATE CONVERSION statements to predata file")
 	conversions := GetConversions(connection)
+	objectCount["Conversions"] = len(conversions)
 	convMetadata := GetMetadataForObjectType(connection, TYPE_CONVERSION)
 	PrintCreateConversionStatements(predataFile, conversions, convMetadata)
 
 	logger.Verbose("Writing CREATE OPERATOR statements to predata file")
 	operators := GetOperators(connection)
+	objectCount["Operators"] = len(operators)
 	operatorMetadata := GetMetadataForObjectType(connection, TYPE_OPERATOR)
 	PrintCreateOperatorStatements(predataFile, operators, operatorMetadata)
 
 	logger.Verbose("Writing CREATE OPERATOR FAMILY statements to predata file")
 	operatorFamilies := GetOperatorFamilies(connection)
+	objectCount["Operator Families"] = len(operatorFamilies)
 	operatorFamilyMetadata := GetMetadataForObjectType(connection, TYPE_OPERATORFAMILY)
 	PrintCreateOperatorFamilyStatements(predataFile, operatorFamilies, operatorFamilyMetadata)
 
 	logger.Verbose("Writing CREATE OPERATOR CLASS statements to predata file")
 	operatorClasses := GetOperatorClasses(connection)
+	objectCount["Operator Classes"] = len(operatorClasses)
 	operatorClassMetadata := GetMetadataForObjectType(connection, TYPE_OPERATORCLASS)
 	PrintCreateOperatorClassStatements(predataFile, operatorClasses, operatorClassMetadata)
 
 	logger.Verbose("Writing CREATE AGGREGATE statements to predata file")
-	aggDefs := GetAggregates(connection)
+	aggregates := GetAggregates(connection)
+	objectCount["Aggregates"] = len(aggregates)
 	aggMetadata := GetMetadataForObjectType(connection, TYPE_AGGREGATE)
-	PrintCreateAggregateStatements(predataFile, aggDefs, funcInfoMap, aggMetadata)
+	PrintCreateAggregateStatements(predataFile, aggregates, funcInfoMap, aggMetadata)
 
 	logger.Verbose("Writing CREATE CAST statements to predata file")
-	castDefs := GetCasts(connection)
+	casts := GetCasts(connection)
+	objectCount["Casts"] = len(casts)
 	castMetadata := GetCommentsForObjectType(connection, TYPE_CAST)
-	PrintCreateCastStatements(predataFile, castDefs, castMetadata)
+	PrintCreateCastStatements(predataFile, casts, castMetadata)
 
 	logger.Verbose("Writing CREATE VIEW statements to predata file")
 	views := GetViews(connection)
+	objectCount["Views"] = len(views)
 	views = ConstructViewDependencies(connection, views)
 	views = SortViews(views)
 	PrintCreateViewStatements(predataFile, views, relationMetadata)
@@ -294,7 +319,7 @@ func backupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
 	WriteTableMapFile(globalCluster.GetTableMapFilePath(), tables, tableDefs)
 }
 
-func backupPostdata(filename string, tables []Relation) {
+func backupPostdata(filename string, tables []Relation, objectCount map[string]int) {
 	postdataFile := utils.MustOpenFileForWriting(filename)
 	PrintConnectionString(postdataFile, connection.DBName)
 
@@ -305,26 +330,39 @@ func backupPostdata(filename string, tables []Relation) {
 	logger.Verbose("Writing CREATE INDEX statements to postdata file")
 	indexNameMap := ConstructImplicitIndexNames(connection)
 	indexes := GetIndexes(connection, indexNameMap)
+	objectCount["Indexes"] = len(indexes)
 	indexMetadata := GetCommentsForObjectType(connection, TYPE_INDEX)
 	PrintCreateIndexStatements(postdataFile, indexes, indexMetadata)
 
 	logger.Verbose("Writing CREATE RULE statements to postdata file")
 	rules := GetRules(connection)
+	objectCount["Rules"] = len(rules)
 	ruleMetadata := GetCommentsForObjectType(connection, TYPE_RULE)
 	PrintCreateRuleStatements(postdataFile, rules, ruleMetadata)
 
 	logger.Verbose("Writing CREATE TRIGGER statements to postdata file")
 	triggers := GetTriggers(connection)
+	objectCount["Triggers"] = len(triggers)
 	triggerMetadata := GetCommentsForObjectType(connection, TYPE_TRIGGER)
 	PrintCreateTriggerStatements(postdataFile, triggers, triggerMetadata)
 }
 
 func DoTeardown() {
-	if r := recover(); r != nil {
-		fmt.Println(r)
+	var err interface{}
+	if err = recover(); err != nil {
+		fmt.Println(err)
 	}
+	errMsg, exitCode := ParseErrorMessage(err)
 	if connection != nil {
 		connection.Close()
 	}
-	// TODO: Add logic for error codes based on whether we Abort()ed or not
+
+	// Only create a report file if we fail after the cluster is initialized
+	if globalCluster.Timestamp != "" {
+		reportFilename := globalCluster.GetReportFilePath()
+		reportFile := utils.MustOpenFileForWriting(reportFilename)
+		WriteReportFile(connection, reportFile, objectCounts, errMsg)
+	}
+
+	os.Exit(exitCode)
 }

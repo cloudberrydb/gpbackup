@@ -169,3 +169,7 @@ func (cluster *Cluster) GetTableBackupFilePathForCopyCommand(tableOid uint32) st
 	}
 	return path.Join(baseDir, "backups", cluster.Timestamp[0:8], cluster.Timestamp, backupFilename)
 }
+
+func (cluster *Cluster) GetReportFilePath() string {
+	return fmt.Sprintf("%s/gpbackup_%s_report", cluster.GetDirForContent(-1), cluster.Timestamp)
+}
