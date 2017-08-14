@@ -15,7 +15,7 @@ import (
 var _ = Describe("backup/data tests", func() {
 	Describe("CopyTableOut", func() {
 		It("will dump a table to its own file", func() {
-			testTable := backup.Relation{2345, 3456, "public", "foo", nil, nil}
+			testTable := backup.Relation{SchemaOid: 2345, RelationOid: 3456, SchemaName: "public", RelationName: "foo", DependsUpon: nil, Inherits: nil}
 			execStr := "COPY public.foo TO '<SEG_DATA_DIR>/backups/20170101/20170101010101/gpbackup_<SEGID>_20170101010101_3456' WITH CSV DELIMITER ',' ON SEGMENT;"
 			mock.ExpectExec(execStr).WillReturnResult(sqlmock.NewResult(10, 0))
 			filename := "<SEG_DATA_DIR>/backups/20170101/20170101010101/gpbackup_<SEGID>_20170101010101_3456"
@@ -24,8 +24,8 @@ var _ = Describe("backup/data tests", func() {
 	})
 	Describe("WriteTableMapFile", func() {
 		cluster := testutils.SetDefaultSegmentConfiguration()
-		tableOne := backup.Relation{0, 1234, "public", "foo", nil, nil}
-		tableTwo := backup.Relation{1, 2345, "public", "foo|bar", nil, nil}
+		tableOne := backup.Relation{SchemaOid: 0, RelationOid: 1234, SchemaName: "public", RelationName: "foo", DependsUpon: nil, Inherits: nil}
+		tableTwo := backup.Relation{SchemaOid: 1, RelationOid: 2345, SchemaName: "public", RelationName: "foo|bar", DependsUpon: nil, Inherits: nil}
 		var (
 			r         *os.File
 			w         *os.File

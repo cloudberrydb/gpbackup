@@ -68,9 +68,9 @@ func CreateMockDB() (*sqlx.DB, sqlmock.Sqlmock) {
 }
 
 func SetDefaultSegmentConfiguration() utils.Cluster {
-	configMaster := utils.SegConfig{-1, "localhost", "gpseg-1"}
-	configSegOne := utils.SegConfig{0, "localhost", "gpseg0"}
-	configSegTwo := utils.SegConfig{1, "localhost", "gpseg1"}
+	configMaster := utils.SegConfig{ContentID: -1, Hostname: "localhost", DataDir: "gpseg-1"}
+	configSegOne := utils.SegConfig{ContentID: 0, Hostname: "localhost", DataDir: "gpseg0"}
+	configSegTwo := utils.SegConfig{ContentID: 1, Hostname: "localhost", DataDir: "gpseg1"}
 	cluster := utils.NewCluster([]utils.SegConfig{configMaster, configSegOne, configSegTwo}, "", "20170101010101")
 	return cluster
 }
@@ -95,11 +95,7 @@ func DefaultMetadataMap(objType string, hasPrivileges bool, hasOwner bool, hasCo
 		comment = fmt.Sprintf("This is a%s %s comment.", n, strings.ToLower(objType))
 	}
 	return backup.MetadataMap{
-		1: {
-			privileges,
-			owner,
-			comment,
-		},
+		1: {Privileges: privileges, Owner: owner, Comment: comment},
 	}
 }
 
@@ -206,8 +202,7 @@ func DefaultACLWithGrantWithout(grantee string, objType string, revoke ...string
 }
 
 func DefaultTypeDefinition(typeType string, typeName string) backup.Type {
-	return backup.Type{1, "public", typeName, typeType, "", "", "", "",
-		"", "", "", "", -1, false, "c", "p", "", "", "", "", "", false, nil, nil}
+	return backup.Type{Oid: 1, TypeSchema: "public", TypeName: typeName, Type: typeType, AttName: "", AttType: "", Input: "", Output: "", Receive: "", Send: "", ModIn: "", ModOut: "", InternalLength: -1, IsPassedByValue: false, Alignment: "c", Storage: "p", DefaultVal: "", Element: "", Delimiter: "", EnumLabels: "", BaseType: "", NotNull: false, CompositeAtts: nil, DependsUpon: nil}
 }
 
 /*

@@ -26,7 +26,7 @@ var _ = Describe("backup/predata_externals tests", func() {
 	partDefEmpty := ""
 	partTemplateDefEmpty := ""
 	colDefsEmpty := []backup.ColumnDefinition{}
-	extTableEmpty := backup.ExternalTableDefinition{0, -2, -2, "", "ALL_SEGMENTS", "t", "", "", "", 0, "", "", "UTF-8", false, nil}
+	extTableEmpty := backup.ExternalTableDefinition{Oid: 0, Type: -2, Protocol: -2, Location: "", ExecLocation: "ALL_SEGMENTS", FormatType: "t", FormatOpts: "", Options: "", Command: "", RejectLimit: 0, RejectLimitType: "", ErrTable: "", Encoding: "UTF-8", Writable: false, URIs: nil}
 
 	Describe("DetermineExternalTableCharacteristics", func() {
 		var extTableDef backup.ExternalTableDefinition
@@ -94,7 +94,7 @@ var _ = Describe("backup/predata_externals tests", func() {
 		var tableDef backup.TableDefinition
 		var extTableDef backup.ExternalTableDefinition
 		BeforeEach(func() {
-			tableDef = backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", colDefsEmpty, true, extTableEmpty}
+			tableDef = backup.TableDefinition{DistPolicy: distRandom, PartDef: partDefEmpty, PartTemplateDef: partTemplateDefEmpty, StorageOpts: heapOpts, TablespaceName: "", ColumnDefs: colDefsEmpty, IsExternal: true, ExtTableDef: extTableEmpty}
 			extTableDef = extTableEmpty
 		})
 
@@ -353,13 +353,13 @@ ENCODING 'UTF-8'`)
 		})
 	})
 	Describe("PrintExternalProtocolStatements", func() {
-		protocolUntrustedReadWrite := backup.ExternalProtocol{1, "s3", "testrole", false, 1, 2, 0}
-		protocolUntrustedReadValidator := backup.ExternalProtocol{1, "s3", "testrole", false, 1, 0, 3}
-		protocolUntrustedWriteOnly := backup.ExternalProtocol{1, "s3", "testrole", false, 0, 2, 0}
-		protocolTrustedReadWriteValidator := backup.ExternalProtocol{1, "s3", "testrole", true, 1, 2, 3}
-		protocolUntrustedReadOnly := backup.ExternalProtocol{1, "s4", "testrole", false, 4, 0, 0}
-		protocolInternal := backup.ExternalProtocol{1, "gphdfs", "testrole", false, 5, 6, 7}
-		protocolInternalReadWrite := backup.ExternalProtocol{1, "gphdfs", "testrole", false, 5, 6, 0}
+		protocolUntrustedReadWrite := backup.ExternalProtocol{Oid: 1, Name: "s3", Owner: "testrole", Trusted: false, ReadFunction: 1, WriteFunction: 2, Validator: 0}
+		protocolUntrustedReadValidator := backup.ExternalProtocol{Oid: 1, Name: "s3", Owner: "testrole", Trusted: false, ReadFunction: 1, WriteFunction: 0, Validator: 3}
+		protocolUntrustedWriteOnly := backup.ExternalProtocol{Oid: 1, Name: "s3", Owner: "testrole", Trusted: false, ReadFunction: 0, WriteFunction: 2, Validator: 0}
+		protocolTrustedReadWriteValidator := backup.ExternalProtocol{Oid: 1, Name: "s3", Owner: "testrole", Trusted: true, ReadFunction: 1, WriteFunction: 2, Validator: 3}
+		protocolUntrustedReadOnly := backup.ExternalProtocol{Oid: 1, Name: "s4", Owner: "testrole", Trusted: false, ReadFunction: 4, WriteFunction: 0, Validator: 0}
+		protocolInternal := backup.ExternalProtocol{Oid: 1, Name: "gphdfs", Owner: "testrole", Trusted: false, ReadFunction: 5, WriteFunction: 6, Validator: 7}
+		protocolInternalReadWrite := backup.ExternalProtocol{Oid: 1, Name: "gphdfs", Owner: "testrole", Trusted: false, ReadFunction: 5, WriteFunction: 6, Validator: 0}
 		funcInfoMap := map[uint32]backup.FunctionInfo{
 			1: {QualifiedName: "public.read_fn_s3", Arguments: ""},
 			2: {QualifiedName: "public.write_fn_s3", Arguments: ""},

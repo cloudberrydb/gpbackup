@@ -18,8 +18,7 @@ var _ = Describe("backup/predata_functions tests", func() {
 	})
 	Describe("Functions involved in printing CREATE FUNCTION statements", func() {
 		var funcDef backup.Function
-		funcDefault := backup.Function{1, "public", "func_name", false, "add_two_ints", "", "integer, integer", "integer, integer", "integer",
-			"v", false, false, "", float32(1), float32(0), "", "internal", nil}
+		funcDefault := backup.Function{Oid: 1, SchemaName: "public", FunctionName: "func_name", ReturnsSet: false, FunctionBody: "add_two_ints", BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "integer", Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: float32(1), NumRows: float32(0), DataAccess: "", Language: "internal", DependsUpon: nil}
 		BeforeEach(func() {
 			funcDef = funcDefault
 		})
@@ -239,7 +238,7 @@ $_$`)
 	})
 	Describe("PrintCreateAggregateStatements", func() {
 		aggDefs := make([]backup.Aggregate, 1)
-		aggDefault := backup.Aggregate{1, "public", "agg_name", "integer, integer", "integer, integer", 1, 0, 0, 0, "integer", "", false}
+		aggDefault := backup.Aggregate{Oid: 1, SchemaName: "public", AggregateName: "agg_name", Arguments: "integer, integer", IdentArgs: "integer, integer", TransitionFunction: 1, PreliminaryFunction: 0, FinalFunction: 0, SortOperator: 0, TransitionDataType: "integer", InitialValue: "", IsOrdered: false}
 		funcInfoMap := map[uint32]backup.FunctionInfo{
 			1: {QualifiedName: "public.mysfunc", Arguments: "integer"},
 			2: {QualifiedName: "public.mypfunc", Arguments: "numeric, numeric"},
@@ -399,7 +398,7 @@ AS IMPLICIT;`)
 AS ASSIGNMENT;`)
 		})
 		It("prints a cast with a comment", func() {
-			castDef := backup.Cast{1, "src", "dst", "", "", "", "e"}
+			castDef := backup.Cast{Oid: 1, SourceTypeFQN: "src", TargetTypeFQN: "dst", FunctionSchema: "", FunctionName: "", FunctionArgs: "", CastContext: "e"}
 			castMetadataMap := testutils.DefaultMetadataMap("CAST", false, false, true)
 			backup.PrintCreateCastStatements(backupfile, toc, []backup.Cast{castDef}, castMetadataMap)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE CAST (src AS dst)
@@ -409,7 +408,7 @@ COMMENT ON CAST (src AS dst) IS 'This is a cast comment.';`)
 		})
 	})
 	Describe("ExtractLanguageFunctions", func() {
-		customLang := backup.ProceduralLanguage{1, "custom_language", "testrole", true, true, 3, 4, 5}
+		customLang := backup.ProceduralLanguage{Oid: 1, Name: "custom_language", Owner: "testrole", IsPl: true, PlTrusted: true, Handler: 3, Inline: 4, Validator: 5}
 		procLangs := []backup.ProceduralLanguage{customLang}
 		langFunc := backup.Function{Oid: 3, FunctionName: "custom_handler"}
 		nonLangFunc := backup.Function{Oid: 2, FunctionName: "random_function"}
@@ -502,8 +501,8 @@ GRANT ALL ON LANGUAGE plpythonu TO testrole;`)
 			metadataMap backup.MetadataMap
 		)
 		BeforeEach(func() {
-			convOne = backup.Conversion{1, "public", "conv_one", "UTF8", "LATIN1", "public.converter", false}
-			convTwo = backup.Conversion{0, "public", "conv_two", "UTF8", "LATIN1", "public.converter", true}
+			convOne = backup.Conversion{Oid: 1, Schema: "public", Name: "conv_one", ForEncoding: "UTF8", ToEncoding: "LATIN1", ConversionFunction: "public.converter", IsDefault: false}
+			convTwo = backup.Conversion{Oid: 0, Schema: "public", Name: "conv_two", ForEncoding: "UTF8", ToEncoding: "LATIN1", ConversionFunction: "public.converter", IsDefault: true}
 			metadataMap = backup.MetadataMap{}
 		})
 

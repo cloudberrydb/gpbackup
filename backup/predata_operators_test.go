@@ -17,7 +17,7 @@ var _ = Describe("backup/predata_operators tests", func() {
 	})
 	Describe("PrintCreateOperatorStatements", func() {
 		It("prints a basic operator", func() {
-			operator := backup.Operator{0, "public", "##", "public.path_inter", "public.path", "public.path", "0", "0", "-", "-", false, false}
+			operator := backup.Operator{Oid: 0, SchemaName: "public", Name: "##", ProcedureName: "public.path_inter", LeftArgType: "public.path", RightArgType: "public.path", CommutatorOp: "0", NegatorOp: "0", RestrictFunction: "-", JoinFunction: "-", CanHash: false, CanMerge: false}
 
 			backup.PrintCreateOperatorStatements(backupfile, toc, []backup.Operator{operator}, backup.MetadataMap{})
 
@@ -29,7 +29,7 @@ var _ = Describe("backup/predata_operators tests", func() {
 );`)
 		})
 		It("prints a full-featured operator", func() {
-			operator := backup.Operator{1, "testschema", "##", "public.path_inter", "public.path", "public.path", "testschema.##", "testschema.###", "eqsel(internal,oid,internal,integer)", "eqjoinsel(internal,oid,internal,smallint)", true, true}
+			operator := backup.Operator{Oid: 1, SchemaName: "testschema", Name: "##", ProcedureName: "public.path_inter", LeftArgType: "public.path", RightArgType: "public.path", CommutatorOp: "testschema.##", NegatorOp: "testschema.###", RestrictFunction: "eqsel(internal,oid,internal,integer)", JoinFunction: "eqjoinsel(internal,oid,internal,smallint)", CanHash: true, CanMerge: true}
 
 			metadataMap := testutils.DefaultMetadataMap("OPERATOR", false, true, true)
 
@@ -53,7 +53,7 @@ COMMENT ON OPERATOR testschema.## (public.path, public.path) IS 'This is an oper
 ALTER OPERATOR testschema.## (public.path, public.path) OWNER TO testrole;`)
 		})
 		It("prints an operator with only a left argument", func() {
-			operator := backup.Operator{1, "public", "##", "public.path_inter", "public.path", "-", "0", "0", "-", "-", false, false}
+			operator := backup.Operator{Oid: 1, SchemaName: "public", Name: "##", ProcedureName: "public.path_inter", LeftArgType: "public.path", RightArgType: "-", CommutatorOp: "0", NegatorOp: "0", RestrictFunction: "-", JoinFunction: "-", CanHash: false, CanMerge: false}
 
 			metadataMap := testutils.DefaultMetadataMap("OPERATOR", false, true, true)
 
@@ -70,7 +70,7 @@ COMMENT ON OPERATOR public.## (public.path, NONE) IS 'This is an operator commen
 ALTER OPERATOR public.## (public.path, NONE) OWNER TO testrole;`)
 		})
 		It("prints an operator with only a right argument", func() {
-			operator := backup.Operator{1, "public", "##", "public.path_inter", "-", "public.\"PATH\"", "0", "0", "-", "-", false, false}
+			operator := backup.Operator{Oid: 1, SchemaName: "public", Name: "##", ProcedureName: "public.path_inter", LeftArgType: "-", RightArgType: "public.\"PATH\"", CommutatorOp: "0", NegatorOp: "0", RestrictFunction: "-", JoinFunction: "-", CanHash: false, CanMerge: false}
 
 			metadataMap := testutils.DefaultMetadataMap("OPERATOR", false, true, true)
 
@@ -89,7 +89,7 @@ ALTER OPERATOR public.## (NONE, public."PATH") OWNER TO testrole;`)
 	})
 	Describe("PrintCreateOperatorFamilyStatements", func() {
 		It("prints a basic operator family", func() {
-			operatorFamily := backup.OperatorFamily{0, "public", "testfam", "hash"}
+			operatorFamily := backup.OperatorFamily{Oid: 0, SchemaName: "public", Name: "testfam", IndexMethod: "hash"}
 
 			backup.PrintCreateOperatorFamilyStatements(backupfile, toc, []backup.OperatorFamily{operatorFamily}, backup.MetadataMap{})
 
@@ -97,7 +97,7 @@ ALTER OPERATOR public.## (NONE, public."PATH") OWNER TO testrole;`)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE OPERATOR FAMILY public.testfam USING hash;`)
 		})
 		It("prints an operator family with an owner and comment", func() {
-			operatorFamily := backup.OperatorFamily{1, "public", "testfam", "hash"}
+			operatorFamily := backup.OperatorFamily{Oid: 1, SchemaName: "public", Name: "testfam", IndexMethod: "hash"}
 
 			metadataMap := testutils.DefaultMetadataMap("OPERATOR FAMILY", false, true, true)
 
@@ -113,7 +113,7 @@ ALTER OPERATOR FAMILY public.testfam USING hash OWNER TO testrole;`)
 	})
 	Describe("PrintCreateOperatorClassStatements", func() {
 		It("prints a basic operator class", func() {
-			operatorClass := backup.OperatorClass{0, "public", "testclass", "public", "testclass", "hash", "uuid", false, "-", nil, nil}
+			operatorClass := backup.OperatorClass{Oid: 0, ClassSchema: "public", ClassName: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "hash", Type: "uuid", Default: false, StorageType: "-", Operators: nil, Functions: nil}
 
 			backup.PrintCreateOperatorClassStatements(backupfile, toc, []backup.OperatorClass{operatorClass}, backup.MetadataMap{})
 
@@ -123,7 +123,7 @@ ALTER OPERATOR FAMILY public.testfam USING hash OWNER TO testrole;`)
 	STORAGE uuid;`)
 		})
 		It("prints an operator class with default and family", func() {
-			operatorClass := backup.OperatorClass{0, "public", "testclass", "public", "testfam", "hash", "uuid", true, "-", nil, nil}
+			operatorClass := backup.OperatorClass{Oid: 0, ClassSchema: "public", ClassName: "testclass", FamilySchema: "public", FamilyName: "testfam", IndexMethod: "hash", Type: "uuid", Default: true, StorageType: "-", Operators: nil, Functions: nil}
 
 			backup.PrintCreateOperatorClassStatements(backupfile, toc, []backup.OperatorClass{operatorClass}, backup.MetadataMap{})
 
@@ -132,7 +132,7 @@ ALTER OPERATOR FAMILY public.testfam USING hash OWNER TO testrole;`)
 	STORAGE uuid;`)
 		})
 		It("prints an operator class with class and family in different schemas", func() {
-			operatorClass := backup.OperatorClass{0, "schema1", "testclass", "Schema2", "testfam", "hash", "uuid", true, "-", nil, nil}
+			operatorClass := backup.OperatorClass{Oid: 0, ClassSchema: "schema1", ClassName: "testclass", FamilySchema: "Schema2", FamilyName: "testfam", IndexMethod: "hash", Type: "uuid", Default: true, StorageType: "-", Operators: nil, Functions: nil}
 
 			backup.PrintCreateOperatorClassStatements(backupfile, toc, []backup.OperatorClass{operatorClass}, backup.MetadataMap{})
 
@@ -141,8 +141,8 @@ ALTER OPERATOR FAMILY public.testfam USING hash OWNER TO testrole;`)
 	STORAGE uuid;`)
 		})
 		It("prints an operator class with an operator", func() {
-			operatorClass := backup.OperatorClass{0, "public", "testclass", "public", "testclass", "hash", "uuid", false, "-", nil, nil}
-			operatorClass.Operators = []backup.OperatorClassOperator{{0, 1, "=(uuid,uuid)", false}}
+			operatorClass := backup.OperatorClass{Oid: 0, ClassSchema: "public", ClassName: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "hash", Type: "uuid", Default: false, StorageType: "-", Operators: nil, Functions: nil}
+			operatorClass.Operators = []backup.OperatorClassOperator{{ClassOid: 0, StrategyNumber: 1, Operator: "=(uuid,uuid)", Recheck: false}}
 
 			backup.PrintCreateOperatorClassStatements(backupfile, toc, []backup.OperatorClass{operatorClass}, backup.MetadataMap{})
 
@@ -151,8 +151,8 @@ ALTER OPERATOR FAMILY public.testfam USING hash OWNER TO testrole;`)
 	OPERATOR 1 =(uuid,uuid);`)
 		})
 		It("prints an operator class with two operators and recheck", func() {
-			operatorClass := backup.OperatorClass{0, "public", "testclass", "public", "testclass", "hash", "uuid", false, "-", nil, nil}
-			operatorClass.Operators = []backup.OperatorClassOperator{{0, 1, "=(uuid,uuid)", true}, {0, 2, ">(uuid,uuid)", false}}
+			operatorClass := backup.OperatorClass{Oid: 0, ClassSchema: "public", ClassName: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "hash", Type: "uuid", Default: false, StorageType: "-", Operators: nil, Functions: nil}
+			operatorClass.Operators = []backup.OperatorClassOperator{{ClassOid: 0, StrategyNumber: 1, Operator: "=(uuid,uuid)", Recheck: true}, {ClassOid: 0, StrategyNumber: 2, Operator: ">(uuid,uuid)", Recheck: false}}
 
 			backup.PrintCreateOperatorClassStatements(backupfile, toc, []backup.OperatorClass{operatorClass}, backup.MetadataMap{})
 

@@ -18,8 +18,8 @@ var _ = Describe("backup/predata_relations tests", func() {
 	distSingle := "DISTRIBUTED BY (i)"
 	distComposite := "DISTRIBUTED BY (i, j)"
 
-	rowOne := backup.ColumnDefinition{0, 1, "i", false, false, false, "integer", "", -1, "", "", ""}
-	rowTwo := backup.ColumnDefinition{1, 2, "j", false, false, false, "character varying(20)", "", -1, "", "", ""}
+	rowOne := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", NotNull: false, HasDefault: false, IsDropped: false, TypeName: "integer", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: ""}
+	rowTwo := backup.ColumnDefinition{Oid: 1, Num: 2, Name: "j", NotNull: false, HasDefault: false, IsDropped: false, TypeName: "character varying(20)", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: ""}
 
 	heapOpts := ""
 	aoOpts := "appendonly=true"
@@ -30,7 +30,7 @@ var _ = Describe("backup/predata_relations tests", func() {
 	partDefEmpty := ""
 	partTemplateDefEmpty := ""
 	colDefsEmpty := []backup.ColumnDefinition{}
-	extTableEmpty := backup.ExternalTableDefinition{0, -2, -2, "", "ALL_SEGMENTS", "t", "", "", "", 0, "", "", "UTF-8", false, nil}
+	extTableEmpty := backup.ExternalTableDefinition{Oid: 0, Type: -2, Protocol: -2, Location: "", ExecLocation: "ALL_SEGMENTS", FormatType: "t", FormatOpts: "", Options: "", Command: "", RejectLimit: 0, RejectLimitType: "", ErrTable: "", Encoding: "UTF-8", Writable: false, URIs: nil}
 
 	partDef := `PARTITION BY LIST(gender)
 	(
@@ -118,7 +118,7 @@ SET SUBPARTITION TEMPLATE
 		})
 	})
 	Describe("PrintCreateTableStatement", func() {
-		tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", colDefsEmpty, false, extTableEmpty}
+		tableDef := backup.TableDefinition{DistPolicy: distRandom, PartDef: partDefEmpty, PartTemplateDef: partTemplateDefEmpty, StorageOpts: heapOpts, TablespaceName: "", ColumnDefs: colDefsEmpty, IsExternal: false, ExtTableDef: extTableEmpty}
 		It("calls PrintRegularTableCreateStatement for a regular table", func() {
 			tableMetadata := backup.ObjectMetadata{Owner: "testrole"}
 
@@ -141,18 +141,18 @@ ENCODING 'UTF-8';`)
 		})
 	})
 	Describe("PrintRegularTableCreateStatement", func() {
-		rowDropped := backup.ColumnDefinition{0, 2, "j", false, false, true, "character varying(20)", "", -1, "", "", ""}
-		rowOneEncoding := backup.ColumnDefinition{0, 1, "i", false, false, false, "integer", "compresstype=none,blocksize=32768,compresslevel=0", -1, "", "", ""}
-		rowTwoEncoding := backup.ColumnDefinition{0, 2, "j", false, false, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", -1, "", "", ""}
-		rowNotNull := backup.ColumnDefinition{0, 2, "j", true, false, false, "character varying(20)", "", -1, "", "", ""}
-		rowEncodingNotNull := backup.ColumnDefinition{0, 2, "j", true, false, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", -1, "", "", ""}
-		rowOneDef := backup.ColumnDefinition{0, 1, "i", false, true, false, "integer", "", -1, "", "42", ""}
-		rowTwoDef := backup.ColumnDefinition{0, 2, "j", false, true, false, "character varying(20)", "", -1, "", "'bar'::text", ""}
-		rowTwoEncodingDef := backup.ColumnDefinition{0, 2, "j", false, true, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", -1, "", "'bar'::text", ""}
-		rowNotNullDef := backup.ColumnDefinition{0, 2, "j", true, true, false, "character varying(20)", "", -1, "", "'bar'::text", ""}
-		rowEncodingNotNullDef := backup.ColumnDefinition{0, 2, "j", true, true, false, "character varying(20)", "compresstype=zlib,blocksize=65536,compresslevel=1", -1, "", "'bar'::text", ""}
-		rowStats := backup.ColumnDefinition{0, 1, "i", false, false, false, "integer", "", 3, "", "", ""}
-		colStorageType := backup.ColumnDefinition{0, 1, "i", false, false, false, "integer", "", -1, "PLAIN", "", ""}
+		rowDropped := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", NotNull: false, HasDefault: false, IsDropped: true, TypeName: "character varying(20)", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: ""}
+		rowOneEncoding := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", NotNull: false, HasDefault: false, IsDropped: false, TypeName: "integer", Encoding: "compresstype=none,blocksize=32768,compresslevel=0", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: ""}
+		rowTwoEncoding := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", NotNull: false, HasDefault: false, IsDropped: false, TypeName: "character varying(20)", Encoding: "compresstype=zlib,blocksize=65536,compresslevel=1", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: ""}
+		rowNotNull := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", NotNull: true, HasDefault: false, IsDropped: false, TypeName: "character varying(20)", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: ""}
+		rowEncodingNotNull := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", NotNull: true, HasDefault: false, IsDropped: false, TypeName: "character varying(20)", Encoding: "compresstype=zlib,blocksize=65536,compresslevel=1", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: ""}
+		rowOneDef := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", NotNull: false, HasDefault: true, IsDropped: false, TypeName: "integer", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "42", Comment: ""}
+		rowTwoDef := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", NotNull: false, HasDefault: true, IsDropped: false, TypeName: "character varying(20)", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "'bar'::text", Comment: ""}
+		rowTwoEncodingDef := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", NotNull: false, HasDefault: true, IsDropped: false, TypeName: "character varying(20)", Encoding: "compresstype=zlib,blocksize=65536,compresslevel=1", StatTarget: -1, StorageType: "", DefaultVal: "'bar'::text", Comment: ""}
+		rowNotNullDef := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", NotNull: true, HasDefault: true, IsDropped: false, TypeName: "character varying(20)", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "'bar'::text", Comment: ""}
+		rowEncodingNotNullDef := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", NotNull: true, HasDefault: true, IsDropped: false, TypeName: "character varying(20)", Encoding: "compresstype=zlib,blocksize=65536,compresslevel=1", StatTarget: -1, StorageType: "", DefaultVal: "'bar'::text", Comment: ""}
+		rowStats := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", NotNull: false, HasDefault: false, IsDropped: false, TypeName: "integer", Encoding: "", StatTarget: 3, StorageType: "", DefaultVal: "", Comment: ""}
+		colStorageType := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", NotNull: false, HasDefault: false, IsDropped: false, TypeName: "integer", Encoding: "", StatTarget: -1, StorageType: "PLAIN", DefaultVal: "", Comment: ""}
 
 		Context("No special table attributes", func() {
 			It("prints a CREATE TABLE block with one line", func() {
@@ -501,12 +501,12 @@ SET SUBPARTITION TEMPLATE
 	})
 	Describe("PrintPostCreateTableStatements", func() {
 		testTable := backup.BasicRelation("public", "tablename")
-		rowCommentOne := backup.ColumnDefinition{0, 1, "i", false, false, false, "integer", "", -1, "", "", "This is a column comment."}
-		rowCommentTwo := backup.ColumnDefinition{0, 2, "j", false, false, false, "integer", "", -1, "", "", "This is another column comment."}
+		rowCommentOne := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", NotNull: false, HasDefault: false, IsDropped: false, TypeName: "integer", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "This is a column comment."}
+		rowCommentTwo := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", NotNull: false, HasDefault: false, IsDropped: false, TypeName: "integer", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "This is another column comment."}
 
 		It("prints a block with a table comment", func() {
 			col := []backup.ColumnDefinition{rowOne}
-			tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", col, false, extTableEmpty}
+			tableDef := backup.TableDefinition{DistPolicy: distRandom, PartDef: partDefEmpty, PartTemplateDef: partTemplateDefEmpty, StorageOpts: heapOpts, TablespaceName: "", ColumnDefs: col, IsExternal: false, ExtTableDef: extTableEmpty}
 			tableMetadata := backup.ObjectMetadata{Comment: "This is a table comment."}
 			backup.PrintPostCreateTableStatements(backupfile, testTable, tableDef, tableMetadata)
 			testutils.ExpectRegexp(buffer, `
@@ -534,7 +534,7 @@ COMMENT ON COLUMN public.tablename.j IS 'This is another column comment.';`)
 		})
 		It("prints an ALTER TABLE ... OWNER TO statement to set the table owner", func() {
 			col := []backup.ColumnDefinition{rowOne}
-			tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", col, false, extTableEmpty}
+			tableDef := backup.TableDefinition{DistPolicy: distRandom, PartDef: partDefEmpty, PartTemplateDef: partTemplateDefEmpty, StorageOpts: heapOpts, TablespaceName: "", ColumnDefs: col, IsExternal: false, ExtTableDef: extTableEmpty}
 			tableMetadata := backup.ObjectMetadata{Owner: "testrole"}
 			backup.PrintPostCreateTableStatements(backupfile, testTable, tableDef, tableMetadata)
 			testutils.ExpectRegexp(buffer, `
@@ -543,7 +543,7 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 		})
 		It("prints both an ALTER TABLE ... OWNER TO statement and comments", func() {
 			col := []backup.ColumnDefinition{rowCommentOne, rowCommentTwo}
-			tableDef := backup.TableDefinition{distRandom, partDefEmpty, partTemplateDefEmpty, heapOpts, "", col, false, extTableEmpty}
+			tableDef := backup.TableDefinition{DistPolicy: distRandom, PartDef: partDefEmpty, PartTemplateDef: partTemplateDefEmpty, StorageOpts: heapOpts, TablespaceName: "", ColumnDefs: col, IsExternal: false, ExtTableDef: extTableEmpty}
 			tableMetadata := backup.ObjectMetadata{Owner: "testrole", Comment: "This is a table comment."}
 			backup.PrintPostCreateTableStatements(backupfile, testTable, tableDef, tableMetadata)
 			testutils.ExpectRegexp(buffer, `
@@ -561,15 +561,15 @@ COMMENT ON COLUMN public.tablename.j IS 'This is another column comment.';`)
 		})
 	})
 	Describe("PrintCreateSequenceStatements", func() {
-		baseSequence := backup.Relation{0, 1, "public", "seq_name", nil, nil}
-		seqDefault := backup.Sequence{baseSequence, backup.SequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, true}}
-		seqNegIncr := backup.Sequence{baseSequence, backup.SequenceDefinition{"seq_name", 7, -1, -1, -9223372036854775807, 5, 42, false, true}}
-		seqMaxPos := backup.Sequence{baseSequence, backup.SequenceDefinition{"seq_name", 7, 1, 100, 1, 5, 42, false, true}}
-		seqMinPos := backup.Sequence{baseSequence, backup.SequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 10, 5, 42, false, true}}
-		seqMaxNeg := backup.Sequence{baseSequence, backup.SequenceDefinition{"seq_name", 7, -1, -10, -9223372036854775807, 5, 42, false, true}}
-		seqMinNeg := backup.Sequence{baseSequence, backup.SequenceDefinition{"seq_name", 7, -1, -1, -100, 5, 42, false, true}}
-		seqCycle := backup.Sequence{baseSequence, backup.SequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, true, true}}
-		seqStart := backup.Sequence{baseSequence, backup.SequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, false}}
+		baseSequence := backup.Relation{SchemaOid: 0, RelationOid: 1, SchemaName: "public", RelationName: "seq_name", DependsUpon: nil, Inherits: nil}
+		seqDefault := backup.Sequence{Relation: baseSequence, SequenceDefinition: backup.SequenceDefinition{Name: "seq_name", LastVal: 7, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 5, LogCnt: 42, IsCycled: false, IsCalled: true}}
+		seqNegIncr := backup.Sequence{Relation: baseSequence, SequenceDefinition: backup.SequenceDefinition{Name: "seq_name", LastVal: 7, Increment: -1, MaxVal: -1, MinVal: -9223372036854775807, CacheVal: 5, LogCnt: 42, IsCycled: false, IsCalled: true}}
+		seqMaxPos := backup.Sequence{Relation: baseSequence, SequenceDefinition: backup.SequenceDefinition{Name: "seq_name", LastVal: 7, Increment: 1, MaxVal: 100, MinVal: 1, CacheVal: 5, LogCnt: 42, IsCycled: false, IsCalled: true}}
+		seqMinPos := backup.Sequence{Relation: baseSequence, SequenceDefinition: backup.SequenceDefinition{Name: "seq_name", LastVal: 7, Increment: 1, MaxVal: 9223372036854775807, MinVal: 10, CacheVal: 5, LogCnt: 42, IsCycled: false, IsCalled: true}}
+		seqMaxNeg := backup.Sequence{Relation: baseSequence, SequenceDefinition: backup.SequenceDefinition{Name: "seq_name", LastVal: 7, Increment: -1, MaxVal: -10, MinVal: -9223372036854775807, CacheVal: 5, LogCnt: 42, IsCycled: false, IsCalled: true}}
+		seqMinNeg := backup.Sequence{Relation: baseSequence, SequenceDefinition: backup.SequenceDefinition{Name: "seq_name", LastVal: 7, Increment: -1, MaxVal: -1, MinVal: -100, CacheVal: 5, LogCnt: 42, IsCycled: false, IsCalled: true}}
+		seqCycle := backup.Sequence{Relation: baseSequence, SequenceDefinition: backup.SequenceDefinition{Name: "seq_name", LastVal: 7, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 5, LogCnt: 42, IsCycled: true, IsCalled: true}}
+		seqStart := backup.Sequence{Relation: baseSequence, SequenceDefinition: backup.SequenceDefinition{Name: "seq_name", LastVal: 7, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 5, LogCnt: 42, IsCycled: false, IsCalled: false}}
 		emptySequenceMetadataMap := backup.MetadataMap{}
 
 		It("can print a sequence with all default options", func() {
@@ -712,8 +712,8 @@ GRANT SELECT,USAGE ON SEQUENCE public.seq_name TO testrole WITH GRANT OPTION;`)
 	})
 	Describe("PrintCreateViewStatements", func() {
 		It("can print a basic view", func() {
-			viewOne := backup.View{0, "public", "WowZa", "SELECT rolname FROM pg_role;", []string{}}
-			viewTwo := backup.View{1, "shamwow", "shazam", "SELECT count(*) FROM pg_tables;", []string{}}
+			viewOne := backup.View{Oid: 0, SchemaName: "public", ViewName: "WowZa", Definition: "SELECT rolname FROM pg_role;", DependsUpon: []string{}}
+			viewTwo := backup.View{Oid: 1, SchemaName: "shamwow", ViewName: "shazam", Definition: "SELECT count(*) FROM pg_tables;", DependsUpon: []string{}}
 			viewMetadataMap := backup.MetadataMap{}
 			backup.PrintCreateViewStatements(backupfile, toc, []backup.View{viewOne, viewTwo}, viewMetadataMap)
 			testutils.ExpectEntry(toc.PredataEntries, 0, "public", "WowZa", "VIEW")
@@ -722,8 +722,8 @@ GRANT SELECT,USAGE ON SEQUENCE public.seq_name TO testrole WITH GRANT OPTION;`)
 				`CREATE VIEW shamwow.shazam AS SELECT count(*) FROM pg_tables;`)
 		})
 		It("can print a view with privileges, an owner, and a comment", func() {
-			viewOne := backup.View{0, "public", "WowZa", "SELECT rolname FROM pg_role;", []string{}}
-			viewTwo := backup.View{1, "shamwow", "shazam", "SELECT count(*) FROM pg_tables;", []string{}}
+			viewOne := backup.View{Oid: 0, SchemaName: "public", ViewName: "WowZa", Definition: "SELECT rolname FROM pg_role;", DependsUpon: []string{}}
+			viewTwo := backup.View{Oid: 1, SchemaName: "shamwow", ViewName: "shazam", Definition: "SELECT count(*) FROM pg_tables;", DependsUpon: []string{}}
 			viewMetadataMap := testutils.DefaultMetadataMap("VIEW", true, true, true)
 			backup.PrintCreateViewStatements(backupfile, toc, []backup.View{viewOne, viewTwo}, viewMetadataMap)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer,
@@ -741,7 +741,7 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 	})
 	Describe("PrintAlterSequenceStatements", func() {
 		baseSequence := backup.BasicRelation("public", "seq_name")
-		seqDefault := backup.Sequence{baseSequence, backup.SequenceDefinition{"seq_name", 7, 1, 9223372036854775807, 1, 5, 42, false, true}}
+		seqDefault := backup.Sequence{Relation: baseSequence, SequenceDefinition: backup.SequenceDefinition{Name: "seq_name", LastVal: 7, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 5, LogCnt: 42, IsCycled: false, IsCalled: true}}
 		emptyColumnOwnerMap := make(map[string]string, 0)
 		columnOwnerMap := map[string]string{"public.seq_name": "tablename.col_one"}
 		It("prints nothing for a sequence without an owning column", func() {
