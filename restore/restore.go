@@ -86,6 +86,7 @@ func DoSetup() {
 
 	reportFile := utils.MustOpenFileForReading(globalCluster.GetReportFilePath())
 	backupReport = utils.ReadReportFile(reportFile)
+	utils.EnsureBackupVersionCompatibility(backupReport.BackupVersion, version)
 }
 
 func DoRestore() {

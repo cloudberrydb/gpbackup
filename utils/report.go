@@ -7,6 +7,9 @@ import (
 	"os"
 	"sort"
 	"strings"
+
+	"github.com/blang/semver"
+	"github.com/pkg/errors"
 )
 
 /*
@@ -87,4 +90,25 @@ func ReadReportFile(reportFile io.Reader) Report {
 		}
 	}
 	return backupReport
+}
+
+/*
+ * This function will not error out if the user has gprestore X.Y.Z
+ * and gpbackup X.Y.Z+dev, when technically the uncommitted code changes
+ * in the +dev version of gpbackup may have incompatibilities with the
+ * committed version of gprestore.
+ *
+ * We assume this condition will never arise in practice, as gpbackup and
+ * gprestore will be built with identical versions during development, and
+ * users will never use a +dev version in production.
+ */
+func EnsureBackupVersionCompatibility(backupVersion string, restoreVersion string) {
+	backupSemVer, err := semver.Make(backupVersion)
+	CheckError(err)
+	restoreSemVer, err := semver.Make(restoreVersion)
+	CheckError(err)
+	if backupSemVer.GT(restoreSemVer) {
+		logger.Fatal(errors.Errorf("gprestore %s cannot restore a backup taken with gpbackup %s; please use gprestore %s or later.",
+			restoreVersion, backupVersion, backupVersion), "")
+	}
 }

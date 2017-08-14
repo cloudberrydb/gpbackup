@@ -8,7 +8,7 @@ DIR_PATH=$(shell dirname `pwd`)
 BIN_DIR=$(HOME)/go/bin
 
 GIT_VERSION := $(shell git describe --tags | awk -F "-" '{$$2+=0; print $$1 "." $$2}')
-DEV_VERSION := $(shell git diff | wc -l | awk '{if($$1!=0) {print "_dev"}}')
+DEV_VERSION := $(shell git diff | wc -l | awk '{if($$1!=0) {print "+dev"}}')
 BACKUP_VERSION_STR="-X github.com/greenplum-db/gpbackup/backup.version=$(GIT_VERSION)$(DEV_VERSION)"
 RESTORE_VERSION_STR="-X github.com/greenplum-db/gpbackup/restore.version=$(GIT_VERSION)$(DEV_VERSION)"
 
@@ -19,6 +19,7 @@ GOFLAGS :=
 .PHONY : coverage integration update_pipeline
 
 dependencies :
+		go get github.com/blang/semver
 		go get github.com/jmoiron/sqlx
 		go get github.com/lib/pq
 		go get github.com/maxbrunsfeld/counterfeiter
