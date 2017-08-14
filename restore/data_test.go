@@ -13,11 +13,6 @@ import (
 )
 
 var _ = Describe("restore/data tests", func() {
-	var connection *utils.DBConn
-	var mock sqlmock.Sqlmock
-	BeforeEach(func() {
-		connection, mock = testutils.CreateAndConnectMockDB()
-	})
 	Describe("CopyTableIn", func() {
 		It("will dump a table to its own file", func() {
 			execStr := "COPY public.foo FROM '<SEG_DATA_DIR>/backups/20170101/20170101010101/gpbackup_<SEGID>_20170101010101_3456' WITH CSV DELIMITER ',' ON SEGMENT;"

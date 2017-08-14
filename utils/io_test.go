@@ -15,13 +15,6 @@ import (
 )
 
 var _ = Describe("utils/io tests", func() {
-	var connection *utils.DBConn
-	var mock sqlmock.Sqlmock
-
-	BeforeEach(func() {
-		connection, mock = testutils.CreateAndConnectMockDB()
-		testutils.SetupTestLogger()
-	})
 	Describe("QuoteIdent", func() {
 		It("does not quote a string that contains no special characters", func() {
 			name := `_tablename1`

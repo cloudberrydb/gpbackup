@@ -10,6 +10,16 @@ import (
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
+/*
+ * This struct holds information that will be printed to the report file
+ * after a backup that we will want to read in for a restore.
+ */
+type Report struct {
+	DatabaseVersion string
+	BackupVersion   string
+	BackupType      string
+}
+
 func ParseErrorMessage(err interface{}) (string, int) {
 	if err == nil {
 		return "", 0
@@ -22,7 +32,7 @@ func ParseErrorMessage(err interface{}) (string, int) {
 	return errMsg, exitCode
 }
 
-func WriteReportFile(connection *utils.DBConn, reportFile io.Writer, objectCounts map[string]int, errMsg string) {
+func WriteReportFile(connection *utils.DBConn, reportFile io.Writer, report Report, objectCounts map[string]int, dbsize string, errMsg string) {
 	reportFileTemplate := `Greenplum Database Backup Report
 
 Timestamp Key: %s
@@ -32,17 +42,16 @@ gpbackup Version: %s
 Command Line: %s
 Backup Type: %s
 Backup Status: %s
-%s`
+%s
+Database Size: %s`
 
 	gpbackupCommandLine := strings.Join(os.Args, " ")
-	backupType := "Full Unfiltered"
 	backupStatus := "Success"
-	gpdbVersion := connection.GPDBVersion
 	if errMsg != "" {
 		backupStatus = "Failure"
-		errMsg = "\nBackup Error: " + errMsg
+		errMsg = fmt.Sprintf("Backup Error: %s\n", errMsg)
 	}
-	utils.MustPrintf(reportFile, reportFileTemplate, globalCluster.Timestamp, gpdbVersion, version, gpbackupCommandLine, backupType, backupStatus, errMsg)
+	utils.MustPrintf(reportFile, reportFileTemplate, globalCluster.Timestamp, report.DatabaseVersion, report.BackupVersion, gpbackupCommandLine, report.BackupType, backupStatus, errMsg, dbsize)
 
 	objectStr := "\nCount of Database Objects in Backup:\n"
 	objectSlice := make([]string, 0)

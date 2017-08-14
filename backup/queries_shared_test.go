@@ -6,7 +6,6 @@ import (
 
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -14,12 +13,6 @@ import (
 )
 
 var _ = Describe("backup/queries_shared tests", func() {
-	var connection *utils.DBConn
-	var mock sqlmock.Sqlmock
-	BeforeEach(func() {
-		connection, mock = testutils.CreateAndConnectMockDB()
-	})
-
 	Describe("SelectString", func() {
 		header := []string{"string"}
 		rowOne := []driver.Value{"one"}

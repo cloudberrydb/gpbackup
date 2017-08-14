@@ -9,7 +9,10 @@ import (
 	"os/exec"
 	"testing"
 
+	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
+
 	"github.com/greenplum-db/gpbackup/testutils"
+	"github.com/greenplum-db/gpbackup/utils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -17,6 +20,12 @@ import (
 )
 
 var (
+	connection   *utils.DBConn
+	mock         sqlmock.Sqlmock
+	logger       *utils.Logger
+	stdout       *gbytes.Buffer
+	stderr       *gbytes.Buffer
+	logfile      *gbytes.Buffer
 	buffer       = gbytes.NewBuffer()
 	gpbackupPath = ""
 )
@@ -38,7 +47,7 @@ func TestBackup(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	testutils.SetupTestLogger()
+	connection, mock, logger, stdout, stderr, logfile = testutils.SetupTestEnvironment()
 })
 
 var _ = BeforeEach(func() {

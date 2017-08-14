@@ -14,6 +14,7 @@ var (
 	globalCluster utils.Cluster
 	version       string
 	objectCounts  map[string]int
+	backupReport  Report
 )
 
 var ( // Command-line flags
@@ -46,6 +47,14 @@ func SetLogger(log *utils.Logger) {
 	logger = log
 }
 
+func SetCluster(cluster utils.Cluster) {
+	globalCluster = cluster
+}
+
+func SetVersion(v string) {
+	version = v
+}
+
 /*
 * This function handles argument parsing and validation, e.g. checking that a passed filename exists.
 * It should only validate; initialization with any sort of side effects should go in DoInit or DoSetup.
@@ -72,7 +81,9 @@ func DoSetup() {
 	connection = utils.NewDBConn(*dbname)
 	connection.Connect()
 	connection.Exec("SET application_name TO 'gpbackup'")
-	connection.GetAndStoreGPDBVersion()
+	backupReport.BackupVersion = version
+	backupReport.DatabaseVersion = connection.GetDatabaseVersion()
+	backupReport.BackupType = "Unfiltered Full Backup"
 
 	logger.Verbose("Creating dump directories")
 	segConfig := utils.GetSegmentConfiguration(connection)
@@ -83,7 +94,6 @@ func DoSetup() {
 func DoBackup() {
 	logger.Info("Dump Key = %s", globalCluster.Timestamp)
 	logger.Info("Dump Database = %s", utils.QuoteIdent(connection.DBName))
-	logger.Info("Database Size = %s", connection.GetDBSize())
 
 	masterDumpDir := globalCluster.GetDirForContent(-1)
 	objectCounts = make(map[string]int, 0)
@@ -353,6 +363,7 @@ func DoTeardown() {
 		fmt.Println(err)
 	}
 	errMsg, exitCode := ParseErrorMessage(err)
+	dbsize := connection.GetDBSize()
 	if connection != nil {
 		connection.Close()
 	}
@@ -361,7 +372,7 @@ func DoTeardown() {
 	if globalCluster.Timestamp != "" {
 		reportFilename := globalCluster.GetReportFilePath()
 		reportFile := utils.MustOpenFileForWriting(reportFilename)
-		WriteReportFile(connection, reportFile, objectCounts, errMsg)
+		WriteReportFile(connection, reportFile, backupReport, objectCounts, dbsize, errMsg)
 	}
 
 	os.Exit(exitCode)

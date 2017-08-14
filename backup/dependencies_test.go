@@ -144,7 +144,6 @@ var _ = Describe("backup/dependencies tests", func() {
 	})
 	Describe("ConstructFunctionAndTypeDependencyLists", func() {
 		It("queries dependencies for functions and types", func() {
-			connection, mock := testutils.CreateAndConnectMockDB()
 			header := []string{"oid", "referencedobject"}
 			functionRows := sqlmock.NewRows(header).AddRow([]driver.Value{"1", "public.type"}...)
 			baseTypeRows := sqlmock.NewRows(header).AddRow([]driver.Value{"2", "public.func"}...)

@@ -118,7 +118,7 @@ var _ = Describe("utils/io tests", func() {
 		localSegOne := utils.SegConfig{0, "localhost", "/data/gpseg0"}
 		localSegTwo := utils.SegConfig{1, "localhost", "/data/gpseg1"}
 		remoteSegTwo := utils.SegConfig{1, "remotehost", "/data/gpseg1"}
-		Context("when base dir is not overridden", func() {
+		Context("when using default backup directories", func() {
 			It("generates table file path for copy command", func() {
 				cluster := utils.NewCluster(nil, "", "20170101010101")
 				Expect(cluster.GetTableBackupFilePathForCopyCommand(1234)).To(Equal("<SEG_DATA_DIR>/backups/20170101/20170101010101/gpbackup_<SEGID>_20170101010101_1234"))
@@ -156,8 +156,12 @@ var _ = Describe("utils/io tests", func() {
 				cluster := utils.NewCluster([]utils.SegConfig{masterSeg}, "", "20170101010101")
 				Expect(cluster.GetTableMapFilePath()).To(Equal("/data/gpseg-1/backups/20170101/20170101010101/gpbackup_20170101010101_table_map"))
 			})
+			It("GetReportFilePath() uses segment configuration for backup directory", func() {
+				cluster := utils.NewCluster([]utils.SegConfig{masterSeg}, "", "20170101010101")
+				Expect(cluster.GetReportFilePath()).To(Equal("/data/gpseg-1/backups/20170101/20170101010101/gpbackup_20170101010101_report"))
+			})
 		})
-		Context("when base dir is overridden", func() {
+		Context("when using user-specified backup directories", func() {
 			It("GetDirForContent() uses user specified path for the content directory", func() {
 				cluster := utils.NewCluster([]utils.SegConfig{masterSeg}, "/foo/bar", "20170101010101")
 				Expect(cluster.GetDirForContent(-1)).To(Equal("/foo/bar/gpseg-1/backups/20170101/20170101010101"))
@@ -169,6 +173,10 @@ var _ = Describe("utils/io tests", func() {
 			It("GetTableMapFilePath() uses user specified path for table backup file", func() {
 				cluster := utils.NewCluster(nil, "/foo/bar", "20170101010101")
 				Expect(cluster.GetTableMapFilePath()).To(Equal("/foo/bar/gpseg-1/backups/20170101/20170101010101/gpbackup_20170101010101_table_map"))
+			})
+			It("GetReportFilePath() uses user specified path for table backup file", func() {
+				cluster := utils.NewCluster(nil, "/foo/bar", "20170101010101")
+				Expect(cluster.GetReportFilePath()).To(Equal("/foo/bar/gpseg-1/backups/20170101/20170101010101/gpbackup_20170101010101_report"))
 			})
 		})
 	})

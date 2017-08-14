@@ -9,13 +9,25 @@ import (
 	"os/exec"
 	"testing"
 
+	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
+
 	"github.com/greenplum-db/gpbackup/testutils"
+	"github.com/greenplum-db/gpbackup/utils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 )
 
-var gprestorePath = ""
+var (
+	connection    *utils.DBConn
+	mock          sqlmock.Sqlmock
+	logger        *utils.Logger
+	stdout        *gbytes.Buffer
+	stderr        *gbytes.Buffer
+	logfile       *gbytes.Buffer
+	gprestorePath = ""
+)
 
 /* This function is a helper function to execute gprestore and return a session
  * to allow checking its output.
@@ -34,5 +46,5 @@ func TestRestore(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	testutils.SetupTestLogger()
+	connection, mock, logger, stdout, stderr, logfile = testutils.SetupTestEnvironment()
 })

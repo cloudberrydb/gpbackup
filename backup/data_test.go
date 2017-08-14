@@ -13,11 +13,6 @@ import (
 )
 
 var _ = Describe("backup/data tests", func() {
-	var connection *utils.DBConn
-	var mock sqlmock.Sqlmock
-	BeforeEach(func() {
-		connection, mock = testutils.CreateAndConnectMockDB()
-	})
 	Describe("CopyTableOut", func() {
 		It("will dump a table to its own file", func() {
 			testTable := backup.Relation{2345, 3456, "public", "foo", nil, nil}

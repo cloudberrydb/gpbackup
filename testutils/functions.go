@@ -20,6 +20,15 @@ import (
  * Functions for setting up the test environment and mocking out variables
  */
 
+func SetupTestEnvironment() (*utils.DBConn, sqlmock.Sqlmock, *utils.Logger, *gbytes.Buffer, *gbytes.Buffer, *gbytes.Buffer) {
+	connection, mock := CreateAndConnectMockDB()
+	testLogger, testStdout, testStderr, testLogfile := SetupTestLogger()
+	SetupTestCluster()
+	utils.System = utils.InitializeSystemFunctions()
+	backup.SetVersion("0.1.0")
+	return connection, mock, testLogger, testStdout, testStderr, testLogfile
+}
+
 func CreateAndConnectMockDB() (*utils.DBConn, sqlmock.Sqlmock) {
 	mockdb, mock := CreateMockDB()
 	driver := TestDriver{DB: mockdb, DBName: "testdb", User: "testrole"}
@@ -42,6 +51,11 @@ func SetupTestLogger() (*utils.Logger, *gbytes.Buffer, *gbytes.Buffer, *gbytes.B
 	backup.SetLogger(testLogger)
 	utils.SetLogger(testLogger)
 	return testLogger, testStdout, testStderr, testLogfile
+}
+
+func SetupTestCluster() {
+	testCluster := SetDefaultSegmentConfiguration()
+	backup.SetCluster(testCluster)
 }
 
 func CreateMockDB() (*sqlx.DB, sqlmock.Sqlmock) {
