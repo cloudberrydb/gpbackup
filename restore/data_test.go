@@ -34,9 +34,8 @@ public."contains: delimiter": 3456`)
 		expectedTableMap := map[string]uint32{`public.foo`: 1234, `public."bar%baz"`: 2345, `public."contains: delimiter"`: 3456}
 
 		It("reads a map file containing multiple tables, one containing the map delimiter", func() {
-			filePath := ""
 			r, w, _ := os.Pipe()
-			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) { filePath = name; return r, nil }
+			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) { return r, nil }
 			defer func() { utils.System.OpenFile = os.OpenFile }()
 			w.Write(tableMapFileContents)
 			w.Close()

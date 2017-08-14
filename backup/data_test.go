@@ -37,9 +37,8 @@ var _ = Describe("backup/data tests", func() {
 			tableDefs map[uint32]backup.TableDefinition
 		)
 		BeforeEach(func() {
-			filePath := ""
 			r, w, _ = os.Pipe()
-			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) { filePath = name; return w, nil }
+			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) { return w, nil }
 			tableDefs = map[uint32]backup.TableDefinition{}
 		})
 		AfterEach(func() {

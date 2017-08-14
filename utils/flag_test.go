@@ -34,14 +34,11 @@ var _ = Describe("utils/flag tests", func() {
 		})
 	})
 	Context("Flag parsing functions ", func() {
-		var testString *string
-		var testBool *bool
-		var testInt *int
 		BeforeEach(func() {
 			flag.CommandLine = flag.NewFlagSet("", flag.ContinueOnError)
-			testString = flag.String("stringFlag", "", "This is a sample string flag.")
-			testBool = flag.Bool("boolFlag", false, "This is a sample bool flag.")
-			testInt = flag.Int("intFlag", 0, "This is a sample int flag.")
+			_ = flag.String("stringFlag", "", "This is a sample string flag.")
+			_ = flag.Bool("boolFlag", false, "This is a sample bool flag.")
+			_ = flag.Int("intFlag", 0, "This is a sample int flag.")
 		})
 		Context("CheckMandatoryFlags", func() {
 			It("does not panic if a mandatory flag is set", func() {

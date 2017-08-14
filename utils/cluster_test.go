@@ -10,12 +10,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
 
 var _ = Describe("utils/io tests", func() {
-	var connection *utils.DBConn
-	var mock sqlmock.Sqlmock
 
 	masterSeg := utils.SegConfig{-1, "localhost", "/data/gpseg-1"}
 	localSegOne := utils.SegConfig{0, "localhost", "/data/gpseg0"}
@@ -23,7 +20,6 @@ var _ = Describe("utils/io tests", func() {
 	remoteSegTwo := utils.SegConfig{2, "remotehost2", "/data/gpseg2"}
 
 	BeforeEach(func() {
-		connection, mock = testutils.CreateAndConnectMockDB()
 		testutils.SetupTestLogger()
 		utils.System.CurrentUser = func() (*user.User, error) { return &user.User{Username: "testUser", HomeDir: "testDir"}, nil }
 		utils.System.Hostname = func() (string, error) { return "testHost", nil }

@@ -45,8 +45,6 @@ var _ = Describe("backup integration create statement tests", func() {
 	})
 	Describe("PrintConstraintStatements", func() {
 		var (
-			testTable                backup.Relation
-			tableOid                 uint32
 			uniqueConstraint         backup.Constraint
 			pkConstraint             backup.Constraint
 			fkConstraint             backup.Constraint
@@ -55,14 +53,12 @@ var _ = Describe("backup integration create statement tests", func() {
 			conMetadataMap           backup.MetadataMap
 		)
 		BeforeEach(func() {
-			testTable = backup.BasicRelation("public", "testtable")
 			uniqueConstraint = backup.Constraint{0, "uniq2", "u", "UNIQUE (a, b)", "public.testtable", false, false}
 			pkConstraint = backup.Constraint{0, "constraints_other_table_pkey", "p", "PRIMARY KEY (b)", "public.constraints_other_table", false, false}
 			fkConstraint = backup.Constraint{0, "fk1", "f", "FOREIGN KEY (b) REFERENCES constraints_other_table(b)", "public.testtable", false, false}
 			checkConstraint = backup.Constraint{0, "check1", "c", "CHECK (a <> 42)", "public.testtable", false, false}
 			partitionCheckConstraint = backup.Constraint{0, "check1", "c", "CHECK (id <> 0)", "public.part", false, true}
 			testutils.AssertQueryRuns(connection, "CREATE TABLE public.testtable(a int, b text) DISTRIBUTED BY (b)")
-			tableOid = testutils.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
 			conMetadataMap = backup.MetadataMap{}
 		})
 		AfterEach(func() {
