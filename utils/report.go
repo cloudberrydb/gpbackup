@@ -1,13 +1,12 @@
-package backup
+package utils
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
 	"sort"
 	"strings"
-
-	"github.com/greenplum-db/gpbackup/utils"
 )
 
 /*
@@ -15,6 +14,7 @@ import (
  * after a backup that we will want to read in for a restore.
  */
 type Report struct {
+	DatabaseName    string
 	DatabaseVersion string
 	BackupVersion   string
 	BackupType      string
@@ -32,13 +32,14 @@ func ParseErrorMessage(err interface{}) (string, int) {
 	return errMsg, exitCode
 }
 
-func WriteReportFile(connection *utils.DBConn, reportFile io.Writer, report Report, objectCounts map[string]int, dbsize string, errMsg string) {
+func WriteReportFile(connection *DBConn, reportFile io.Writer, timestamp string, report Report, objectCounts map[string]int, dbsize string, errMsg string) {
 	reportFileTemplate := `Greenplum Database Backup Report
 
 Timestamp Key: %s
 GPDB Version: %s
 gpbackup Version: %s
 
+Database Name: %s
 Command Line: %s
 Backup Type: %s
 Backup Status: %s
@@ -51,7 +52,7 @@ Database Size: %s`
 		backupStatus = "Failure"
 		errMsg = fmt.Sprintf("Backup Error: %s\n", errMsg)
 	}
-	utils.MustPrintf(reportFile, reportFileTemplate, globalCluster.Timestamp, report.DatabaseVersion, report.BackupVersion, gpbackupCommandLine, report.BackupType, backupStatus, errMsg, dbsize)
+	MustPrintf(reportFile, reportFileTemplate, timestamp, report.DatabaseVersion, report.BackupVersion, report.DatabaseName, gpbackupCommandLine, report.BackupType, backupStatus, errMsg, dbsize)
 
 	objectStr := "\nCount of Database Objects in Backup:\n"
 	objectSlice := make([]string, 0)
@@ -63,5 +64,27 @@ Database Size: %s`
 		objectStr += fmt.Sprintf("%-25s\t%d\n", object, objectCounts[object])
 
 	}
-	utils.MustPrintf(reportFile, objectStr)
+	MustPrintf(reportFile, objectStr)
+}
+
+func ReadReportFile(reportFile io.Reader) Report {
+	scanner := bufio.NewScanner(reportFile)
+	backupReport := Report{}
+	for scanner.Scan() {
+		tokens := strings.SplitN(scanner.Text(), ": ", 2)
+		if tokens[0] == "GPDB Version" {
+			backupReport.DatabaseVersion = tokens[1]
+		}
+		if tokens[0] == "gpbackup Version" {
+			backupReport.BackupVersion = tokens[1]
+		}
+		if tokens[0] == "Database Name" {
+			backupReport.DatabaseName = tokens[1]
+		}
+		if tokens[0] == "Backup Type" {
+			backupReport.BackupType = tokens[1]
+			break // We don't care about the report file contents after this line
+		}
+	}
+	return backupReport
 }

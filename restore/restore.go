@@ -14,6 +14,7 @@ var (
 	connection    *utils.DBConn
 	logger        *utils.Logger
 	globalCluster utils.Cluster
+	backupReport  utils.Report
 	version       string
 )
 
@@ -82,6 +83,9 @@ func DoSetup() {
 	logger.Verbose("Gathering information on dump directories")
 	segConfig := utils.GetSegmentConfiguration(connection)
 	globalCluster = utils.NewCluster(segConfig, *dumpDir, *timestamp)
+
+	reportFile := utils.MustOpenFileForReading(globalCluster.GetReportFilePath())
+	backupReport = utils.ReadReportFile(reportFile)
 }
 
 func DoRestore() {
@@ -102,7 +106,7 @@ func DoRestore() {
 	}
 
 	connection.Close()
-	dbname := GetDatabaseNameFromPredataFile(predataFilename)
+	dbname := backupReport.DatabaseName
 	connection = utils.NewDBConn(dbname)
 	connection.Connect()
 	connection.Exec("SET application_name TO 'gprestore'")

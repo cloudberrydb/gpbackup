@@ -40,11 +40,3 @@ func CopyTableIn(connection *utils.DBConn, tableName string, dumpFile string) {
 	_, err := connection.Exec(query)
 	utils.CheckError(err)
 }
-
-func GetDatabaseNameFromPredataFile(predataFilename string) string {
-	predataFile := utils.MustOpenFileForReading(predataFilename)
-	scanner := bufio.NewScanner(predataFile)
-	scanner.Scan() // We're looking for the "\c [database name]" which will always be the first line in the file
-	utils.CheckError(scanner.Err())
-	return scanner.Text()[3:]
-}

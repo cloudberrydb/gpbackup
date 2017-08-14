@@ -12,9 +12,9 @@ var (
 	connection    *utils.DBConn
 	logger        *utils.Logger
 	globalCluster utils.Cluster
-	version       string
 	objectCounts  map[string]int
-	backupReport  Report
+	backupReport  utils.Report
+	version       string
 )
 
 var ( // Command-line flags
@@ -81,8 +81,9 @@ func DoSetup() {
 	connection = utils.NewDBConn(*dbname)
 	connection.Connect()
 	connection.Exec("SET application_name TO 'gpbackup'")
-	backupReport.BackupVersion = version
+	backupReport.DatabaseName = connection.DBName
 	backupReport.DatabaseVersion = connection.GetDatabaseVersion()
+	backupReport.BackupVersion = version
 	backupReport.BackupType = "Unfiltered Full Backup"
 
 	logger.Verbose("Creating dump directories")
@@ -362,7 +363,7 @@ func DoTeardown() {
 	if err = recover(); err != nil {
 		fmt.Println(err)
 	}
-	errMsg, exitCode := ParseErrorMessage(err)
+	errMsg, exitCode := utils.ParseErrorMessage(err)
 	dbsize := connection.GetDBSize()
 	if connection != nil {
 		connection.Close()
@@ -372,7 +373,7 @@ func DoTeardown() {
 	if globalCluster.Timestamp != "" {
 		reportFilename := globalCluster.GetReportFilePath()
 		reportFile := utils.MustOpenFileForWriting(reportFilename)
-		WriteReportFile(connection, reportFile, backupReport, objectCounts, dbsize, errMsg)
+		utils.WriteReportFile(connection, reportFile, globalCluster.Timestamp, backupReport, objectCounts, dbsize, errMsg)
 	}
 
 	os.Exit(exitCode)

@@ -47,7 +47,7 @@ SELECT
 	(
 		array_to_string(ARRAY(SELECT pg_catalog.quote_ident(option_name) || ' ' || pg_catalog.quote_literal(option_value)
 		FROM pg_options_to_table(options)
-		ORDER BY option_name), E'\n\t')
+		ORDER BY option_name), E',\n\t')
 	) AS options,
 	coalesce(command, '') AS command,
 	coalesce(rejectlimit, 0) AS rejectlimit,
