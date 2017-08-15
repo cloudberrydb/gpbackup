@@ -34,10 +34,7 @@ func NewDBConn(dbname string) *DBConn {
 	currentUser, _, currentHost := GetUserAndHostInfo()
 	username = TryEnv("PGUSER", currentUser)
 	if dbname == "" {
-		dbname = TryEnv("PGDATABASE", "")
-	}
-	if dbname == "" {
-		logger.Fatal(errors.New("No database provided and PGDATABASE not set"), "")
+		logger.Fatal(errors.New("No database provided"), "")
 	}
 	host = TryEnv("PGHOST", currentHost)
 	port, _ = strconv.Atoi(TryEnv("PGPORT", "5432"))

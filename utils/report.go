@@ -17,10 +17,11 @@ import (
  * after a backup that we will want to read in for a restore.
  */
 type Report struct {
-	DatabaseName    string
-	DatabaseVersion string
-	BackupVersion   string
 	BackupType      string
+	BackupVersion   string
+	DatabaseName    string
+	DatabaseSize    string
+	DatabaseVersion string
 }
 
 func ParseErrorMessage(err interface{}) (string, int) {
@@ -35,7 +36,7 @@ func ParseErrorMessage(err interface{}) (string, int) {
 	return errMsg, exitCode
 }
 
-func WriteReportFile(connection *DBConn, reportFile io.Writer, timestamp string, report Report, objectCounts map[string]int, dbsize string, errMsg string) {
+func WriteReportFile(connection *DBConn, reportFile io.Writer, timestamp string, report Report, objectCounts map[string]int, errMsg string) {
 	reportFileTemplate := `Greenplum Database Backup Report
 
 Timestamp Key: %s
@@ -55,7 +56,8 @@ Database Size: %s`
 		backupStatus = "Failure"
 		errMsg = fmt.Sprintf("Backup Error: %s\n", errMsg)
 	}
-	MustPrintf(reportFile, reportFileTemplate, timestamp, report.DatabaseVersion, report.BackupVersion, report.DatabaseName, gpbackupCommandLine, report.BackupType, backupStatus, errMsg, dbsize)
+	MustPrintf(reportFile, reportFileTemplate, timestamp, report.DatabaseVersion, report.BackupVersion, report.DatabaseName,
+		gpbackupCommandLine, report.BackupType, backupStatus, errMsg, report.DatabaseSize)
 
 	objectStr := "\nCount of Database Objects in Backup:\n"
 	objectSlice := make([]string, 0)

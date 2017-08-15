@@ -27,11 +27,17 @@ var _ = Describe("utils/report tests", func() {
 	})
 	Describe("WriteReportFile", func() {
 		timestamp := "20170101010101"
-		backupReport := utils.Report{DatabaseName: "testdb", DatabaseVersion: "5.0.0 build test", BackupVersion: "0.1.0", BackupType: "Unfiltered Full Backup"}
+		backupReport := utils.Report{
+			BackupType:      "Unfiltered Full Backup",
+			BackupVersion:   "0.1.0",
+			DatabaseName:    "testdb",
+			DatabaseSize:    "42 MB",
+			DatabaseVersion: "5.0.0 build test",
+		}
 		objectCounts := map[string]int{"tables": 42, "sequences": 1, "types": 1000}
 
 		It("writes a report for a successful backup", func() {
-			utils.WriteReportFile(connection, buffer, timestamp, backupReport, objectCounts, "42 MB", "")
+			utils.WriteReportFile(connection, buffer, timestamp, backupReport, objectCounts, "")
 			Expect(buffer).To(gbytes.Say(`Greenplum Database Backup Report
 
 Timestamp Key: 20170101010101
@@ -50,7 +56,7 @@ tables                   	42
 types                    	1000`))
 		})
 		It("writes a report for a failed backup", func() {
-			utils.WriteReportFile(connection, buffer, timestamp, backupReport, objectCounts, "42 MB", "Cannot access /tmp/backups: Permission denied")
+			utils.WriteReportFile(connection, buffer, timestamp, backupReport, objectCounts, "Cannot access /tmp/backups: Permission denied")
 			Expect(buffer).To(gbytes.Say(`Greenplum Database Backup Report
 
 Timestamp Key: 20170101010101

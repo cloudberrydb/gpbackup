@@ -26,20 +26,8 @@ var _ = Describe("utils/db tests", func() {
 			connection = utils.NewDBConn("testdb")
 			Expect(connection.DBName).To(Equal("testdb"))
 		})
-		It("gets the DBName from PGDATABASE if the dbname flag is not set", func() {
-			oldPgDatabase := os.Getenv("PGDATABASE")
-			os.Setenv("PGDATABASE", "testdb")
-			defer os.Setenv("PGDATABASE", oldPgDatabase)
-
-			connection = utils.NewDBConn("")
-			Expect(connection.DBName).To(Equal("testdb"))
-		})
-		It("fails if no database is given with either -dbname or PGDATABASE", func() {
-			oldPgDatabase := os.Getenv("PGDATABASE")
-			os.Setenv("PGDATABASE", "")
-			defer os.Setenv("PGDATABASE", oldPgDatabase)
-
-			defer testutils.ShouldPanicWithMessage("No database provided and PGDATABASE not set")
+		It("fails if no database is given with the dbname flag", func() {
+			defer testutils.ShouldPanicWithMessage("No database provided")
 			connection = utils.NewDBConn("")
 		})
 	})

@@ -54,6 +54,10 @@ func SetLogger(log *utils.Logger) {
  */
 func DoValidation() {
 	initializeFlags()
+	if len(os.Args) == 1 {
+		flag.PrintDefaults()
+		os.Exit(0)
+	}
 	flag.Parse()
 	if *printVersion {
 		fmt.Printf("gprestore %s\n", version)
