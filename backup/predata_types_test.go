@@ -3,26 +3,33 @@ package backup_test
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
+	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("backup/predata_types tests", func() {
+	var toc *utils.TOC
+	var backupfile *utils.FileWithByteCount
+
 	typeMetadata := backup.ObjectMetadata{}
 	typeMetadataMap := backup.MetadataMap{}
 
 	BeforeEach(func() {
 		typeMetadata = backup.ObjectMetadata{}
 		typeMetadataMap = backup.MetadataMap{}
+		toc = &utils.TOC{}
+		backupfile = utils.NewFileWithByteCount(buffer)
 	})
 	Describe("PrintCreateEnumTypeStatements", func() {
 		enumOne := backup.Type{Oid: 1, TypeSchema: "public", TypeName: "enum_type", Type: "e", EnumLabels: "'bar',\n\t'baz',\n\t'foo'"}
 		enumTwo := backup.Type{Oid: 1, TypeSchema: "public", TypeName: "enum_type", Type: "e", EnumLabels: "'bar',\n\t'baz',\n\t'foo'"}
 
 		It("prints an enum type with multiple attributes", func() {
-			backup.PrintCreateEnumTypeStatements(buffer, []backup.Type{enumOne}, typeMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE TYPE public.enum_type AS ENUM (
+			backup.PrintCreateEnumTypeStatements(backupfile, toc, []backup.Type{enumOne}, typeMetadataMap)
+			testutils.ExpectEntry(toc.PredataEntries, 0, "public", "enum_type", "TYPE")
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE TYPE public.enum_type AS ENUM (
 	'bar',
 	'baz',
 	'foo'
@@ -30,8 +37,8 @@ var _ = Describe("backup/predata_types tests", func() {
 		})
 		It("prints an enum type with comment and owner", func() {
 			typeMetadataMap = testutils.DefaultMetadataMap("TYPE", false, true, true)
-			backup.PrintCreateEnumTypeStatements(buffer, []backup.Type{enumTwo}, typeMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE TYPE public.enum_type AS ENUM (
+			backup.PrintCreateEnumTypeStatements(backupfile, toc, []backup.Type{enumTwo}, typeMetadataMap)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE TYPE public.enum_type AS ENUM (
 	'bar',
 	'baz',
 	'foo'
@@ -96,15 +103,16 @@ ALTER TYPE public.enum_type OWNER TO testrole;`)
 
 		It("prints a composite type with one attribute", func() {
 			compType.CompositeAtts = oneAtt
-			backup.PrintCreateCompositeTypeStatement(buffer, compType, typeMetadata)
-			testutils.ExpectRegexp(buffer, `CREATE TYPE public.composite_type AS (
+			backup.PrintCreateCompositeTypeStatement(backupfile, toc, compType, typeMetadata)
+			testutils.ExpectEntry(toc.PredataEntries, 0, "public", "composite_type", "TYPE")
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE TYPE public.composite_type AS (
 	foo integer
 );`)
 		})
 		It("prints a composite type with multiple attributes", func() {
 			compType.CompositeAtts = twoAtts
-			backup.PrintCreateCompositeTypeStatement(buffer, compType, typeMetadata)
-			testutils.ExpectRegexp(buffer, `CREATE TYPE public.composite_type AS (
+			backup.PrintCreateCompositeTypeStatement(backupfile, toc, compType, typeMetadata)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE TYPE public.composite_type AS (
 	foo integer,
 	bar text
 );`)
@@ -112,8 +120,8 @@ ALTER TYPE public.enum_type OWNER TO testrole;`)
 		It("prints a composite type with comment and owner", func() {
 			compType.CompositeAtts = twoAtts
 			typeMetadata = testutils.DefaultMetadataMap("TYPE", false, true, true)[1]
-			backup.PrintCreateCompositeTypeStatement(buffer, compType, typeMetadata)
-			testutils.ExpectRegexp(buffer, `CREATE TYPE public.composite_type AS (
+			backup.PrintCreateCompositeTypeStatement(backupfile, toc, compType, typeMetadata)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE TYPE public.composite_type AS (
 	foo integer,
 	bar text
 );
@@ -139,15 +147,16 @@ ALTER TYPE public.composite_type OWNER TO testrole;`)
 			"", "", "", "", -1, false, "c", "p", "", "", "", "", "", false, nil, nil}
 
 		It("prints a base type with no optional arguments", func() {
-			backup.PrintCreateBaseTypeStatement(buffer, baseSimple, typeMetadata)
-			testutils.ExpectRegexp(buffer, `CREATE TYPE public.base_type (
+			backup.PrintCreateBaseTypeStatement(backupfile, toc, baseSimple, typeMetadata)
+			testutils.ExpectEntry(toc.PredataEntries, 0, "public", "base_type", "TYPE")
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE TYPE public.base_type (
 	INPUT = input_fn,
 	OUTPUT = output_fn
 );`)
 		})
 		It("prints a base type where all optional arguments have default values where possible", func() {
-			backup.PrintCreateBaseTypeStatement(buffer, basePartial, typeMetadata)
-			testutils.ExpectRegexp(buffer, `CREATE TYPE public.base_type (
+			backup.PrintCreateBaseTypeStatement(backupfile, toc, basePartial, typeMetadata)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE TYPE public.base_type (
 	INPUT = input_fn,
 	OUTPUT = output_fn,
 	RECEIVE = receive_fn,
@@ -160,8 +169,8 @@ ALTER TYPE public.composite_type OWNER TO testrole;`)
 );`)
 		})
 		It("prints a base type with all optional arguments provided", func() {
-			backup.PrintCreateBaseTypeStatement(buffer, baseFull, typeMetadata)
-			testutils.ExpectRegexp(buffer, `CREATE TYPE public.base_type (
+			backup.PrintCreateBaseTypeStatement(backupfile, toc, baseFull, typeMetadata)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE TYPE public.base_type (
 	INPUT = input_fn,
 	OUTPUT = output_fn,
 	RECEIVE = receive_fn,
@@ -178,8 +187,8 @@ ALTER TYPE public.composite_type OWNER TO testrole;`)
 );`)
 		})
 		It("prints a base type with double alignment and main storage", func() {
-			backup.PrintCreateBaseTypeStatement(buffer, basePermOne, typeMetadata)
-			testutils.ExpectRegexp(buffer, `CREATE TYPE public.base_type (
+			backup.PrintCreateBaseTypeStatement(backupfile, toc, basePermOne, typeMetadata)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE TYPE public.base_type (
 	INPUT = input_fn,
 	OUTPUT = output_fn,
 	ALIGNMENT = double,
@@ -187,8 +196,8 @@ ALTER TYPE public.composite_type OWNER TO testrole;`)
 );`)
 		})
 		It("prints a base type with int4 alignment and external storage", func() {
-			backup.PrintCreateBaseTypeStatement(buffer, basePermTwo, typeMetadata)
-			testutils.ExpectRegexp(buffer, `CREATE TYPE public.base_type (
+			backup.PrintCreateBaseTypeStatement(backupfile, toc, basePermTwo, typeMetadata)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE TYPE public.base_type (
 	INPUT = input_fn,
 	OUTPUT = output_fn,
 	ALIGNMENT = int4,
@@ -196,8 +205,8 @@ ALTER TYPE public.composite_type OWNER TO testrole;`)
 );`)
 		})
 		It("prints a base type with comment and owner", func() {
-			backup.PrintCreateBaseTypeStatement(buffer, baseCommentOwner, typeMetadata)
-			testutils.ExpectRegexp(buffer, `CREATE TYPE public.base_type (
+			backup.PrintCreateBaseTypeStatement(backupfile, toc, baseCommentOwner, typeMetadata)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE TYPE public.base_type (
 	INPUT = input_fn,
 	OUTPUT = output_fn
 );`)
@@ -212,9 +221,10 @@ ALTER TYPE public.composite_type OWNER TO testrole;`)
 		compTwo := backup.Type{Oid: 1, TypeSchema: "public", TypeName: "composite_type2", Type: "c", AttName: "bar", AttType: "integer"}
 		enumOne := backup.Type{Oid: 1, TypeSchema: "public", TypeName: "enum_type", Type: "e", EnumLabels: "'bar',\n\t'baz',\n\t'foo'"}
 		It("prints shell type for only a base type", func() {
-			backup.PrintCreateShellTypeStatements(buffer, []backup.Type{baseOne, baseTwo, compOne, compTwo, enumOne})
-			testutils.ExpectRegexp(buffer, `CREATE TYPE public.base_type1;
-CREATE TYPE public.base_type2;`)
+			backup.PrintCreateShellTypeStatements(backupfile, toc, []backup.Type{baseOne, baseTwo, compOne, compTwo, enumOne})
+			testutils.ExpectEntry(toc.PredataEntries, 0, "public", "base_type1", "TYPE")
+			testutils.ExpectEntry(toc.PredataEntries, 1, "public", "base_type2", "TYPE")
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, "CREATE TYPE public.base_type1;", "CREATE TYPE public.base_type2;")
 		})
 	})
 	Describe("PrintCreateDomainStatement", func() {
@@ -228,18 +238,19 @@ CREATE TYPE public.base_type2;`)
 		domainTwo := testutils.DefaultTypeDefinition("d", "domain2")
 		domainTwo.BaseType = "varchar"
 		It("prints a basic domain with a constraint", func() {
-			backup.PrintCreateDomainStatement(buffer, domainOne, emptyMetadata, checkConstraint)
-			testutils.ExpectRegexp(buffer, `CREATE DOMAIN public.domain1 AS numeric DEFAULT 4 NOT NULL
+			backup.PrintCreateDomainStatement(backupfile, toc, domainOne, emptyMetadata, checkConstraint)
+			testutils.ExpectEntry(toc.PredataEntries, 0, "public", "domain1", "DOMAIN")
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE DOMAIN public.domain1 AS numeric DEFAULT 4 NOT NULL
 	CONSTRAINT domain1_check CHECK (VALUE > 2);`)
 		})
 		It("prints a basic domain without constraint", func() {
-			backup.PrintCreateDomainStatement(buffer, domainOne, emptyMetadata, emptyConstraint)
-			testutils.ExpectRegexp(buffer, `CREATE DOMAIN public.domain1 AS numeric DEFAULT 4 NOT NULL;`)
+			backup.PrintCreateDomainStatement(backupfile, toc, domainOne, emptyMetadata, emptyConstraint)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE DOMAIN public.domain1 AS numeric DEFAULT 4 NOT NULL;`)
 		})
 		It("prints a domain without constraint with comment and owner", func() {
 			typeMetadata = testutils.DefaultMetadataMap("DOMAIN", false, true, true)[1]
-			backup.PrintCreateDomainStatement(buffer, domainTwo, typeMetadata, emptyConstraint)
-			testutils.ExpectRegexp(buffer, `CREATE DOMAIN public.domain2 AS varchar;
+			backup.PrintCreateDomainStatement(backupfile, toc, domainTwo, typeMetadata, emptyConstraint)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE DOMAIN public.domain2 AS varchar;
 
 
 COMMENT ON DOMAIN public.domain2 IS 'This is a domain comment.';

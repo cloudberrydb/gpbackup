@@ -5,19 +5,27 @@ import (
 
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
+	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("backup integration create statement tests", func() {
+	var toc *utils.TOC
+	var backupfile *utils.FileWithByteCount
+
+	BeforeEach(func() {
+		toc = &utils.TOC{}
+		backupfile = utils.NewFileWithByteCount(buffer)
+	})
 	Describe("PrintCreateResourceQueueStatements", func() {
 		It("creates a basic resource queue with a comment", func() {
 			basicQueue := backup.ResourceQueue{1, "basicQueue", -1, "32.80", false, "0.00", "medium", "-1"}
 			resQueueMetadataMap := testutils.DefaultMetadataMap("RESOURCE QUEUE", false, false, true)
 			resQueueMetadata := resQueueMetadataMap[1]
 
-			backup.PrintCreateResourceQueueStatements(buffer, []backup.ResourceQueue{basicQueue}, resQueueMetadataMap)
+			backup.PrintCreateResourceQueueStatements(backupfile, toc, []backup.ResourceQueue{basicQueue}, resQueueMetadataMap)
 
 			// CREATE RESOURCE QUEUE statements can not be part of a multi-command statement, so
 			// feed the CREATE RESOURCE QUEUE and COMMENT ON statements separately.
@@ -43,7 +51,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			everythingQueue := backup.ResourceQueue{1, "everythingQueue", 7, "32.80", true, "22.80", "low", "2GB"}
 			emptyMetadataMap := map[uint32]backup.ObjectMetadata{}
 
-			backup.PrintCreateResourceQueueStatements(buffer, []backup.ResourceQueue{everythingQueue}, emptyMetadataMap)
+			backup.PrintCreateResourceQueueStatements(backupfile, toc, []backup.ResourceQueue{everythingQueue}, emptyMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, `DROP RESOURCE QUEUE "everythingQueue"`)
@@ -82,7 +90,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			}
 			emptyMetadataMap := backup.MetadataMap{}
 
-			backup.PrintCreateRoleStatements(buffer, []backup.Role{role1}, emptyMetadataMap)
+			backup.PrintCreateRoleStatements(backupfile, toc, []backup.Role{role1}, emptyMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, `DROP ROLE "role1"`)
@@ -133,7 +141,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			}
 			metadataMap := testutils.DefaultMetadataMap("ROLE", false, false, true)
 
-			backup.PrintCreateRoleStatements(buffer, []backup.Role{role1}, metadataMap)
+			backup.PrintCreateRoleStatements(backupfile, toc, []backup.Role{role1}, metadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, `DROP ROLE "role1"`)
@@ -161,7 +169,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		It("grants a role without ADMIN OPTION", func() {
 			numRoleMembers := len(backup.GetRoleMembers(connection))
 			expectedRoleMember := backup.RoleMember{"usergroup", "testuser", "testrole", false}
-			backup.PrintRoleMembershipStatements(buffer, []backup.RoleMember{expectedRoleMember})
+			backup.PrintRoleMembershipStatements(backupfile, toc, []backup.RoleMember{expectedRoleMember})
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
@@ -178,7 +186,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		It("grants a role WITH ADMIN OPTION", func() {
 			numRoleMembers := len(backup.GetRoleMembers(connection))
 			expectedRoleMember := backup.RoleMember{"usergroup", "testuser", "testrole", true}
-			backup.PrintRoleMembershipStatements(buffer, []backup.RoleMember{expectedRoleMember})
+			backup.PrintRoleMembershipStatements(backupfile, toc, []backup.RoleMember{expectedRoleMember})
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
@@ -198,7 +206,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		It("creates a basic tablespace", func() {
 			numTablespaces := len(backup.GetTablespaces(connection))
 			emptyMetadataMap := backup.MetadataMap{}
-			backup.PrintCreateTablespaceStatements(buffer, []backup.Tablespace{expectedTablespace}, emptyMetadataMap)
+			backup.PrintCreateTablespaceStatements(backupfile, toc, []backup.Tablespace{expectedTablespace}, emptyMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")
@@ -217,7 +225,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			numTablespaces := len(backup.GetTablespaces(connection))
 			tablespaceMetadataMap := testutils.DefaultMetadataMap("TABLESPACE", true, true, true)
 			tablespaceMetadata := tablespaceMetadataMap[1]
-			backup.PrintCreateTablespaceStatements(buffer, []backup.Tablespace{expectedTablespace}, tablespaceMetadataMap)
+			backup.PrintCreateTablespaceStatements(backupfile, toc, []backup.Tablespace{expectedTablespace}, tablespaceMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")

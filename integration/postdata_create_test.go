@@ -3,12 +3,20 @@ package integration
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
+	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("backup integration create statement tests", func() {
+	var toc *utils.TOC
+	var backupfile *utils.FileWithByteCount
+
+	BeforeEach(func() {
+		toc = &utils.TOC{}
+		backupfile = utils.NewFileWithByteCount(buffer)
+	})
 	Describe("PrintCreateIndexStatements", func() {
 		var (
 			indexNameMap     map[string]bool
@@ -22,7 +30,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			indexes := []backup.QuerySimpleDefinition{
 				{0, "index1", "public", "testtable", "", "CREATE INDEX index1 ON testtable USING btree (i)"},
 			}
-			backup.PrintCreateIndexStatements(buffer, indexes, indexMetadataMap)
+			backup.PrintCreateIndexStatements(backupfile, toc, indexes, indexMetadataMap)
 
 			//Create table whose columns we can index
 			testutils.AssertQueryRuns(connection, "CREATE TABLE testtable(i int)")
@@ -40,7 +48,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			}
 			indexMetadataMap = testutils.DefaultMetadataMap("INDEX", false, false, true)
 			indexMetadata := indexMetadataMap[1]
-			backup.PrintCreateIndexStatements(buffer, indexes, indexMetadataMap)
+			backup.PrintCreateIndexStatements(backupfile, toc, indexes, indexMetadataMap)
 
 			//Create table whose columns we can index
 			testutils.AssertQueryRuns(connection, "CREATE TABLE testtable(i int)")
@@ -62,7 +70,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			indexes := []backup.QuerySimpleDefinition{
 				{0, "index1", "public", "testtable", "test_tablespace", "CREATE INDEX index1 ON testtable USING btree (i)"},
 			}
-			backup.PrintCreateIndexStatements(buffer, indexes, indexMetadataMap)
+			backup.PrintCreateIndexStatements(backupfile, toc, indexes, indexMetadataMap)
 
 			//Create table whose columns we can index
 			testutils.AssertQueryRuns(connection, "CREATE TABLE testtable(i int)")
@@ -86,7 +94,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			rules := []backup.QuerySimpleDefinition{
 				{0, "update_notify", "public", "testtable", "", "CREATE RULE update_notify AS ON UPDATE TO testtable DO NOTIFY testtable;"},
 			}
-			backup.PrintCreateRuleStatements(buffer, rules, ruleMetadataMap)
+			backup.PrintCreateRuleStatements(backupfile, toc, rules, ruleMetadataMap)
 
 			testutils.AssertQueryRuns(connection, "CREATE TABLE testtable(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE testtable")
@@ -103,7 +111,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			}
 			ruleMetadataMap = testutils.DefaultMetadataMap("RULE", false, false, true)
 			ruleMetadata := ruleMetadataMap[1]
-			backup.PrintCreateRuleStatements(buffer, rules, ruleMetadataMap)
+			backup.PrintCreateRuleStatements(backupfile, toc, rules, ruleMetadataMap)
 
 			testutils.AssertQueryRuns(connection, "CREATE TABLE testtable(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE testtable")
@@ -130,7 +138,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			triggers := []backup.QuerySimpleDefinition{
 				{0, "sync_testtable", "public", "testtable", "", "CREATE TRIGGER sync_testtable AFTER INSERT OR DELETE OR UPDATE ON testtable FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger()"},
 			}
-			backup.PrintCreateTriggerStatements(buffer, triggers, triggerMetadataMap)
+			backup.PrintCreateTriggerStatements(backupfile, toc, triggers, triggerMetadataMap)
 
 			testutils.AssertQueryRuns(connection, "CREATE TABLE testtable(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE testtable")
@@ -147,7 +155,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			}
 			triggerMetadataMap = testutils.DefaultMetadataMap("RULE", false, false, true)
 			triggerMetadata := triggerMetadataMap[1]
-			backup.PrintCreateTriggerStatements(buffer, triggers, triggerMetadataMap)
+			backup.PrintCreateTriggerStatements(backupfile, toc, triggers, triggerMetadataMap)
 
 			testutils.AssertQueryRuns(connection, "CREATE TABLE testtable(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE testtable")

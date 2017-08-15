@@ -3,17 +3,24 @@ package integration
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
+	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("backup integration create statement tests", func() {
+	var toc utils.TOC
+	var backupfile *utils.FileWithByteCount
+
+	BeforeEach(func() {
+		backupfile = utils.NewFileWithByteCount(buffer)
+	})
 	Describe("PrintCreateTextSearchParserStatements", func() {
 		It("creates a basic text search parser", func() {
 			parsers := []backup.TextSearchParser{{0, "public", "testparser", "prsd_start", "prsd_nexttoken", "prsd_end", "prsd_lextype", "prsd_headline"}}
 
-			backup.PrintCreateTextSearchParserStatements(buffer, parsers, backup.MetadataMap{})
+			backup.PrintCreateTextSearchParserStatements(backupfile, &toc, parsers, backup.MetadataMap{})
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH PARSER testparser")
@@ -28,7 +35,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			parserMetadataMap := testutils.DefaultMetadataMap("TEXT SEARCH PARSER", false, false, true)
 			parserMetadata := parserMetadataMap[1]
 
-			backup.PrintCreateTextSearchParserStatements(buffer, parsers, parserMetadataMap)
+			backup.PrintCreateTextSearchParserStatements(backupfile, &toc, parsers, parserMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH PARSER testparser")
@@ -47,7 +54,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		It("creates a basic text search template", func() {
 			templates := []backup.TextSearchTemplate{{0, "public", "testtemplate", "dsimple_init", "dsimple_lexize"}}
 
-			backup.PrintCreateTextSearchTemplateStatements(buffer, templates, backup.MetadataMap{})
+			backup.PrintCreateTextSearchTemplateStatements(backupfile, &toc, templates, backup.MetadataMap{})
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH TEMPLATE testtemplate")
@@ -62,7 +69,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			templateMetadataMap := testutils.DefaultMetadataMap("TEXT SEARCH TEMPLATE", false, false, true)
 			templateMetadata := templateMetadataMap[1]
 
-			backup.PrintCreateTextSearchTemplateStatements(buffer, templates, templateMetadataMap)
+			backup.PrintCreateTextSearchTemplateStatements(backupfile, &toc, templates, templateMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH TEMPLATE testtemplate")
@@ -81,7 +88,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		It("creates a basic text search dictionary", func() {
 			dictionaries := []backup.TextSearchDictionary{{0, "public", "testdictionary", "pg_catalog.snowball", "language = 'russian', stopwords = 'russian'"}}
 
-			backup.PrintCreateTextSearchDictionaryStatements(buffer, dictionaries, backup.MetadataMap{})
+			backup.PrintCreateTextSearchDictionaryStatements(backupfile, &toc, dictionaries, backup.MetadataMap{})
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH DICTIONARY testdictionary")
@@ -96,7 +103,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			dictionaryMetadataMap := testutils.DefaultMetadataMap("TEXT SEARCH DICTIONARY", false, true, true)
 			dictionaryMetadata := dictionaryMetadataMap[1]
 
-			backup.PrintCreateTextSearchDictionaryStatements(buffer, dictionaries, dictionaryMetadataMap)
+			backup.PrintCreateTextSearchDictionaryStatements(backupfile, &toc, dictionaries, dictionaryMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH DICTIONARY testdictionary")
@@ -115,7 +122,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		It("creates a basic text search configuration", func() {
 			configurations := []backup.TextSearchConfiguration{{0, "public", "testconfiguration", `pg_catalog."default"`, map[string][]string{}}}
 
-			backup.PrintCreateTextSearchConfigurationStatements(buffer, configurations, backup.MetadataMap{})
+			backup.PrintCreateTextSearchConfigurationStatements(backupfile, &toc, configurations, backup.MetadataMap{})
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH CONFIGURATION testconfiguration")
@@ -130,7 +137,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			configurationMetadataMap := testutils.DefaultMetadataMap("TEXT SEARCH CONFIGURATION", false, true, true)
 			configurationMetadata := configurationMetadataMap[1]
 
-			backup.PrintCreateTextSearchConfigurationStatements(buffer, configurations, configurationMetadataMap)
+			backup.PrintCreateTextSearchConfigurationStatements(backupfile, &toc, configurations, configurationMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH CONFIGURATION testconfiguration")

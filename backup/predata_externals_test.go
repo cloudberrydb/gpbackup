@@ -3,6 +3,7 @@ package backup_test
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
+	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -10,6 +11,12 @@ import (
 )
 
 var _ = Describe("backup/predata_externals tests", func() {
+	var toc *utils.TOC
+	var backupfile *utils.FileWithByteCount
+	BeforeEach(func() {
+		toc = &utils.TOC{}
+		backupfile = utils.NewFileWithByteCount(buffer)
+	})
 	testTable := backup.BasicRelation("public", "tablename")
 
 	distRandom := "DISTRIBUTED RANDOMLY"
@@ -95,8 +102,9 @@ var _ = Describe("backup/predata_externals tests", func() {
 			extTableDef.Location = "file://host:port/path/file"
 			extTableDef.URIs = []string{"file://host:port/path/file"}
 			tableDef.ExtTableDef = extTableDef
-			backup.PrintExternalTableCreateStatement(buffer, testTable, tableDef)
-			testutils.ExpectRegexp(buffer, `CREATE READABLE EXTERNAL TABLE public.tablename (
+			backup.PrintExternalTableCreateStatement(backupfile, toc, testTable, tableDef)
+			testutils.ExpectEntry(toc.PredataEntries, 0, "public", "tablename", "TABLE")
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE READABLE EXTERNAL TABLE public.tablename (
 ) LOCATION (
 	'file://host:port/path/file'
 )
@@ -108,8 +116,8 @@ ENCODING 'UTF-8';`)
 			extTableDef.URIs = []string{"file://host:port/path/file"}
 			extTableDef.Writable = true
 			tableDef.ExtTableDef = extTableDef
-			backup.PrintExternalTableCreateStatement(buffer, testTable, tableDef)
-			testutils.ExpectRegexp(buffer, `CREATE WRITABLE EXTERNAL TABLE public.tablename (
+			backup.PrintExternalTableCreateStatement(backupfile, toc, testTable, tableDef)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE WRITABLE EXTERNAL TABLE public.tablename (
 ) LOCATION (
 	'file://host:port/path/file'
 )
@@ -121,8 +129,8 @@ DISTRIBUTED RANDOMLY;`)
 			extTableDef.Location = "http://webhost:port/path/file"
 			extTableDef.URIs = []string{"http://webhost:port/path/file"}
 			tableDef.ExtTableDef = extTableDef
-			backup.PrintExternalTableCreateStatement(buffer, testTable, tableDef)
-			testutils.ExpectRegexp(buffer, `CREATE READABLE EXTERNAL WEB TABLE public.tablename (
+			backup.PrintExternalTableCreateStatement(backupfile, toc, testTable, tableDef)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE READABLE EXTERNAL WEB TABLE public.tablename (
 ) LOCATION (
 	'http://webhost:port/path/file'
 )
@@ -132,8 +140,8 @@ ENCODING 'UTF-8';`)
 		It("prints a CREATE block for a READABLE EXTERNAL WEB table with an EXECUTE", func() {
 			extTableDef.Command = "hostname"
 			tableDef.ExtTableDef = extTableDef
-			backup.PrintExternalTableCreateStatement(buffer, testTable, tableDef)
-			testutils.ExpectRegexp(buffer, `CREATE READABLE EXTERNAL WEB TABLE public.tablename (
+			backup.PrintExternalTableCreateStatement(backupfile, toc, testTable, tableDef)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE READABLE EXTERNAL WEB TABLE public.tablename (
 ) EXECUTE 'hostname'
 FORMAT 'text'
 ENCODING 'UTF-8';`)
@@ -142,8 +150,8 @@ ENCODING 'UTF-8';`)
 			extTableDef.Command = "hostname"
 			extTableDef.Writable = true
 			tableDef.ExtTableDef = extTableDef
-			backup.PrintExternalTableCreateStatement(buffer, testTable, tableDef)
-			testutils.ExpectRegexp(buffer, `CREATE WRITABLE EXTERNAL WEB TABLE public.tablename (
+			backup.PrintExternalTableCreateStatement(backupfile, toc, testTable, tableDef)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE WRITABLE EXTERNAL WEB TABLE public.tablename (
 ) EXECUTE 'hostname'
 FORMAT 'text'
 ENCODING 'UTF-8'
@@ -165,7 +173,7 @@ DISTRIBUTED RANDOMLY;`)
 			})
 			It("prints a CREATE block for a table in Avro format, no options provided", func() {
 				extTableDef.FormatType = "a"
-				backup.PrintExternalTableStatements(buffer, testTable, extTableDef)
+				backup.PrintExternalTableStatements(backupfile, testTable, extTableDef)
 				testutils.ExpectRegexp(buffer, `LOCATION (
 	'file://host:port/path/file'
 )
@@ -174,7 +182,7 @@ ENCODING 'UTF-8'`)
 			})
 			It("prints a CREATE block for a table in Parquet format, no options provided", func() {
 				extTableDef.FormatType = "p"
-				backup.PrintExternalTableStatements(buffer, testTable, extTableDef)
+				backup.PrintExternalTableStatements(backupfile, testTable, extTableDef)
 				testutils.ExpectRegexp(buffer, `LOCATION (
 	'file://host:port/path/file'
 )
@@ -184,7 +192,7 @@ ENCODING 'UTF-8'`)
 			It("prints a CREATE block for a table in CSV format, some options provided", func() {
 				extTableDef.FormatType = "c"
 				extTableDef.FormatOpts = `delimiter ',' null '' escape '"' quote '"'`
-				backup.PrintExternalTableStatements(buffer, testTable, extTableDef)
+				backup.PrintExternalTableStatements(backupfile, testTable, extTableDef)
 				testutils.ExpectRegexp(buffer, `LOCATION (
 	'file://host:port/path/file'
 )
@@ -194,7 +202,7 @@ ENCODING 'UTF-8'`)
 			It("prints a CREATE block for a table in text format, some options provided", func() {
 				extTableDef.FormatType = "t"
 				extTableDef.FormatOpts = `delimiter '  ' null '\N' escape '\'`
-				backup.PrintExternalTableStatements(buffer, testTable, extTableDef)
+				backup.PrintExternalTableStatements(backupfile, testTable, extTableDef)
 				testutils.ExpectRegexp(buffer, `LOCATION (
 	'file://host:port/path/file'
 )
@@ -204,7 +212,7 @@ ENCODING 'UTF-8'`)
 			It("prints a CREATE block for a table in custom format, formatter provided", func() {
 				extTableDef.FormatType = "b"
 				extTableDef.FormatOpts = `formatter gphdfs_import`
-				backup.PrintExternalTableStatements(buffer, testTable, extTableDef)
+				backup.PrintExternalTableStatements(backupfile, testTable, extTableDef)
 				testutils.ExpectRegexp(buffer, `LOCATION (
 	'file://host:port/path/file'
 )
@@ -222,42 +230,42 @@ ENCODING 'UTF-8'`)
 			})
 
 			It("prints a CREATE block for a table with EXECUTE ON ALL", func() {
-				backup.PrintExternalTableStatements(buffer, testTable, extTableDef)
+				backup.PrintExternalTableStatements(backupfile, testTable, extTableDef)
 				testutils.ExpectRegexp(buffer, `EXECUTE 'hostname'
 FORMAT 'text'
 ENCODING 'UTF-8'`)
 			})
 			It("prints a CREATE block for a table with EXECUTE ON MASTER", func() {
 				extTableDef.ExecLocation = "MASTER_ONLY"
-				backup.PrintExternalTableStatements(buffer, testTable, extTableDef)
+				backup.PrintExternalTableStatements(backupfile, testTable, extTableDef)
 				testutils.ExpectRegexp(buffer, `EXECUTE 'hostname' ON MASTER
 FORMAT 'text'
 ENCODING 'UTF-8'`)
 			})
 			It("prints a CREATE block for a table with EXECUTE ON [number]", func() {
 				extTableDef.ExecLocation = "TOTAL_SEGS:3"
-				backup.PrintExternalTableStatements(buffer, testTable, extTableDef)
+				backup.PrintExternalTableStatements(backupfile, testTable, extTableDef)
 				testutils.ExpectRegexp(buffer, `EXECUTE 'hostname' ON 3
 FORMAT 'text'
 ENCODING 'UTF-8'`)
 			})
 			It("prints a CREATE block for a table with EXECUTE ON HOST", func() {
 				extTableDef.ExecLocation = "PER_HOST"
-				backup.PrintExternalTableStatements(buffer, testTable, extTableDef)
+				backup.PrintExternalTableStatements(backupfile, testTable, extTableDef)
 				testutils.ExpectRegexp(buffer, `EXECUTE 'hostname' ON HOST
 FORMAT 'text'
 ENCODING 'UTF-8'`)
 			})
 			It("prints a CREATE block for a table with EXECUTE ON HOST [host]", func() {
 				extTableDef.ExecLocation = "HOST:localhost"
-				backup.PrintExternalTableStatements(buffer, testTable, extTableDef)
+				backup.PrintExternalTableStatements(backupfile, testTable, extTableDef)
 				testutils.ExpectRegexp(buffer, `EXECUTE 'hostname' ON HOST 'localhost'
 FORMAT 'text'
 ENCODING 'UTF-8'`)
 			})
 			It("prints a CREATE block for a table with EXECUTE ON SEGMENT [segid]", func() {
 				extTableDef.ExecLocation = "SEGMENT_ID:0"
-				backup.PrintExternalTableStatements(buffer, testTable, extTableDef)
+				backup.PrintExternalTableStatements(backupfile, testTable, extTableDef)
 				testutils.ExpectRegexp(buffer, `EXECUTE 'hostname' ON SEGMENT 0
 FORMAT 'text'
 ENCODING 'UTF-8'`)
@@ -277,7 +285,7 @@ ENCODING 'UTF-8'`)
 				extTableDef.Location = "s3://s3_endpoint:port/bucket_name/s3_prefix"
 				extTableDef.URIs = []string{"s3://s3_endpoint:port/bucket_name/s3_prefix"}
 				extTableDef.ExecLocation = "MASTER_ONLY"
-				backup.PrintExternalTableStatements(buffer, testTable, extTableDef)
+				backup.PrintExternalTableStatements(backupfile, testTable, extTableDef)
 				testutils.ExpectRegexp(buffer, `LOCATION (
 	's3://s3_endpoint:port/bucket_name/s3_prefix'
 ) ON MASTER
@@ -286,7 +294,7 @@ ENCODING 'UTF-8'`)
 			})
 			It("prints a CREATE block for a table with error logging enabled", func() {
 				extTableDef.ErrTable = "tablename"
-				backup.PrintExternalTableStatements(buffer, testTable, extTableDef)
+				backup.PrintExternalTableStatements(backupfile, testTable, extTableDef)
 				testutils.ExpectRegexp(buffer, `LOCATION (
 	'file://host:port/path/file'
 )
@@ -297,7 +305,7 @@ LOG ERRORS`)
 			It("prints a CREATE block for a table with a row-based reject limit", func() {
 				extTableDef.RejectLimit = 2
 				extTableDef.RejectLimitType = "r"
-				backup.PrintExternalTableStatements(buffer, testTable, extTableDef)
+				backup.PrintExternalTableStatements(backupfile, testTable, extTableDef)
 				testutils.ExpectRegexp(buffer, `LOCATION (
 	'file://host:port/path/file'
 )
@@ -308,7 +316,7 @@ SEGMENT REJECT LIMIT 2 ROWS`)
 			It("prints a CREATE block for a table with a percent-based reject limit", func() {
 				extTableDef.RejectLimit = 2
 				extTableDef.RejectLimitType = "p"
-				backup.PrintExternalTableStatements(buffer, testTable, extTableDef)
+				backup.PrintExternalTableStatements(backupfile, testTable, extTableDef)
 				testutils.ExpectRegexp(buffer, `LOCATION (
 	'file://host:port/path/file'
 )
@@ -320,7 +328,7 @@ SEGMENT REJECT LIMIT 2 PERCENT`)
 				extTableDef.ErrTable = "tablename"
 				extTableDef.RejectLimit = 2
 				extTableDef.RejectLimitType = "r"
-				backup.PrintExternalTableStatements(buffer, testTable, extTableDef)
+				backup.PrintExternalTableStatements(backupfile, testTable, extTableDef)
 				testutils.ExpectRegexp(buffer, `LOCATION (
 	'file://host:port/path/file'
 )
@@ -331,7 +339,7 @@ SEGMENT REJECT LIMIT 2 ROWS`)
 			})
 			It("prints a CREATE block for a table with custom options", func() {
 				extTableDef.Options = "foo 'bar'\n\tbar 'baz'"
-				backup.PrintExternalTableStatements(buffer, testTable, extTableDef)
+				backup.PrintExternalTableStatements(backupfile, testTable, extTableDef)
 				testutils.ExpectRegexp(buffer, `LOCATION (
 	'file://host:port/path/file'
 )
@@ -366,63 +374,54 @@ ENCODING 'UTF-8'`)
 		It("prints untrusted protocol with read and write function", func() {
 			protos := []backup.ExternalProtocol{protocolUntrustedReadWrite}
 
-			backup.PrintCreateExternalProtocolStatements(buffer, protos, funcInfoMap, emptyMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE PROTOCOL s3 (readfunc = public.read_fn_s3, writefunc = public.write_fn_s3);
-`)
+			backup.PrintCreateExternalProtocolStatements(backupfile, toc, protos, funcInfoMap, emptyMetadataMap)
+			testutils.ExpectEntry(toc.PredataEntries, 0, "", "s3", "PROTOCOL")
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE PROTOCOL s3 (readfunc = public.read_fn_s3, writefunc = public.write_fn_s3);`)
 		})
 		It("prints untrusted protocol with read and validator", func() {
 			protos := []backup.ExternalProtocol{protocolUntrustedReadValidator}
 
-			backup.PrintCreateExternalProtocolStatements(buffer, protos, funcInfoMap, emptyMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE PROTOCOL s3 (readfunc = public.read_fn_s3, validatorfunc = public.validator);
-`)
+			backup.PrintCreateExternalProtocolStatements(backupfile, toc, protos, funcInfoMap, emptyMetadataMap)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE PROTOCOL s3 (readfunc = public.read_fn_s3, validatorfunc = public.validator);`)
 		})
 		It("prints untrusted protocol with write function only", func() {
 			protos := []backup.ExternalProtocol{protocolUntrustedWriteOnly}
 
-			backup.PrintCreateExternalProtocolStatements(buffer, protos, funcInfoMap, emptyMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE PROTOCOL s3 (writefunc = public.write_fn_s3);
-`)
+			backup.PrintCreateExternalProtocolStatements(backupfile, toc, protos, funcInfoMap, emptyMetadataMap)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE PROTOCOL s3 (writefunc = public.write_fn_s3);`)
 		})
 		It("prints trusted protocol with read, write, and validator", func() {
 			protos := []backup.ExternalProtocol{protocolTrustedReadWriteValidator}
 
-			backup.PrintCreateExternalProtocolStatements(buffer, protos, funcInfoMap, emptyMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE TRUSTED PROTOCOL s3 (readfunc = public.read_fn_s3, writefunc = public.write_fn_s3, validatorfunc = public.validator);
-`)
+			backup.PrintCreateExternalProtocolStatements(backupfile, toc, protos, funcInfoMap, emptyMetadataMap)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE TRUSTED PROTOCOL s3 (readfunc = public.read_fn_s3, writefunc = public.write_fn_s3, validatorfunc = public.validator);`)
 		})
 		It("prints multiple protocols", func() {
 			protos := []backup.ExternalProtocol{protocolUntrustedWriteOnly, protocolUntrustedReadOnly}
 
-			backup.PrintCreateExternalProtocolStatements(buffer, protos, funcInfoMap, emptyMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE PROTOCOL s3 (writefunc = public.write_fn_s3);
-
-
-CREATE PROTOCOL s4 (readfunc = public.read_fn_s4);
-`)
+			backup.PrintCreateExternalProtocolStatements(backupfile, toc, protos, funcInfoMap, emptyMetadataMap)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE PROTOCOL s3 (writefunc = public.write_fn_s3);`, `CREATE PROTOCOL s4 (readfunc = public.read_fn_s4);`)
 		})
 		It("skips printing protocols where all functions are internal", func() {
 			protos := []backup.ExternalProtocol{protocolInternal, protocolUntrustedReadOnly}
 
-			backup.PrintCreateExternalProtocolStatements(buffer, protos, funcInfoMap, emptyMetadataMap)
+			backup.PrintCreateExternalProtocolStatements(backupfile, toc, protos, funcInfoMap, emptyMetadataMap)
 			testutils.NotExpectRegexp(buffer, `CREATE PROTOCOL gphdfs`)
-			testutils.ExpectRegexp(buffer, `CREATE PROTOCOL s4 (readfunc = public.read_fn_s4);
-`)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE PROTOCOL s4 (readfunc = public.read_fn_s4);`)
 		})
 		It("skips printing protocols without validator where all functions are internal", func() {
 			protos := []backup.ExternalProtocol{protocolInternalReadWrite, protocolUntrustedReadOnly}
 
-			backup.PrintCreateExternalProtocolStatements(buffer, protos, funcInfoMap, emptyMetadataMap)
+			backup.PrintCreateExternalProtocolStatements(backupfile, toc, protos, funcInfoMap, emptyMetadataMap)
 			testutils.NotExpectRegexp(buffer, `CREATE PROTOCOL gphdfs`)
-			testutils.ExpectRegexp(buffer, `CREATE PROTOCOL s4 (readfunc = public.read_fn_s4);
-`)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE PROTOCOL s4 (readfunc = public.read_fn_s4);`)
 		})
 		It("prints a protocol with privileges and an owner", func() {
 			protos := []backup.ExternalProtocol{protocolUntrustedReadWrite}
 			protoMetadataMap := testutils.DefaultMetadataMap("PROTOCOL", true, true, false)
 
-			backup.PrintCreateExternalProtocolStatements(buffer, protos, funcInfoMap, protoMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE PROTOCOL s3 (readfunc = public.read_fn_s3, writefunc = public.write_fn_s3);
+			backup.PrintCreateExternalProtocolStatements(backupfile, toc, protos, funcInfoMap, protoMetadataMap)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE PROTOCOL s3 (readfunc = public.read_fn_s3, writefunc = public.write_fn_s3);
 
 
 ALTER PROTOCOL s3 OWNER TO testrole;

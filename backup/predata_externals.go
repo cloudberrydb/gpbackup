@@ -8,7 +8,6 @@ package backup
 
 import (
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/greenplum-db/gpbackup/utils"
@@ -46,7 +45,8 @@ type ExternalTableDefinition struct {
 	URIs            []string
 }
 
-func PrintExternalTableCreateStatement(predataFile io.Writer, table Relation, tableDef TableDefinition) {
+func PrintExternalTableCreateStatement(predataFile *utils.FileWithByteCount, toc *utils.TOC, table Relation, tableDef TableDefinition) {
+	start := predataFile.ByteCount
 	tableTypeStrMap := map[int]string{
 		READABLE:     "READABLE EXTERNAL",
 		READABLE_WEB: "READABLE EXTERNAL WEB",
@@ -55,14 +55,15 @@ func PrintExternalTableCreateStatement(predataFile io.Writer, table Relation, ta
 	}
 	extTableDef := tableDef.ExtTableDef
 	extTableDef.Type, extTableDef.Protocol = DetermineExternalTableCharacteristics(extTableDef)
-	utils.MustPrintf(predataFile, "\n\nCREATE %s TABLE %s (\n", tableTypeStrMap[extTableDef.Type], table.ToString())
+	predataFile.MustPrintf("\n\nCREATE %s TABLE %s (\n", tableTypeStrMap[extTableDef.Type], table.ToString())
 	printColumnDefinitions(predataFile, table, tableDef.ColumnDefs)
-	utils.MustPrintf(predataFile, ") ")
+	predataFile.MustPrintf(") ")
 	PrintExternalTableStatements(predataFile, table, extTableDef)
 	if extTableDef.Writable {
-		utils.MustPrintf(predataFile, "\n%s", tableDef.DistPolicy)
+		predataFile.MustPrintf("\n%s", tableDef.DistPolicy)
 	}
-	utils.MustPrintf(predataFile, ";")
+	predataFile.MustPrintf(";")
+	toc.AddPredataEntry(table.SchemaName, table.RelationName, "TABLE", start, predataFile.ByteCount)
 }
 
 func DetermineExternalTableCharacteristics(extTableDef ExternalTableDefinition) (int, int) {
@@ -112,37 +113,37 @@ func DetermineExternalTableCharacteristics(extTableDef ExternalTableDefinition) 
 	return tableType, tableProtocol
 }
 
-func PrintExternalTableStatements(predataFile io.Writer, table Relation, extTableDef ExternalTableDefinition) {
+func PrintExternalTableStatements(predataFile *utils.FileWithByteCount, table Relation, extTableDef ExternalTableDefinition) {
 	if extTableDef.Type != WRITABLE_WEB {
 		if len(extTableDef.URIs) > 0 {
-			utils.MustPrintf(predataFile, "LOCATION (\n\t'%s'\n)", strings.Join(extTableDef.URIs, "',\n\t'"))
+			predataFile.MustPrintf("LOCATION (\n\t'%s'\n)", strings.Join(extTableDef.URIs, "',\n\t'"))
 		}
 	}
 	if extTableDef.Type == READABLE || (extTableDef.Type == WRITABLE_WEB && extTableDef.Protocol == S3) {
 		if extTableDef.ExecLocation == "MASTER_ONLY" {
-			utils.MustPrintf(predataFile, " ON MASTER")
+			predataFile.MustPrintf(" ON MASTER")
 		}
 	}
 	if extTableDef.Type == READABLE_WEB || extTableDef.Type == WRITABLE_WEB {
 		if extTableDef.Command != "" {
-			utils.MustPrintf(predataFile, "EXECUTE '%s'", extTableDef.Command)
+			predataFile.MustPrintf("EXECUTE '%s'", extTableDef.Command)
 			execType := strings.Split(extTableDef.ExecLocation, ":")
 			switch execType[0] {
 			case "ALL_SEGMENTS": // Default case, don't print anything else
 			case "HOST":
-				utils.MustPrintf(predataFile, " ON HOST '%s'", execType[1])
+				predataFile.MustPrintf(" ON HOST '%s'", execType[1])
 			case "MASTER_ONLY":
-				utils.MustPrintf(predataFile, " ON MASTER")
+				predataFile.MustPrintf(" ON MASTER")
 			case "PER_HOST":
-				utils.MustPrintf(predataFile, " ON HOST")
+				predataFile.MustPrintf(" ON HOST")
 			case "SEGMENT_ID":
-				utils.MustPrintf(predataFile, " ON SEGMENT %s", execType[1])
+				predataFile.MustPrintf(" ON SEGMENT %s", execType[1])
 			case "TOTAL_SEGS":
-				utils.MustPrintf(predataFile, " ON %s", execType[1])
+				predataFile.MustPrintf(" ON %s", execType[1])
 			}
 		}
 	}
-	utils.MustPrintln(predataFile)
+	predataFile.MustPrintln()
 	formatType := ""
 	switch extTableDef.FormatType {
 	case "a":
@@ -161,15 +162,15 @@ func PrintExternalTableStatements(predataFile io.Writer, table Relation, extTabl
 	 * but FORMAT requires "formatter='function_name'".
 	 */
 	extTableDef.FormatOpts = strings.Replace(extTableDef.FormatOpts, "formatter ", "formatter=", 1)
-	utils.MustPrintf(predataFile, "FORMAT '%s'", formatType)
+	predataFile.MustPrintf("FORMAT '%s'", formatType)
 	if extTableDef.FormatOpts != "" {
-		utils.MustPrintf(predataFile, " (%s)", strings.TrimSpace(extTableDef.FormatOpts))
+		predataFile.MustPrintf(" (%s)", strings.TrimSpace(extTableDef.FormatOpts))
 	}
-	utils.MustPrintln(predataFile)
+	predataFile.MustPrintln()
 	if extTableDef.Options != "" {
-		utils.MustPrintf(predataFile, "OPTIONS (\n\t%s\n)\n", extTableDef.Options)
+		predataFile.MustPrintf("OPTIONS (\n\t%s\n)\n", extTableDef.Options)
 	}
-	utils.MustPrintf(predataFile, "ENCODING '%s'", extTableDef.Encoding)
+	predataFile.MustPrintf("ENCODING '%s'", extTableDef.Encoding)
 	if extTableDef.Type == READABLE || extTableDef.Type == READABLE_WEB {
 		/*
 		 * In GPDB 5 and later, LOG ERRORS INTO [table] has been replaced by LOG ERRORS,
@@ -177,23 +178,23 @@ func PrintExternalTableStatements(predataFile io.Writer, table Relation, extTabl
 		 * value of pg_exttable.fmterrtbl matches the table's own name, LOG ERRORS is set.
 		 */
 		if extTableDef.ErrTable == table.RelationName {
-			utils.MustPrintf(predataFile, "\nLOG ERRORS")
+			predataFile.MustPrintf("\nLOG ERRORS")
 		}
 		if extTableDef.RejectLimit != 0 {
-			utils.MustPrintf(predataFile, "\nSEGMENT REJECT LIMIT %d ", extTableDef.RejectLimit)
+			predataFile.MustPrintf("\nSEGMENT REJECT LIMIT %d ", extTableDef.RejectLimit)
 			switch extTableDef.RejectLimitType {
 			case "r":
-				utils.MustPrintf(predataFile, "ROWS")
+				predataFile.MustPrintf("ROWS")
 			case "p":
-				utils.MustPrintf(predataFile, "PERCENT")
+				predataFile.MustPrintf("PERCENT")
 			}
 		}
 	}
 }
 
-func PrintCreateExternalProtocolStatements(predataFile io.Writer, protocols []ExternalProtocol, funcInfoMap map[uint32]FunctionInfo, protoMetadata MetadataMap) {
+func PrintCreateExternalProtocolStatements(predataFile *utils.FileWithByteCount, toc *utils.TOC, protocols []ExternalProtocol, funcInfoMap map[uint32]FunctionInfo, protoMetadata MetadataMap) {
 	for _, protocol := range protocols {
-
+		start := predataFile.ByteCount
 		hasUserDefinedFunc := false
 		if function, ok := funcInfoMap[protocol.WriteFunction]; ok && !function.IsInternal {
 			hasUserDefinedFunc = true
@@ -220,12 +221,13 @@ func PrintCreateExternalProtocolStatements(predataFile io.Writer, protocols []Ex
 			protocolFunctions = append(protocolFunctions, fmt.Sprintf("validatorfunc = %s", funcInfoMap[protocol.Validator].QualifiedName))
 		}
 
-		utils.MustPrintf(predataFile, "\n\nCREATE ")
+		predataFile.MustPrintf("\n\nCREATE ")
 		if protocol.Trusted {
-			utils.MustPrintf(predataFile, "TRUSTED ")
+			predataFile.MustPrintf("TRUSTED ")
 		}
 		protoFQN := utils.QuoteIdent(protocol.Name)
-		utils.MustPrintf(predataFile, "PROTOCOL %s (%s);\n", protoFQN, strings.Join(protocolFunctions, ", "))
+		predataFile.MustPrintf("PROTOCOL %s (%s);\n", protoFQN, strings.Join(protocolFunctions, ", "))
 		PrintObjectMetadata(predataFile, protoMetadata[protocol.Oid], protoFQN, "PROTOCOL")
+		toc.AddPredataEntry("", protocol.Name, "PROTOCOL", start, predataFile.ByteCount)
 	}
 }

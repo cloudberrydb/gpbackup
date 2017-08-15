@@ -2,7 +2,6 @@ package backup
 
 import (
 	"fmt"
-	"io"
 	"strconv"
 	"strings"
 
@@ -15,16 +14,34 @@ import (
  * such as roles and database configuration.
  */
 
-func PrintConnectionString(metadataFile io.Writer, dbname string) {
-	utils.MustPrintf(metadataFile, "\\c %s\n", dbname)
+func PrintConnectionString(metadataFile *utils.FileWithByteCount, dbname string) {
+	metadataFile.MustPrintf("\\c %s\n", dbname)
 }
 
 /*
  * Session GUCs are printed to global, predata, and postdata files so we
  * will use the correct settings when the files are run during restore
  */
-func PrintSessionGUCs(metadataFile io.Writer, gucs SessionGUCs) {
-	utils.MustPrintf(metadataFile, `SET statement_timeout = 0;
+func PrintPredataSessionGUCs(metadataFile *utils.FileWithByteCount, toc *utils.TOC, gucs SessionGUCs) {
+	start := metadataFile.ByteCount
+	printSessionGUCs(metadataFile, gucs)
+	toc.AddPredataEntry("", "", "SESSION GUCS", start, metadataFile.ByteCount)
+}
+
+func PrintPostdataSessionGUCs(metadataFile *utils.FileWithByteCount, toc *utils.TOC, gucs SessionGUCs) {
+	start := metadataFile.ByteCount
+	printSessionGUCs(metadataFile, gucs)
+	toc.AddPostdataEntry("", "", "SESSION GUCS", start, metadataFile.ByteCount)
+}
+
+func PrintGlobalSessionGUCs(metadataFile *utils.FileWithByteCount, toc *utils.TOC, gucs SessionGUCs) {
+	start := metadataFile.ByteCount
+	printSessionGUCs(metadataFile, gucs)
+	toc.AddGlobalEntry("", "", "SESSION GUCS", start, metadataFile.ByteCount)
+}
+
+func printSessionGUCs(metadataFile *utils.FileWithByteCount, gucs SessionGUCs) {
+	metadataFile.MustPrintf(`SET statement_timeout = 0;
 SET check_function_bodies = false;
 SET client_min_messages = error;
 SET client_encoding = '%s';
@@ -33,15 +50,16 @@ SET default_with_oids = %s;
 `, gucs.ClientEncoding, gucs.StdConformingStrings, gucs.DefaultWithOids)
 }
 
-func PrintCreateDatabaseStatement(globalFile io.Writer, dbname string, allDBs []DatabaseName, dbMetadata MetadataMap, dumpGlobals bool) {
+func PrintCreateDatabaseStatement(globalFile *utils.FileWithByteCount, toc *utils.TOC, dbname string, allDBs []DatabaseName, dbMetadata MetadataMap, dumpGlobals bool) {
+	start := globalFile.ByteCount
 	dbname = utils.QuoteIdent(dbname)
 	for _, db := range allDBs {
 		if db.DatabaseName == dbname {
-			utils.MustPrintf(globalFile, "\n\nCREATE DATABASE %s", dbname)
+			globalFile.MustPrintf("\n\nCREATE DATABASE %s", dbname)
 			if db.TablespaceName != "pg_default" {
-				utils.MustPrintf(globalFile, " TABLESPACE %s", db.TablespaceName)
+				globalFile.MustPrintf(" TABLESPACE %s", db.TablespaceName)
 			}
-			utils.MustPrintf(globalFile, ";")
+			globalFile.MustPrintf(";")
 			PrintObjectMetadata(globalFile, dbMetadata[db.Oid], dbname, "DATABASE")
 			break
 		}
@@ -53,16 +71,20 @@ func PrintCreateDatabaseStatement(globalFile io.Writer, dbname string, allDBs []
 			}
 		}
 	}
+	toc.AddGlobalEntry("", dbname, "DATABASE", start, globalFile.ByteCount)
 }
 
-func PrintDatabaseGUCs(globalFile io.Writer, gucs []string, dbname string) {
+func PrintDatabaseGUCs(globalFile *utils.FileWithByteCount, toc *utils.TOC, gucs []string, dbname string) {
 	for _, guc := range gucs {
-		utils.MustPrintf(globalFile, "\nALTER DATABASE %s %s;", utils.QuoteIdent(dbname), guc)
+		start := globalFile.ByteCount
+		globalFile.MustPrintf("\nALTER DATABASE %s %s;", utils.QuoteIdent(dbname), guc)
+		toc.AddGlobalEntry("", dbname, "DATABASE GUC", start, globalFile.ByteCount)
 	}
 }
 
-func PrintCreateResourceQueueStatements(globalFile io.Writer, resQueues []ResourceQueue, resQueueMetadata MetadataMap) {
+func PrintCreateResourceQueueStatements(globalFile *utils.FileWithByteCount, toc *utils.TOC, resQueues []ResourceQueue, resQueueMetadata MetadataMap) {
 	for _, resQueue := range resQueues {
+		start := globalFile.ByteCount
 		attributes := []string{}
 		if resQueue.ActiveStatements != -1 {
 			attributes = append(attributes, fmt.Sprintf("ACTIVE_STATEMENTS=%d", resQueue.ActiveStatements))
@@ -90,13 +112,15 @@ func PrintCreateResourceQueueStatements(globalFile io.Writer, resQueues []Resour
 		if resQueue.Name == "pg_default" {
 			action = "ALTER"
 		}
-		utils.MustPrintf(globalFile, "\n\n%s RESOURCE QUEUE %s WITH (%s);", action, utils.QuoteIdent(resQueue.Name), strings.Join(attributes, ", "))
+		globalFile.MustPrintf("\n\n%s RESOURCE QUEUE %s WITH (%s);", action, utils.QuoteIdent(resQueue.Name), strings.Join(attributes, ", "))
 		PrintObjectMetadata(globalFile, resQueueMetadata[resQueue.Oid], utils.QuoteIdent(resQueue.Name), "RESOURCE QUEUE")
+		toc.AddGlobalEntry("", resQueue.Name, "RESOURCE QUEUE", start, globalFile.ByteCount)
 	}
 }
 
-func PrintCreateRoleStatements(globalFile io.Writer, roles []Role, roleMetadata MetadataMap) {
+func PrintCreateRoleStatements(globalFile *utils.FileWithByteCount, toc *utils.TOC, roles []Role, roleMetadata MetadataMap) {
 	for _, role := range roles {
+		start := globalFile.ByteCount
 		quotedName := utils.QuoteIdent(role.Name)
 		attrs := []string{}
 
@@ -163,34 +187,39 @@ func PrintCreateRoleStatements(globalFile io.Writer, roles []Role, roleMetadata 
 			attrs = append(attrs, "CREATEEXTTABLE (protocol='gphdfs', type='writable')")
 		}
 
-		utils.MustPrintf(globalFile, `
+		globalFile.MustPrintf(`
 
 CREATE ROLE %s;
 ALTER ROLE %s WITH %s;`, quotedName, quotedName, strings.Join(attrs, " "))
 
 		if len(role.TimeConstraints) != 0 {
 			for _, timeConstraint := range role.TimeConstraints {
-				utils.MustPrintf(globalFile, "\nALTER ROLE %s DENY BETWEEN DAY %d TIME '%s' AND DAY %d TIME '%s';", quotedName, timeConstraint.StartDay, timeConstraint.StartTime, timeConstraint.EndDay, timeConstraint.EndTime)
+				globalFile.MustPrintf("\nALTER ROLE %s DENY BETWEEN DAY %d TIME '%s' AND DAY %d TIME '%s';", quotedName, timeConstraint.StartDay, timeConstraint.StartTime, timeConstraint.EndDay, timeConstraint.EndTime)
 			}
 		}
 		PrintObjectMetadata(globalFile, roleMetadata[role.Oid], quotedName, "ROLE")
+		toc.AddGlobalEntry("", role.Name, "ROLE", start, globalFile.ByteCount)
 	}
 }
 
-func PrintRoleMembershipStatements(globalFile io.Writer, roleMembers []RoleMember) {
-	utils.MustPrintln(globalFile, "\n")
+func PrintRoleMembershipStatements(globalFile *utils.FileWithByteCount, toc *utils.TOC, roleMembers []RoleMember) {
+	globalFile.MustPrintln("\n")
 	for _, roleMember := range roleMembers {
-		utils.MustPrintf(globalFile, "\nGRANT %s TO %s", roleMember.Role, roleMember.Member)
+		start := globalFile.ByteCount
+		globalFile.MustPrintf("\nGRANT %s TO %s", roleMember.Role, roleMember.Member)
 		if roleMember.IsAdmin {
-			utils.MustPrintf(globalFile, " WITH ADMIN OPTION")
+			globalFile.MustPrintf(" WITH ADMIN OPTION")
 		}
-		utils.MustPrintf(globalFile, " GRANTED BY %s;", roleMember.Grantor)
+		globalFile.MustPrintf(" GRANTED BY %s;", roleMember.Grantor)
+		toc.AddGlobalEntry("", roleMember.Member, "ROLE GRANT", start, globalFile.ByteCount)
 	}
 }
 
-func PrintCreateTablespaceStatements(globalFile io.Writer, tablespaces []Tablespace, tablespaceMetadata MetadataMap) {
+func PrintCreateTablespaceStatements(globalFile *utils.FileWithByteCount, toc *utils.TOC, tablespaces []Tablespace, tablespaceMetadata MetadataMap) {
 	for _, tablespace := range tablespaces {
-		utils.MustPrintf(globalFile, "\n\nCREATE TABLESPACE %s FILESPACE %s;", tablespace.Tablespace, tablespace.Filespace)
+		start := globalFile.ByteCount
+		globalFile.MustPrintf("\n\nCREATE TABLESPACE %s FILESPACE %s;", tablespace.Tablespace, tablespace.Filespace)
 		PrintObjectMetadata(globalFile, tablespaceMetadata[tablespace.Oid], tablespace.Tablespace, "TABLESPACE")
+		toc.AddGlobalEntry("", tablespace.Tablespace, "TABLESPACE", start, globalFile.ByteCount)
 	}
 }

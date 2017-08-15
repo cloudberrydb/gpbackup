@@ -8,80 +8,83 @@ package backup
 
 import (
 	"fmt"
-	"io"
 
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
-func PrintCreateFunctionStatement(predataFile io.Writer, funcDef Function, funcMetadata ObjectMetadata) {
+func PrintCreateFunctionStatement(predataFile *utils.FileWithByteCount, toc *utils.TOC, funcDef Function, funcMetadata ObjectMetadata) {
+	start := predataFile.ByteCount
 	funcFQN := MakeFQN(funcDef.SchemaName, funcDef.FunctionName)
-	utils.MustPrintf(predataFile, "\n\nCREATE FUNCTION %s(%s) RETURNS ", funcFQN, funcDef.Arguments)
-	utils.MustPrintf(predataFile, "%s AS", funcDef.ResultType)
+	predataFile.MustPrintf("\n\nCREATE FUNCTION %s(%s) RETURNS ", funcFQN, funcDef.Arguments)
+	predataFile.MustPrintf("%s AS", funcDef.ResultType)
 	PrintFunctionBodyOrPath(predataFile, funcDef)
-	utils.MustPrintf(predataFile, "LANGUAGE %s", funcDef.Language)
+	predataFile.MustPrintf("LANGUAGE %s", funcDef.Language)
 	PrintFunctionModifiers(predataFile, funcDef)
-	utils.MustPrintln(predataFile, ";")
+	predataFile.MustPrintln(";")
 
 	nameStr := fmt.Sprintf("%s(%s)", funcFQN, funcDef.IdentArgs)
+	nameWithArgs := fmt.Sprintf("%s(%s)", funcDef.FunctionName, funcDef.IdentArgs)
 	PrintObjectMetadata(predataFile, funcMetadata, nameStr, "FUNCTION")
+	toc.AddPredataEntry(funcDef.SchemaName, nameWithArgs, "FUNCTION", start, predataFile.ByteCount)
 }
 
 /*
  * This function either prints a path to an executable function (for C and
  * internal functions) or a function definition (for functions in other languages).
  */
-func PrintFunctionBodyOrPath(predataFile io.Writer, funcDef Function) {
+func PrintFunctionBodyOrPath(predataFile *utils.FileWithByteCount, funcDef Function) {
 	/*
 	 * pg_proc.probin uses either NULL (in this case an empty string) or "-"
 	 * to signify an unused path, for historical reasons.  See dumpFunc in
 	 * pg_dump.c for details.
 	 */
 	if funcDef.BinaryPath != "" && funcDef.BinaryPath != "-" {
-		utils.MustPrintf(predataFile, "\n'%s', '%s'\n", funcDef.BinaryPath, funcDef.FunctionBody)
+		predataFile.MustPrintf("\n'%s', '%s'\n", funcDef.BinaryPath, funcDef.FunctionBody)
 	} else {
-		utils.MustPrintf(predataFile, "\n%s\n", utils.DollarQuoteString(funcDef.FunctionBody))
+		predataFile.MustPrintf("\n%s\n", utils.DollarQuoteString(funcDef.FunctionBody))
 	}
 }
 
-func PrintFunctionModifiers(predataFile io.Writer, funcDef Function) {
+func PrintFunctionModifiers(predataFile *utils.FileWithByteCount, funcDef Function) {
 	switch funcDef.DataAccess {
 	case "c":
-		utils.MustPrintf(predataFile, " CONTAINS SQL")
+		predataFile.MustPrintf(" CONTAINS SQL")
 	case "m":
-		utils.MustPrintf(predataFile, " MODIFIES SQL DATA")
+		predataFile.MustPrintf(" MODIFIES SQL DATA")
 	case "n":
-		utils.MustPrintf(predataFile, " NO SQL")
+		predataFile.MustPrintf(" NO SQL")
 	case "r":
-		utils.MustPrintf(predataFile, " READS SQL DATA")
+		predataFile.MustPrintf(" READS SQL DATA")
 	}
 	switch funcDef.Volatility {
 	case "i":
-		utils.MustPrintf(predataFile, " IMMUTABLE")
+		predataFile.MustPrintf(" IMMUTABLE")
 	case "s":
-		utils.MustPrintf(predataFile, " STABLE")
+		predataFile.MustPrintf(" STABLE")
 	case "v": // Default case, don't print anything else
 	}
 	if funcDef.IsStrict {
-		utils.MustPrintf(predataFile, " STRICT")
+		predataFile.MustPrintf(" STRICT")
 	}
 	if funcDef.IsSecurityDefiner {
-		utils.MustPrintf(predataFile, " SECURITY DEFINER")
+		predataFile.MustPrintf(" SECURITY DEFINER")
 	}
 	// Default cost is 1 for C and internal functions or 100 for functions in other languages
 	isInternalOrC := funcDef.Language == "c" || funcDef.Language == "internal"
 	if !((!isInternalOrC && funcDef.Cost == 100) || (isInternalOrC && funcDef.Cost == 1)) {
-		utils.MustPrintf(predataFile, "\nCOST %v", funcDef.Cost)
+		predataFile.MustPrintf("\nCOST %v", funcDef.Cost)
 	}
 	if funcDef.ReturnsSet && funcDef.NumRows != 0 && funcDef.NumRows != 1000 {
-		utils.MustPrintf(predataFile, "\nROWS %v", funcDef.NumRows)
+		predataFile.MustPrintf("\nROWS %v", funcDef.NumRows)
 	}
 	if funcDef.Config != "" {
-		utils.MustPrintf(predataFile, "\n%s", funcDef.Config)
+		predataFile.MustPrintf("\n%s", funcDef.Config)
 	}
 }
 
-func PrintCreateAggregateStatements(predataFile io.Writer, aggDefs []Aggregate, funcInfoMap map[uint32]FunctionInfo, aggMetadata MetadataMap) {
+func PrintCreateAggregateStatements(predataFile *utils.FileWithByteCount, toc *utils.TOC, aggDefs []Aggregate, funcInfoMap map[uint32]FunctionInfo, aggMetadata MetadataMap) {
 	for _, aggDef := range aggDefs {
+		start := predataFile.ByteCount
 		aggFQN := MakeFQN(aggDef.SchemaName, aggDef.AggregateName)
 		orderedStr := ""
 		if aggDef.IsOrdered {
@@ -91,53 +94,57 @@ func PrintCreateAggregateStatements(predataFile io.Writer, aggDefs []Aggregate, 
 		if aggDef.Arguments != "" {
 			argumentsStr = aggDef.Arguments
 		}
-		utils.MustPrintf(predataFile, "\n\nCREATE %sAGGREGATE %s(%s) (\n", orderedStr, aggFQN, argumentsStr)
+		predataFile.MustPrintf("\n\nCREATE %sAGGREGATE %s(%s) (\n", orderedStr, aggFQN, argumentsStr)
 
-		utils.MustPrintf(predataFile, "\tSFUNC = %s,\n", funcInfoMap[aggDef.TransitionFunction].QualifiedName)
-		utils.MustPrintf(predataFile, "\tSTYPE = %s", aggDef.TransitionDataType)
+		predataFile.MustPrintf("\tSFUNC = %s,\n", funcInfoMap[aggDef.TransitionFunction].QualifiedName)
+		predataFile.MustPrintf("\tSTYPE = %s", aggDef.TransitionDataType)
 
 		if aggDef.PreliminaryFunction != 0 {
-			utils.MustPrintf(predataFile, ",\n\tPREFUNC = %s", funcInfoMap[aggDef.PreliminaryFunction].QualifiedName)
+			predataFile.MustPrintf(",\n\tPREFUNC = %s", funcInfoMap[aggDef.PreliminaryFunction].QualifiedName)
 		}
 		if aggDef.FinalFunction != 0 {
-			utils.MustPrintf(predataFile, ",\n\tFINALFUNC = %s", funcInfoMap[aggDef.FinalFunction].QualifiedName)
+			predataFile.MustPrintf(",\n\tFINALFUNC = %s", funcInfoMap[aggDef.FinalFunction].QualifiedName)
 		}
 		if aggDef.InitialValue != "" {
-			utils.MustPrintf(predataFile, ",\n\tINITCOND = '%s'", aggDef.InitialValue)
+			predataFile.MustPrintf(",\n\tINITCOND = '%s'", aggDef.InitialValue)
 		}
 		if aggDef.SortOperator != 0 {
-			utils.MustPrintf(predataFile, ",\n\tSORTOP = %s", funcInfoMap[aggDef.SortOperator].QualifiedName)
+			predataFile.MustPrintf(",\n\tSORTOP = %s", funcInfoMap[aggDef.SortOperator].QualifiedName)
 		}
-		utils.MustPrintln(predataFile, "\n);")
+		predataFile.MustPrintln("\n);")
 
 		identArgumentsStr := "*"
 		if aggDef.IdentArgs != "" {
 			identArgumentsStr = aggDef.IdentArgs
 		}
 		aggFQN = fmt.Sprintf("%s(%s)", aggFQN, identArgumentsStr)
+		aggWithArgs := fmt.Sprintf("%s(%s)", aggDef.AggregateName, identArgumentsStr)
 		PrintObjectMetadata(predataFile, aggMetadata[aggDef.Oid], aggFQN, "AGGREGATE")
+		toc.AddPredataEntry(aggDef.SchemaName, aggWithArgs, "AGGREGATE", start, predataFile.ByteCount)
 	}
 }
 
-func PrintCreateCastStatements(predataFile io.Writer, castDefs []Cast, castMetadata MetadataMap) {
+func PrintCreateCastStatements(predataFile *utils.FileWithByteCount, toc *utils.TOC, castDefs []Cast, castMetadata MetadataMap) {
 	for _, castDef := range castDefs {
+		start := predataFile.ByteCount
 		castStr := fmt.Sprintf("(%s AS %s)", castDef.SourceTypeFQN, castDef.TargetTypeFQN)
-		utils.MustPrintf(predataFile, "\n\nCREATE CAST %s\n", castStr)
+		predataFile.MustPrintf("\n\nCREATE CAST %s\n", castStr)
 		if castDef.FunctionSchema != "" {
 			funcFQN := fmt.Sprintf("%s.%s", utils.QuoteIdent(castDef.FunctionSchema), utils.QuoteIdent(castDef.FunctionName))
-			utils.MustPrintf(predataFile, "\tWITH FUNCTION %s(%s)", funcFQN, castDef.FunctionArgs)
+			predataFile.MustPrintf("\tWITH FUNCTION %s(%s)", funcFQN, castDef.FunctionArgs)
 		} else {
-			utils.MustPrintf(predataFile, "\tWITHOUT FUNCTION")
+			predataFile.MustPrintf("\tWITHOUT FUNCTION")
 		}
 		switch castDef.CastContext {
 		case "a":
-			utils.MustPrintf(predataFile, "\nAS ASSIGNMENT")
+			predataFile.MustPrintf("\nAS ASSIGNMENT")
 		case "i":
-			utils.MustPrintf(predataFile, "\nAS IMPLICIT")
+			predataFile.MustPrintf("\nAS IMPLICIT")
 		case "e": // Default case, don't print anything else
 		}
-		utils.MustPrintf(predataFile, ";")
+		predataFile.MustPrintf(";")
 		PrintObjectMetadata(predataFile, castMetadata[castDef.Oid], castStr, "CAST")
+		toc.AddPredataEntry("pg_catalog", castStr, "CAST", start, predataFile.ByteCount)
 	}
 }
 
@@ -168,16 +175,17 @@ func ExtractLanguageFunctions(funcDefs []Function, procLangs []ProceduralLanguag
 	return langFuncs, otherFuncs
 }
 
-func PrintCreateLanguageStatements(predataFile io.Writer, procLangs []ProceduralLanguage,
+func PrintCreateLanguageStatements(predataFile *utils.FileWithByteCount, toc *utils.TOC, procLangs []ProceduralLanguage,
 	funcInfoMap map[uint32]FunctionInfo, procLangMetadata MetadataMap) {
 	for _, procLang := range procLangs {
+		start := predataFile.ByteCount
 		quotedOwner := utils.QuoteIdent(procLang.Owner)
 		quotedLanguage := utils.QuoteIdent(procLang.Name)
-		utils.MustPrintf(predataFile, "\n\nCREATE ")
+		predataFile.MustPrintf("\n\nCREATE ")
 		if procLang.PlTrusted {
-			utils.MustPrintf(predataFile, "TRUSTED ")
+			predataFile.MustPrintf("TRUSTED ")
 		}
-		utils.MustPrintf(predataFile, "PROCEDURAL LANGUAGE %s;", quotedLanguage)
+		predataFile.MustPrintf("PROCEDURAL LANGUAGE %s;", quotedLanguage)
 		/*
 		 * If the handler, validator, and inline functions are in pg_pltemplate, we can
 		 * dump a CREATE LANGUAGE command without specifying them individually.
@@ -188,31 +196,34 @@ func PrintCreateLanguageStatements(predataFile io.Writer, procLangs []Procedural
 
 		if procLang.Handler != 0 {
 			handlerInfo := funcInfoMap[procLang.Handler]
-			utils.MustPrintf(predataFile, "\nALTER FUNCTION %s(%s) OWNER TO %s;", handlerInfo.QualifiedName, handlerInfo.Arguments, quotedOwner)
+			predataFile.MustPrintf("\nALTER FUNCTION %s(%s) OWNER TO %s;", handlerInfo.QualifiedName, handlerInfo.Arguments, quotedOwner)
 		}
 		if procLang.Inline != 0 {
 			inlineInfo := funcInfoMap[procLang.Inline]
-			utils.MustPrintf(predataFile, "\nALTER FUNCTION %s(%s) OWNER TO %s;", inlineInfo.QualifiedName, inlineInfo.Arguments, quotedOwner)
+			predataFile.MustPrintf("\nALTER FUNCTION %s(%s) OWNER TO %s;", inlineInfo.QualifiedName, inlineInfo.Arguments, quotedOwner)
 		}
 		if procLang.Validator != 0 {
 			validatorInfo := funcInfoMap[procLang.Validator]
-			utils.MustPrintf(predataFile, "\nALTER FUNCTION %s(%s) OWNER TO %s;", validatorInfo.QualifiedName, validatorInfo.Arguments, quotedOwner)
+			predataFile.MustPrintf("\nALTER FUNCTION %s(%s) OWNER TO %s;", validatorInfo.QualifiedName, validatorInfo.Arguments, quotedOwner)
 		}
 		PrintObjectMetadata(predataFile, procLangMetadata[procLang.Oid], utils.QuoteIdent(procLang.Name), "LANGUAGE")
-		utils.MustPrintln(predataFile)
+		predataFile.MustPrintln()
+		toc.AddPredataEntry("", procLang.Name, "PROCEDURAL LANGUAGE", start, predataFile.ByteCount)
 	}
 }
 
-func PrintCreateConversionStatements(predataFile io.Writer, conversions []Conversion, conversionMetadata MetadataMap) {
+func PrintCreateConversionStatements(predataFile *utils.FileWithByteCount, toc *utils.TOC, conversions []Conversion, conversionMetadata MetadataMap) {
 	for _, conversion := range conversions {
+		start := predataFile.ByteCount
 		convFQN := MakeFQN(conversion.Schema, conversion.Name)
 		defaultStr := ""
 		if conversion.IsDefault {
 			defaultStr = " DEFAULT"
 		}
-		utils.MustPrintf(predataFile, "\n\nCREATE%s CONVERSION %s FOR '%s' TO '%s' FROM %s;",
+		predataFile.MustPrintf("\n\nCREATE%s CONVERSION %s FOR '%s' TO '%s' FROM %s;",
 			defaultStr, convFQN, conversion.ForEncoding, conversion.ToEncoding, conversion.ConversionFunction)
 		PrintObjectMetadata(predataFile, conversionMetadata[conversion.Oid], convFQN, "CONVERSION")
-		utils.MustPrintln(predataFile)
+		predataFile.MustPrintln()
+		toc.AddPredataEntry(conversion.Schema, conversion.Name, "CONVERSION", start, predataFile.ByteCount)
 	}
 }

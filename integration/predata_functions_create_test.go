@@ -3,12 +3,18 @@ package integration
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
+	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("backup integration create statement tests", func() {
+	var toc utils.TOC
+	var backupfile *utils.FileWithByteCount
+	BeforeEach(func() {
+		backupfile = utils.NewFileWithByteCount(buffer)
+	})
 	Describe("PrintCreateFunctionStatement", func() {
 		funcMetadata := backup.ObjectMetadata{}
 		It("creates a function with a simple return type", func() {
@@ -19,7 +25,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				Language: "sql",
 			}
 
-			backup.PrintCreateFunctionStatement(buffer, addFunction, funcMetadata)
+			backup.PrintCreateFunctionStatement(backupfile, &toc, addFunction, funcMetadata)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION add(integer, integer)")
@@ -37,7 +43,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				NumRows: 200, DataAccess: "m", Language: "sql",
 			}
 
-			backup.PrintCreateFunctionStatement(buffer, appendFunction, funcMetadata)
+			backup.PrintCreateFunctionStatement(backupfile, &toc, appendFunction, funcMetadata)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION append(integer, integer)")
@@ -55,7 +61,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				Language: "sql",
 			}
 
-			backup.PrintCreateFunctionStatement(buffer, dupFunction, funcMetadata)
+			backup.PrintCreateFunctionStatement(backupfile, &toc, dupFunction, funcMetadata)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION dup(integer)")
@@ -97,7 +103,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 		It("creates a basic aggregate", func() {
 			emptyMetadataMap := backup.MetadataMap{}
-			backup.PrintCreateAggregateStatements(buffer, []backup.Aggregate{aggregateDef}, funcInfoMap, emptyMetadataMap)
+			backup.PrintCreateAggregateStatements(backupfile, &toc, []backup.Aggregate{aggregateDef}, funcInfoMap, emptyMetadataMap)
 
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION mysfunc_accum(numeric, numeric, numeric)")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION mypre_accum(numeric, numeric)")
@@ -111,7 +117,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		It("creates an aggregate with an owner and a comment", func() {
 			aggMetadata := backup.ObjectMetadata{[]backup.ACL{}, "testrole", "This is an aggregate comment."}
 			aggMetadataMap := backup.MetadataMap{1: aggMetadata}
-			backup.PrintCreateAggregateStatements(buffer, []backup.Aggregate{aggregateDef}, funcInfoMap, aggMetadataMap)
+			backup.PrintCreateAggregateStatements(backupfile, &toc, []backup.Aggregate{aggregateDef}, funcInfoMap, aggMetadataMap)
 
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION mysfunc_accum(numeric, numeric, numeric)")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION mypre_accum(numeric, numeric)")
@@ -140,7 +146,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION casttoint(text) RETURNS integer STRICT IMMUTABLE LANGUAGE SQL AS 'SELECT cast($1 as integer);'")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION casttoint(text)")
 
-			backup.PrintCreateCastStatements(buffer, []backup.Cast{castDef}, castMetadataMap)
+			backup.PrintCreateCastStatements(backupfile, &toc, []backup.Cast{castDef}, castMetadataMap)
 			defer testutils.AssertQueryRuns(connection, "DROP CAST (text AS int4)")
 
 			testutils.AssertQueryRuns(connection, buffer.String())
@@ -157,7 +163,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TYPE casttesttype (INTERNALLENGTH = variable, INPUT = cast_in, OUTPUT = cast_out)")
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE casttesttype CASCADE")
 
-			backup.PrintCreateCastStatements(buffer, []backup.Cast{castDef}, castMetadataMap)
+			backup.PrintCreateCastStatements(backupfile, &toc, []backup.Cast{castDef}, castMetadataMap)
 			defer testutils.AssertQueryRuns(connection, "DROP CAST (text AS public.casttesttype)")
 
 			testutils.AssertQueryRuns(connection, buffer.String())
@@ -174,7 +180,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION casttoint(text) RETURNS integer STRICT IMMUTABLE LANGUAGE SQL AS 'SELECT cast($1 as integer);'")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION casttoint(text)")
 
-			backup.PrintCreateCastStatements(buffer, []backup.Cast{castDef}, castMetadataMap)
+			backup.PrintCreateCastStatements(backupfile, &toc, []backup.Cast{castDef}, castMetadataMap)
 			defer testutils.AssertQueryRuns(connection, "DROP CAST (text AS int4)")
 
 			testutils.AssertQueryRuns(connection, buffer.String())
@@ -203,7 +209,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			langMetadataMap := testutils.DefaultMetadataMap("LANGUAGE", true, true, true)
 			langMetadata := langMetadataMap[1]
 
-			backup.PrintCreateLanguageStatements(buffer, procLangs, funcInfoMap, langMetadataMap)
+			backup.PrintCreateLanguageStatements(backupfile, &toc, procLangs, funcInfoMap, langMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP LANGUAGE plperl")
@@ -227,7 +233,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			convMetadataMap := testutils.DefaultMetadataMap("CONVERSION", false, true, true)
 			convMetadata := convMetadataMap[1]
 
-			backup.PrintCreateConversionStatements(buffer, conversions, convMetadataMap)
+			backup.PrintCreateConversionStatements(backupfile, &toc, conversions, convMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP CONVERSION conv_one")

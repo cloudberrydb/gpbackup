@@ -7,33 +7,37 @@ package backup
  */
 
 import (
-	"io"
-
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
-func PrintCreateIndexStatements(postdataFile io.Writer, indexes []QuerySimpleDefinition, indexMetadata MetadataMap) {
+func PrintCreateIndexStatements(postdataFile *utils.FileWithByteCount, toc *utils.TOC, indexes []QuerySimpleDefinition, indexMetadata MetadataMap) {
 	for _, index := range indexes {
-		utils.MustPrintf(postdataFile, "\n\n%s;", index.Def)
+		start := postdataFile.ByteCount
+		postdataFile.MustPrintf("\n\n%s;", index.Def)
 		if index.TablespaceName != "" {
-			utils.MustPrintf(postdataFile, "\nALTER INDEX %s SET TABLESPACE %s;", index.Name, index.TablespaceName)
+			postdataFile.MustPrintf("\nALTER INDEX %s SET TABLESPACE %s;", index.Name, index.TablespaceName)
 		}
 		PrintObjectMetadata(postdataFile, indexMetadata[index.Oid], index.Name, "INDEX")
+		toc.AddPostdataEntry(index.OwningSchema, index.Name, "INDEX", start, postdataFile.ByteCount)
 	}
 }
 
-func PrintCreateRuleStatements(postdataFile io.Writer, rules []QuerySimpleDefinition, ruleMetadata MetadataMap) {
+func PrintCreateRuleStatements(postdataFile *utils.FileWithByteCount, toc *utils.TOC, rules []QuerySimpleDefinition, ruleMetadata MetadataMap) {
 	for _, rule := range rules {
-		utils.MustPrintf(postdataFile, "\n\n%s", rule.Def)
+		start := postdataFile.ByteCount
+		postdataFile.MustPrintf("\n\n%s", rule.Def)
 		tableFQN := MakeFQN(rule.OwningSchema, rule.OwningTable)
 		PrintObjectMetadata(postdataFile, ruleMetadata[rule.Oid], rule.Name, "RULE", tableFQN)
+		toc.AddPostdataEntry(rule.OwningSchema, rule.Name, "RULE", start, postdataFile.ByteCount)
 	}
 }
 
-func PrintCreateTriggerStatements(postdataFile io.Writer, triggers []QuerySimpleDefinition, triggerMetadata MetadataMap) {
+func PrintCreateTriggerStatements(postdataFile *utils.FileWithByteCount, toc *utils.TOC, triggers []QuerySimpleDefinition, triggerMetadata MetadataMap) {
 	for _, trigger := range triggers {
-		utils.MustPrintf(postdataFile, "\n\n%s;", trigger.Def)
+		start := postdataFile.ByteCount
+		postdataFile.MustPrintf("\n\n%s;", trigger.Def)
 		tableFQN := MakeFQN(trigger.OwningSchema, trigger.OwningTable)
 		PrintObjectMetadata(postdataFile, triggerMetadata[trigger.Oid], trigger.Name, "TRIGGER", tableFQN)
+		toc.AddPostdataEntry(trigger.OwningSchema, trigger.Name, "TRIGGER", start, postdataFile.ByteCount)
 	}
 }

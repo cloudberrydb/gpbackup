@@ -3,12 +3,19 @@ package backup_test
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
+	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("backup/predata_functions tests", func() {
+	var toc *utils.TOC
+	var backupfile *utils.FileWithByteCount
+	BeforeEach(func() {
+		toc = &utils.TOC{}
+		backupfile = utils.NewFileWithByteCount(buffer)
+	})
 	Describe("Functions involved in printing CREATE FUNCTION statements", func() {
 		var funcDef backup.Function
 		funcDefault := backup.Function{1, "public", "func_name", false, "add_two_ints", "", "integer, integer", "integer, integer", "integer",
@@ -25,25 +32,24 @@ var _ = Describe("backup/predata_functions tests", func() {
 				funcMetadata = backup.ObjectMetadata{}
 			})
 			It("prints a function definition for an internal function without a binary path", func() {
-				backup.PrintCreateFunctionStatement(buffer, funcDef, funcMetadata)
-				testutils.ExpectRegexp(buffer, `CREATE FUNCTION public.func_name(integer, integer) RETURNS integer AS
+				backup.PrintCreateFunctionStatement(backupfile, toc, funcDef, funcMetadata)
+				testutils.ExpectEntry(toc.PredataEntries, 0, "public", "func_name(integer, integer)", "FUNCTION")
+				testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE FUNCTION public.func_name(integer, integer) RETURNS integer AS
 $$add_two_ints$$
-LANGUAGE internal;
-`)
+LANGUAGE internal;`)
 			})
 			It("prints a function definition for a function that returns a set", func() {
 				funcDef.ReturnsSet = true
 				funcDef.ResultType = "SETOF integer"
-				backup.PrintCreateFunctionStatement(buffer, funcDef, funcMetadata)
-				testutils.ExpectRegexp(buffer, `CREATE FUNCTION public.func_name(integer, integer) RETURNS SETOF integer AS
+				backup.PrintCreateFunctionStatement(backupfile, toc, funcDef, funcMetadata)
+				testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE FUNCTION public.func_name(integer, integer) RETURNS SETOF integer AS
 $$add_two_ints$$
-LANGUAGE internal;
-`)
+LANGUAGE internal;`)
 			})
 			It("prints a function definition for a function with permissions, an owner, and a comment", func() {
 				funcMetadata := backup.ObjectMetadata{[]backup.ACL{testutils.DefaultACLForType("testrole", "FUNCTION")}, "testrole", "This is a function comment."}
-				backup.PrintCreateFunctionStatement(buffer, funcDef, funcMetadata)
-				testutils.ExpectRegexp(buffer, `CREATE FUNCTION public.func_name(integer, integer) RETURNS integer AS
+				backup.PrintCreateFunctionStatement(backupfile, toc, funcDef, funcMetadata)
+				testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE FUNCTION public.func_name(integer, integer) RETURNS integer AS
 $$add_two_ints$$
 LANGUAGE internal;
 
@@ -62,14 +68,14 @@ GRANT ALL ON FUNCTION public.func_name(integer, integer) TO testrole;`)
 		Describe("PrintFunctionBodyOrPath", func() {
 			It("prints a function definition for an internal function with 'NULL' binary path using '-'", func() {
 				funcDef.BinaryPath = "-"
-				backup.PrintFunctionBodyOrPath(buffer, funcDef)
+				backup.PrintFunctionBodyOrPath(backupfile, funcDef)
 				testutils.ExpectRegexp(buffer, `
 $$add_two_ints$$
 `)
 			})
 			It("prints a function definition for an internal function with a binary path", func() {
 				funcDef.BinaryPath = "$libdir/binary"
-				backup.PrintFunctionBodyOrPath(buffer, funcDef)
+				backup.PrintFunctionBodyOrPath(backupfile, funcDef)
 				testutils.ExpectRegexp(buffer, `
 '$libdir/binary', 'add_two_ints'
 `)
@@ -77,7 +83,7 @@ $$add_two_ints$$
 			It("prints a function definition for a function with a one-line function definition", func() {
 				funcDef.FunctionBody = "SELECT $1+$2"
 				funcDef.Language = "sql"
-				backup.PrintFunctionBodyOrPath(buffer, funcDef)
+				backup.PrintFunctionBodyOrPath(backupfile, funcDef)
 				testutils.ExpectRegexp(buffer, `$_$SELECT $1+$2$_$`)
 			})
 			It("prints a function definition for a function with a multi-line function definition", func() {
@@ -87,7 +93,7 @@ BEGIN
 END
 `
 				funcDef.Language = "sql"
-				backup.PrintFunctionBodyOrPath(buffer, funcDef)
+				backup.PrintFunctionBodyOrPath(backupfile, funcDef)
 				testutils.ExpectRegexp(buffer, `$_$
 BEGIN
 	SELECT $1 + $2
@@ -99,50 +105,50 @@ $_$`)
 			Context("SqlUsage cases", func() {
 				It("prints 'c' as CONTAINS SQL", func() {
 					funcDef.DataAccess = "c"
-					backup.PrintFunctionModifiers(buffer, funcDef)
+					backup.PrintFunctionModifiers(backupfile, funcDef)
 					testutils.ExpectRegexp(buffer, "CONTAINS SQL")
 				})
 				It("prints 'm' as MODIFIES SQL DATA", func() {
 					funcDef.DataAccess = "m"
-					backup.PrintFunctionModifiers(buffer, funcDef)
+					backup.PrintFunctionModifiers(backupfile, funcDef)
 					testutils.ExpectRegexp(buffer, "MODIFIES SQL DATA")
 				})
 				It("prints 'n' as NO SQL", func() {
 					funcDef.DataAccess = "n"
-					backup.PrintFunctionModifiers(buffer, funcDef)
+					backup.PrintFunctionModifiers(backupfile, funcDef)
 					testutils.ExpectRegexp(buffer, "NO SQL")
 				})
 				It("prints 'r' as READS SQL DATA", func() {
 					funcDef.DataAccess = "r"
-					backup.PrintFunctionModifiers(buffer, funcDef)
+					backup.PrintFunctionModifiers(backupfile, funcDef)
 					testutils.ExpectRegexp(buffer, "READS SQL DATA")
 				})
 			})
 			Context("Volatility cases", func() {
 				It("does not print anything for 'v'", func() {
 					funcDef.Volatility = "v"
-					backup.PrintFunctionModifiers(buffer, funcDef)
+					backup.PrintFunctionModifiers(backupfile, funcDef)
 					Expect(buffer.Contents()).To(Equal([]byte{}))
 				})
 				It("prints 's' as STABLE", func() {
 					funcDef.Volatility = "s"
-					backup.PrintFunctionModifiers(buffer, funcDef)
+					backup.PrintFunctionModifiers(backupfile, funcDef)
 					testutils.ExpectRegexp(buffer, "STABLE")
 				})
 				It("prints 'i' as IMMUTABLE", func() {
 					funcDef.Volatility = "i"
-					backup.PrintFunctionModifiers(buffer, funcDef)
+					backup.PrintFunctionModifiers(backupfile, funcDef)
 					testutils.ExpectRegexp(buffer, "IMMUTABLE")
 				})
 			})
 			It("prints 'STRICT' if IsStrict is set", func() {
 				funcDef.IsStrict = true
-				backup.PrintFunctionModifiers(buffer, funcDef)
+				backup.PrintFunctionModifiers(backupfile, funcDef)
 				testutils.ExpectRegexp(buffer, "STRICT")
 			})
 			It("prints 'SECURITY DEFINER' if IsSecurityDefiner is set", func() {
 				funcDef.IsSecurityDefiner = true
-				backup.PrintFunctionModifiers(buffer, funcDef)
+				backup.PrintFunctionModifiers(backupfile, funcDef)
 				testutils.ExpectRegexp(buffer, "SECURITY DEFINER")
 			})
 			Context("Cost cases", func() {
@@ -153,43 +159,43 @@ $_$`)
 				 */
 				It("prints 'COST 5' if Cost is set to 5", func() {
 					funcDef.Cost = 5
-					backup.PrintFunctionModifiers(buffer, funcDef)
+					backup.PrintFunctionModifiers(backupfile, funcDef)
 					testutils.ExpectRegexp(buffer, "COST 5")
 				})
 				It("prints 'COST 1' if Cost is set to 1 and language is not c or internal", func() {
 					funcDef.Cost = 1
 					funcDef.Language = "sql"
-					backup.PrintFunctionModifiers(buffer, funcDef)
+					backup.PrintFunctionModifiers(backupfile, funcDef)
 					testutils.ExpectRegexp(buffer, "COST 1")
 				})
 				It("does not print 'COST 1' if Cost is set to 1 and language is c", func() {
 					funcDef.Cost = 1
 					funcDef.Language = "c"
-					backup.PrintFunctionModifiers(buffer, funcDef)
+					backup.PrintFunctionModifiers(backupfile, funcDef)
 					Expect(buffer.Contents()).To(Equal([]byte{}))
 				})
 				It("does not print 'COST 1' if Cost is set to 1 and language is internal", func() {
 					funcDef.Cost = 1
 					funcDef.Language = "internal"
-					backup.PrintFunctionModifiers(buffer, funcDef)
+					backup.PrintFunctionModifiers(backupfile, funcDef)
 					Expect(buffer.Contents()).To(Equal([]byte{}))
 				})
 				It("prints 'COST 100' if Cost is set to 100 and language is c", func() {
 					funcDef.Cost = 100
 					funcDef.Language = "c"
-					backup.PrintFunctionModifiers(buffer, funcDef)
+					backup.PrintFunctionModifiers(backupfile, funcDef)
 					testutils.ExpectRegexp(buffer, "COST 100")
 				})
 				It("prints 'COST 100' if Cost is set to 100 and language is internal", func() {
 					funcDef.Cost = 100
 					funcDef.Language = "internal"
-					backup.PrintFunctionModifiers(buffer, funcDef)
+					backup.PrintFunctionModifiers(backupfile, funcDef)
 					testutils.ExpectRegexp(buffer, "COST 100")
 				})
 				It("does not print 'COST 100' if Cost is set to 100 and language is not c or internal", func() {
 					funcDef.Cost = 100
 					funcDef.Language = "sql"
-					backup.PrintFunctionModifiers(buffer, funcDef)
+					backup.PrintFunctionModifiers(backupfile, funcDef)
 					Expect(buffer.Contents()).To(Equal([]byte{}))
 				})
 			})
@@ -202,31 +208,31 @@ $_$`)
 				It("prints 'ROWS 5' if Rows is set to 5", func() {
 					funcDef.NumRows = 5
 					funcDef.ReturnsSet = true
-					backup.PrintFunctionModifiers(buffer, funcDef)
+					backup.PrintFunctionModifiers(backupfile, funcDef)
 					testutils.ExpectRegexp(buffer, "ROWS 5")
 				})
 				It("does not print 'ROWS' if Rows is set but ReturnsSet is false", func() {
 					funcDef.NumRows = 100
 					funcDef.ReturnsSet = false
-					backup.PrintFunctionModifiers(buffer, funcDef)
+					backup.PrintFunctionModifiers(backupfile, funcDef)
 					Expect(buffer.Contents()).To(Equal([]byte{}))
 				})
 				It("does not print 'ROWS' if Rows is set to 0", func() {
 					funcDef.NumRows = 0
 					funcDef.ReturnsSet = true
-					backup.PrintFunctionModifiers(buffer, funcDef)
+					backup.PrintFunctionModifiers(backupfile, funcDef)
 					Expect(buffer.Contents()).To(Equal([]byte{}))
 				})
 				It("does not print 'ROWS' if Rows is set to 1000", func() {
 					funcDef.NumRows = 1000
 					funcDef.ReturnsSet = true
-					backup.PrintFunctionModifiers(buffer, funcDef)
+					backup.PrintFunctionModifiers(backupfile, funcDef)
 					Expect(buffer.Contents()).To(Equal([]byte{}))
 				})
 			})
 			It("prints config statements if any are set", func() {
 				funcDef.Config = "SET client_min_messages TO error"
-				backup.PrintFunctionModifiers(buffer, funcDef)
+				backup.PrintFunctionModifiers(backupfile, funcDef)
 				testutils.ExpectRegexp(buffer, "SET client_min_messages TO error")
 			})
 		})
@@ -247,16 +253,17 @@ $_$`)
 		})
 
 		It("prints an aggregate definition for an unordered aggregate with no optional specifications", func() {
-			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcInfoMap, aggMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
+			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefs, funcInfoMap, aggMetadataMap)
+			testutils.ExpectEntry(toc.PredataEntries, 0, "public", "agg_name(integer, integer)", "AGGREGATE")
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
 	STYPE = integer
 );`)
 		})
 		It("prints an aggregate definition for an ordered aggregate with no optional specifications", func() {
 			aggDefs[0].IsOrdered = true
-			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcInfoMap, aggMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE ORDERED AGGREGATE public.agg_name(integer, integer) (
+			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefs, funcInfoMap, aggMetadataMap)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE ORDERED AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
 	STYPE = integer
 );`)
@@ -264,16 +271,16 @@ $_$`)
 		It("prints an aggregate definition for an unordered aggregate with no arguments", func() {
 			aggDefs[0].Arguments = ""
 			aggDefs[0].IdentArgs = ""
-			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcInfoMap, aggMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE AGGREGATE public.agg_name(*) (
+			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefs, funcInfoMap, aggMetadataMap)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(*) (
 	SFUNC = public.mysfunc,
 	STYPE = integer
 );`)
 		})
 		It("prints an aggregate with a preliminary function", func() {
 			aggDefs[0].PreliminaryFunction = 2
-			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcInfoMap, aggMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
+			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefs, funcInfoMap, aggMetadataMap)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
 	STYPE = integer,
 	PREFUNC = public.mypfunc
@@ -281,8 +288,8 @@ $_$`)
 		})
 		It("prints an aggregate with a final function", func() {
 			aggDefs[0].FinalFunction = 3
-			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcInfoMap, aggMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
+			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefs, funcInfoMap, aggMetadataMap)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
 	STYPE = integer,
 	FINALFUNC = public.myffunc
@@ -290,8 +297,8 @@ $_$`)
 		})
 		It("prints an aggregate with an initial condition", func() {
 			aggDefs[0].InitialValue = "0"
-			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcInfoMap, aggMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
+			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefs, funcInfoMap, aggMetadataMap)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
 	STYPE = integer,
 	INITCOND = '0'
@@ -299,8 +306,8 @@ $_$`)
 		})
 		It("prints an aggregate with a sort operator", func() {
 			aggDefs[0].SortOperator = 4
-			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcInfoMap, aggMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
+			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefs, funcInfoMap, aggMetadataMap)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
 	STYPE = integer,
 	SORTOP = public.mysortop
@@ -309,8 +316,8 @@ $_$`)
 		It("prints an aggregate with multiple specifications", func() {
 			aggDefs[0].FinalFunction = 3
 			aggDefs[0].SortOperator = 4
-			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcInfoMap, aggMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
+			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefs, funcInfoMap, aggMetadataMap)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
 	STYPE = integer,
 	FINALFUNC = public.myffunc,
@@ -319,8 +326,8 @@ $_$`)
 		})
 		It("prints an aggregate with owner and comment", func() {
 			aggMetadataMap[1] = backup.ObjectMetadata{Privileges: []backup.ACL{}, Owner: "testrole", Comment: "This is an aggregate comment."}
-			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcInfoMap, aggMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
+			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefs, funcInfoMap, aggMetadataMap)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
 	STYPE = integer
 );
@@ -335,8 +342,8 @@ ALTER AGGREGATE public.agg_name(integer, integer) OWNER TO testrole;`)
 			aggDefs[0].Arguments = ""
 			aggDefs[0].IdentArgs = ""
 			aggMetadataMap[1] = backup.ObjectMetadata{Privileges: []backup.ACL{}, Owner: "testrole", Comment: "This is an aggregate comment."}
-			backup.PrintCreateAggregateStatements(buffer, aggDefs, funcInfoMap, aggMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE AGGREGATE public.agg_name(*) (
+			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefs, funcInfoMap, aggMetadataMap)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(*) (
 	SFUNC = public.mysfunc,
 	STYPE = integer
 );
@@ -352,49 +359,50 @@ ALTER AGGREGATE public.agg_name(*) OWNER TO testrole;`)
 		emptyMetadataMap := backup.MetadataMap{}
 		It("prints an explicit cast with a function", func() {
 			castDef := backup.Cast{1, "src", "dst", "public", "cast_func", "integer, integer", "e"}
-			backup.PrintCreateCastStatements(buffer, []backup.Cast{castDef}, emptyMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE CAST (src AS dst)
+			backup.PrintCreateCastStatements(backupfile, toc, []backup.Cast{castDef}, emptyMetadataMap)
+			testutils.ExpectEntry(toc.PredataEntries, 0, "pg_catalog", "(src AS dst)", "CAST")
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE CAST (src AS dst)
 	WITH FUNCTION public.cast_func(integer, integer);`)
 		})
 		It("prints an implicit cast with a function", func() {
 			castDef := backup.Cast{1, "src", "dst", "public", "cast_func", "integer, integer", "i"}
-			backup.PrintCreateCastStatements(buffer, []backup.Cast{castDef}, emptyMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE CAST (src AS dst)
+			backup.PrintCreateCastStatements(backupfile, toc, []backup.Cast{castDef}, emptyMetadataMap)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE CAST (src AS dst)
 	WITH FUNCTION public.cast_func(integer, integer)
 AS IMPLICIT;`)
 		})
 		It("prints an assignment cast with a function", func() {
 			castDef := backup.Cast{1, "src", "dst", "public", "cast_func", "integer, integer", "a"}
-			backup.PrintCreateCastStatements(buffer, []backup.Cast{castDef}, emptyMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE CAST (src AS dst)
+			backup.PrintCreateCastStatements(backupfile, toc, []backup.Cast{castDef}, emptyMetadataMap)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE CAST (src AS dst)
 	WITH FUNCTION public.cast_func(integer, integer)
 AS ASSIGNMENT;`)
 		})
 		It("prints an explicit cast without a function", func() {
 			castDef := backup.Cast{1, "src", "dst", "", "", "", "e"}
-			backup.PrintCreateCastStatements(buffer, []backup.Cast{castDef}, emptyMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE CAST (src AS dst)
+			backup.PrintCreateCastStatements(backupfile, toc, []backup.Cast{castDef}, emptyMetadataMap)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE CAST (src AS dst)
 	WITHOUT FUNCTION;`)
 		})
 		It("prints an implicit cast without a function", func() {
 			castDef := backup.Cast{1, "src", "dst", "", "", "", "i"}
-			backup.PrintCreateCastStatements(buffer, []backup.Cast{castDef}, emptyMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE CAST (src AS dst)
+			backup.PrintCreateCastStatements(backupfile, toc, []backup.Cast{castDef}, emptyMetadataMap)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE CAST (src AS dst)
 	WITHOUT FUNCTION
 AS IMPLICIT;`)
 		})
 		It("prints an assignment cast without a function", func() {
 			castDef := backup.Cast{1, "src", "dst", "", "", "", "a"}
-			backup.PrintCreateCastStatements(buffer, []backup.Cast{castDef}, emptyMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE CAST (src AS dst)
+			backup.PrintCreateCastStatements(backupfile, toc, []backup.Cast{castDef}, emptyMetadataMap)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE CAST (src AS dst)
 	WITHOUT FUNCTION
 AS ASSIGNMENT;`)
 		})
 		It("prints a cast with a comment", func() {
 			castDef := backup.Cast{1, "src", "dst", "", "", "", "e"}
 			castMetadataMap := testutils.DefaultMetadataMap("CAST", false, false, true)
-			backup.PrintCreateCastStatements(buffer, []backup.Cast{castDef}, castMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE CAST (src AS dst)
+			backup.PrintCreateCastStatements(backupfile, toc, []backup.Cast{castDef}, castMetadataMap)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE CAST (src AS dst)
 	WITHOUT FUNCTION;
 
 COMMENT ON CAST (src AS dst) IS 'This is a cast comment.';`)
@@ -429,6 +437,7 @@ COMMENT ON CAST (src AS dst) IS 'This is a cast comment.';`)
 		})
 	})
 	Describe("PrintCreateLanguageStatements", func() {
+
 		plUntrustedHandlerOnly := backup.ProceduralLanguage{1, "plpythonu", "testrole", true, false, 4, 0, 0}
 		plAllFields := backup.ProceduralLanguage{1, "plpgsql", "testrole", true, true, 1, 2, 3}
 		plComment := backup.ProceduralLanguage{1, "plpythonu", "testrole", true, false, 4, 0, 0}
@@ -443,15 +452,16 @@ COMMENT ON CAST (src AS dst) IS 'This is a cast comment.';`)
 		It("prints untrusted language with a handler only", func() {
 			langs := []backup.ProceduralLanguage{plUntrustedHandlerOnly}
 
-			backup.PrintCreateLanguageStatements(buffer, langs, funcInfoMap, emptyMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE PROCEDURAL LANGUAGE plpythonu;
+			backup.PrintCreateLanguageStatements(backupfile, toc, langs, funcInfoMap, emptyMetadataMap)
+			testutils.ExpectEntry(toc.PredataEntries, 0, "", "plpythonu", "PROCEDURAL LANGUAGE")
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE PROCEDURAL LANGUAGE plpythonu;
 ALTER FUNCTION pg_catalog.plpython_call_handler() OWNER TO testrole;`)
 		})
 		It("prints trusted language with handler, inline, and validator", func() {
 			langs := []backup.ProceduralLanguage{plAllFields}
 
-			backup.PrintCreateLanguageStatements(buffer, langs, funcInfoMap, emptyMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE TRUSTED PROCEDURAL LANGUAGE plpgsql;
+			backup.PrintCreateLanguageStatements(backupfile, toc, langs, funcInfoMap, emptyMetadataMap)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE TRUSTED PROCEDURAL LANGUAGE plpgsql;
 ALTER FUNCTION pg_catalog.plpgsql_call_handler() OWNER TO testrole;
 ALTER FUNCTION pg_catalog.plpgsql_inline_handler(internal) OWNER TO testrole;
 ALTER FUNCTION pg_catalog.plpgsql_validator(oid) OWNER TO testrole;`)
@@ -459,12 +469,9 @@ ALTER FUNCTION pg_catalog.plpgsql_validator(oid) OWNER TO testrole;`)
 		It("prints multiple create language statements", func() {
 			langs := []backup.ProceduralLanguage{plUntrustedHandlerOnly, plAllFields}
 
-			backup.PrintCreateLanguageStatements(buffer, langs, funcInfoMap, emptyMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE PROCEDURAL LANGUAGE plpythonu;
-ALTER FUNCTION pg_catalog.plpython_call_handler() OWNER TO testrole;
-
-
-CREATE TRUSTED PROCEDURAL LANGUAGE plpgsql;
+			backup.PrintCreateLanguageStatements(backupfile, toc, langs, funcInfoMap, emptyMetadataMap)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE PROCEDURAL LANGUAGE plpythonu;
+ALTER FUNCTION pg_catalog.plpython_call_handler() OWNER TO testrole;`, `CREATE TRUSTED PROCEDURAL LANGUAGE plpgsql;
 ALTER FUNCTION pg_catalog.plpgsql_call_handler() OWNER TO testrole;
 ALTER FUNCTION pg_catalog.plpgsql_inline_handler(internal) OWNER TO testrole;
 ALTER FUNCTION pg_catalog.plpgsql_validator(oid) OWNER TO testrole;`)
@@ -473,8 +480,8 @@ ALTER FUNCTION pg_catalog.plpgsql_validator(oid) OWNER TO testrole;`)
 			langs := []backup.ProceduralLanguage{plComment}
 			langMetadataMap := testutils.DefaultMetadataMap("LANGUAGE", true, true, true)
 
-			backup.PrintCreateLanguageStatements(buffer, langs, funcInfoMap, langMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE PROCEDURAL LANGUAGE plpythonu;
+			backup.PrintCreateLanguageStatements(backupfile, toc, langs, funcInfoMap, langMetadataMap)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE PROCEDURAL LANGUAGE plpythonu;
 ALTER FUNCTION pg_catalog.plpython_call_handler() OWNER TO testrole;
 
 COMMENT ON LANGUAGE plpythonu IS 'This is a language comment.';
@@ -502,29 +509,27 @@ GRANT ALL ON LANGUAGE plpythonu TO testrole;`)
 
 		It("prints a non-default conversion", func() {
 			conversions := []backup.Conversion{convOne}
-			backup.PrintCreateConversionStatements(buffer, conversions, metadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE CONVERSION public.conv_one FOR 'UTF8' TO 'LATIN1' FROM public.converter;`)
+			backup.PrintCreateConversionStatements(backupfile, toc, conversions, metadataMap)
+			testutils.ExpectEntry(toc.PredataEntries, 0, "public", "conv_one", "CONVERSION")
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE CONVERSION public.conv_one FOR 'UTF8' TO 'LATIN1' FROM public.converter;`)
 		})
 		It("prints a default conversion", func() {
 			conversions := []backup.Conversion{convTwo}
-			backup.PrintCreateConversionStatements(buffer, conversions, metadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE DEFAULT CONVERSION public.conv_two FOR 'UTF8' TO 'LATIN1' FROM public.converter;`)
+			backup.PrintCreateConversionStatements(backupfile, toc, conversions, metadataMap)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE DEFAULT CONVERSION public.conv_two FOR 'UTF8' TO 'LATIN1' FROM public.converter;`)
 		})
 		It("prints multiple create conversion statements", func() {
 			conversions := []backup.Conversion{convOne, convTwo}
-			backup.PrintCreateConversionStatements(buffer, conversions, metadataMap)
-			testutils.ExpectRegexp(buffer, `
-
-CREATE CONVERSION public.conv_one FOR 'UTF8' TO 'LATIN1' FROM public.converter;
-
-
-CREATE DEFAULT CONVERSION public.conv_two FOR 'UTF8' TO 'LATIN1' FROM public.converter;`)
+			backup.PrintCreateConversionStatements(backupfile, toc, conversions, metadataMap)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer,
+				`CREATE CONVERSION public.conv_one FOR 'UTF8' TO 'LATIN1' FROM public.converter;`,
+				`CREATE DEFAULT CONVERSION public.conv_two FOR 'UTF8' TO 'LATIN1' FROM public.converter;`)
 		})
 		It("prints a conversion with an owner and a comment", func() {
 			conversions := []backup.Conversion{convOne}
 			metadataMap = testutils.DefaultMetadataMap("CONVERSION", false, true, true)
-			backup.PrintCreateConversionStatements(buffer, conversions, metadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE CONVERSION public.conv_one FOR 'UTF8' TO 'LATIN1' FROM public.converter;
+			backup.PrintCreateConversionStatements(backupfile, toc, conversions, metadataMap)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE CONVERSION public.conv_one FOR 'UTF8' TO 'LATIN1' FROM public.converter;
 
 COMMENT ON CONVERSION public.conv_one IS 'This is a conversion comment.';
 

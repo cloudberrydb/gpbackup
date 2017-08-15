@@ -3,12 +3,18 @@ package integration
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
+	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("backup integration create statement tests", func() {
+	var toc utils.TOC
+	var backupfile *utils.FileWithByteCount
+	BeforeEach(func() {
+		backupfile = utils.NewFileWithByteCount(buffer)
+	})
 	Describe("PrintRegularTableCreateStatement", func() {
 		var (
 			extTableEmpty backup.ExternalTableDefinition
@@ -70,7 +76,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			testutils.AssertQueryRuns(connection, "DROP TABLE IF EXISTS public.testtable")
 		})
 		It("creates a table with no attributes", func() {
-			backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
+			backup.PrintRegularTableCreateStatement(backupfile, &toc, testTable, tableDef)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			testTable.RelationOid = testutils.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
@@ -82,7 +88,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			rowTwo := backup.ColumnDefinition{0, 2, "j", false, false, false, "character varying(20)", "", -1, "", "", ""}
 			tableDef.ColumnDefs = []backup.ColumnDefinition{rowOne, rowTwo}
 
-			backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
+			backup.PrintRegularTableCreateStatement(backupfile, &toc, testTable, tableDef)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			testTable.RelationOid = testutils.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
@@ -96,7 +102,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			tableDef.DistPolicy = "DISTRIBUTED BY (i, j)"
 			tableDef.ColumnDefs = []backup.ColumnDefinition{rowOneDefault, rowNotNullDefault, rowNonDefaultStorageAndStats}
 
-			backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
+			backup.PrintRegularTableCreateStatement(backupfile, &toc, testTable, tableDef)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			testTable.RelationOid = testutils.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
@@ -109,7 +115,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			tableDef.StorageOpts = "appendonly=true, orientation=column, fillfactor=42, compresstype=zlib, blocksize=32768, compresslevel=1"
 			tableDef.ColumnDefs = []backup.ColumnDefinition{rowOne, rowTwo}
 
-			backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
+			backup.PrintRegularTableCreateStatement(backupfile, &toc, testTable, tableDef)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			testTable.RelationOid = testutils.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
@@ -122,7 +128,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			tableDef.PartDef = partitionDef
 			tableDef.ColumnDefs = []backup.ColumnDefinition{rowOne, rowTwo}
 
-			backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
+			backup.PrintRegularTableCreateStatement(backupfile, &toc, testTable, tableDef)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			testTable.RelationOid = testutils.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
@@ -136,7 +142,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			tableDef.PartTemplateDef = partTemplateDef
 			tableDef.ColumnDefs = []backup.ColumnDefinition{rowOne, rowTwo}
 
-			backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
+			backup.PrintRegularTableCreateStatement(backupfile, &toc, testTable, tableDef)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			testTable.RelationOid = testutils.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
@@ -149,7 +155,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			defer testutils.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")
 			tableDef.TablespaceName = "test_tablespace"
 
-			backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
+			backup.PrintRegularTableCreateStatement(backupfile, &toc, testTable, tableDef)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE testtable2")
 
 			testutils.AssertQueryRuns(connection, buffer.String())
@@ -164,7 +170,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			testTable.DependsUpon = []string{"public.parent"}
 			testTable.Inherits = []string{"public.parent"}
 
-			backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
+			backup.PrintRegularTableCreateStatement(backupfile, &toc, testTable, tableDef)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE public.testtable")
@@ -187,7 +193,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			testTable.DependsUpon = []string{"public.parent_one", "public.parent_two"}
 			testTable.Inherits = []string{"public.parent_one", "public.parent_two"}
 
-			backup.PrintRegularTableCreateStatement(buffer, testTable, tableDef)
+			backup.PrintRegularTableCreateStatement(backupfile, &toc, testTable, tableDef)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE public.testtable")
@@ -221,7 +227,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 		})
 		It("prints only owner for a table with no comment or column comments", func() {
 			tableMetadata.Owner = "testrole"
-			backup.PrintPostCreateTableStatements(buffer, testTable, tableDef, tableMetadata)
+			backup.PrintPostCreateTableStatements(backupfile, testTable, tableDef, tableMetadata)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			testTable.RelationOid = testutils.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
@@ -235,7 +241,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			tableMetadata.Owner = "testrole"
 			tableMetadata.Comment = "This is a table comment."
 			tableDef.ColumnDefs[0].Comment = "This is a column comment."
-			backup.PrintPostCreateTableStatements(buffer, testTable, tableDef, tableMetadata)
+			backup.PrintPostCreateTableStatements(backupfile, testTable, tableDef, tableMetadata)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			testTable.RelationOid = testutils.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
@@ -252,7 +258,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			viewMetadataMap := testutils.DefaultMetadataMap("VIEW", true, true, true)
 			viewMetadata := viewMetadataMap[1]
 
-			backup.PrintCreateViewStatements(buffer, []backup.View{viewDef}, viewMetadataMap)
+			backup.PrintCreateViewStatements(backupfile, &toc, []backup.View{viewDef}, viewMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP VIEW simpleview")
@@ -280,7 +286,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 		})
 		It("creates a basic sequence", func() {
 			sequenceDef.SequenceDefinition = backup.SequenceDefinition{Name: "my_sequence", LastVal: 1, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
-			backup.PrintCreateSequenceStatements(buffer, []backup.Sequence{sequenceDef}, sequenceMetadataMap)
+			backup.PrintCreateSequenceStatements(backupfile, &toc, []backup.Sequence{sequenceDef}, sequenceMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE my_sequence")
@@ -293,7 +299,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 		})
 		It("creates a complex sequence", func() {
 			sequenceDef.SequenceDefinition = backup.SequenceDefinition{Name: "my_sequence", LastVal: 105, Increment: 5, MaxVal: 1000, MinVal: 20, CacheVal: 1, LogCnt: 0, IsCycled: false, IsCalled: true}
-			backup.PrintCreateSequenceStatements(buffer, []backup.Sequence{sequenceDef}, sequenceMetadataMap)
+			backup.PrintCreateSequenceStatements(backupfile, &toc, []backup.Sequence{sequenceDef}, sequenceMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE my_sequence")
@@ -308,7 +314,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			sequenceDef.SequenceDefinition = backup.SequenceDefinition{Name: "my_sequence", LastVal: 1, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
 			sequenceMetadata := backup.ObjectMetadata{[]backup.ACL{testutils.DefaultACLWithout("testrole", "SEQUENCE", "UPDATE")}, "testrole", "This is a sequence comment."}
 			sequenceMetadataMap[1] = sequenceMetadata
-			backup.PrintCreateSequenceStatements(buffer, []backup.Sequence{sequenceDef}, sequenceMetadataMap)
+			backup.PrintCreateSequenceStatements(backupfile, &toc, []backup.Sequence{sequenceDef}, sequenceMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE my_sequence")
@@ -331,8 +337,8 @@ SET SUBPARTITION TEMPLATE  ` + `
 
 			sequenceDef.SequenceDefinition = backup.SequenceDefinition{Name: "my_sequence",
 				LastVal: 1, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
-			backup.PrintCreateSequenceStatements(buffer, []backup.Sequence{sequenceDef}, backup.MetadataMap{})
-			backup.PrintAlterSequenceStatements(buffer, []backup.Sequence{sequenceDef}, columnOwnerMap)
+			backup.PrintCreateSequenceStatements(backupfile, &toc, []backup.Sequence{sequenceDef}, backup.MetadataMap{})
+			backup.PrintAlterSequenceStatements(backupfile, &toc, []backup.Sequence{sequenceDef}, columnOwnerMap)
 
 			//Create table that sequence can be owned by
 			testutils.AssertQueryRuns(connection, "CREATE TABLE sequence_table(a int)")

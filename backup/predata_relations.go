@@ -7,7 +7,6 @@ package backup
 
 import (
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/greenplum-db/gpbackup/utils"
@@ -134,41 +133,46 @@ func ConstructDefinitionsForTables(connection *utils.DBConn, tables []Relation) 
  * the search_path; this will aid in later filtering to include or exclude certain tables during the
  * backup process, and allows customers to copy just the CREATE TABLE block in order to use it directly.
  */
-func PrintCreateTableStatement(predataFile io.Writer, table Relation, tableDef TableDefinition, tableMetadata ObjectMetadata) {
+func PrintCreateTableStatement(predataFile *utils.FileWithByteCount, toc *utils.TOC, table Relation, tableDef TableDefinition, tableMetadata ObjectMetadata) {
+	start := predataFile.ByteCount
+	// We use an empty TOC below to keep count of the bytes for testing purposes.
 	if tableDef.IsExternal {
-		PrintExternalTableCreateStatement(predataFile, table, tableDef)
+		PrintExternalTableCreateStatement(predataFile, &utils.TOC{}, table, tableDef)
 	} else {
-		PrintRegularTableCreateStatement(predataFile, table, tableDef)
+		PrintRegularTableCreateStatement(predataFile, &utils.TOC{}, table, tableDef)
 	}
 	PrintPostCreateTableStatements(predataFile, table, tableDef, tableMetadata)
+	toc.AddPredataEntry(table.SchemaName, table.RelationName, "TABLE", start, predataFile.ByteCount)
 }
 
-func PrintRegularTableCreateStatement(predataFile io.Writer, table Relation, tableDef TableDefinition) {
-	utils.MustPrintf(predataFile, "\n\nCREATE TABLE %s (\n", table.ToString())
+func PrintRegularTableCreateStatement(predataFile *utils.FileWithByteCount, toc *utils.TOC, table Relation, tableDef TableDefinition) {
+	start := predataFile.ByteCount
+	predataFile.MustPrintf("\n\nCREATE TABLE %s (\n", table.ToString())
 	printColumnDefinitions(predataFile, table, tableDef.ColumnDefs)
-	utils.MustPrintf(predataFile, ") ")
+	predataFile.MustPrintf(") ")
 	if len(table.Inherits) != 0 {
 		dependencyList := strings.Join(table.Inherits, ", ")
-		utils.MustPrintf(predataFile, "INHERITS (%s) ", dependencyList)
+		predataFile.MustPrintf("INHERITS (%s) ", dependencyList)
 	}
 	if tableDef.StorageOpts != "" {
-		utils.MustPrintf(predataFile, "WITH (%s) ", tableDef.StorageOpts)
+		predataFile.MustPrintf("WITH (%s) ", tableDef.StorageOpts)
 	}
 	if tableDef.TablespaceName != "" {
-		utils.MustPrintf(predataFile, "TABLESPACE %s ", tableDef.TablespaceName)
+		predataFile.MustPrintf("TABLESPACE %s ", tableDef.TablespaceName)
 	}
-	utils.MustPrintf(predataFile, "%s", tableDef.DistPolicy)
+	predataFile.MustPrintf("%s", tableDef.DistPolicy)
 	if tableDef.PartDef != "" {
-		utils.MustPrintf(predataFile, " %s", strings.TrimSpace(tableDef.PartDef))
+		predataFile.MustPrintf(" %s", strings.TrimSpace(tableDef.PartDef))
 	}
-	utils.MustPrintln(predataFile, ";")
+	predataFile.MustPrintln(";")
 	if tableDef.PartTemplateDef != "" {
-		utils.MustPrintf(predataFile, "%s;\n", strings.TrimSpace(tableDef.PartTemplateDef))
+		predataFile.MustPrintf("%s;\n", strings.TrimSpace(tableDef.PartTemplateDef))
 	}
 	printAlterColumnStatements(predataFile, table, tableDef.ColumnDefs)
+	toc.AddPredataEntry(table.SchemaName, table.RelationName, "TABLE", start, predataFile.ByteCount)
 }
 
-func printColumnDefinitions(predataFile io.Writer, table Relation, columnDefs []ColumnDefinition) {
+func printColumnDefinitions(predataFile *utils.FileWithByteCount, table Relation, columnDefs []ColumnDefinition) {
 	lines := make([]string, 0)
 	for _, column := range columnDefs {
 		if !column.IsDropped {
@@ -186,17 +190,17 @@ func printColumnDefinitions(predataFile io.Writer, table Relation, columnDefs []
 		}
 	}
 	if len(lines) > 0 {
-		utils.MustPrintln(predataFile, strings.Join(lines, ",\n"))
+		predataFile.MustPrintln(strings.Join(lines, ",\n"))
 	}
 }
 
-func printAlterColumnStatements(predataFile io.Writer, table Relation, columnDefs []ColumnDefinition) {
+func printAlterColumnStatements(predataFile *utils.FileWithByteCount, table Relation, columnDefs []ColumnDefinition) {
 	for _, column := range columnDefs {
 		if column.StatTarget > -1 {
-			utils.MustPrintf(predataFile, "\nALTER TABLE ONLY %s ALTER COLUMN %s SET STATISTICS %d;", table.ToString(), column.Name, column.StatTarget)
+			predataFile.MustPrintf("\nALTER TABLE ONLY %s ALTER COLUMN %s SET STATISTICS %d;", table.ToString(), column.Name, column.StatTarget)
 		}
 		if column.StorageType != "" {
-			utils.MustPrintf(predataFile, "\nALTER TABLE ONLY %s ALTER COLUMN %s SET STORAGE %s;", table.ToString(), column.Name, column.StorageType)
+			predataFile.MustPrintf("\nALTER TABLE ONLY %s ALTER COLUMN %s SET STORAGE %s;", table.ToString(), column.Name, column.StorageType)
 		}
 	}
 }
@@ -205,12 +209,12 @@ func printAlterColumnStatements(predataFile io.Writer, table Relation, columnDef
  * This function prints additional statements that come after the CREATE TABLE
  * statement for both regular and external tables.
  */
-func PrintPostCreateTableStatements(predataFile io.Writer, table Relation, tableDef TableDefinition, tableMetadata ObjectMetadata) {
+func PrintPostCreateTableStatements(predataFile *utils.FileWithByteCount, table Relation, tableDef TableDefinition, tableMetadata ObjectMetadata) {
 	PrintObjectMetadata(predataFile, tableMetadata, table.ToString(), "TABLE")
 
 	for _, att := range tableDef.ColumnDefs {
 		if att.Comment != "" {
-			utils.MustPrintf(predataFile, "\n\nCOMMENT ON COLUMN %s.%s IS '%s';\n", table.ToString(), utils.QuoteIdent(att.Name), att.Comment)
+			predataFile.MustPrintf("\n\nCOMMENT ON COLUMN %s.%s IS '%s';\n", table.ToString(), utils.QuoteIdent(att.Name), att.Comment)
 		}
 	}
 }
@@ -235,53 +239,59 @@ func GetAllSequences(connection *utils.DBConn) []Sequence {
  * This function is largely derived from the dumpSequence() function in pg_dump.c.  The values of
  * minVal and maxVal come from SEQ_MINVALUE and SEQ_MAXVALUE, defined in include/commands/sequence.h.
  */
-func PrintCreateSequenceStatements(predataFile io.Writer, sequences []Sequence, sequenceMetadata MetadataMap) {
+func PrintCreateSequenceStatements(predataFile *utils.FileWithByteCount, toc *utils.TOC, sequences []Sequence, sequenceMetadata MetadataMap) {
 	maxVal := int64(9223372036854775807)
 	minVal := int64(-9223372036854775807)
 	for _, sequence := range sequences {
+		start := predataFile.ByteCount
 		seqFQN := sequence.ToString()
-		utils.MustPrintln(predataFile, "\n\nCREATE SEQUENCE", seqFQN)
+		predataFile.MustPrintln("\n\nCREATE SEQUENCE", seqFQN)
 		if !sequence.IsCalled {
-			utils.MustPrintln(predataFile, "\tSTART WITH", sequence.LastVal)
+			predataFile.MustPrintln("\tSTART WITH", sequence.LastVal)
 		}
-		utils.MustPrintln(predataFile, "\tINCREMENT BY", sequence.Increment)
+		predataFile.MustPrintln("\tINCREMENT BY", sequence.Increment)
 
 		if !((sequence.MaxVal == maxVal && sequence.Increment > 0) || (sequence.MaxVal == -1 && sequence.Increment < 0)) {
-			utils.MustPrintln(predataFile, "\tMAXVALUE", sequence.MaxVal)
+			predataFile.MustPrintln("\tMAXVALUE", sequence.MaxVal)
 		} else {
-			utils.MustPrintln(predataFile, "\tNO MAXVALUE")
+			predataFile.MustPrintln("\tNO MAXVALUE")
 		}
 		if !((sequence.MinVal == minVal && sequence.Increment < 0) || (sequence.MinVal == 1 && sequence.Increment > 0)) {
-			utils.MustPrintln(predataFile, "\tMINVALUE", sequence.MinVal)
+			predataFile.MustPrintln("\tMINVALUE", sequence.MinVal)
 		} else {
-			utils.MustPrintln(predataFile, "\tNO MINVALUE")
+			predataFile.MustPrintln("\tNO MINVALUE")
 		}
 		cycleStr := ""
 		if sequence.IsCycled {
 			cycleStr = "\n\tCYCLE"
 		}
-		utils.MustPrintf(predataFile, "\tCACHE %d%s;", sequence.CacheVal, cycleStr)
+		predataFile.MustPrintf("\tCACHE %d%s;", sequence.CacheVal, cycleStr)
 
-		utils.MustPrintf(predataFile, "\n\nSELECT pg_catalog.setval('%s', %d, %v);\n", seqFQN, sequence.LastVal, sequence.IsCalled)
+		predataFile.MustPrintf("\n\nSELECT pg_catalog.setval('%s', %d, %v);\n", seqFQN, sequence.LastVal, sequence.IsCalled)
 
 		PrintObjectMetadata(predataFile, sequenceMetadata[sequence.RelationOid], seqFQN, "SEQUENCE")
+		toc.AddPredataEntry(sequence.Relation.SchemaName, sequence.Relation.RelationName, "SEQUENCE", start, predataFile.ByteCount)
 	}
 }
 
-func PrintAlterSequenceStatements(predataFile io.Writer, sequences []Sequence, sequenceColumnOwners map[string]string) {
+func PrintAlterSequenceStatements(predataFile *utils.FileWithByteCount, toc *utils.TOC, sequences []Sequence, sequenceColumnOwners map[string]string) {
 	for _, sequence := range sequences {
 		seqFQN := sequence.ToString()
 		// owningColumn is quoted when the map is constructed in GetSequenceColumnOwnerMap() and doesn't need to be quoted again
 		if owningColumn, hasColumnOwner := sequenceColumnOwners[seqFQN]; hasColumnOwner {
-			utils.MustPrintf(predataFile, "\n\nALTER SEQUENCE %s OWNED BY %s;\n", seqFQN, owningColumn)
+			start := predataFile.ByteCount
+			predataFile.MustPrintf("\n\nALTER SEQUENCE %s OWNED BY %s;\n", seqFQN, owningColumn)
+			toc.AddPredataEntry(sequence.Relation.SchemaName, sequence.Relation.RelationName, "SEQUENCE OWNER", start, predataFile.ByteCount)
 		}
 	}
 }
 
-func PrintCreateViewStatements(predataFile io.Writer, views []View, viewMetadata MetadataMap) {
+func PrintCreateViewStatements(predataFile *utils.FileWithByteCount, toc *utils.TOC, views []View, viewMetadata MetadataMap) {
 	for _, view := range views {
+		start := predataFile.ByteCount
 		viewFQN := MakeFQN(view.SchemaName, view.ViewName)
-		utils.MustPrintf(predataFile, "\n\nCREATE VIEW %s AS %s\n", viewFQN, view.Definition)
+		predataFile.MustPrintf("\n\nCREATE VIEW %s AS %s\n", viewFQN, view.Definition)
 		PrintObjectMetadata(predataFile, viewMetadata[view.Oid], viewFQN, "VIEW")
+		toc.AddPredataEntry(view.SchemaName, view.ViewName, "VIEW", start, predataFile.ByteCount)
 	}
 }

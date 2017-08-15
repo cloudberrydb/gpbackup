@@ -3,12 +3,18 @@ package integration
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
+	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("backup integration create statement tests", func() {
+	var toc utils.TOC
+	var backupfile *utils.FileWithByteCount
+	BeforeEach(func() {
+		backupfile = utils.NewFileWithByteCount(buffer)
+	})
 	Describe("PrintTypeStatements", func() {
 		var (
 			shellType         backup.Type
@@ -60,7 +66,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 
 		It("creates shell types for base and shell types only", func() {
-			backup.PrintCreateShellTypeStatements(buffer, types)
+			backup.PrintCreateShellTypeStatements(backupfile, &toc, types)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE shell_type")
@@ -74,7 +80,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 
 		It("creates composite types", func() {
-			backup.PrintCreateCompositeTypeStatement(buffer, compositeType, typeMetadata)
+			backup.PrintCreateCompositeTypeStatement(backupfile, &toc, compositeType, typeMetadata)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE composite_type")
@@ -87,7 +93,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 
 		It("creates enum types", func() {
-			backup.PrintCreateEnumTypeStatements(buffer, types, typeMetadataMap)
+			backup.PrintCreateEnumTypeStatements(backupfile, &toc, types, typeMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE enum_type")
@@ -99,7 +105,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 
 		It("creates base types", func() {
-			backup.PrintCreateBaseTypeStatement(buffer, baseType, typeMetadata)
+			backup.PrintCreateBaseTypeStatement(backupfile, &toc, baseType, typeMetadata)
 
 			//Run queries to set up the database state so we can successfully create base types
 			testutils.AssertQueryRuns(connection, "CREATE TYPE base_type")
@@ -116,7 +122,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 		It("creates domain types", func() {
 			constraints := []backup.Constraint{}
-			backup.PrintCreateDomainStatement(buffer, domainType, typeMetadata, constraints)
+			backup.PrintCreateDomainStatement(backupfile, &toc, domainType, typeMetadata, constraints)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE domain_type")

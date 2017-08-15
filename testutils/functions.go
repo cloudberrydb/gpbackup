@@ -232,6 +232,72 @@ func ExpectRegex(result string, testStr string) {
 	Expect(result).Should(MatchRegexp(regexp.QuoteMeta(testStr)))
 }
 
+func SliceBufferByEntries(entries []utils.Entry, buffer *gbytes.Buffer) ([]string, string) {
+	contents := buffer.Contents()
+	hunks := []string{}
+	length := uint64(len(contents))
+	var end uint64
+	for _, entry := range entries {
+		start := entry.StartByte
+		end = entry.EndByte
+		if start > length {
+			start = length
+		}
+		if end > length {
+			end = length
+		}
+		hunks = append(hunks, string(contents[start:end]))
+	}
+	return hunks, string(contents[end:])
+}
+
+func CompareSlicesIgnoringWhitespace(actual []string, expected []string) bool {
+	if len(actual) != len(expected) {
+		return false
+	}
+	for i := range actual {
+		if strings.TrimSpace(actual[i]) != expected[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func formatEntries(entries []utils.Entry, slice []string) string {
+	formatted := ""
+	for i, item := range slice {
+		formatted += fmt.Sprintf("%v -> %q\n", entries[i], item)
+	}
+	return formatted
+}
+
+func formatContents(slice []string) string {
+	formatted := ""
+	for _, item := range slice {
+		formatted += fmt.Sprintf("%q\n", item)
+	}
+	return formatted
+}
+
+func AssertBufferContents(entries []utils.Entry, buffer *gbytes.Buffer, expected ...string) {
+	if len(entries) == 0 {
+		Fail("TOC is empty")
+	}
+	hunks, remaining := SliceBufferByEntries(entries, buffer)
+	if remaining != "" {
+		Fail(fmt.Sprintf("Buffer contains extra contents that are not being counted by TOC:\n%s\n\nActual TOC entries were:\n\n%s", remaining, formatEntries(entries, hunks)))
+	}
+	ok := CompareSlicesIgnoringWhitespace(hunks, expected)
+	if !ok {
+		Fail(fmt.Sprintf("Actual TOC entries:\n\n%s\n\ndid not match expected contents (ignoring whitespace):\n\n%s", formatEntries(entries, hunks), formatContents(expected)))
+	}
+}
+
+func ExpectEntry(entries []utils.Entry, index int, schema, name, objectType string) {
+	Expect(len(entries)).To(BeNumerically(">", index))
+	ExpectStructsToMatchExcluding(entries[index], utils.Entry{Schema: schema, Name: name, ObjectType: objectType, StartByte: 0, EndByte: 0}, "StartByte", "EndByte")
+}
+
 func ExpectPathToExist(path string) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		Fail(fmt.Sprintf("Expected %s to exist", path))
@@ -252,6 +318,10 @@ func ShouldPanicWithMessage(message string) {
 func AssertQueryRuns(dbconn *utils.DBConn, query string) {
 	_, err := dbconn.Exec(query)
 	Expect(err).To(BeNil(), "%s", query)
+}
+
+func BufferLength(buffer *gbytes.Buffer) uint64 {
+	return uint64(len(buffer.Contents()))
 }
 
 func OidFromCast(connection *utils.DBConn, castSource uint32, castTarget uint32) uint32 {

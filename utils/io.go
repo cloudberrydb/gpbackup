@@ -89,18 +89,28 @@ func ExecuteSQLFile(dbconn *DBConn, filename string) {
 	}
 }
 
-func MustPrintf(file io.Writer, s string, v ...interface{}) {
-	_, err := fmt.Fprintf(file, s, v...)
+func MustPrintf(file io.Writer, s string, v ...interface{}) uint64 {
+	bytesWritten, err := fmt.Fprintf(file, s, v...)
 	if err != nil {
 		logger.Fatal(err, "Unable to write to file")
 	}
+	return uint64(bytesWritten)
 }
 
-func MustPrintln(file io.Writer, v ...interface{}) {
-	_, err := fmt.Fprintln(file, v...)
+func MustPrintln(file io.Writer, v ...interface{}) uint64 {
+	bytesWritten, err := fmt.Fprintln(file, v...)
 	if err != nil {
 		logger.Fatal(err, "Unable to write to file")
 	}
+	return uint64(bytesWritten)
+}
+
+func MustPrintBytes(file io.Writer, bytes []byte) uint64 {
+	bytesWritten, err := file.Write(bytes)
+	if err != nil {
+		logger.Fatal(err, "Unable to write to file")
+	}
+	return uint64(bytesWritten)
 }
 
 /*
@@ -149,4 +159,41 @@ func CreateDirectoryOnMaster(dirname string) {
 	} else if !(info.IsDir()) {
 		logger.Fatal(errors.Errorf("%s is a file, not a directory", dirname), "")
 	}
+}
+
+type FileWithByteCount struct {
+	writer    io.Writer
+	closer    io.WriteCloser
+	ByteCount uint64
+}
+
+func NewFileWithByteCount(writer io.Writer) *FileWithByteCount {
+	return &FileWithByteCount{writer, nil, 0}
+}
+
+func NewFileWithByteCountFromFile(filename string) *FileWithByteCount {
+	file := MustOpenFileForWriting(filename)
+	return &FileWithByteCount{file, file, 0}
+}
+
+func (file *FileWithByteCount) Close() {
+	if file.closer != nil {
+		file.closer.Close()
+	}
+}
+
+func (file *FileWithByteCount) MustPrintln(v ...interface{}) {
+	bytesWritten, err := fmt.Fprintln(file.writer, v...)
+	if err != nil {
+		logger.Fatal(err, "Unable to write to file")
+	}
+	file.ByteCount += uint64(bytesWritten)
+}
+
+func (file *FileWithByteCount) MustPrintf(s string, v ...interface{}) {
+	bytesWritten, err := fmt.Fprintf(file.writer, s, v...)
+	if err != nil {
+		logger.Fatal(err, "Unable to write to file")
+	}
+	file.ByteCount += uint64(bytesWritten)
 }

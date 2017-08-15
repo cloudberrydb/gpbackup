@@ -3,12 +3,19 @@ package backup_test
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
+	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("backup/predata_shared tests", func() {
+	var toc *utils.TOC
+	var backupfile *utils.FileWithByteCount
+	BeforeEach(func() {
+		toc = &utils.TOC{}
+		backupfile = utils.NewFileWithByteCount(buffer)
+	})
 	Describe("PrintConstraintStatements", func() {
 		var (
 			uniqueOne        backup.Constraint
@@ -32,7 +39,7 @@ var _ = Describe("backup/predata_shared tests", func() {
 		Context("No constraints", func() {
 			It("doesn't print anything", func() {
 				constraints := []backup.Constraint{}
-				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
+				backup.PrintConstraintStatements(backupfile, toc, constraints, emptyMetadataMap)
 				testutils.NotExpectRegexp(buffer, `CONSTRAINT`)
 			})
 		})
@@ -40,151 +47,102 @@ var _ = Describe("backup/predata_shared tests", func() {
 			It("prints an ADD CONSTRAINT statement for one UNIQUE constraint with a comment", func() {
 				constraints := []backup.Constraint{uniqueOne}
 				constraintMetadataMap := testutils.DefaultMetadataMap("CONSTRAINT", false, false, true)
-				backup.PrintConstraintStatements(buffer, constraints, constraintMetadataMap)
-				testutils.ExpectRegexp(buffer, `
+				backup.PrintConstraintStatements(backupfile, toc, constraints, constraintMetadataMap)
+				testutils.ExpectEntry(toc.PredataEntries, 0, "", "tablename_i_key", "CONSTRAINT")
+				testutils.AssertBufferContents(toc.PredataEntries, buffer, `ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_key UNIQUE (i);
 
-ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_key UNIQUE (i);
 
-
-COMMENT ON CONSTRAINT tablename_i_key ON public.tablename IS 'This is a constraint comment.';
-`)
+COMMENT ON CONSTRAINT tablename_i_key ON public.tablename IS 'This is a constraint comment.';`)
 			})
 			It("prints an ADD CONSTRAINT statement for one UNIQUE constraint", func() {
 				constraints := []backup.Constraint{uniqueOne}
-				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
-				testutils.ExpectRegexp(buffer, `
-
-ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_key UNIQUE (i);
-`)
+				backup.PrintConstraintStatements(backupfile, toc, constraints, emptyMetadataMap)
+				testutils.AssertBufferContents(toc.PredataEntries, buffer, `ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_key UNIQUE (i);`)
 			})
 			It("prints ADD CONSTRAINT statements for two UNIQUE constraints", func() {
 				constraints := []backup.Constraint{uniqueOne, uniqueTwo}
-				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
-				testutils.ExpectRegexp(buffer, `
-
-ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_key UNIQUE (i);
-
-
-ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_j_key UNIQUE (j);
-`)
+				backup.PrintConstraintStatements(backupfile, toc, constraints, emptyMetadataMap)
+				testutils.AssertBufferContents(toc.PredataEntries, buffer,
+					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_key UNIQUE (i);`,
+					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_j_key UNIQUE (j);`)
 			})
 			It("prints an ADD CONSTRAINT statement for one PRIMARY KEY constraint on one column", func() {
 				constraints := []backup.Constraint{primarySingle}
-				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
-				testutils.ExpectRegexp(buffer, `
-
-ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_pkey PRIMARY KEY (i);
-`)
+				backup.PrintConstraintStatements(backupfile, toc, constraints, emptyMetadataMap)
+				testutils.AssertBufferContents(toc.PredataEntries, buffer, `ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_pkey PRIMARY KEY (i);`)
 			})
 			It("prints an ADD CONSTRAINT statement for one composite PRIMARY KEY constraint on two columns", func() {
 				constraints := []backup.Constraint{primaryComposite}
-				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
-				testutils.ExpectRegexp(buffer, `
-
-ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_pkey PRIMARY KEY (i, j);
-`)
+				backup.PrintConstraintStatements(backupfile, toc, constraints, emptyMetadataMap)
+				testutils.AssertBufferContents(toc.PredataEntries, buffer, `ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_pkey PRIMARY KEY (i, j);`)
 			})
 			It("prints an ADD CONSTRAINT statement for one FOREIGN KEY constraint", func() {
 				constraints := []backup.Constraint{foreignOne}
-				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
-				testutils.ExpectRegexp(buffer, `
-
-ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_fkey FOREIGN KEY (i) REFERENCES other_tablename(a);
-`)
+				backup.PrintConstraintStatements(backupfile, toc, constraints, emptyMetadataMap)
+				testutils.AssertBufferContents(toc.PredataEntries, buffer, `ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_fkey FOREIGN KEY (i) REFERENCES other_tablename(a);`)
 			})
 			It("prints ADD CONSTRAINT statements for two FOREIGN KEY constraints", func() {
 				constraints := []backup.Constraint{foreignOne, foreignTwo}
-				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
-				testutils.ExpectRegexp(buffer, `
-
-ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_fkey FOREIGN KEY (i) REFERENCES other_tablename(a);
-
-
-ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_j_fkey FOREIGN KEY (j) REFERENCES other_tablename(b);
-`)
+				backup.PrintConstraintStatements(backupfile, toc, constraints, emptyMetadataMap)
+				testutils.AssertBufferContents(toc.PredataEntries, buffer,
+					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_fkey FOREIGN KEY (i) REFERENCES other_tablename(a);`,
+					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_j_fkey FOREIGN KEY (j) REFERENCES other_tablename(b);`)
 			})
 			It("prints ADD CONSTRAINT statements for one UNIQUE constraint and one FOREIGN KEY constraint", func() {
 				constraints := []backup.Constraint{foreignTwo, uniqueOne}
-				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
-				testutils.ExpectRegexp(buffer, `
-
-ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_key UNIQUE (i);
-
-
-ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_j_fkey FOREIGN KEY (j) REFERENCES other_tablename(b);
-`)
+				backup.PrintConstraintStatements(backupfile, toc, constraints, emptyMetadataMap)
+				testutils.AssertBufferContents(toc.PredataEntries, buffer,
+					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_key UNIQUE (i);`,
+					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_j_fkey FOREIGN KEY (j) REFERENCES other_tablename(b);`)
 			})
 			It("prints ADD CONSTRAINT statements for one PRIMARY KEY constraint and one FOREIGN KEY constraint", func() {
 				constraints := []backup.Constraint{foreignTwo, primarySingle}
-				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
-				testutils.ExpectRegexp(buffer, `
-
-ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_pkey PRIMARY KEY (i);
-
-
-ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_j_fkey FOREIGN KEY (j) REFERENCES other_tablename(b);
-`)
+				backup.PrintConstraintStatements(backupfile, toc, constraints, emptyMetadataMap)
+				testutils.AssertBufferContents(toc.PredataEntries, buffer,
+					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_pkey PRIMARY KEY (i);`,
+					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_j_fkey FOREIGN KEY (j) REFERENCES other_tablename(b);`)
 			})
 			It("prints ADD CONSTRAINT statements for one two-column composite PRIMARY KEY constraint and one FOREIGN KEY constraint", func() {
 				constraints := []backup.Constraint{foreignTwo, primaryComposite}
-				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
-				testutils.ExpectRegexp(buffer, `
-
-ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_pkey PRIMARY KEY (i, j);
-
-
-ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_j_fkey FOREIGN KEY (j) REFERENCES other_tablename(b);
-`)
+				backup.PrintConstraintStatements(backupfile, toc, constraints, emptyMetadataMap)
+				testutils.AssertBufferContents(toc.PredataEntries, buffer,
+					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_pkey PRIMARY KEY (i, j);`,
+					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_j_fkey FOREIGN KEY (j) REFERENCES other_tablename(b);`)
 			})
 		})
 		Context("Constraints involving the same column", func() {
 			It("prints ADD CONSTRAINT statements for one UNIQUE constraint and one FOREIGN KEY constraint", func() {
 				constraints := []backup.Constraint{foreignOne, uniqueOne}
-				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
-				testutils.ExpectRegexp(buffer, `
-
-ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_key UNIQUE (i);
-
-
-ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_fkey FOREIGN KEY (i) REFERENCES other_tablename(a);
-`)
+				backup.PrintConstraintStatements(backupfile, toc, constraints, emptyMetadataMap)
+				testutils.AssertBufferContents(toc.PredataEntries, buffer,
+					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_key UNIQUE (i);`,
+					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_fkey FOREIGN KEY (i) REFERENCES other_tablename(a);`)
 			})
 			It("prints ADD CONSTRAINT statements for one PRIMARY KEY constraint and one FOREIGN KEY constraint", func() {
 				constraints := []backup.Constraint{foreignOne, primarySingle}
-				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
-				testutils.ExpectRegexp(buffer, `
-
-ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_pkey PRIMARY KEY (i);
-
-
-ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_fkey FOREIGN KEY (i) REFERENCES other_tablename(a);
-`)
+				backup.PrintConstraintStatements(backupfile, toc, constraints, emptyMetadataMap)
+				testutils.AssertBufferContents(toc.PredataEntries, buffer,
+					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_pkey PRIMARY KEY (i);`,
+					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_fkey FOREIGN KEY (i) REFERENCES other_tablename(a);`)
 			})
 			It("prints ADD CONSTRAINT statements for a two-column composite PRIMARY KEY constraint and one FOREIGN KEY constraint", func() {
 				constraints := []backup.Constraint{foreignOne, primaryComposite}
-				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
-				testutils.ExpectRegexp(buffer, `
-
-ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_pkey PRIMARY KEY (i, j);
-
-
-ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_fkey FOREIGN KEY (i) REFERENCES other_tablename(a);
-`)
+				backup.PrintConstraintStatements(backupfile, toc, constraints, emptyMetadataMap)
+				testutils.AssertBufferContents(toc.PredataEntries, buffer,
+					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_pkey PRIMARY KEY (i, j);`,
+					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_fkey FOREIGN KEY (i) REFERENCES other_tablename(a);`)
 			})
 			It("doesn't print an ADD CONSTRAINT statement for domain check constraint", func() {
 				domainCheckConstraint := backup.Constraint{0, "check1", "c", "CHECK (VALUE <> 42::numeric)", "public.domain1", true, false}
 				constraints := []backup.Constraint{domainCheckConstraint}
-				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
+				backup.PrintConstraintStatements(backupfile, toc, constraints, emptyMetadataMap)
 				testutils.NotExpectRegexp(buffer, `ALTER DOMAIN`)
 			})
 			It("prints an ADD CONSTRAINT statement for a parent partition table", func() {
 				uniqueOne.IsPartitionParent = true
 				constraints := []backup.Constraint{uniqueOne}
-				backup.PrintConstraintStatements(buffer, constraints, emptyMetadataMap)
-				testutils.ExpectRegexp(buffer, `
-
-ALTER TABLE public.tablename ADD CONSTRAINT tablename_i_key UNIQUE (i);
-`)
+				backup.PrintConstraintStatements(backupfile, toc, constraints, emptyMetadataMap)
+				testutils.AssertBufferContents(toc.PredataEntries, buffer, `ALTER TABLE public.tablename ADD CONSTRAINT tablename_i_key UNIQUE (i);`)
 			})
 		})
 	})
@@ -193,15 +151,16 @@ ALTER TABLE public.tablename ADD CONSTRAINT tablename_i_key UNIQUE (i);
 			schemas := []backup.Schema{{0, "schemaname"}}
 			emptyMetadataMap := backup.MetadataMap{}
 
-			backup.PrintCreateSchemaStatements(buffer, schemas, emptyMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE SCHEMA schemaname;`)
+			backup.PrintCreateSchemaStatements(backupfile, toc, schemas, emptyMetadataMap)
+			testutils.ExpectEntry(toc.PredataEntries, 0, "", "schemaname", "SCHEMA")
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, "CREATE SCHEMA schemaname;")
 		})
 		It("can print a schema with privileges, an owner, and a comment", func() {
 			schemas := []backup.Schema{{1, "schemaname"}}
 			schemaMetadataMap := testutils.DefaultMetadataMap("SCHEMA", true, true, true)
 
-			backup.PrintCreateSchemaStatements(buffer, schemas, schemaMetadataMap)
-			testutils.ExpectRegexp(buffer, `CREATE SCHEMA schemaname;
+			backup.PrintCreateSchemaStatements(backupfile, toc, schemas, schemaMetadataMap)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE SCHEMA schemaname;
 
 COMMENT ON SCHEMA schemaname IS 'This is a schema comment.';
 
@@ -283,21 +242,21 @@ GRANT ALL ON SCHEMA schemaname TO testrole;`)
 		privilegesWithGrant := []backup.ACL{hasAllPrivilegesWithGrant, hasMostPrivilegesWithGrant, hasSinglePrivilegeWithGrant}
 		It("prints a block with a table comment", func() {
 			tableMetadata := backup.ObjectMetadata{Comment: "This is a table comment."}
-			backup.PrintObjectMetadata(buffer, tableMetadata, "public.tablename", "TABLE")
+			backup.PrintObjectMetadata(backupfile, tableMetadata, "public.tablename", "TABLE")
 			testutils.ExpectRegexp(buffer, `
 
 COMMENT ON TABLE public.tablename IS 'This is a table comment.';`)
 		})
 		It("prints an ALTER TABLE ... OWNER TO statement to set the table owner", func() {
 			tableMetadata := backup.ObjectMetadata{Owner: "testrole"}
-			backup.PrintObjectMetadata(buffer, tableMetadata, "public.tablename", "TABLE")
+			backup.PrintObjectMetadata(backupfile, tableMetadata, "public.tablename", "TABLE")
 			testutils.ExpectRegexp(buffer, `
 
 ALTER TABLE public.tablename OWNER TO testrole;`)
 		})
 		It("prints a block of REVOKE and GRANT statements", func() {
 			tableMetadata := backup.ObjectMetadata{Privileges: privileges}
-			backup.PrintObjectMetadata(buffer, tableMetadata, "public.tablename", "TABLE")
+			backup.PrintObjectMetadata(backupfile, tableMetadata, "public.tablename", "TABLE")
 			testutils.ExpectRegexp(buffer, `
 
 REVOKE ALL ON TABLE public.tablename FROM PUBLIC;
@@ -307,7 +266,7 @@ GRANT TRIGGER ON TABLE public.tablename TO PUBLIC;`)
 		})
 		It("prints a block of REVOKE and GRANT statements WITH GRANT OPTION", func() {
 			tableMetadata := backup.ObjectMetadata{Privileges: privilegesWithGrant}
-			backup.PrintObjectMetadata(buffer, tableMetadata, "public.tablename", "TABLE")
+			backup.PrintObjectMetadata(backupfile, tableMetadata, "public.tablename", "TABLE")
 			testutils.ExpectRegexp(buffer, `
 
 REVOKE ALL ON TABLE public.tablename FROM PUBLIC;
@@ -317,7 +276,7 @@ GRANT TRIGGER ON TABLE public.tablename TO PUBLIC WITH GRANT OPTION;`)
 		})
 		It("prints a block of REVOKE and GRANT statements, some with WITH GRANT OPTION, some without", func() {
 			tableMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{hasAllPrivileges, hasMostPrivilegesWithGrant}}
-			backup.PrintObjectMetadata(buffer, tableMetadata, "public.tablename", "TABLE")
+			backup.PrintObjectMetadata(backupfile, tableMetadata, "public.tablename", "TABLE")
 			testutils.ExpectRegexp(buffer, `
 
 REVOKE ALL ON TABLE public.tablename FROM PUBLIC;
@@ -326,7 +285,7 @@ GRANT SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES ON TABLE public.tablename 
 		})
 		It("prints both an ALTER TABLE ... OWNER TO statement and a table comment", func() {
 			tableMetadata := backup.ObjectMetadata{Comment: "This is a table comment.", Owner: "testrole"}
-			backup.PrintObjectMetadata(buffer, tableMetadata, "public.tablename", "TABLE")
+			backup.PrintObjectMetadata(backupfile, tableMetadata, "public.tablename", "TABLE")
 			testutils.ExpectRegexp(buffer, `
 
 COMMENT ON TABLE public.tablename IS 'This is a table comment.';
@@ -336,7 +295,7 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 		})
 		It("prints both a block of REVOKE and GRANT statements and an ALTER TABLE ... OWNER TO statement", func() {
 			tableMetadata := backup.ObjectMetadata{Privileges: privileges, Owner: "testrole"}
-			backup.PrintObjectMetadata(buffer, tableMetadata, "public.tablename", "TABLE")
+			backup.PrintObjectMetadata(backupfile, tableMetadata, "public.tablename", "TABLE")
 			testutils.ExpectRegexp(buffer, `
 
 ALTER TABLE public.tablename OWNER TO testrole;
@@ -350,7 +309,7 @@ GRANT TRIGGER ON TABLE public.tablename TO PUBLIC;`)
 		})
 		It("prints both a block of REVOKE and GRANT statements and a table comment", func() {
 			tableMetadata := backup.ObjectMetadata{Privileges: privileges, Comment: "This is a table comment."}
-			backup.PrintObjectMetadata(buffer, tableMetadata, "public.tablename", "TABLE")
+			backup.PrintObjectMetadata(backupfile, tableMetadata, "public.tablename", "TABLE")
 			testutils.ExpectRegexp(buffer, `
 
 COMMENT ON TABLE public.tablename IS 'This is a table comment.';
@@ -363,7 +322,7 @@ GRANT TRIGGER ON TABLE public.tablename TO PUBLIC;`)
 		})
 		It("prints REVOKE and GRANT statements, an ALTER TABLE ... OWNER TO statement, and comments", func() {
 			tableMetadata := backup.ObjectMetadata{Privileges: privileges, Owner: "testrole", Comment: "This is a table comment."}
-			backup.PrintObjectMetadata(buffer, tableMetadata, "public.tablename", "TABLE")
+			backup.PrintObjectMetadata(backupfile, tableMetadata, "public.tablename", "TABLE")
 			testutils.ExpectRegexp(buffer, `
 
 COMMENT ON TABLE public.tablename IS 'This is a table comment.';
@@ -460,7 +419,7 @@ GRANT TRIGGER ON TABLE public.tablename TO PUBLIC;`)
 			constraints := []backup.Constraint{
 				{ConName: "check_constraint", ConDef: "CHECK (VALUE > 2)", OwningObject: "public.domain"},
 			}
-			backup.PrintCreateDependentTypeAndFunctionAndTablesStatements(buffer, objects, metadataMap, tableDefsMap, constraints)
+			backup.PrintCreateDependentTypeAndFunctionAndTablesStatements(backupfile, toc, objects, metadataMap, tableDefsMap, constraints)
 			testutils.ExpectRegexp(buffer, `
 CREATE FUNCTION public.function(integer, integer) RETURNS integer AS
 $_$SELECT $1 + $2$_$
@@ -502,7 +461,7 @@ COMMENT ON TABLE public.relation IS 'relation';
 		})
 		It("prints create statements for dependent types, functions, and tables (no domain constraint)", func() {
 			constraints := []backup.Constraint{}
-			backup.PrintCreateDependentTypeAndFunctionAndTablesStatements(buffer, objects, metadataMap, tableDefsMap, constraints)
+			backup.PrintCreateDependentTypeAndFunctionAndTablesStatements(backupfile, toc, objects, metadataMap, tableDefsMap, constraints)
 			testutils.ExpectRegexp(buffer, `
 CREATE FUNCTION public.function(integer, integer) RETURNS integer AS
 $_$SELECT $1 + $2$_$

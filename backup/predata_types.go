@@ -7,7 +7,6 @@ package backup
 
 import (
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/greenplum-db/gpbackup/utils"
@@ -21,89 +20,96 @@ import (
  * Because only base types are dependent on functions, we only need to print
  * shell type statements for base types.
  */
-func PrintCreateShellTypeStatements(predataFile io.Writer, types []Type) {
-	utils.MustPrintln(predataFile, "\n")
+func PrintCreateShellTypeStatements(predataFile *utils.FileWithByteCount, toc *utils.TOC, types []Type) {
+	start := predataFile.ByteCount
+	predataFile.MustPrintln("\n")
 	for _, typ := range types {
 		if typ.Type == "b" || typ.Type == "p" {
 			typeFQN := MakeFQN(typ.TypeSchema, typ.TypeName)
-			utils.MustPrintf(predataFile, "CREATE TYPE %s;\n", typeFQN)
+			predataFile.MustPrintf("CREATE TYPE %s;\n", typeFQN)
+			toc.AddPredataEntry(typ.TypeSchema, typ.TypeName, "TYPE", start, predataFile.ByteCount)
+			start = predataFile.ByteCount
 		}
 	}
 }
 
-func PrintCreateDomainStatement(predataFile io.Writer, domain Type, typeMetadata ObjectMetadata, constraints []Constraint) {
+func PrintCreateDomainStatement(predataFile *utils.FileWithByteCount, toc *utils.TOC, domain Type, typeMetadata ObjectMetadata, constraints []Constraint) {
+	start := predataFile.ByteCount
 	typeFQN := MakeFQN(domain.TypeSchema, domain.TypeName)
-	utils.MustPrintf(predataFile, "\nCREATE DOMAIN %s AS %s", typeFQN, domain.BaseType)
+	predataFile.MustPrintf("\nCREATE DOMAIN %s AS %s", typeFQN, domain.BaseType)
 	if domain.DefaultVal != "" {
-		utils.MustPrintf(predataFile, " DEFAULT %s", domain.DefaultVal)
+		predataFile.MustPrintf(" DEFAULT %s", domain.DefaultVal)
 	}
 	if domain.NotNull {
-		utils.MustPrintf(predataFile, " NOT NULL")
+		predataFile.MustPrintf(" NOT NULL")
 	}
 	for _, constraint := range constraints {
-		utils.MustPrintf(predataFile, "\n\tCONSTRAINT %s %s", constraint.ConName, constraint.ConDef)
+		predataFile.MustPrintf("\n\tCONSTRAINT %s %s", constraint.ConName, constraint.ConDef)
 	}
-	utils.MustPrintln(predataFile, ";")
+	predataFile.MustPrintln(";")
 	PrintObjectMetadata(predataFile, typeMetadata, typeFQN, "DOMAIN")
+	toc.AddPredataEntry(domain.TypeSchema, domain.TypeName, "DOMAIN", start, predataFile.ByteCount)
 }
 
-func PrintCreateBaseTypeStatement(predataFile io.Writer, base Type, typeMetadata ObjectMetadata) {
+func PrintCreateBaseTypeStatement(predataFile *utils.FileWithByteCount, toc *utils.TOC, base Type, typeMetadata ObjectMetadata) {
+	start := predataFile.ByteCount
 	typeFQN := MakeFQN(base.TypeSchema, base.TypeName)
-	utils.MustPrintf(predataFile, "\n\nCREATE TYPE %s (\n", typeFQN)
+	predataFile.MustPrintf("\n\nCREATE TYPE %s (\n", typeFQN)
 
 	// All of the following functions are stored in quoted form and don't need to be quoted again
-	utils.MustPrintf(predataFile, "\tINPUT = %s,\n\tOUTPUT = %s", base.Input, base.Output)
+	predataFile.MustPrintf("\tINPUT = %s,\n\tOUTPUT = %s", base.Input, base.Output)
 	if base.Receive != "" {
-		utils.MustPrintf(predataFile, ",\n\tRECEIVE = %s", base.Receive)
+		predataFile.MustPrintf(",\n\tRECEIVE = %s", base.Receive)
 	}
 	if base.Send != "" {
-		utils.MustPrintf(predataFile, ",\n\tSEND = %s", base.Send)
+		predataFile.MustPrintf(",\n\tSEND = %s", base.Send)
 	}
 	if base.ModIn != "" {
-		utils.MustPrintf(predataFile, ",\n\tTYPMOD_IN = %s", base.ModIn)
+		predataFile.MustPrintf(",\n\tTYPMOD_IN = %s", base.ModIn)
 	}
 	if base.ModOut != "" {
-		utils.MustPrintf(predataFile, ",\n\tTYPMOD_OUT = %s", base.ModOut)
+		predataFile.MustPrintf(",\n\tTYPMOD_OUT = %s", base.ModOut)
 	}
 	if base.InternalLength > 0 {
-		utils.MustPrintf(predataFile, ",\n\tINTERNALLENGTH = %d", base.InternalLength)
+		predataFile.MustPrintf(",\n\tINTERNALLENGTH = %d", base.InternalLength)
 	}
 	if base.IsPassedByValue {
-		utils.MustPrintf(predataFile, ",\n\tPASSEDBYVALUE")
+		predataFile.MustPrintf(",\n\tPASSEDBYVALUE")
 	}
 	if base.Alignment != "" {
 		switch base.Alignment {
 		case "d":
-			utils.MustPrintf(predataFile, ",\n\tALIGNMENT = double")
+			predataFile.MustPrintf(",\n\tALIGNMENT = double")
 		case "i":
-			utils.MustPrintf(predataFile, ",\n\tALIGNMENT = int4")
+			predataFile.MustPrintf(",\n\tALIGNMENT = int4")
 		case "s":
-			utils.MustPrintf(predataFile, ",\n\tALIGNMENT = int2")
+			predataFile.MustPrintf(",\n\tALIGNMENT = int2")
 		case "c": // Default case, don't print anything else
 		}
 	}
 	if base.Storage != "" {
 		switch base.Storage {
 		case "e":
-			utils.MustPrintf(predataFile, ",\n\tSTORAGE = extended")
+			predataFile.MustPrintf(",\n\tSTORAGE = extended")
 		case "m":
-			utils.MustPrintf(predataFile, ",\n\tSTORAGE = main")
+			predataFile.MustPrintf(",\n\tSTORAGE = main")
 		case "x":
-			utils.MustPrintf(predataFile, ",\n\tSTORAGE = external")
+			predataFile.MustPrintf(",\n\tSTORAGE = external")
 		case "p": // Default case, don't print anything else
 		}
 	}
 	if base.DefaultVal != "" {
-		utils.MustPrintf(predataFile, ",\n\tDEFAULT = '%s'", base.DefaultVal)
+		predataFile.MustPrintf(",\n\tDEFAULT = '%s'", base.DefaultVal)
 	}
 	if base.Element != "" {
-		utils.MustPrintf(predataFile, ",\n\tELEMENT = %s", base.Element)
+		predataFile.MustPrintf(",\n\tELEMENT = %s", base.Element)
 	}
 	if base.Delimiter != "" {
-		utils.MustPrintf(predataFile, ",\n\tDELIMITER = '%s'", base.Delimiter)
+		predataFile.MustPrintf(",\n\tDELIMITER = '%s'", base.Delimiter)
 	}
-	utils.MustPrintln(predataFile, "\n);")
+	predataFile.MustPrintln("\n);")
 	PrintObjectMetadata(predataFile, typeMetadata, typeFQN, "TYPE")
+	toc.AddPredataEntry(base.TypeSchema, base.TypeName, "TYPE", start, predataFile.ByteCount)
 }
 
 type CompositeType struct {
@@ -150,24 +156,28 @@ func CoalesceCompositeTypes(types []Type) []Type {
 	return coalescedTypes
 }
 
-func PrintCreateCompositeTypeStatement(predataFile io.Writer, composite Type, typeMetadata ObjectMetadata) {
+func PrintCreateCompositeTypeStatement(predataFile *utils.FileWithByteCount, toc *utils.TOC, composite Type, typeMetadata ObjectMetadata) {
+	start := predataFile.ByteCount
 	typeFQN := MakeFQN(composite.TypeSchema, composite.TypeName)
-	utils.MustPrintf(predataFile, "\n\nCREATE TYPE %s AS (\n", typeFQN)
+	predataFile.MustPrintf("\n\nCREATE TYPE %s AS (\n", typeFQN)
 	atts := make([]string, 0)
 	for _, att := range composite.CompositeAtts {
 		atts = append(atts, fmt.Sprintf("\t%s %s", att.AttName, att.AttType))
 	}
-	utils.MustPrintln(predataFile, strings.Join(atts, ",\n"))
-	utils.MustPrintf(predataFile, ");")
+	predataFile.MustPrintln(strings.Join(atts, ",\n"))
+	predataFile.MustPrintf(");")
 	PrintObjectMetadata(predataFile, typeMetadata, typeFQN, "TYPE")
+	toc.AddPredataEntry(composite.TypeSchema, composite.TypeName, "TYPE", start, predataFile.ByteCount)
 }
 
-func PrintCreateEnumTypeStatements(predataFile io.Writer, types []Type, typeMetadata MetadataMap) {
+func PrintCreateEnumTypeStatements(predataFile *utils.FileWithByteCount, toc *utils.TOC, types []Type, typeMetadata MetadataMap) {
+	start := predataFile.ByteCount
 	for _, typ := range types {
 		if typ.Type == "e" {
 			typeFQN := MakeFQN(typ.TypeSchema, typ.TypeName)
-			utils.MustPrintf(predataFile, "\n\nCREATE TYPE %s AS ENUM (\n\t%s\n);\n", typeFQN, typ.EnumLabels)
+			predataFile.MustPrintf("\n\nCREATE TYPE %s AS ENUM (\n\t%s\n);\n", typeFQN, typ.EnumLabels)
 			PrintObjectMetadata(predataFile, typeMetadata[typ.Oid], typeFQN, "TYPE")
+			toc.AddPredataEntry(typ.TypeSchema, typ.TypeName, "TYPE", start, predataFile.ByteCount)
 		}
 	}
 }
