@@ -68,7 +68,7 @@ var _ = AfterSuite(func() {
 })
 
 func setupTestFilespace(cluster utils.Cluster) {
-	cluster.CreateDirectoriesOnAllHosts()
+	cluster.CreateBackupDirectoriesOnAllHosts()
 	// Construct a filespace config like the one that gpfilespace generates
 	filespaceConfigQuery := `COPY (SELECT hostname || ':' || dbid || ':/tmp/test_filespace/' || preferred_role || content FROM gp_segment_configuration AS subselect) TO '/tmp/temp_filespace_config';`
 	testutils.AssertQueryRuns(connection, filespaceConfigQuery)

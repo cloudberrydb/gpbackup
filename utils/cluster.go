@@ -9,16 +9,30 @@ import (
 	"fmt"
 	"os/exec"
 	"path"
+	"strconv"
+	"strings"
 
 	"github.com/pkg/errors"
 )
+
+type Executor interface {
+	ExecuteLocalCommand(commandStr string) error
+	ExecuteClusterCommand(commandMap map[int][]string) map[int]error
+}
+
+// This type only exists to allow us to mock Execute[...]Command functions for testing
+type GPDBExecutor struct{}
 
 type Cluster struct {
 	ContentIDs             []int
 	SegDirMap              map[int]string
 	SegHostMap             map[int]string
 	UserSpecifiedBackupDir string
-	Timestamp              string
+	MetadataPipeFilePaths  []string
+	// Table PipeFilePaths maps table oids -> map of content id -> pipe file path on that segment
+	TablePipeFilePaths map[uint32]map[int]string
+	Timestamp          string
+	Executor
 }
 
 func NewCluster(segConfigs []SegConfig, userSpecifiedBackupDir string, timestamp string) Cluster {
@@ -32,6 +46,7 @@ func NewCluster(segConfigs []SegConfig, userSpecifiedBackupDir string, timestamp
 		cluster.SegDirMap[seg.ContentID] = seg.DataDir
 		cluster.SegHostMap[seg.ContentID] = seg.Hostname
 	}
+	cluster.Executor = &GPDBExecutor{}
 	return cluster
 }
 
@@ -62,7 +77,35 @@ func (cluster *Cluster) GenerateFileVerificationCommandMap(fileCount int) map[in
 	return commandMap
 }
 
-func (cluster *Cluster) ExecuteClusterCommand(commandMap map[int][]string) map[int]error {
+func (cluster *Cluster) GenerateCreateAllTablePipesCommandMap(tables []uint32) map[int][]string {
+	if len(tables) == 0 {
+		return make(map[int][]string, 0)
+	}
+	cluster.TablePipeFilePaths = make(map[uint32]map[int]string)
+	commandMap := cluster.GenerateSSHCommandMap(func(contentID int) string {
+		tableFilePaths := []string{}
+		for _, oid := range tables {
+			tableFilePath := cluster.GetTableBackupFilePath(contentID, oid)
+			tableFilePaths = append(tableFilePaths, tableFilePath)
+			if contentID != -1 {
+				if cluster.TablePipeFilePaths[oid] == nil {
+					cluster.TablePipeFilePaths[oid] = make(map[int]string, 0)
+				}
+				cluster.TablePipeFilePaths[oid][contentID] = tableFilePath
+			}
+		}
+		return fmt.Sprintf("mkfifo %s", strings.Join(tableFilePaths, " "))
+	})
+	delete(commandMap, -1)
+	return commandMap
+}
+
+func (executor *GPDBExecutor) ExecuteLocalCommand(commandStr string) error {
+	_, err := exec.Command("bash", "-c", commandStr).CombinedOutput()
+	return err
+}
+
+func (executor *GPDBExecutor) ExecuteClusterCommand(commandMap map[int][]string) map[int]error {
 	errMap := make(map[int]error)
 	finished := make(chan int)
 	contentIDs := make([]int, 0)
@@ -86,6 +129,79 @@ func (cluster *Cluster) ExecuteClusterCommand(commandMap map[int][]string) map[i
 	return errMap
 }
 
+// When passing a command string into this function, <TABLE> will be substituted for the table file path
+func (cluster *Cluster) ExecuteClusterCommandForEachTableFile(cmdStr string) (uint32, map[int]error) {
+	finished := make(chan int)
+	var errOid uint32
+	var errMap map[int]error
+	abort := false
+	for oid, tableMap := range cluster.TablePipeFilePaths {
+		if !abort {
+			go func(oid uint32, tableMap map[int]string) {
+				commandMap := cluster.GenerateSSHCommandMap(func(contentID int) string {
+					return strings.Replace(cmdStr, "<TABLE>", tableMap[contentID], -1)
+				})
+				delete(commandMap, -1)
+				cmdErrMap := cluster.ExecuteClusterCommand(commandMap)
+				numErrors := len(cmdErrMap)
+				if numErrors != 0 {
+					abort = true
+					errMap = cmdErrMap
+					errOid = oid
+				}
+				finished <- 0
+			}(oid, tableMap)
+		}
+	}
+	for i := 0; i < len(cluster.TablePipeFilePaths); i++ {
+		<-finished
+	}
+	if errMap != nil {
+		return errOid, errMap
+	}
+	return 0, nil
+}
+
+func (cluster *Cluster) ReadFromAllMetadataPipes() {
+	for _, path := range cluster.MetadataPipeFilePaths {
+		go func(file string) {
+			_, err := exec.Command("bash", "-c", fmt.Sprintf("cat %s > %s.out", file, file)).CombinedOutput()
+			if err != nil {
+				logger.Fatal(err, fmt.Sprintf("Unable to read from %s pipe", file))
+			}
+		}(path)
+	}
+}
+
+func (cluster *Cluster) ReadFromAllTablePipes() {
+	errOid, errMap := cluster.ExecuteClusterCommandForEachTableFile("cat <TABLE> > <TABLE>.out")
+	if errOid != 0 {
+		for contentID := range errMap {
+			logger.Verbose("Unable to read from pipe %s for segment %d on host %s", cluster.TablePipeFilePaths[errOid][contentID], contentID, cluster.GetHostForContent(contentID))
+		}
+		cluster.LogFatalError("Unable to read from pipes", len(errMap))
+	}
+}
+
+func (cluster *Cluster) DeleteAllMetadataPipes() {
+	for _, file := range cluster.MetadataPipeFilePaths {
+		err := cluster.ExecuteLocalCommand(fmt.Sprintf("rm %s", file))
+		if err != nil {
+			logger.Fatal(err, fmt.Sprintf("Unable to delete %s pipe", file))
+		}
+	}
+}
+
+func (cluster *Cluster) DeleteAllTablePipes() {
+	errOid, errMap := cluster.ExecuteClusterCommandForEachTableFile("rm -f <TABLE>")
+	if errOid != 0 {
+		for contentID := range errMap {
+			logger.Verbose("Unable to delete pipe %s for segment %d on host %s", cluster.TablePipeFilePaths[errOid][contentID], contentID, cluster.GetHostForContent(contentID))
+		}
+		cluster.LogFatalError("Unable to delete pipes", len(errMap))
+	}
+}
+
 func (cluster *Cluster) VerifyBackupFileCountOnSegments(fileCount int) {
 	commandMap := cluster.GenerateFileVerificationCommandMap(fileCount)
 	errMap := cluster.ExecuteClusterCommand(commandMap)
@@ -103,7 +219,7 @@ func (cluster *Cluster) VerifyBackupFileCountOnSegments(fileCount int) {
 	cluster.LogFatalError("Backup files missing", numErrors)
 }
 
-func (cluster *Cluster) VerifyDirectoriesExistOnAllHosts() {
+func (cluster *Cluster) VerifyBackupDirectoriesExistOnAllHosts() {
 	commandMap := cluster.GenerateSSHCommandMap(func(contentID int) string {
 		return fmt.Sprintf("test -d %s", cluster.GetDirForContent(contentID))
 	})
@@ -118,7 +234,7 @@ func (cluster *Cluster) VerifyDirectoriesExistOnAllHosts() {
 	cluster.LogFatalError("Directories missing or inaccessible", numErrors)
 }
 
-func (cluster *Cluster) CreateDirectoriesOnAllHosts() {
+func (cluster *Cluster) CreateBackupDirectoriesOnAllHosts() {
 	commandMap := cluster.GenerateSSHCommandMap(func(contentID int) string {
 		return fmt.Sprintf("mkdir -p %s", cluster.GetDirForContent(contentID))
 	})
@@ -131,6 +247,19 @@ func (cluster *Cluster) CreateDirectoriesOnAllHosts() {
 		logger.Verbose("Unable to create directory %s for segment %d on host %s", cluster.GetDirForContent(contentID), contentID, cluster.GetHostForContent(contentID))
 	}
 	cluster.LogFatalError("Unable to create directories", numErrors)
+}
+
+func (cluster *Cluster) CreateAllTablePipes(tableOids []uint32) {
+	commandMap := cluster.GenerateCreateAllTablePipesCommandMap(tableOids)
+	errMap := cluster.ExecuteClusterCommand(commandMap)
+	numErrors := len(errMap)
+	if numErrors == 0 {
+		return
+	}
+	for contentID := range errMap {
+		logger.Verbose("Unable to create table pipes for segment %d on host %s", contentID, cluster.GetHostForContent(contentID))
+	}
+	cluster.LogFatalError("Unable to create pipes", numErrors)
 }
 
 func (cluster *Cluster) LogFatalError(errMessage string, numErrors int) {
@@ -159,6 +288,12 @@ func (cluster *Cluster) GetDirForContent(contentID int) string {
 
 func (cluster *Cluster) GetTableMapFilePath() string {
 	return path.Join(cluster.GetDirForContent(-1), fmt.Sprintf("gpbackup_%s_table_map", cluster.Timestamp))
+}
+
+func (cluster *Cluster) GetTableBackupFilePath(contentID int, tableOid uint32) string {
+	templateFilePath := cluster.GetTableBackupFilePathForCopyCommand(tableOid)
+	filePath := strings.Replace(templateFilePath, "<SEG_DATA_DIR>", cluster.SegDirMap[contentID], -1)
+	return strings.Replace(filePath, "<SEGID>", strconv.Itoa(contentID), -1)
 }
 
 func (cluster *Cluster) GetTableBackupFilePathForCopyCommand(tableOid uint32) string {

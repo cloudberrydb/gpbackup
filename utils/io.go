@@ -44,16 +44,16 @@ func QuoteIdent(ident string) string {
  * Generic file/directory manipulation functions
  */
 
-func MustOpenFileForWriting(filename string) io.Writer {
-	fileHandle, err := System.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0755)
+func MustOpenFileForWriting(filename string) io.WriteCloser {
+	fileHandle, err := System.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		logger.Fatal(err, "Unable to create or open file for writing")
 	}
 	return fileHandle
 }
 
-func MustOpenFileForReading(filename string) io.Reader {
-	fileHandle, err := System.OpenFile(filename, os.O_RDONLY, 0755)
+func MustOpenFileForReading(filename string) io.ReadCloser {
+	fileHandle, err := System.OpenFile(filename, os.O_RDONLY, 0644)
 	if err != nil {
 		logger.Fatal(err, "Unable to open file for reading")
 	}

@@ -40,6 +40,22 @@ func (result TestResult) RowsAffected() (int64, error) {
 	return result.Rows, nil
 }
 
+type TestExecutor struct {
+	LocalError    error
+	ClusterError  map[int]error
+	NumExecutions int
+}
+
+func (executor *TestExecutor) ExecuteLocalCommand(commandStr string) error {
+	executor.NumExecutions++
+	return executor.LocalError
+}
+
+func (executor *TestExecutor) ExecuteClusterCommand(commandMap map[int][]string) map[int]error {
+	executor.NumExecutions++
+	return executor.ClusterError
+}
+
 /*
  * If fields are to be filtered in or out, set shouldFilter to true; filterInclude is true to
  * include fields or false to exclude fields, and filterFields contains the field names to filter on.

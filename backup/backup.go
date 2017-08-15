@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
+	"strings"
 
 	"github.com/greenplum-db/gpbackup/utils"
 )
@@ -24,6 +26,7 @@ var ( // Command-line flags
 	debug        *bool
 	dumpDir      *string
 	dumpGlobals  *bool
+	plugin       *bool
 	printVersion *bool
 	quiet        *bool
 	verbose      *bool
@@ -37,6 +40,7 @@ func initializeFlags() {
 	debug = flag.Bool("debug", false, "Print verbose and debug log messages")
 	dumpDir = flag.String("dumpdir", "", "The directory to which all backup files will be written")
 	dumpGlobals = flag.Bool("globals", false, "Back up global metadata")
+	plugin = flag.Bool("plugin", false, "(temporary) do plugin stuff")
 	printVersion = flag.Bool("version", false, "Print version number and exit")
 	quiet = flag.Bool("quiet", false, "Suppress non-warning, non-error log messages")
 	verbose = flag.Bool("verbose", false, "Print verbose log messages")
@@ -103,7 +107,7 @@ func DoSetup() {
 	logger.Verbose("Creating dump directories")
 	segConfig := utils.GetSegmentConfiguration(connection)
 	globalCluster = utils.NewCluster(segConfig, *dumpDir, utils.CurrentTimestamp())
-	globalCluster.CreateDirectoriesOnAllHosts()
+	globalCluster.CreateBackupDirectoriesOnAllHosts()
 }
 
 func DoBackup() {
@@ -125,6 +129,26 @@ func DoBackup() {
 	objectCounts["Tables"] = len(tables)
 	tableDefs := ConstructDefinitionsForTables(connection, tables)
 
+	if *plugin {
+		globalCluster.MetadataPipeFilePaths = []string{globalFilename, predataFilename, postdataFilename}
+		if !*metadataOnly {
+			globalCluster.MetadataPipeFilePaths = append(globalCluster.MetadataPipeFilePaths, globalCluster.GetTableMapFilePath())
+		}
+		logger.Verbose("Creating pipes for metadata and data files")
+		pipeCmd := fmt.Sprintf("mkfifo %s", strings.Join(globalCluster.MetadataPipeFilePaths, " "))
+		_, err := exec.Command("bash", "-c", pipeCmd).CombinedOutput()
+		utils.CheckError(err)
+
+		tableOids := []uint32{}
+		for _, table := range tables {
+			tableOids = append(tableOids, table.RelationOid)
+		}
+		globalCluster.CreateAllTablePipes(tableOids)
+
+		go globalCluster.ReadFromAllMetadataPipes()
+		go globalCluster.ReadFromAllTablePipes()
+	}
+
 	if !*dataOnly {
 		logger.Info("Writing global database metadata to %s", globalFilename)
 		backupGlobal(globalFilename, objectCounts)
@@ -143,6 +167,12 @@ func DoBackup() {
 		logger.Info("Writing data to file")
 		backupData(tables, tableDefs)
 		logger.Info("Data dump complete")
+	}
+
+	if *plugin {
+		logger.Verbose("Deleting pipes for metadata and data files")
+		globalCluster.DeleteAllMetadataPipes()
+		globalCluster.DeleteAllTablePipes()
 	}
 
 	connection.Commit()
@@ -186,6 +216,8 @@ func backupGlobal(filename string, objectCount map[string]int) {
 	logger.Verbose("Writing GRANT ROLE statements to global file")
 	roleMembers := GetRoleMembers(connection)
 	PrintRoleMembershipStatements(globalFile, roleMembers)
+
+	globalFile.Close()
 }
 
 func backupPredata(filename string, tables []Relation, tableDefs map[uint32]TableDefinition, objectCount map[string]int) {
@@ -323,6 +355,8 @@ func backupPredata(filename string, tables []Relation, tableDefs map[uint32]Tabl
 
 	logger.Verbose("Writing ADD CONSTRAINT statements to predata file")
 	PrintConstraintStatements(predataFile, constraints, conMetadata)
+
+	predataFile.Close()
 }
 
 func backupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
@@ -353,7 +387,7 @@ func backupPostdata(filename string, tables []Relation, objectCount map[string]i
 	postdataFile := utils.MustOpenFileForWriting(filename)
 	PrintConnectionString(postdataFile, connection.DBName)
 
-	logger.Verbose("Writing session GUCs to predata file")
+	logger.Verbose("Writing session GUCs to postdata file")
 	gucs := GetSessionGUCs(connection)
 	PrintSessionGUCs(postdataFile, gucs)
 
@@ -375,6 +409,8 @@ func backupPostdata(filename string, tables []Relation, objectCount map[string]i
 	objectCount["Triggers"] = len(triggers)
 	triggerMetadata := GetCommentsForObjectType(connection, TYPE_TRIGGER)
 	PrintCreateTriggerStatements(postdataFile, triggers, triggerMetadata)
+
+	postdataFile.Close()
 }
 
 func DoTeardown() {

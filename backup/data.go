@@ -21,6 +21,7 @@ func WriteTableMapFile(tableMapFilePath string, tables []Relation, tableDefs map
 			utils.MustPrintf(tableMapFile, "%s: %d\n", table.ToString(), table.RelationOid)
 		}
 	}
+	tableMapFile.Close()
 }
 
 func CopyTableOut(connection *utils.DBConn, table Relation, dumpFile string) {

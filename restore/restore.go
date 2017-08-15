@@ -95,7 +95,7 @@ func DoSetup() {
 }
 
 func DoRestore() {
-	globalCluster.VerifyDirectoriesExistOnAllHosts()
+	globalCluster.VerifyBackupDirectoriesExistOnAllHosts()
 
 	masterDumpDir := globalCluster.GetDirForContent(-1)
 	globalFilename := fmt.Sprintf("%s/global.sql", masterDumpDir)
