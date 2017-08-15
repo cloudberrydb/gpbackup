@@ -13,34 +13,39 @@ var (
 	logger        *utils.Logger
 	globalCluster utils.Cluster
 	objectCounts  map[string]int
-	backupReport  utils.Report
+	backupReport  *utils.Report
 	version       string
 )
 
 var ( // Command-line flags
+	dataOnly     *bool
 	dbname       *string
+	metadataOnly *bool
 	debug        *bool
 	dumpDir      *string
-	quiet        *bool
-	verbose      *bool
 	dumpGlobals  *bool
 	printVersion *bool
+	quiet        *bool
+	verbose      *bool
 )
 
 // We define and initialize flags separately to avoid import conflicts in tests
 func initializeFlags() {
+	dataOnly = flag.Bool("data-only", false, "Only back up data, do not back up metadata")
 	dbname = flag.String("dbname", "", "The database to be backed up")
+	metadataOnly = flag.Bool("metadata-only", false, "Only back up metadata, do not back up data")
 	debug = flag.Bool("debug", false, "Print verbose and debug log messages")
-	dumpDir = flag.String("dumpdir", "", "The directory to which all dump files will be written")
+	dumpDir = flag.String("dumpdir", "", "The directory to which all backup files will be written")
+	dumpGlobals = flag.Bool("globals", false, "Back up global metadata")
+	printVersion = flag.Bool("version", false, "Print version number and exit")
 	quiet = flag.Bool("quiet", false, "Suppress non-warning, non-error log messages")
 	verbose = flag.Bool("verbose", false, "Print verbose log messages")
-	dumpGlobals = flag.Bool("globals", false, "Dump global metadata")
-	printVersion = flag.Bool("version", false, "Print version number and exit")
 }
 
 // This function handles setup that can be done before parsing flags.
 func DoInit() {
 	SetLogger(utils.InitializeLogging("gpbackup", ""))
+	initializeFlags()
 }
 
 func SetLogger(log *utils.Logger) {
@@ -60,7 +65,6 @@ func SetVersion(v string) {
 * It should only validate; initialization with any sort of side effects should go in DoInit or DoSetup.
  */
 func DoValidation() {
-	initializeFlags()
 	if len(os.Args) == 1 {
 		flag.PrintDefaults()
 		os.Exit(0)
@@ -72,6 +76,7 @@ func DoValidation() {
 	}
 	utils.CheckMandatoryFlags("dbname")
 	utils.CheckExclusiveFlags("debug", "quiet", "verbose")
+	utils.CheckExclusiveFlags("data-only", "metadata-only")
 }
 
 // This function handles setup that must be done after parsing flags.
@@ -87,11 +92,13 @@ func DoSetup() {
 	connection.Connect()
 	connection.Exec("SET application_name TO 'gpbackup'")
 
-	backupReport.DatabaseName = connection.DBName
-	backupReport.DatabaseVersion = connection.GetDatabaseVersion()
-	backupReport.BackupVersion = version
-	backupReport.BackupType = "Unfiltered Full Backup"
-	backupReport.DatabaseSize = connection.GetDBSize()
+	backupReport = &utils.Report{
+		DatabaseName:    connection.DBName,
+		DatabaseVersion: connection.GetDatabaseVersion(),
+		BackupVersion:   version,
+		DatabaseSize:    connection.GetDBSize(),
+	}
+	backupReport.SetBackupTypeFromFlags(*dataOnly, *metadataOnly)
 
 	logger.Verbose("Creating dump directories")
 	segConfig := utils.GetSegmentConfiguration(connection)
@@ -100,8 +107,9 @@ func DoSetup() {
 }
 
 func DoBackup() {
-	logger.Info("Dump Key = %s", globalCluster.Timestamp)
-	logger.Info("Dump Database = %s", utils.QuoteIdent(connection.DBName))
+	logger.Info("Backup Timestamp = %s", globalCluster.Timestamp)
+	logger.Info("Backup Database = %s", utils.QuoteIdent(connection.DBName))
+	logger.Info("Backup Type = %s", backupReport.BackupType)
 
 	masterDumpDir := globalCluster.GetDirForContent(-1)
 	objectCounts = make(map[string]int, 0)
@@ -117,21 +125,25 @@ func DoBackup() {
 	objectCounts["Tables"] = len(tables)
 	tableDefs := ConstructDefinitionsForTables(connection, tables)
 
-	logger.Info("Writing global database metadata to %s", globalFilename)
-	backupGlobal(globalFilename, objectCounts)
-	logger.Info("Global database metadata dump complete")
+	if !*dataOnly {
+		logger.Info("Writing global database metadata to %s", globalFilename)
+		backupGlobal(globalFilename, objectCounts)
+		logger.Info("Global database metadata dump complete")
 
-	logger.Info("Writing pre-data metadata to %s", predataFilename)
-	backupPredata(predataFilename, tables, tableDefs, objectCounts)
-	logger.Info("Pre-data metadata dump complete")
+		logger.Info("Writing pre-data metadata to %s", predataFilename)
+		backupPredata(predataFilename, tables, tableDefs, objectCounts)
+		logger.Info("Pre-data metadata dump complete")
 
-	logger.Info("Writing data to file")
-	backupData(tables, tableDefs)
-	logger.Info("Data dump complete")
+		logger.Info("Writing post-data metadata to %s", postdataFilename)
+		backupPostdata(postdataFilename, tables, objectCounts)
+		logger.Info("Post-data metadata dump complete")
+	}
 
-	logger.Info("Writing post-data metadata to %s", postdataFilename)
-	backupPostdata(postdataFilename, tables, objectCounts)
-	logger.Info("Post-data metadata dump complete")
+	if !*metadataOnly {
+		logger.Info("Writing data to file")
+		backupData(tables, tableDefs)
+		logger.Info("Data dump complete")
+	}
 
 	connection.Commit()
 }
@@ -379,7 +391,7 @@ func DoTeardown() {
 	if globalCluster.Timestamp != "" {
 		reportFilename := globalCluster.GetReportFilePath()
 		reportFile := utils.MustOpenFileForWriting(reportFilename)
-		utils.WriteReportFile(connection, reportFile, globalCluster.Timestamp, backupReport, objectCounts, errMsg)
+		utils.WriteReportFile(reportFile, globalCluster.Timestamp, backupReport, objectCounts, errMsg)
 	}
 
 	os.Exit(exitCode)

@@ -42,6 +42,7 @@ func initializeFlags() {
 // This function handles setup that can be done before parsing flags.
 func DoInit() {
 	SetLogger(utils.InitializeLogging("gprestore", ""))
+	initializeFlags()
 }
 
 func SetLogger(log *utils.Logger) {
@@ -53,7 +54,6 @@ func SetLogger(log *utils.Logger) {
 * It should only validate; initialization with any sort of side effects should go in DoInit or DoSetup.
  */
 func DoValidation() {
-	initializeFlags()
 	if len(os.Args) == 1 {
 		flag.PrintDefaults()
 		os.Exit(0)
@@ -90,14 +90,12 @@ func DoSetup() {
 
 	reportFile := utils.MustOpenFileForReading(globalCluster.GetReportFilePath())
 	backupReport = utils.ReadReportFile(reportFile)
+	backupReport.SetBackupTypeFromString()
 	utils.EnsureBackupVersionCompatibility(backupReport.BackupVersion, version)
 }
 
 func DoRestore() {
 	globalCluster.VerifyDirectoriesExistOnAllHosts()
-	tableMap := ReadTableMapFile(globalCluster.GetTableMapFilePath())
-	backupFileCount := len(tableMap)
-	globalCluster.VerifyBackupFileCountOnSegments(backupFileCount)
 
 	masterDumpDir := globalCluster.GetDirForContent(-1)
 	globalFilename := fmt.Sprintf("%s/global.sql", masterDumpDir)
@@ -116,17 +114,26 @@ func DoRestore() {
 	connection.Connect()
 	connection.Exec("SET application_name TO 'gprestore'")
 
-	logger.Info("Restoring pre-data metadata from %s", predataFilename)
-	restorePredata(predataFilename)
-	logger.Info("Pre-data metadata restore complete")
+	if !backupReport.DataOnly {
+		logger.Info("Restoring pre-data metadata from %s", predataFilename)
+		restorePredata(predataFilename)
+		logger.Info("Pre-data metadata restore complete")
+	}
 
-	logger.Info("Restoring data")
-	restoreData(tableMap)
-	logger.Info("Data restore complete")
+	if !backupReport.MetadataOnly {
+		tableMap := ReadTableMapFile(globalCluster.GetTableMapFilePath())
+		backupFileCount := len(tableMap)
+		globalCluster.VerifyBackupFileCountOnSegments(backupFileCount)
+		logger.Info("Restoring data")
+		restoreData(tableMap)
+		logger.Info("Data restore complete")
+	}
 
-	logger.Info("Restoring post-data metadata from %s", postdataFilename)
-	restorePostdata(postdataFilename)
-	logger.Info("Post-data metadata restore complete")
+	if !backupReport.DataOnly {
+		logger.Info("Restoring post-data metadata from %s", postdataFilename)
+		restorePostdata(postdataFilename)
+		logger.Info("Post-data metadata restore complete")
+	}
 }
 
 func restoreGlobal(filename string) {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -22,6 +23,9 @@ type Report struct {
 	DatabaseName    string
 	DatabaseSize    string
 	DatabaseVersion string
+	DataOnly        bool
+	Filtered        bool
+	MetadataOnly    bool
 }
 
 func ParseErrorMessage(err interface{}) (string, int) {
@@ -36,7 +40,20 @@ func ParseErrorMessage(err interface{}) (string, int) {
 	return errMsg, exitCode
 }
 
-func WriteReportFile(connection *DBConn, reportFile io.Writer, timestamp string, report Report, objectCounts map[string]int, errMsg string) {
+func (report *Report) SetBackupTypeFromFlags(dataOnly bool, ddlOnly bool) {
+	sectionStr := ""
+	if dataOnly {
+		report.DataOnly = true
+		sectionStr = " (Data-Only)"
+	}
+	if ddlOnly {
+		report.MetadataOnly = true
+		sectionStr = " (Metadata-Only)"
+	}
+	report.BackupType = fmt.Sprintf("Unfiltered Full Backup%s", sectionStr)
+}
+
+func WriteReportFile(reportFile io.Writer, timestamp string, report *Report, objectCounts map[string]int, errMsg string) {
 	reportFileTemplate := `Greenplum Database Backup Report
 
 Timestamp Key: %s
@@ -70,6 +87,16 @@ Database Size: %s`
 
 	}
 	MustPrintf(reportFile, objectStr)
+}
+
+func (report *Report) SetBackupTypeFromString() {
+	typeRegexp := regexp.MustCompile("Unfiltered Full Backup( [^ ]+)?")
+	tokens := typeRegexp.FindStringSubmatch(report.BackupType)
+	if tokens[1] == " (Data-Only)" {
+		report.DataOnly = true
+	} else if tokens[1] == " (Metadata-Only)" {
+		report.MetadataOnly = true
+	}
 }
 
 func ReadReportFile(reportFile io.Reader) Report {
