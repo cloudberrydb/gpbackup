@@ -44,32 +44,84 @@ var _ = Describe("utils/cluster tests", func() {
 		})
 	})
 	Describe("GenerateSSHCommandMap", func() {
-		It("Returns a map of ssh commands for a single segment", func() {
+		It("Returns a map of ssh commands for the master, including master", func() {
+			cluster := utils.NewCluster([]utils.SegConfig{masterSeg}, "", "20170101010101")
+			commandMap := cluster.GenerateSSHCommandMap(true, func(_ int) string {
+				return "ls"
+			})
+			Expect(len(commandMap)).To(Equal(1))
+			Expect(commandMap[-1]).To(Equal([]string{"bash", "-c", "ls"}))
+		})
+		It("Returns a map of ssh commands for the master, excluding master", func() {
+			cluster := utils.NewCluster([]utils.SegConfig{masterSeg}, "", "20170101010101")
+			commandMap := cluster.GenerateSSHCommandMap(false, func(_ int) string {
+				return "ls"
+			})
+			Expect(len(commandMap)).To(Equal(0))
+		})
+		It("Returns a map of ssh commands for one segment, including master", func() {
 			cluster := utils.NewCluster([]utils.SegConfig{remoteSegOne}, "", "20170101010101")
-			commandMap := cluster.GenerateSSHCommandMap(func(_ int) string {
+			commandMap := cluster.GenerateSSHCommandMap(true, func(_ int) string {
 				return "ls"
 			})
 			Expect(len(commandMap)).To(Equal(1))
 			Expect(commandMap[1]).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@remotehost1", "ls"}))
 		})
-		It("Returns a map of ssh commands for two segments on the same host", func() {
+		It("Returns a map of ssh commands for one segment, excluding master", func() {
+			cluster := utils.NewCluster([]utils.SegConfig{remoteSegOne}, "", "20170101010101")
+			commandMap := cluster.GenerateSSHCommandMap(false, func(_ int) string {
+				return "ls"
+			})
+			Expect(len(commandMap)).To(Equal(1))
+			Expect(commandMap[1]).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@remotehost1", "ls"}))
+		})
+		It("Returns a map of ssh commands for two segments on the same host, including master", func() {
 			cluster := utils.NewCluster([]utils.SegConfig{masterSeg, localSegOne}, "", "20170101010101")
-			commandMap := cluster.GenerateSSHCommandMap(func(_ int) string {
+			commandMap := cluster.GenerateSSHCommandMap(true, func(_ int) string {
 				return "ls"
 			})
 			Expect(len(commandMap)).To(Equal(2))
-			Expect(commandMap[-1]).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@localhost", "ls"}))
+			Expect(commandMap[-1]).To(Equal([]string{"bash", "-c", "ls"}))
+			Expect(commandMap[0]).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@localhost", "ls"}))
+		})
+		It("Returns a map of ssh commands for two segments on the same host, excluding master", func() {
+			cluster := utils.NewCluster([]utils.SegConfig{masterSeg, localSegOne}, "", "20170101010101")
+			commandMap := cluster.GenerateSSHCommandMap(false, func(_ int) string {
+				return "ls"
+			})
+			Expect(len(commandMap)).To(Equal(1))
 			Expect(commandMap[0]).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@localhost", "ls"}))
 		})
 		It("Returns a map of ssh commands for three segments on different hosts", func() {
 			cluster := utils.NewCluster([]utils.SegConfig{localSegOne, remoteSegOne, remoteSegTwo}, "", "20170101010101")
-			commandMap := cluster.GenerateSSHCommandMap(func(contentID int) string {
+			commandMap := cluster.GenerateSSHCommandMap(false, func(contentID int) string {
 				return fmt.Sprintf("mkdir -p %s", cluster.GetDirForContent(contentID))
 			})
 			Expect(len(commandMap)).To(Equal(3))
 			Expect(commandMap[0]).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@localhost", "mkdir -p /data/gpseg0/backups/20170101/20170101010101"}))
 			Expect(commandMap[1]).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@remotehost1", "mkdir -p /data/gpseg1/backups/20170101/20170101010101"}))
 			Expect(commandMap[2]).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@remotehost2", "mkdir -p /data/gpseg2/backups/20170101/20170101010101"}))
+		})
+	})
+	Describe("GenerateSSHCommandMapForCluster", func() {
+		It("includes master in the command map", func() {
+			cluster := utils.NewCluster([]utils.SegConfig{masterSeg, localSegOne}, "", "20170101010101")
+			commandMap := cluster.GenerateSSHCommandMapForCluster(func(_ int) string {
+				return "ls"
+			})
+			Expect(len(commandMap)).To(Equal(2))
+			Expect(commandMap[-1]).To(Equal([]string{"bash", "-c", "ls"}))
+			Expect(commandMap[0]).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@localhost", "ls"}))
+		})
+	})
+	Describe("GenerateSSHCommandMapForSegments", func() {
+		It("excludes master from the command map", func() {
+			cluster := utils.NewCluster([]utils.SegConfig{masterSeg, localSegOne}, "", "20170101010101")
+			commandMap := cluster.GenerateSSHCommandMapForSegments(func(_ int) string {
+				return "ls"
+			})
+			Expect(len(commandMap)).To(Equal(1))
+			Expect(commandMap[0]).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@localhost", "ls"}))
 		})
 	})
 	Describe("GenerateFileVerificationCommandMap", func() {
@@ -452,9 +504,9 @@ var _ = Describe("utils/cluster tests", func() {
 			testCluster.ReadFromAllMetadataPipes(true, true)
 			Expect((*testExecutor).NumExecutions).To(Equal(3))
 			expectedCommands := []string{
-				"bash -c cat globalPath | gzip -c > globalPath.gz.out",
-				"bash -c cat postdataPath | gzip -c > postdataPath.gz.out",
-				"bash -c cat predataPath | gzip -c > predataPath.gz.out",
+				`bash -c "cat globalPath | gzip -c > globalPath.gz.out"`,
+				`bash -c "cat postdataPath | gzip -c > postdataPath.gz.out"`,
+				`bash -c "cat predataPath | gzip -c > predataPath.gz.out"`,
 			}
 			executedCommands := (*testExecutor).LocalCommands
 			Expect(len(executedCommands)).To(Equal(3))
@@ -465,9 +517,9 @@ var _ = Describe("utils/cluster tests", func() {
 			testCluster.ReadFromAllMetadataPipes(true, false)
 			Expect((*testExecutor).NumExecutions).To(Equal(3))
 			expectedCommands := []string{
-				"bash -c cat globalPath | gzip -c > globalPath.gz",
-				"bash -c cat postdataPath | gzip -c > postdataPath.gz",
-				"bash -c cat predataPath | gzip -c > predataPath.gz",
+				`bash -c "cat globalPath | gzip -c > globalPath.gz"`,
+				`bash -c "cat postdataPath | gzip -c > postdataPath.gz"`,
+				`bash -c "cat predataPath | gzip -c > predataPath.gz"`,
 			}
 			executedCommands := (*testExecutor).LocalCommands
 			Expect(len(executedCommands)).To(Equal(3))
@@ -478,9 +530,9 @@ var _ = Describe("utils/cluster tests", func() {
 			testCluster.ReadFromAllMetadataPipes(false, true)
 			Expect((*testExecutor).NumExecutions).To(Equal(3))
 			expectedCommands := []string{
-				"bash -c cat globalPath > globalPath.out",
-				"bash -c cat postdataPath > postdataPath.out",
-				"bash -c cat predataPath > predataPath.out",
+				`bash -c "cat globalPath > globalPath.out"`,
+				`bash -c "cat postdataPath > postdataPath.out"`,
+				`bash -c "cat predataPath > predataPath.out"`,
 			}
 			executedCommands := (*testExecutor).LocalCommands
 			Expect(len(executedCommands)).To(Equal(3))

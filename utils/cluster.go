@@ -63,21 +63,35 @@ func ConstructSSHCommand(host string, cmd string) []string {
 	return []string{"ssh", "-o", "StrictHostKeyChecking=no", fmt.Sprintf("%s@%s", currentUser, host), cmd}
 }
 
-func (cluster *Cluster) GenerateSSHCommandMap(generateCommand func(int) string) map[int][]string {
+func (cluster *Cluster) GenerateSSHCommandMap(includeMaster bool, generateCommand func(int) string) map[int][]string {
 	commandMap := make(map[int][]string, len(cluster.ContentIDs))
 	for _, contentID := range cluster.ContentIDs {
+		if contentID == -1 && !includeMaster {
+			continue
+		}
 		host := cluster.GetHostForContent(contentID)
 		cmdStr := generateCommand(contentID)
-		commandMap[contentID] = ConstructSSHCommand(host, cmdStr)
+		if contentID == -1 {
+			commandMap[contentID] = []string{"bash", "-c", cmdStr}
+		} else {
+			commandMap[contentID] = ConstructSSHCommand(host, cmdStr)
+		}
 	}
 	return commandMap
 }
 
+func (cluster *Cluster) GenerateSSHCommandMapForCluster(generateCommand func(int) string) map[int][]string {
+	return cluster.GenerateSSHCommandMap(true, generateCommand)
+}
+
+func (cluster *Cluster) GenerateSSHCommandMapForSegments(generateCommand func(int) string) map[int][]string {
+	return cluster.GenerateSSHCommandMap(false, generateCommand)
+}
+
 func (cluster *Cluster) GenerateFileVerificationCommandMap(fileCount int) map[int][]string {
-	commandMap := cluster.GenerateSSHCommandMap(func(contentID int) string {
+	commandMap := cluster.GenerateSSHCommandMapForSegments(func(contentID int) string {
 		return fmt.Sprintf("find %s -type f | wc -l | grep %d", cluster.GetDirForContent(contentID), fileCount)
 	})
-	delete(commandMap, -1) //The master host will have no backup files
 	return commandMap
 }
 
@@ -86,7 +100,7 @@ func (cluster *Cluster) GenerateCreateAllTablePipesCommandMap(tables []uint32) m
 		return make(map[int][]string, 0)
 	}
 	cluster.TablePipeFilePaths = make(map[uint32]map[int]string)
-	commandMap := cluster.GenerateSSHCommandMap(func(contentID int) string {
+	commandMap := cluster.GenerateSSHCommandMapForSegments(func(contentID int) string {
 		tableFilePaths := []string{}
 		for _, oid := range tables {
 			tableFilePath := cluster.GetTableBackupFilePath(contentID, oid)
@@ -100,7 +114,6 @@ func (cluster *Cluster) GenerateCreateAllTablePipesCommandMap(tables []uint32) m
 		}
 		return fmt.Sprintf("mkfifo %s", strings.Join(tableFilePaths, " "))
 	})
-	delete(commandMap, -1)
 	return commandMap
 }
 
@@ -142,10 +155,9 @@ func (cluster *Cluster) ExecuteClusterCommandForEachTableFile(cmdStr string) (ui
 	for oid, tableMap := range cluster.TablePipeFilePaths {
 		if !abort {
 			go func(oid uint32, tableMap map[int]string) {
-				commandMap := cluster.GenerateSSHCommandMap(func(contentID int) string {
+				commandMap := cluster.GenerateSSHCommandMapForSegments(func(contentID int) string {
 					return strings.Replace(cmdStr, "<TABLE>", tableMap[contentID], -1)
 				})
-				delete(commandMap, -1)
 				cmdErrMap := cluster.ExecuteClusterCommand(commandMap)
 				numErrors := len(cmdErrMap)
 				if numErrors != 0 {
@@ -241,7 +253,7 @@ func (cluster *Cluster) VerifyBackupFileCountOnSegments(fileCount int) {
 }
 
 func (cluster *Cluster) VerifyBackupDirectoriesExistOnAllHosts() {
-	commandMap := cluster.GenerateSSHCommandMap(func(contentID int) string {
+	commandMap := cluster.GenerateSSHCommandMapForCluster(func(contentID int) string {
 		return fmt.Sprintf("test -d %s", cluster.GetDirForContent(contentID))
 	})
 	errMap := cluster.ExecuteClusterCommand(commandMap)
@@ -256,7 +268,7 @@ func (cluster *Cluster) VerifyBackupDirectoriesExistOnAllHosts() {
 }
 
 func (cluster *Cluster) CreateBackupDirectoriesOnAllHosts() {
-	commandMap := cluster.GenerateSSHCommandMap(func(contentID int) string {
+	commandMap := cluster.GenerateSSHCommandMapForCluster(func(contentID int) string {
 		return fmt.Sprintf("mkdir -p %s", cluster.GetDirForContent(contentID))
 	})
 	errMap := cluster.ExecuteClusterCommand(commandMap)
