@@ -15,6 +15,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+var (
+	compressExtension = ".gz"
+)
+
 type Executor interface {
 	ExecuteLocalCommand(commandStr string) error
 	ExecuteClusterCommand(commandMap map[int][]string) map[int]error
@@ -162,30 +166,46 @@ func (cluster *Cluster) ExecuteClusterCommandForEachTableFile(cmdStr string) (ui
 	return 0, nil
 }
 
-func (cluster *Cluster) ReadFromAllMetadataPipes() {
-	for _, path := range cluster.MetadataPipeFilePaths {
-		go func(file string) {
-			_, err := exec.Command("bash", "-c", fmt.Sprintf("cat %s > %s.out", file, file)).CombinedOutput()
-			if err != nil {
-				logger.Fatal(err, fmt.Sprintf("Unable to read from %s pipe", file))
-			}
-		}(path)
+func (cluster *Cluster) ReadFromAllMetadataPipes(compress bool, plugin bool) {
+	cmdStr := "bash -c cat %s "
+	if compress && plugin {
+		cmdStr += fmt.Sprintf("| gzip -c > %%s%s.out", compressExtension)
+	} else if compress {
+		cmdStr += fmt.Sprintf("| gzip -c > %%s%s", compressExtension)
+	} else {
+		cmdStr += "> %s.out"
+	}
+	for _, file := range cluster.MetadataPipeFilePaths {
+		pipeCmd := fmt.Sprintf(cmdStr, file, file)
+		err := cluster.ExecuteLocalCommand(pipeCmd)
+		if err != nil {
+			logger.Fatal(err, fmt.Sprintf("Unable to read from %s pipe", file))
+		}
 	}
 }
 
-func (cluster *Cluster) ReadFromAllTablePipes() {
-	errOid, errMap := cluster.ExecuteClusterCommandForEachTableFile("cat <TABLE> > <TABLE>.out")
+func (cluster *Cluster) ReadFromAllTablePipes(compress bool, plugin bool) {
+	cmdStr := ""
+	if compress && plugin {
+		cmdStr = fmt.Sprintf("cat <TABLE> | gzip -c > <TABLE>%s.out", compressExtension)
+	} else if compress {
+		cmdStr = fmt.Sprintf("cat <TABLE> | gzip -c > <TABLE>%s", compressExtension)
+	} else {
+		cmdStr = fmt.Sprintf("cat <TABLE> > <TABLE>.out")
+	}
+	errOid, errMap := cluster.ExecuteClusterCommandForEachTableFile(cmdStr)
 	if errOid != 0 {
 		for contentID := range errMap {
-			logger.Verbose("Unable to read from pipe %s for segment %d on host %s", cluster.TablePipeFilePaths[errOid][contentID], contentID, cluster.GetHostForContent(contentID))
+			logger.Verbose("Unable to read data from pipe %s for segment %d on host %s", cluster.TablePipeFilePaths[errOid][contentID], contentID, cluster.GetHostForContent(contentID))
 		}
-		cluster.LogFatalError("Unable to read from pipes", len(errMap))
+		cluster.LogFatalError("Unable to read data from pipes", len(errMap))
 	}
 }
 
 func (cluster *Cluster) DeleteAllMetadataPipes() {
 	for _, file := range cluster.MetadataPipeFilePaths {
-		err := cluster.ExecuteLocalCommand(fmt.Sprintf("rm %s", file))
+		cmdStr := fmt.Sprintf("rm %s", file)
+		err := cluster.ExecuteLocalCommand(cmdStr)
 		if err != nil {
 			logger.Fatal(err, fmt.Sprintf("Unable to delete %s pipe", file))
 		}
@@ -193,7 +213,8 @@ func (cluster *Cluster) DeleteAllMetadataPipes() {
 }
 
 func (cluster *Cluster) DeleteAllTablePipes() {
-	errOid, errMap := cluster.ExecuteClusterCommandForEachTableFile("rm -f <TABLE>")
+	cmdStr := "rm -rf <TABLE>"
+	errOid, errMap := cluster.ExecuteClusterCommandForEachTableFile(cmdStr)
 	if errOid != 0 {
 		for contentID := range errMap {
 			logger.Verbose("Unable to delete pipe %s for segment %d on host %s", cluster.TablePipeFilePaths[errOid][contentID], contentID, cluster.GetHostForContent(contentID))
@@ -249,6 +270,14 @@ func (cluster *Cluster) CreateBackupDirectoriesOnAllHosts() {
 	cluster.LogFatalError("Unable to create directories", numErrors)
 }
 
+func (cluster *Cluster) CreateAllMetadataPipes() {
+	pipeCmd := fmt.Sprintf("bash -c mkfifo %s", strings.Join(cluster.MetadataPipeFilePaths, " "))
+	err := cluster.ExecuteLocalCommand(pipeCmd)
+	if err != nil {
+		logger.Fatal(err, "Unable to create metadata file pipes")
+	}
+}
+
 func (cluster *Cluster) CreateAllTablePipes(tableOids []uint32) {
 	commandMap := cluster.GenerateCreateAllTablePipesCommandMap(tableOids)
 	errMap := cluster.ExecuteClusterCommand(commandMap)
@@ -257,9 +286,9 @@ func (cluster *Cluster) CreateAllTablePipes(tableOids []uint32) {
 		return
 	}
 	for contentID := range errMap {
-		logger.Verbose("Unable to create table pipes for segment %d on host %s", contentID, cluster.GetHostForContent(contentID))
+		logger.Verbose("Unable to create data file pipes for segment %d on host %s", contentID, cluster.GetHostForContent(contentID))
 	}
-	cluster.LogFatalError("Unable to create pipes", numErrors)
+	cluster.LogFatalError("Unable to create data file pipes", numErrors)
 }
 
 func (cluster *Cluster) LogFatalError(errMessage string, numErrors int) {

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"os/user"
+	"sort"
+	"strings"
 
 	"github.com/greenplum-db/gpbackup/testutils"
 	"github.com/greenplum-db/gpbackup/utils"
@@ -31,8 +33,8 @@ var _ = Describe("utils/cluster tests", func() {
 		testCluster.Executor = testExecutor
 		testCluster.MetadataPipeFilePaths = []string{"globalPath", "predataPath", "postdataPath"}
 		testCluster.TablePipeFilePaths = map[uint32]map[int]string{
-			1234: map[int]string{0: "table0", 1: "table1"},
-			2345: map[int]string{0: "table0", 1: "table1"},
+			1234: map[int]string{0: "table1234", 1: "table1234"},
+			2345: map[int]string{0: "table2345", 1: "table2345"},
 		}
 	})
 	Describe("ConstructSSHCommand", func() {
@@ -273,15 +275,20 @@ var _ = Describe("utils/cluster tests", func() {
 			Expect(errMap).To(Equal(expectedMap))
 		})
 		It("fails if ExecuteClusterCommand errors out", func() {
-			expectedOid := uint32(1234)
+			expectedOid := uint32(0)
 			expectedMap := map[int]error{
-				0: errors.Errorf("Cannot access /data/gpseg0/backups/20170101/20170101010101/gpbackup_0_20170101010101_1234: exit status 1"),
-				1: errors.Errorf("Cannot access /data/gpseg0/backups/20170101/20170101010101/gpbackup_0_20170101010101_1234: exit status 1"),
+				0: errors.Errorf("exit status 1"),
+				1: errors.Errorf("exit status 1"),
 			}
 			(*testExecutor).ClusterError = expectedMap
 			testCluster.Executor = testExecutor
 			errOid, errMap := testCluster.ExecuteClusterCommandForEachTableFile("cat <TABLE> > <TABLE>.out")
 			Expect((*testExecutor).NumExecutions).To(Equal(2))
+			if strings.Contains((*testExecutor).ClusterCommands[0][0][4], "1234") {
+				expectedOid = uint32(2345)
+			} else {
+				expectedOid = uint32(1234)
+			}
 			Expect(errOid).To(Equal(expectedOid))
 			Expect(errMap).To(Equal(expectedMap))
 		})
@@ -395,6 +402,18 @@ var _ = Describe("utils/cluster tests", func() {
 			testCluster.CreateBackupDirectoriesOnAllHosts()
 		})
 	})
+	Describe("CreateAllMetadataPipes", func() {
+		It("successfully creates all metadata pipes", func() {
+			testCluster.CreateAllMetadataPipes()
+			Expect((*testExecutor).NumExecutions).To(Equal(1))
+		})
+		It("panics if it cannot create some or all metadata pipes", func() {
+			testExecutor.LocalError = errors.Errorf("exit status 1")
+			testCluster.Executor = testExecutor
+			defer testutils.ShouldPanicWithMessage("Unable to create metadata file pipes: exit status 1")
+			testCluster.CreateAllMetadataPipes()
+		})
+	})
 	Describe("CreateAllTablePipes", func() {
 		var tableOids []uint32
 		BeforeEach(func() {
@@ -416,7 +435,7 @@ var _ = Describe("utils/cluster tests", func() {
 				1: errors.Errorf("exit status 1"),
 			}
 			testCluster.Executor = testExecutor
-			defer testutils.ShouldPanicWithMessage("Unable to create pipes on 2 segments")
+			defer testutils.ShouldPanicWithMessage("Unable to create data file pipes on 2 segments")
 			testCluster.CreateAllTablePipes(tableOids)
 		})
 		It("panics if it cannot create some table pipes", func() {
@@ -424,8 +443,134 @@ var _ = Describe("utils/cluster tests", func() {
 				0: errors.Errorf("exit status 1"),
 			}
 			testCluster.Executor = testExecutor
-			defer testutils.ShouldPanicWithMessage("Unable to create pipes on 1 segment")
+			defer testutils.ShouldPanicWithMessage("Unable to create data file pipes on 1 segment")
 			testCluster.CreateAllTablePipes(tableOids)
+		})
+	})
+	Describe("ReadFromAllMetadataPipes", func() {
+		It("successfully reads when using compression and a plugin", func() {
+			testCluster.ReadFromAllMetadataPipes(true, true)
+			Expect((*testExecutor).NumExecutions).To(Equal(3))
+			expectedCommands := []string{
+				"bash -c cat globalPath | gzip -c > globalPath.gz.out",
+				"bash -c cat postdataPath | gzip -c > postdataPath.gz.out",
+				"bash -c cat predataPath | gzip -c > predataPath.gz.out",
+			}
+			executedCommands := (*testExecutor).LocalCommands
+			Expect(len(executedCommands)).To(Equal(3))
+			sort.Strings(executedCommands)
+			Expect(executedCommands).To(Equal(expectedCommands))
+		})
+		It("successfully reads when using compression without a plugin", func() {
+			testCluster.ReadFromAllMetadataPipes(true, false)
+			Expect((*testExecutor).NumExecutions).To(Equal(3))
+			expectedCommands := []string{
+				"bash -c cat globalPath | gzip -c > globalPath.gz",
+				"bash -c cat postdataPath | gzip -c > postdataPath.gz",
+				"bash -c cat predataPath | gzip -c > predataPath.gz",
+			}
+			executedCommands := (*testExecutor).LocalCommands
+			Expect(len(executedCommands)).To(Equal(3))
+			sort.Strings(executedCommands)
+			Expect(executedCommands).To(Equal(expectedCommands))
+		})
+		It("successfully reads when using a plugin without compression", func() {
+			testCluster.ReadFromAllMetadataPipes(false, true)
+			Expect((*testExecutor).NumExecutions).To(Equal(3))
+			expectedCommands := []string{
+				"bash -c cat globalPath > globalPath.out",
+				"bash -c cat postdataPath > postdataPath.out",
+				"bash -c cat predataPath > predataPath.out",
+			}
+			executedCommands := (*testExecutor).LocalCommands
+			Expect(len(executedCommands)).To(Equal(3))
+			sort.Strings(executedCommands)
+			Expect(executedCommands).To(Equal(expectedCommands))
+		})
+		It("panics if it cannot read from some or all metadata pipes", func() {
+			testExecutor.LocalError = errors.Errorf("exit status 1")
+			testCluster.Executor = testExecutor
+			defer testutils.ShouldPanicWithMessage("Unable to read from globalPath pipe: exit status 1")
+			testCluster.ReadFromAllMetadataPipes(true, true)
+		})
+	})
+	Describe("ReadFromAllTablePipes", func() {
+		It("successfully reads when using compression and a plugin", func() {
+			testCluster.ReadFromAllTablePipes(true, true)
+			Expect((*testExecutor).NumExecutions).To(Equal(2))
+			expectedClusterCommands := []map[int][]string{
+				{
+					0: []string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@localhost", "cat table1234 | gzip -c > table1234.gz.out"},
+					1: []string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@remotehost1", "cat table1234 | gzip -c > table1234.gz.out"},
+				},
+				{
+					0: []string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@localhost", "cat table2345 | gzip -c > table2345.gz.out"},
+					1: []string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@remotehost1", "cat table2345 | gzip -c > table2345.gz.out"},
+				},
+			}
+			executedClusterCommands := (*testExecutor).ClusterCommands
+			Expect(len(executedClusterCommands)).To(Equal(2))
+			if strings.Contains(executedClusterCommands[0][0][4], "2345") { // Account for commands being executed out of order
+				executedClusterCommands = []map[int][]string{executedClusterCommands[1], executedClusterCommands[0]}
+			}
+			Expect(executedClusterCommands).To(Equal(expectedClusterCommands))
+		})
+		It("successfully reads when using compression without a plugin", func() {
+			testCluster.ReadFromAllTablePipes(true, false)
+			Expect((*testExecutor).NumExecutions).To(Equal(2))
+			expectedClusterCommands := []map[int][]string{
+				{
+					0: []string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@localhost", "cat table1234 | gzip -c > table1234.gz"},
+					1: []string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@remotehost1", "cat table1234 | gzip -c > table1234.gz"},
+				},
+				{
+					0: []string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@localhost", "cat table2345 | gzip -c > table2345.gz"},
+					1: []string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@remotehost1", "cat table2345 | gzip -c > table2345.gz"},
+				},
+			}
+			executedClusterCommands := (*testExecutor).ClusterCommands
+			Expect(len(executedClusterCommands)).To(Equal(2))
+			if strings.Contains(executedClusterCommands[0][0][4], "2345") {
+				executedClusterCommands = []map[int][]string{executedClusterCommands[1], executedClusterCommands[0]}
+			}
+			Expect(executedClusterCommands).To(Equal(expectedClusterCommands))
+		})
+		It("successfully reads when using a plugin without compression", func() {
+			testCluster.ReadFromAllTablePipes(false, true)
+			Expect((*testExecutor).NumExecutions).To(Equal(2))
+			expectedClusterCommands := []map[int][]string{
+				{
+					0: []string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@localhost", "cat table1234 > table1234.out"},
+					1: []string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@remotehost1", "cat table1234 > table1234.out"},
+				},
+				{
+					0: []string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@localhost", "cat table2345 > table2345.out"},
+					1: []string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@remotehost1", "cat table2345 > table2345.out"},
+				},
+			}
+			executedClusterCommands := (*testExecutor).ClusterCommands
+			Expect(len(executedClusterCommands)).To(Equal(2))
+			if strings.Contains(executedClusterCommands[0][0][4], "2345") {
+				executedClusterCommands = []map[int][]string{executedClusterCommands[1], executedClusterCommands[0]}
+			}
+			Expect(executedClusterCommands).To(Equal(expectedClusterCommands))
+		})
+		It("panics if it cannot read from all table pipes", func() {
+			testExecutor.ClusterError = map[int]error{
+				0: errors.Errorf("exit status 1"),
+				1: errors.Errorf("exit status 1"),
+			}
+			testCluster.Executor = testExecutor
+			defer testutils.ShouldPanicWithMessage("Unable to read data from pipes on 2 segments")
+			testCluster.ReadFromAllTablePipes(true, true)
+		})
+		It("panics if it cannot read from some table pipes", func() {
+			testExecutor.ClusterError = map[int]error{
+				0: errors.Errorf("exit status 1"),
+			}
+			testCluster.Executor = testExecutor
+			defer testutils.ShouldPanicWithMessage("Unable to read data from pipes on 1 segment")
+			testCluster.ReadFromAllTablePipes(true, true)
 		})
 	})
 })

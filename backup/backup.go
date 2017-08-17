@@ -4,8 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"os/exec"
-	"strings"
 
 	"github.com/greenplum-db/gpbackup/utils"
 )
@@ -17,6 +15,7 @@ var (
 	objectCounts  map[string]int
 	backupReport  *utils.Report
 	version       string
+	compress      bool
 )
 
 var ( // Command-line flags
@@ -26,6 +25,7 @@ var ( // Command-line flags
 	debug        *bool
 	dumpDir      *string
 	dumpGlobals  *bool
+	noCompress   *bool
 	plugin       *bool
 	printVersion *bool
 	quiet        *bool
@@ -40,6 +40,7 @@ func initializeFlags() {
 	debug = flag.Bool("debug", false, "Print verbose and debug log messages")
 	dumpDir = flag.String("dumpdir", "", "The directory to which all backup files will be written")
 	dumpGlobals = flag.Bool("globals", false, "Back up global metadata")
+	noCompress = flag.Bool("nocompress", false, "Do not compress files with gzip")
 	plugin = flag.Bool("plugin", false, "(temporary) do plugin stuff")
 	printVersion = flag.Bool("version", false, "Print version number and exit")
 	quiet = flag.Bool("quiet", false, "Suppress non-warning, non-error log messages")
@@ -81,6 +82,7 @@ func DoValidation() {
 	utils.CheckMandatoryFlags("dbname")
 	utils.CheckExclusiveFlags("debug", "quiet", "verbose")
 	utils.CheckExclusiveFlags("data-only", "metadata-only")
+	compress = !*noCompress // There's no default-true boolean flag, so this is the closest we can do
 }
 
 // This function handles setup that must be done after parsing flags.
@@ -129,24 +131,23 @@ func DoBackup() {
 	objectCounts["Tables"] = len(tables)
 	tableDefs := ConstructDefinitionsForTables(connection, tables)
 
-	if *plugin {
-		globalCluster.MetadataPipeFilePaths = []string{globalFilename, predataFilename, postdataFilename}
-		if !*metadataOnly {
-			globalCluster.MetadataPipeFilePaths = append(globalCluster.MetadataPipeFilePaths, globalCluster.GetTableMapFilePath())
-		}
-		logger.Verbose("Creating pipes for metadata and data files")
-		pipeCmd := fmt.Sprintf("mkfifo %s", strings.Join(globalCluster.MetadataPipeFilePaths, " "))
-		_, err := exec.Command("bash", "-c", pipeCmd).CombinedOutput()
-		utils.CheckError(err)
+	globalCluster.MetadataPipeFilePaths = []string{globalFilename, predataFilename, postdataFilename}
+	if !*metadataOnly {
+		globalCluster.MetadataPipeFilePaths = append(globalCluster.MetadataPipeFilePaths, globalCluster.GetTableMapFilePath())
+	}
 
+	if compress || *plugin {
+		logger.Verbose("Creating pipes for metadata and data files")
 		tableOids := []uint32{}
 		for _, table := range tables {
 			tableOids = append(tableOids, table.RelationOid)
 		}
+
+		globalCluster.CreateAllMetadataPipes()
 		globalCluster.CreateAllTablePipes(tableOids)
 
-		go globalCluster.ReadFromAllMetadataPipes()
-		go globalCluster.ReadFromAllTablePipes()
+		go globalCluster.ReadFromAllMetadataPipes(compress, *plugin)
+		go globalCluster.ReadFromAllTablePipes(compress, *plugin)
 	}
 
 	if !*dataOnly {
@@ -169,7 +170,7 @@ func DoBackup() {
 		logger.Info("Data dump complete")
 	}
 
-	if *plugin {
+	if compress || *plugin {
 		logger.Verbose("Deleting pipes for metadata and data files")
 		globalCluster.DeleteAllMetadataPipes()
 		globalCluster.DeleteAllTablePipes()

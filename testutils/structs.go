@@ -41,18 +41,22 @@ func (result TestResult) RowsAffected() (int64, error) {
 }
 
 type TestExecutor struct {
-	LocalError    error
-	ClusterError  map[int]error
-	NumExecutions int
+	LocalError      error
+	LocalCommands   []string
+	ClusterError    map[int]error
+	ClusterCommands []map[int][]string
+	NumExecutions   int
 }
 
 func (executor *TestExecutor) ExecuteLocalCommand(commandStr string) error {
 	executor.NumExecutions++
+	executor.LocalCommands = append(executor.LocalCommands, commandStr)
 	return executor.LocalError
 }
 
 func (executor *TestExecutor) ExecuteClusterCommand(commandMap map[int][]string) map[int]error {
 	executor.NumExecutions++
+	executor.ClusterCommands = append(executor.ClusterCommands, commandMap)
 	return executor.ClusterError
 }
 
