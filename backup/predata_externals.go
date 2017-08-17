@@ -56,7 +56,7 @@ func PrintExternalTableCreateStatement(predataFile *utils.FileWithByteCount, toc
 	extTableDef := tableDef.ExtTableDef
 	extTableDef.Type, extTableDef.Protocol = DetermineExternalTableCharacteristics(extTableDef)
 	predataFile.MustPrintf("\n\nCREATE %s TABLE %s (\n", tableTypeStrMap[extTableDef.Type], table.ToString())
-	printColumnDefinitions(predataFile, table, tableDef.ColumnDefs)
+	printColumnDefinitions(predataFile, tableDef.ColumnDefs)
 	predataFile.MustPrintf(") ")
 	PrintExternalTableStatements(predataFile, table, extTableDef)
 	if extTableDef.Writable {

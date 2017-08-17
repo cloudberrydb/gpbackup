@@ -148,7 +148,7 @@ func PrintCreateTableStatement(predataFile *utils.FileWithByteCount, toc *utils.
 func PrintRegularTableCreateStatement(predataFile *utils.FileWithByteCount, toc *utils.TOC, table Relation, tableDef TableDefinition) {
 	start := predataFile.ByteCount
 	predataFile.MustPrintf("\n\nCREATE TABLE %s (\n", table.ToString())
-	printColumnDefinitions(predataFile, table, tableDef.ColumnDefs)
+	printColumnDefinitions(predataFile, tableDef.ColumnDefs)
 	predataFile.MustPrintf(") ")
 	if len(table.Inherits) != 0 {
 		dependencyList := strings.Join(table.Inherits, ", ")
@@ -172,7 +172,7 @@ func PrintRegularTableCreateStatement(predataFile *utils.FileWithByteCount, toc 
 	toc.AddPredataEntry(table.SchemaName, table.RelationName, "TABLE", start, predataFile.ByteCount)
 }
 
-func printColumnDefinitions(predataFile *utils.FileWithByteCount, table Relation, columnDefs []ColumnDefinition) {
+func printColumnDefinitions(predataFile *utils.FileWithByteCount, columnDefs []ColumnDefinition) {
 	lines := make([]string, 0)
 	for _, column := range columnDefs {
 		if !column.IsDropped {

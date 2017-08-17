@@ -165,7 +165,7 @@ func DoBackup() {
 		logger.Info("Pre-data metadata dump complete")
 
 		logger.Info("Writing post-data metadata to %s", postdataFilename)
-		backupPostdata(postdataFilename, tables, objectCounts)
+		backupPostdata(postdataFilename, objectCounts)
 		logger.Info("Post-data metadata dump complete")
 		writeTOC(tocFilename, globalTOC)
 	}
@@ -397,7 +397,7 @@ func backupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
 	WriteTableMapFile(globalCluster.GetTableMapFilePath(), tables, tableDefs)
 }
 
-func backupPostdata(filename string, tables []Relation, objectCount map[string]int) {
+func backupPostdata(filename string, objectCount map[string]int) {
 	postdataFile := utils.NewFileWithByteCountFromFile(filename)
 
 	PrintConnectionString(postdataFile, connection.DBName)
