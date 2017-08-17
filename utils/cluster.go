@@ -167,13 +167,13 @@ func (cluster *Cluster) ExecuteClusterCommandForEachTableFile(cmdStr string) (ui
 }
 
 func (cluster *Cluster) ReadFromAllMetadataPipes(compress bool, plugin bool) {
-	cmdStr := "bash -c cat %s "
+	cmdStr := `bash -c "cat %s `
 	if compress && plugin {
-		cmdStr += fmt.Sprintf("| gzip -c > %%s%s.out", compressExtension)
+		cmdStr += fmt.Sprintf(`| gzip -c > %%s%s.out"`, compressExtension)
 	} else if compress {
-		cmdStr += fmt.Sprintf("| gzip -c > %%s%s", compressExtension)
+		cmdStr += fmt.Sprintf(`| gzip -c > %%s%s"`, compressExtension)
 	} else {
-		cmdStr += "> %s.out"
+		cmdStr += `> %s.out"`
 	}
 	for _, file := range cluster.MetadataPipeFilePaths {
 		pipeCmd := fmt.Sprintf(cmdStr, file, file)
@@ -271,7 +271,7 @@ func (cluster *Cluster) CreateBackupDirectoriesOnAllHosts() {
 }
 
 func (cluster *Cluster) CreateAllMetadataPipes() {
-	pipeCmd := fmt.Sprintf("bash -c mkfifo %s", strings.Join(cluster.MetadataPipeFilePaths, " "))
+	pipeCmd := fmt.Sprintf(`bash -c "mkfifo %s"`, strings.Join(cluster.MetadataPipeFilePaths, " "))
 	err := cluster.ExecuteLocalCommand(pipeCmd)
 	if err != nil {
 		logger.Fatal(err, "Unable to create metadata file pipes")
