@@ -162,8 +162,8 @@ ALTER OPERATOR FAMILY public.testfam USING hash OWNER TO testrole;`)
 	OPERATOR 2 >(uuid,uuid);`)
 		})
 		It("prints an operator class with a function", func() {
-			operatorClass := backup.OperatorClass{0, "public", "testclass", "public", "testclass", "hash", "uuid", false, "-", nil, nil}
-			operatorClass.Functions = []backup.OperatorClassFunction{{0, 1, "abs(integer)"}}
+			operatorClass := backup.OperatorClass{Oid: 0, ClassSchema: "public", ClassName: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "hash", Type: "uuid", Default: false, StorageType: "-", Operators: nil, Functions: nil}
+			operatorClass.Functions = []backup.OperatorClassFunction{{ClassOid: 0, SupportNumber: 1, FunctionName: "abs(integer)"}}
 
 			backup.PrintCreateOperatorClassStatements(backupfile, toc, []backup.OperatorClass{operatorClass}, backup.MetadataMap{})
 

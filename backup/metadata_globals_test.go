@@ -18,7 +18,7 @@ var _ = Describe("backup/metadata_globals tests", func() {
 	})
 	Describe("PrintPredataSessionGUCs", func() {
 		It("prints predata session GUCs", func() {
-			gucs := backup.SessionGUCs{"UTF8", "on", "false"}
+			gucs := backup.SessionGUCs{ClientEncoding: "UTF8", StdConformingStrings: "on", DefaultWithOids: "false"}
 
 			backup.PrintPredataSessionGUCs(backupfile, toc, gucs)
 			testutils.ExpectRegexp(buffer, `SET statement_timeout = 0;
@@ -31,7 +31,7 @@ SET default_with_oids = false`)
 	})
 	Describe("PrintPostdataSessionGUCs", func() {
 		It("prints predata session GUCs", func() {
-			gucs := backup.SessionGUCs{"UTF8", "on", "false"}
+			gucs := backup.SessionGUCs{ClientEncoding: "UTF8", StdConformingStrings: "on", DefaultWithOids: "false"}
 
 			backup.PrintPostdataSessionGUCs(backupfile, toc, gucs)
 			testutils.ExpectRegexp(buffer, `SET statement_timeout = 0;
@@ -44,7 +44,7 @@ SET default_with_oids = false`)
 	})
 	Describe("PrintGlobalSessionGUCs", func() {
 		It("prints predata session GUCs", func() {
-			gucs := backup.SessionGUCs{"UTF8", "on", "false"}
+			gucs := backup.SessionGUCs{ClientEncoding: "UTF8", StdConformingStrings: "on", DefaultWithOids: "false"}
 
 			backup.PrintGlobalSessionGUCs(backupfile, toc, gucs)
 			testutils.ExpectRegexp(buffer, `SET statement_timeout = 0;
@@ -68,7 +68,7 @@ SET default_with_oids = false`)
 			dbMetadata := dbMetadataMap[1]
 			dbMetadata.Privileges[0].Create = false
 			dbMetadataMap[1] = dbMetadata
-			dbs := []backup.DatabaseName{{1, "testdb", "pg_default"}, {2, "otherdb", "pg_default"}}
+			dbs := []backup.DatabaseName{{Oid: 1, DatabaseName: "testdb", TablespaceName: "pg_default"}, {Oid: 2, DatabaseName: "otherdb", TablespaceName: "pg_default"}}
 			backup.PrintCreateDatabaseStatement(backupfile, toc, "testdb", dbs, dbMetadataMap, false)
 			testutils.AssertBufferContents(toc.GlobalEntries, buffer, `CREATE DATABASE testdb;
 
@@ -91,7 +91,7 @@ GRANT TEMPORARY,CONNECT ON DATABASE testdb TO testrole;`)
 				2: backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "testrole", Create: true}}},
 				3: backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "testrole", CreateWithGrant: true}}},
 			}
-			dbs := []backup.DatabaseName{{1, "testdb", "pg_default"}, {2, "otherdb", "pg_default"}, {3, "anotherdb", "pg_default"}}
+			dbs := []backup.DatabaseName{{Oid: 1, DatabaseName: "testdb", TablespaceName: "pg_default"}, {Oid: 2, DatabaseName: "otherdb", TablespaceName: "pg_default"}, {Oid: 3, DatabaseName: "anotherdb", TablespaceName: "pg_default"}}
 			backup.PrintCreateDatabaseStatement(backupfile, toc, "testdb", dbs, dbMetadataMap, true)
 			testutils.AssertBufferContents(toc.GlobalEntries, buffer, `CREATE DATABASE testdb;
 

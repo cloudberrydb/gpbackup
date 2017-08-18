@@ -46,7 +46,7 @@ $$add_two_ints$$
 LANGUAGE internal;`)
 			})
 			It("prints a function definition for a function with permissions, an owner, and a comment", func() {
-				funcMetadata := backup.ObjectMetadata{[]backup.ACL{testutils.DefaultACLForType("testrole", "FUNCTION")}, "testrole", "This is a function comment."}
+				funcMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{testutils.DefaultACLForType("testrole", "FUNCTION")}, Owner: "testrole", Comment: "This is a function comment."}
 				backup.PrintCreateFunctionStatement(backupfile, toc, funcDef, funcMetadata)
 				testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE FUNCTION public.func_name(integer, integer) RETURNS integer AS
 $$add_two_ints$$
@@ -357,41 +357,41 @@ ALTER AGGREGATE public.agg_name(*) OWNER TO testrole;`)
 	Describe("PrintCreateCastStatements", func() {
 		emptyMetadataMap := backup.MetadataMap{}
 		It("prints an explicit cast with a function", func() {
-			castDef := backup.Cast{1, "src", "dst", "public", "cast_func", "integer, integer", "e"}
+			castDef := backup.Cast{Oid: 1, SourceTypeFQN: "src", TargetTypeFQN: "dst", FunctionSchema: "public", FunctionName: "cast_func", FunctionArgs: "integer, integer", CastContext: "e"}
 			backup.PrintCreateCastStatements(backupfile, toc, []backup.Cast{castDef}, emptyMetadataMap)
 			testutils.ExpectEntry(toc.PredataEntries, 0, "pg_catalog", "(src AS dst)", "CAST")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE CAST (src AS dst)
 	WITH FUNCTION public.cast_func(integer, integer);`)
 		})
 		It("prints an implicit cast with a function", func() {
-			castDef := backup.Cast{1, "src", "dst", "public", "cast_func", "integer, integer", "i"}
+			castDef := backup.Cast{Oid: 1, SourceTypeFQN: "src", TargetTypeFQN: "dst", FunctionSchema: "public", FunctionName: "cast_func", FunctionArgs: "integer, integer", CastContext: "i"}
 			backup.PrintCreateCastStatements(backupfile, toc, []backup.Cast{castDef}, emptyMetadataMap)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE CAST (src AS dst)
 	WITH FUNCTION public.cast_func(integer, integer)
 AS IMPLICIT;`)
 		})
 		It("prints an assignment cast with a function", func() {
-			castDef := backup.Cast{1, "src", "dst", "public", "cast_func", "integer, integer", "a"}
+			castDef := backup.Cast{Oid: 1, SourceTypeFQN: "src", TargetTypeFQN: "dst", FunctionSchema: "public", FunctionName: "cast_func", FunctionArgs: "integer, integer", CastContext: "a"}
 			backup.PrintCreateCastStatements(backupfile, toc, []backup.Cast{castDef}, emptyMetadataMap)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE CAST (src AS dst)
 	WITH FUNCTION public.cast_func(integer, integer)
 AS ASSIGNMENT;`)
 		})
 		It("prints an explicit cast without a function", func() {
-			castDef := backup.Cast{1, "src", "dst", "", "", "", "e"}
+			castDef := backup.Cast{Oid: 1, SourceTypeFQN: "src", TargetTypeFQN: "dst", FunctionSchema: "", FunctionName: "", FunctionArgs: "", CastContext: "e"}
 			backup.PrintCreateCastStatements(backupfile, toc, []backup.Cast{castDef}, emptyMetadataMap)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE CAST (src AS dst)
 	WITHOUT FUNCTION;`)
 		})
 		It("prints an implicit cast without a function", func() {
-			castDef := backup.Cast{1, "src", "dst", "", "", "", "i"}
+			castDef := backup.Cast{Oid: 1, SourceTypeFQN: "src", TargetTypeFQN: "dst", FunctionSchema: "", FunctionName: "", FunctionArgs: "", CastContext: "i"}
 			backup.PrintCreateCastStatements(backupfile, toc, []backup.Cast{castDef}, emptyMetadataMap)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE CAST (src AS dst)
 	WITHOUT FUNCTION
 AS IMPLICIT;`)
 		})
 		It("prints an assignment cast without a function", func() {
-			castDef := backup.Cast{1, "src", "dst", "", "", "", "a"}
+			castDef := backup.Cast{Oid: 1, SourceTypeFQN: "src", TargetTypeFQN: "dst", FunctionSchema: "", FunctionName: "", FunctionArgs: "", CastContext: "a"}
 			backup.PrintCreateCastStatements(backupfile, toc, []backup.Cast{castDef}, emptyMetadataMap)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE CAST (src AS dst)
 	WITHOUT FUNCTION
@@ -437,9 +437,9 @@ COMMENT ON CAST (src AS dst) IS 'This is a cast comment.';`)
 	})
 	Describe("PrintCreateLanguageStatements", func() {
 
-		plUntrustedHandlerOnly := backup.ProceduralLanguage{1, "plpythonu", "testrole", true, false, 4, 0, 0}
-		plAllFields := backup.ProceduralLanguage{1, "plpgsql", "testrole", true, true, 1, 2, 3}
-		plComment := backup.ProceduralLanguage{1, "plpythonu", "testrole", true, false, 4, 0, 0}
+		plUntrustedHandlerOnly := backup.ProceduralLanguage{Oid: 1, Name: "plpythonu", Owner: "testrole", IsPl: true, PlTrusted: false, Handler: 4, Inline: 0, Validator: 0}
+		plAllFields := backup.ProceduralLanguage{Oid: 1, Name: "plpgsql", Owner: "testrole", IsPl: true, PlTrusted: true, Handler: 1, Inline: 2, Validator: 3}
+		plComment := backup.ProceduralLanguage{Oid: 1, Name: "plpythonu", Owner: "testrole", IsPl: true, PlTrusted: false, Handler: 4, Inline: 0, Validator: 0}
 		funcInfoMap := map[uint32]backup.FunctionInfo{
 			1: {QualifiedName: "pg_catalog.plpgsql_call_handler", Arguments: "", IsInternal: true},
 			2: {QualifiedName: "pg_catalog.plpgsql_inline_handler", Arguments: "internal", IsInternal: true},

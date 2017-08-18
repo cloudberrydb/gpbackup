@@ -16,10 +16,10 @@ import (
 )
 
 var _ = Describe("utils/cluster tests", func() {
-	masterSeg := utils.SegConfig{-1, "localhost", "/data/gpseg-1"}
-	localSegOne := utils.SegConfig{0, "localhost", "/data/gpseg0"}
-	remoteSegOne := utils.SegConfig{1, "remotehost1", "/data/gpseg1"}
-	remoteSegTwo := utils.SegConfig{2, "remotehost2", "/data/gpseg2"}
+	masterSeg := utils.SegConfig{ContentID: -1, Hostname: "localhost", DataDir: "/data/gpseg-1"}
+	localSegOne := utils.SegConfig{ContentID: 0, Hostname: "localhost", DataDir: "/data/gpseg0"}
+	remoteSegOne := utils.SegConfig{ContentID: 1, Hostname: "remotehost1", DataDir: "/data/gpseg1"}
+	remoteSegTwo := utils.SegConfig{ContentID: 2, Hostname: "remotehost2", DataDir: "/data/gpseg2"}
 	var (
 		testCluster  utils.Cluster
 		testExecutor *testutils.TestExecutor
@@ -220,10 +220,10 @@ var _ = Describe("utils/cluster tests", func() {
 		})
 	})
 	Describe("cluster setup and accessor functions", func() {
-		masterSeg := utils.SegConfig{-1, "localhost", "/data/gpseg-1"}
-		localSegOne := utils.SegConfig{0, "localhost", "/data/gpseg0"}
-		localSegTwo := utils.SegConfig{1, "localhost", "/data/gpseg1"}
-		remoteSegTwo := utils.SegConfig{1, "remotehost", "/data/gpseg1"}
+		masterSeg := utils.SegConfig{ContentID: -1, Hostname: "localhost", DataDir: "/data/gpseg-1"}
+		localSegOne := utils.SegConfig{ContentID: 0, Hostname: "localhost", DataDir: "/data/gpseg0"}
+		localSegTwo := utils.SegConfig{ContentID: 1, Hostname: "localhost", DataDir: "/data/gpseg1"}
+		remoteSegTwo := utils.SegConfig{ContentID: 1, Hostname: "remotehost", DataDir: "/data/gpseg1"}
 		It("returns content dir for a single-host, single-segment nodes", func() {
 			cluster := utils.NewCluster([]utils.SegConfig{masterSeg, localSegOne}, "", "20170101010101")
 			Expect(len(cluster.GetContentList())).To(Equal(2))
