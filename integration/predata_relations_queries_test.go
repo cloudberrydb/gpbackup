@@ -56,10 +56,10 @@ PARTITION BY LIST (gender)
 
 			tableAtts := backup.GetColumnDefinitions(connection)[oid]
 
-			columnA := backup.ColumnDefinition{0, 1, "a", false, false, false, "double precision", "", -1, "", "", "att comment"}
-			columnC := backup.ColumnDefinition{0, 3, "c", true, false, false, "text", "", -1, "", "", ""}
-			columnD := backup.ColumnDefinition{0, 4, "d", false, true, false, "integer", "", -1, "", "5", ""}
-			columnE := backup.ColumnDefinition{0, 5, "e", false, false, false, "text", "", -1, "PLAIN", "", ""}
+			columnA := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "a", NotNull: false, HasDefault: false, IsDropped: false, TypeName: "double precision", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "att comment"}
+			columnC := backup.ColumnDefinition{Oid: 0, Num: 3, Name: "c", NotNull: true, HasDefault: false, IsDropped: false, TypeName: "text", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: ""}
+			columnD := backup.ColumnDefinition{Oid: 0, Num: 4, Name: "d", NotNull: false, HasDefault: true, IsDropped: false, TypeName: "integer", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "5", Comment: ""}
+			columnE := backup.ColumnDefinition{Oid: 0, Num: 5, Name: "e", NotNull: false, HasDefault: false, IsDropped: false, TypeName: "text", Encoding: "", StatTarget: -1, StorageType: "PLAIN", DefaultVal: "", Comment: ""}
 
 			Expect(len(tableAtts)).To(Equal(4))
 
@@ -75,8 +75,8 @@ PARTITION BY LIST (gender)
 
 			tableAtts := backup.GetColumnDefinitions(connection)[oid]
 
-			columnA := backup.ColumnDefinition{0, 1, "a", false, false, false, "double precision", "compresstype=none,blocksize=32768,compresslevel=0", -1, "", "", ""}
-			columnB := backup.ColumnDefinition{0, 2, "b", false, false, false, "text", "blocksize=65536,compresstype=none,compresslevel=0", -1, "", "", ""}
+			columnA := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "a", NotNull: false, HasDefault: false, IsDropped: false, TypeName: "double precision", Encoding: "compresstype=none,blocksize=32768,compresslevel=0", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: ""}
+			columnB := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "b", NotNull: false, HasDefault: false, IsDropped: false, TypeName: "text", Encoding: "blocksize=65536,compresstype=none,compresslevel=0", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: ""}
 
 			Expect(len(tableAtts)).To(Equal(2))
 
@@ -329,7 +329,7 @@ CYCLE`)
 
 			results := backup.GetViews(connection)
 
-			viewDef := backup.View{1, "public", "simpleview", "SELECT pg_roles.rolname FROM pg_roles;", nil}
+			viewDef := backup.View{Oid: 1, SchemaName: "public", ViewName: "simpleview", Definition: "SELECT pg_roles.rolname FROM pg_roles;", DependsUpon: nil}
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&viewDef, &results[0], "Oid")

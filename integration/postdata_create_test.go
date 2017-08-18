@@ -27,9 +27,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			indexMetadataMap = backup.MetadataMap{}
 		})
 		It("creates a basic index", func() {
-			indexes := []backup.QuerySimpleDefinition{
-				{0, "index1", "public", "testtable", "", "CREATE INDEX index1 ON testtable USING btree (i)"},
-			}
+			indexes := []backup.QuerySimpleDefinition{{Oid: 0, Name: "index1", OwningSchema: "public", OwningTable: "testtable", TablespaceName: "", Def: "CREATE INDEX index1 ON testtable USING btree (i)"}}
 			backup.PrintCreateIndexStatements(backupfile, toc, indexes, indexMetadataMap)
 
 			//Create table whose columns we can index
@@ -43,9 +41,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&resultIndexes[0], &indexes[0], "Oid")
 		})
 		It("creates an index with a comment", func() {
-			indexes := []backup.QuerySimpleDefinition{
-				{1, "index1", "public", "testtable", "", "CREATE INDEX index1 ON testtable USING btree (i)"},
-			}
+			indexes := []backup.QuerySimpleDefinition{{Oid: 1, Name: "index1", OwningSchema: "public", OwningTable: "testtable", TablespaceName: "", Def: "CREATE INDEX index1 ON testtable USING btree (i)"}}
 			indexMetadataMap = testutils.DefaultMetadataMap("INDEX", false, false, true)
 			indexMetadata := indexMetadataMap[1]
 			backup.PrintCreateIndexStatements(backupfile, toc, indexes, indexMetadataMap)
@@ -67,9 +63,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		It("creates an index in a non-default tablespace", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLESPACE test_tablespace FILESPACE test_filespace")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")
-			indexes := []backup.QuerySimpleDefinition{
-				{0, "index1", "public", "testtable", "test_tablespace", "CREATE INDEX index1 ON testtable USING btree (i)"},
-			}
+			indexes := []backup.QuerySimpleDefinition{{Oid: 0, Name: "index1", OwningSchema: "public", OwningTable: "testtable", TablespaceName: "test_tablespace", Def: "CREATE INDEX index1 ON testtable USING btree (i)"}}
 			backup.PrintCreateIndexStatements(backupfile, toc, indexes, indexMetadataMap)
 
 			//Create table whose columns we can index
@@ -91,9 +85,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			ruleMetadataMap = backup.MetadataMap{}
 		})
 		It("creates a basic rule", func() {
-			rules := []backup.QuerySimpleDefinition{
-				{0, "update_notify", "public", "testtable", "", "CREATE RULE update_notify AS ON UPDATE TO testtable DO NOTIFY testtable;"},
-			}
+			rules := []backup.QuerySimpleDefinition{{Oid: 0, Name: "update_notify", OwningSchema: "public", OwningTable: "testtable", TablespaceName: "", Def: "CREATE RULE update_notify AS ON UPDATE TO testtable DO NOTIFY testtable;"}}
 			backup.PrintCreateRuleStatements(backupfile, toc, rules, ruleMetadataMap)
 
 			testutils.AssertQueryRuns(connection, "CREATE TABLE testtable(i int)")
@@ -106,9 +98,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&resultRules[0], &rules[0], "Oid")
 		})
 		It("creates a rule with a comment", func() {
-			rules := []backup.QuerySimpleDefinition{
-				{1, "update_notify", "public", "testtable", "", "CREATE RULE update_notify AS ON UPDATE TO testtable DO NOTIFY testtable;"},
-			}
+			rules := []backup.QuerySimpleDefinition{{Oid: 1, Name: "update_notify", OwningSchema: "public", OwningTable: "testtable", TablespaceName: "", Def: "CREATE RULE update_notify AS ON UPDATE TO testtable DO NOTIFY testtable;"}}
 			ruleMetadataMap = testutils.DefaultMetadataMap("RULE", false, false, true)
 			ruleMetadata := ruleMetadataMap[1]
 			backup.PrintCreateRuleStatements(backupfile, toc, rules, ruleMetadataMap)
@@ -135,9 +125,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			triggerMetadataMap = backup.MetadataMap{}
 		})
 		It("creates a basic trigger", func() {
-			triggers := []backup.QuerySimpleDefinition{
-				{0, "sync_testtable", "public", "testtable", "", "CREATE TRIGGER sync_testtable AFTER INSERT OR DELETE OR UPDATE ON testtable FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger()"},
-			}
+			triggers := []backup.QuerySimpleDefinition{{Oid: 0, Name: "sync_testtable", OwningSchema: "public", OwningTable: "testtable", TablespaceName: "", Def: "CREATE TRIGGER sync_testtable AFTER INSERT OR DELETE OR UPDATE ON testtable FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger()"}}
 			backup.PrintCreateTriggerStatements(backupfile, toc, triggers, triggerMetadataMap)
 
 			testutils.AssertQueryRuns(connection, "CREATE TABLE testtable(i int)")
@@ -150,9 +138,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&resultTriggers[0], &triggers[0], "Oid")
 		})
 		It("creates a trigger with a comment", func() {
-			triggers := []backup.QuerySimpleDefinition{
-				{1, "sync_testtable", "public", "testtable", "", "CREATE TRIGGER sync_testtable AFTER INSERT OR DELETE OR UPDATE ON testtable FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger()"},
-			}
+			triggers := []backup.QuerySimpleDefinition{{Oid: 1, Name: "sync_testtable", OwningSchema: "public", OwningTable: "testtable", TablespaceName: "", Def: "CREATE TRIGGER sync_testtable AFTER INSERT OR DELETE OR UPDATE ON testtable FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger()"}}
 			triggerMetadataMap = testutils.DefaultMetadataMap("RULE", false, false, true)
 			triggerMetadata := triggerMetadataMap[1]
 			backup.PrintCreateTriggerStatements(backupfile, toc, triggers, triggerMetadataMap)

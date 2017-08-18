@@ -21,7 +21,7 @@ var _ = Describe("backup integration create statement tests", func() {
 	})
 	Describe("PrintCreateResourceQueueStatements", func() {
 		It("creates a basic resource queue with a comment", func() {
-			basicQueue := backup.ResourceQueue{1, "basicQueue", -1, "32.80", false, "0.00", "medium", "-1"}
+			basicQueue := backup.ResourceQueue{Oid: 1, Name: "basicQueue", ActiveStatements: -1, MaxCost: "32.80", CostOvercommit: false, MinCost: "0.00", Priority: "medium", MemoryLimit: "-1"}
 			resQueueMetadataMap := testutils.DefaultMetadataMap("RESOURCE QUEUE", false, false, true)
 			resQueueMetadata := resQueueMetadataMap[1]
 
@@ -48,7 +48,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			}
 		})
 		It("creates a resource queue with all attributes", func() {
-			everythingQueue := backup.ResourceQueue{1, "everythingQueue", 7, "32.80", true, "22.80", "low", "2GB"}
+			everythingQueue := backup.ResourceQueue{Oid: 1, Name: "everythingQueue", ActiveStatements: 7, MaxCost: "32.80", CostOvercommit: true, MinCost: "22.80", Priority: "low", MemoryLimit: "2GB"}
 			emptyMetadataMap := map[uint32]backup.ObjectMetadata{}
 
 			backup.PrintCreateResourceQueueStatements(backupfile, toc, []backup.ResourceQueue{everythingQueue}, emptyMetadataMap)
@@ -168,7 +168,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 		It("grants a role without ADMIN OPTION", func() {
 			numRoleMembers := len(backup.GetRoleMembers(connection))
-			expectedRoleMember := backup.RoleMember{"usergroup", "testuser", "testrole", false}
+			expectedRoleMember := backup.RoleMember{Role: "usergroup", Member: "testuser", Grantor: "testrole", IsAdmin: false}
 			backup.PrintRoleMembershipStatements(backupfile, toc, []backup.RoleMember{expectedRoleMember})
 
 			testutils.AssertQueryRuns(connection, buffer.String())
@@ -185,7 +185,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 		It("grants a role WITH ADMIN OPTION", func() {
 			numRoleMembers := len(backup.GetRoleMembers(connection))
-			expectedRoleMember := backup.RoleMember{"usergroup", "testuser", "testrole", true}
+			expectedRoleMember := backup.RoleMember{Role: "usergroup", Member: "testuser", Grantor: "testrole", IsAdmin: true}
 			backup.PrintRoleMembershipStatements(backupfile, toc, []backup.RoleMember{expectedRoleMember})
 
 			testutils.AssertQueryRuns(connection, buffer.String())
@@ -202,7 +202,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 	})
 	Describe("PrintCreateTablespaceStatements", func() {
-		expectedTablespace := backup.Tablespace{1, "test_tablespace", "test_filespace"}
+		expectedTablespace := backup.Tablespace{Oid: 1, Tablespace: "test_tablespace", Filespace: "test_filespace"}
 		It("creates a basic tablespace", func() {
 			numTablespaces := len(backup.GetTablespaces(connection))
 			emptyMetadataMap := backup.MetadataMap{}

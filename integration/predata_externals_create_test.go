@@ -24,10 +24,10 @@ var _ = Describe("backup integration create statement tests", func() {
 			tableDef  backup.TableDefinition
 		)
 		BeforeEach(func() {
-			extTable = backup.ExternalTableDefinition{
-				0, 0, backup.FILE, "file://tmp/ext_table_file", "ALL_SEGMENTS",
-				"t", "delimiter '	' null '\\N' escape '\\'", "", "",
-				0, "", "", "UTF8", false, []string{"file://tmp/ext_table_file"}}
+			extTable = backup.ExternalTableDefinition{Oid: 0, Type: 0, Protocol: backup.FILE, Location: "file://tmp/ext_table_file",
+				ExecLocation: "ALL_SEGMENTS", FormatType: "t", FormatOpts: "delimiter '	' null '\\N' escape '\\'",
+				Options: "", Command: "", RejectLimit: 0, RejectLimitType: "", ErrTable: "", Encoding: "UTF8",
+				Writable: false, URIs: []string{"file://tmp/ext_table_file"}}
 			testTable = backup.BasicRelation("public", "testtable")
 			tableDef = backup.TableDefinition{IsExternal: true}
 			os.Create("/tmp/ext_table_file")
@@ -74,12 +74,12 @@ var _ = Describe("backup integration create statement tests", func() {
 	})
 	Describe("PrintCreateExternalProtocolStatements", func() {
 		funcInfoMap := map[uint32]backup.FunctionInfo{
-			1: {"public.write_to_s3", "", false},
-			2: {"public.read_from_s3", "", false},
+			1: {QualifiedName: "public.write_to_s3", Arguments: "", IsInternal: false},
+			2: {QualifiedName: "public.read_from_s3", Arguments: "", IsInternal: false},
 		}
-		protocolReadOnly := backup.ExternalProtocol{1, "s3_read", "testrole", true, 2, 0, 0}
-		protocolWriteOnly := backup.ExternalProtocol{1, "s3_write", "testrole", false, 0, 1, 0}
-		protocolReadWrite := backup.ExternalProtocol{1, "s3_read_write", "testrole", false, 2, 1, 0}
+		protocolReadOnly := backup.ExternalProtocol{Oid: 1, Name: "s3_read", Owner: "testrole", Trusted: true, ReadFunction: 2, WriteFunction: 0, Validator: 0}
+		protocolWriteOnly := backup.ExternalProtocol{Oid: 1, Name: "s3_write", Owner: "testrole", Trusted: false, ReadFunction: 0, WriteFunction: 1, Validator: 0}
+		protocolReadWrite := backup.ExternalProtocol{Oid: 1, Name: "s3_read_write", Owner: "testrole", Trusted: false, ReadFunction: 2, WriteFunction: 1, Validator: 0}
 		emptyMetadataMap := backup.MetadataMap{}
 
 		It("creates a trusted protocol with a read function, privileges, and an owner", func() {

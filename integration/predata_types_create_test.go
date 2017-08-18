@@ -35,7 +35,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				Send: "", ModIn: "", ModOut: "", InternalLength: 4, IsPassedByValue: true, Alignment: "i", Storage: "p",
 				DefaultVal: "default", Element: "text", Delimiter: ";",
 			}
-			atts := []backup.CompositeTypeAttribute{{"att1", "text"}, {"att2", "integer"}}
+			atts := []backup.CompositeTypeAttribute{{AttName: "att1", AttType: "text"}, {AttName: "att2", AttType: "integer"}}
 			compositeType = backup.Type{
 				Type: "c", TypeSchema: "public", TypeName: "composite_type",
 				CompositeAtts: atts,

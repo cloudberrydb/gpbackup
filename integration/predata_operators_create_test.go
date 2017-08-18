@@ -23,7 +23,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION testschema.\"testFunc\" (path,path) RETURNS path AS 'SELECT $1' LANGUAGE SQL IMMUTABLE")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION testschema.\"testFunc\" (path,path)")
 
-			operator := backup.Operator{0, "testschema", "##", "testschema.\"testFunc\"", "path", "path", "0", "0", "-", "-", false, false}
+			operator := backup.Operator{Oid: 0, SchemaName: "testschema", Name: "##", ProcedureName: "testschema.\"testFunc\"", LeftArgType: "path", RightArgType: "path", CommutatorOp: "0", NegatorOp: "0", RestrictFunction: "-", JoinFunction: "-", CanHash: false, CanMerge: false}
 			operators := []backup.Operator{operator}
 
 			backup.PrintCreateOperatorStatements(backupfile, &toc, operators, backup.MetadataMap{})
@@ -44,7 +44,7 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			operatorMetadataMap := testutils.DefaultMetadataMap("OPERATOR", false, false, true)
 			operatorMetadata := operatorMetadataMap[1]
-			operator := backup.Operator{1, "testschema", "##", "testschema.\"testFunc\"", "path", "path", "0", "0", "-", "-", false, false}
+			operator := backup.Operator{Oid: 1, SchemaName: "testschema", Name: "##", ProcedureName: "testschema.\"testFunc\"", LeftArgType: "path", RightArgType: "path", CommutatorOp: "0", NegatorOp: "0", RestrictFunction: "-", JoinFunction: "-", CanHash: false, CanMerge: false}
 			operators := []backup.Operator{operator}
 
 			backup.PrintCreateOperatorStatements(backupfile, &toc, operators, operatorMetadataMap)
@@ -61,7 +61,7 @@ var _ = Describe("backup integration create statement tests", func() {
 	})
 	Describe("PrintCreateOperatorFamilyStatements", func() {
 		It("creates operator family", func() {
-			operatorFamily := backup.OperatorFamily{1, "public", "testfam", "hash"}
+			operatorFamily := backup.OperatorFamily{Oid: 1, SchemaName: "public", Name: "testfam", IndexMethod: "hash"}
 			operatorFamilies := []backup.OperatorFamily{operatorFamily}
 
 			backup.PrintCreateOperatorFamilyStatements(backupfile, &toc, operatorFamilies, backup.MetadataMap{})
@@ -76,7 +76,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		It("creates operator family with owner and comment", func() {
 			operatorFamilyMetadataMap := testutils.DefaultMetadataMap("OPERATOR FAMILY", false, true, true)
 			operatorFamilyMetadata := operatorFamilyMetadataMap[1]
-			operatorFamily := backup.OperatorFamily{1, "public", "testfam", "hash"}
+			operatorFamily := backup.OperatorFamily{Oid: 1, SchemaName: "public", Name: "testfam", IndexMethod: "hash"}
 			operatorFamilies := []backup.OperatorFamily{operatorFamily}
 
 			backup.PrintCreateOperatorFamilyStatements(backupfile, &toc, operatorFamilies, operatorFamilyMetadataMap)
@@ -94,7 +94,7 @@ var _ = Describe("backup integration create statement tests", func() {
 	})
 	Describe("PrintCreateOperatorClassStatements", func() {
 		It("creates basic operator class", func() {
-			operatorClass := backup.OperatorClass{0, "public", "testclass", "public", "testclass", "hash", "uuid", false, "-", nil, nil}
+			operatorClass := backup.OperatorClass{Oid: 0, ClassSchema: "public", ClassName: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "hash", Type: "uuid", Default: false, StorageType: "-", Operators: nil, Functions: nil}
 
 			backup.PrintCreateOperatorClassStatements(backupfile, &toc, []backup.OperatorClass{operatorClass}, nil)
 
@@ -106,9 +106,9 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&operatorClass, &resultOperatorClasses[0], "Oid")
 		})
 		It("creates complex operator class", func() {
-			operatorClass := backup.OperatorClass{0, "public", "testclass", "public", "testfam", "gist", "uuid", true, "integer", nil, nil}
-			operatorClass.Operators = []backup.OperatorClassOperator{{0, 1, "=(uuid,uuid)", true}}
-			operatorClass.Functions = []backup.OperatorClassFunction{{0, 1, "abs(integer)"}}
+			operatorClass := backup.OperatorClass{Oid: 0, ClassSchema: "public", ClassName: "testclass", FamilySchema: "public", FamilyName: "testfam", IndexMethod: "gist", Type: "uuid", Default: true, StorageType: "integer", Operators: nil, Functions: nil}
+			operatorClass.Operators = []backup.OperatorClassOperator{{ClassOid: 0, StrategyNumber: 1, Operator: "=(uuid,uuid)", Recheck: true}}
+			operatorClass.Functions = []backup.OperatorClassFunction{{ClassOid: 0, SupportNumber: 1, FunctionName: "abs(integer)"}}
 
 			testutils.AssertQueryRuns(connection, "CREATE OPERATOR FAMILY public.testfam USING gist")
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.testfam USING gist CASCADE")
@@ -124,7 +124,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			operatorClassMetadataMap := testutils.DefaultMetadataMap("OPERATOR CLASS", false, true, true)
 			operatorClassMetadata := operatorClassMetadataMap[1]
 
-			operatorClass := backup.OperatorClass{1, "public", "testclass", "public", "testclass", "hash", "uuid", false, "-", nil, nil}
+			operatorClass := backup.OperatorClass{Oid: 1, ClassSchema: "public", ClassName: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "hash", Type: "uuid", Default: false, StorageType: "-", Operators: nil, Functions: nil}
 
 			backup.PrintCreateOperatorClassStatements(backupfile, &toc, []backup.OperatorClass{operatorClass}, operatorClassMetadataMap)
 

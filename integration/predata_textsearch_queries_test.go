@@ -15,7 +15,7 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH PARSER testparser")
 			parsers := backup.GetTextSearchParsers(connection)
 
-			expectedParser := backup.TextSearchParser{1, "public", "testparser", "prsd_start", "prsd_nexttoken", "prsd_end", "prsd_lextype", ""}
+			expectedParser := backup.TextSearchParser{Oid: 1, Schema: "public", Name: "testparser", StartFunc: "prsd_start", TokenFunc: "prsd_nexttoken", EndFunc: "prsd_end", LexTypesFunc: "prsd_lextype", HeadlineFunc: ""}
 
 			Expect(len(parsers)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&expectedParser, &parsers[0], "Oid")
@@ -25,7 +25,7 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH PARSER testparser")
 			parsers := backup.GetTextSearchParsers(connection)
 
-			expectedParser := backup.TextSearchParser{1, "public", "testparser", "prsd_start", "prsd_nexttoken", "prsd_end", "prsd_lextype", "prsd_headline"}
+			expectedParser := backup.TextSearchParser{Oid: 1, Schema: "public", Name: "testparser", StartFunc: "prsd_start", TokenFunc: "prsd_nexttoken", EndFunc: "prsd_end", LexTypesFunc: "prsd_lextype", HeadlineFunc: "prsd_headline"}
 
 			Expect(len(parsers)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&expectedParser, &parsers[0], "Oid")
@@ -37,7 +37,7 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH TEMPLATE testtemplate")
 			templates := backup.GetTextSearchTemplates(connection)
 
-			expectedTemplate := backup.TextSearchTemplate{1, "public", "testtemplate", "", "dsimple_lexize"}
+			expectedTemplate := backup.TextSearchTemplate{Oid: 1, Schema: "public", Name: "testtemplate", InitFunc: "", LexizeFunc: "dsimple_lexize"}
 
 			Expect(len(templates)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&expectedTemplate, &templates[0], "Oid")
@@ -47,7 +47,7 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH TEMPLATE testtemplate")
 			templates := backup.GetTextSearchTemplates(connection)
 
-			expectedTemplate := backup.TextSearchTemplate{1, "public", "testtemplate", "dsimple_init", "dsimple_lexize"}
+			expectedTemplate := backup.TextSearchTemplate{Oid: 1, Schema: "public", Name: "testtemplate", InitFunc: "dsimple_init", LexizeFunc: "dsimple_lexize"}
 
 			Expect(len(templates)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&expectedTemplate, &templates[0], "Oid")
@@ -59,8 +59,7 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH DICTIONARY testdictionary")
 			dictionaries := backup.GetTextSearchDictionaries(connection)
 
-			expectedDictionary := backup.TextSearchDictionary{1, "public", "testdictionary", "pg_catalog.snowball", "language = 'russian', stopwords = 'russian'"}
-
+			expectedDictionary := backup.TextSearchDictionary{Oid: 1, Schema: "public", Name: "testdictionary", Template: "pg_catalog.snowball", InitOption: "language = 'russian', stopwords = 'russian'"}
 			Expect(len(dictionaries)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&expectedDictionary, &dictionaries[0], "Oid")
 		})
@@ -69,8 +68,7 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH DICTIONARY testdictionary")
 			dictionaries := backup.GetTextSearchDictionaries(connection)
 
-			expectedDictionary := backup.TextSearchDictionary{1, "public", "testdictionary", "pg_catalog.simple", ""}
-
+			expectedDictionary := backup.TextSearchDictionary{Oid: 1, Schema: "public", Name: "testdictionary", Template: "pg_catalog.simple", InitOption: ""}
 			Expect(len(dictionaries)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&expectedDictionary, &dictionaries[0], "Oid")
 		})
@@ -81,7 +79,7 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH CONFIGURATION testconfiguration")
 			configurations := backup.GetTextSearchConfigurations(connection)
 
-			expectedConfiguration := backup.TextSearchConfiguration{1, "public", "testconfiguration", `pg_catalog."default"`, map[string][]string{}}
+			expectedConfiguration := backup.TextSearchConfiguration{Oid: 1, Schema: "public", Name: "testconfiguration", Parser: `pg_catalog."default"`, TokenToDicts: map[string][]string{}}
 
 			Expect(len(configurations)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&expectedConfiguration, &configurations[0], "Oid")
@@ -91,7 +89,7 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH CONFIGURATION testconfiguration")
 			configurations := backup.GetTextSearchConfigurations(connection)
 
-			expectedConfiguration := backup.TextSearchConfiguration{1, "public", "testconfiguration", `pg_catalog."default"`, map[string][]string{}}
+			expectedConfiguration := backup.TextSearchConfiguration{Oid: 1, Schema: "public", Name: "testconfiguration", Parser: `pg_catalog."default"`, TokenToDicts: map[string][]string{}}
 
 			Expect(len(configurations)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&expectedConfiguration, &configurations[0], "Oid")
@@ -105,7 +103,7 @@ var _ = Describe("backup integration tests", func() {
 
 			configurations := backup.GetTextSearchConfigurations(connection)
 
-			expectedConfiguration := backup.TextSearchConfiguration{1, "public", "testconfiguration", `pg_catalog."default"`, map[string][]string{}}
+			expectedConfiguration := backup.TextSearchConfiguration{Oid: 1, Schema: "public", Name: "testconfiguration", Parser: `pg_catalog."default"`, TokenToDicts: map[string][]string{}}
 			expectedConfiguration.TokenToDicts = map[string][]string{"uint": {"simple"}, "asciiword": {"danish_stem"}}
 
 			Expect(len(configurations)).To(Equal(1))

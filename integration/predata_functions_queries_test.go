@@ -125,7 +125,7 @@ LANGUAGE SQL`)
 
 			results := backup.GetCasts(connection)
 
-			castDef := backup.Cast{0, "pg_catalog.text", "pg_catalog.int4", "public", "casttoint", "text", "a"}
+			castDef := backup.Cast{Oid: 0, SourceTypeFQN: "pg_catalog.text", TargetTypeFQN: "pg_catalog.int4", FunctionSchema: "public", FunctionName: "casttoint", FunctionArgs: "text", CastContext: "a"}
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&castDef, &results[0], "Oid")
@@ -140,7 +140,7 @@ LANGUAGE SQL`)
 
 			results := backup.GetCasts(connection)
 
-			castDef := backup.Cast{0, "pg_catalog.text", "public.casttesttype", "", "", "", "i"}
+			castDef := backup.Cast{Oid: 0, SourceTypeFQN: "pg_catalog.text", TargetTypeFQN: "public.casttesttype", FunctionSchema: "", FunctionName: "", FunctionArgs: "", CastContext: "i"}
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&castDef, &results[0], "Oid")
@@ -154,7 +154,7 @@ LANGUAGE SQL`)
 
 			results := backup.GetCasts(connection)
 
-			castDef := backup.Cast{1, "pg_catalog.text", "pg_catalog.int4", "public", "casttoint", "text", "a"}
+			castDef := backup.Cast{Oid: 1, SourceTypeFQN: "pg_catalog.text", TargetTypeFQN: "pg_catalog.int4", FunctionSchema: "public", FunctionName: "casttoint", FunctionArgs: "text", CastContext: "a"}
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&castDef, &results[0], "Oid")
@@ -173,7 +173,7 @@ LANGUAGE SQL`)
 
 			results := backup.GetCasts(connection)
 
-			castDef := backup.Cast{0, "testschema1.casttesttype1", "testschema2.casttesttype2", "", "", "", "i"}
+			castDef := backup.Cast{Oid: 0, SourceTypeFQN: "testschema1.casttesttype1", TargetTypeFQN: "testschema2.casttesttype2", FunctionSchema: "", FunctionName: "", FunctionArgs: "", CastContext: "i"}
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&castDef, &results[0], "Oid")
@@ -192,8 +192,8 @@ LANGUAGE SQL`)
 			perlInlineOid := testutils.OidFromObjectName(connection, "pg_catalog", "plperl_inline_handler", backup.TYPE_FUNCTION)
 			perlValidatorOid := testutils.OidFromObjectName(connection, "pg_catalog", "plperl_validator", backup.TYPE_FUNCTION)
 
-			expectedPlpgsqlInfo := backup.ProceduralLanguage{0, "plpgsql", "testrole", true, true, pgsqlHandlerOid, pgsqlInlineOid, pgsqlValidatorOid}
-			expectedPlperlInfo := backup.ProceduralLanguage{1, "plperl", "testrole", true, true, perlHandlerOid, perlInlineOid, perlValidatorOid}
+			expectedPlpgsqlInfo := backup.ProceduralLanguage{Oid: 0, Name: "plpgsql", Owner: "testrole", IsPl: true, PlTrusted: true, Handler: pgsqlHandlerOid, Inline: pgsqlInlineOid, Validator: pgsqlValidatorOid}
+			expectedPlperlInfo := backup.ProceduralLanguage{Oid: 1, Name: "plperl", Owner: "testrole", IsPl: true, PlTrusted: true, Handler: perlHandlerOid, Inline: perlInlineOid, Validator: perlValidatorOid}
 
 			resultProcLangs := backup.GetProceduralLanguages(connection)
 
@@ -207,7 +207,7 @@ LANGUAGE SQL`)
 			testutils.AssertQueryRuns(connection, "CREATE CONVERSION testconv FOR 'LATIN1' TO 'MULE_INTERNAL' FROM latin1_to_mic")
 			defer testutils.AssertQueryRuns(connection, "DROP CONVERSION testconv")
 
-			expectedConversion := backup.Conversion{0, "public", "testconv", "LATIN1", "MULE_INTERNAL", "pg_catalog.latin1_to_mic", false}
+			expectedConversion := backup.Conversion{Oid: 0, Schema: "public", Name: "testconv", ForEncoding: "LATIN1", ToEncoding: "MULE_INTERNAL", ConversionFunction: "pg_catalog.latin1_to_mic", IsDefault: false}
 
 			resultConversions := backup.GetConversions(connection)
 

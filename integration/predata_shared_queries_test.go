@@ -15,8 +15,8 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA bar")
 			schemas := backup.GetAllUserSchemas(connection)
 
-			schemaBar := backup.Schema{0, "bar"}
-			schemaPublic := backup.Schema{2200, "public"}
+			schemaBar := backup.Schema{Oid: 0, Name: "bar"}
+			schemaPublic := backup.Schema{Oid: 2200, Name: "public"}
 
 			Expect(len(schemas)).To(Equal(2))
 			testutils.ExpectStructsToMatchExcluding(&schemaBar, &schemas[0], "Oid")
@@ -25,12 +25,12 @@ var _ = Describe("backup integration tests", func() {
 	})
 	Describe("GetConstraints", func() {
 		var (
-			uniqueConstraint         = backup.Constraint{0, "uniq2", "u", "UNIQUE (a, b)", "public.constraints_table", false, false}
-			fkConstraint             = backup.Constraint{0, "fk1", "f", "FOREIGN KEY (b) REFERENCES constraints_table(b)", "public.constraints_other_table", false, false}
-			pkConstraint             = backup.Constraint{0, "pk1", "p", "PRIMARY KEY (b)", "public.constraints_table", false, false}
-			checkConstraint          = backup.Constraint{0, "check1", "c", "CHECK (a <> 42)", "public.constraints_table", false, false}
-			partitionCheckConstraint = backup.Constraint{0, "check1", "c", "CHECK (id <> 0)", "public.part", false, true}
-			domainConstraint         = backup.Constraint{0, "check1", "c", "CHECK (VALUE <> 42)", "public.constraint_domain", true, false}
+			uniqueConstraint         = backup.Constraint{Oid: 0, ConName: "uniq2", ConType: "u", ConDef: "UNIQUE (a, b)", OwningObject: "public.constraints_table", IsDomainConstraint: false, IsPartitionParent: false}
+			fkConstraint             = backup.Constraint{Oid: 0, ConName: "fk1", ConType: "f", ConDef: "FOREIGN KEY (b) REFERENCES constraints_table(b)", OwningObject: "public.constraints_other_table", IsDomainConstraint: false, IsPartitionParent: false}
+			pkConstraint             = backup.Constraint{Oid: 0, ConName: "pk1", ConType: "p", ConDef: "PRIMARY KEY (b)", OwningObject: "public.constraints_table", IsDomainConstraint: false, IsPartitionParent: false}
+			checkConstraint          = backup.Constraint{Oid: 0, ConName: "check1", ConType: "c", ConDef: "CHECK (a <> 42)", OwningObject: "public.constraints_table", IsDomainConstraint: false, IsPartitionParent: false}
+			partitionCheckConstraint = backup.Constraint{Oid: 0, ConName: "check1", ConType: "c", ConDef: "CHECK (id <> 0)", OwningObject: "public.part", IsDomainConstraint: false, IsPartitionParent: true}
+			domainConstraint         = backup.Constraint{Oid: 0, ConName: "check1", ConType: "c", ConDef: "CHECK (VALUE <> 42)", OwningObject: "public.constraint_domain", IsDomainConstraint: true, IsPartitionParent: false}
 		)
 		Context("No constraints", func() {
 			It("returns an empty constraint array for a table with no constraints", func() {
@@ -197,10 +197,10 @@ PARTITION BY RANGE (date)
 			testutils.AssertQueryRuns(connection, "GRANT ALL ON DATABASE testdb TO anothertestrole")
 			defer testutils.AssertQueryRuns(connection, "REVOKE ALL ON DATABASE testdb FROM anothertestRole")
 			testutils.AssertQueryRuns(connection, "COMMENT ON DATABASE testdb IS 'This is a database comment.'")
-			expectedMetadata := backup.ObjectMetadata{[]backup.ACL{
+			expectedMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{
 				{Grantee: "", Temporary: true, Connect: true},
 				{Grantee: "anothertestrole", Create: true, Temporary: true, Connect: true},
-			}, "anothertestrole", "This is a database comment."}
+			}, Owner: "anothertestrole", Comment: "This is a database comment."}
 
 			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_DATABASE)
 

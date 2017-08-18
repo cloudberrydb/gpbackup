@@ -46,12 +46,10 @@ FORMAT 'TEXT'`)
 			results := backup.GetExternalTableDefinitions(connection)
 			result := results[oid]
 
-			extTable := backup.ExternalTableDefinition{
-				0, 0, 0, "file://tmp/myfile.txt", "ALL_SEGMENTS",
-				"t", "delimiter '	' null '\\N' escape '\\'", "", "",
-				0, "", "", "UTF8", false, []string{"file://tmp/myfile.txt"},
-			}
-
+			extTable := backup.ExternalTableDefinition{Oid: 0, Type: 0, Protocol: 0, Location: "file://tmp/myfile.txt",
+				ExecLocation: "ALL_SEGMENTS", FormatType: "t", FormatOpts: "delimiter '	' null '\\N' escape '\\'",
+				Options: "", Command: "", RejectLimit: 0, RejectLimitType: "", ErrTable: "", Encoding: "UTF8",
+				Writable: false, URIs: []string{"file://tmp/myfile.txt"}}
 			testutils.ExpectStructsToMatchExcluding(&extTable, &result, "Oid")
 		})
 		It("returns a slice for a basic external web table definition", func() {
@@ -66,11 +64,10 @@ FORMAT 'TEXT'`)
 			results := backup.GetExternalTableDefinitions(connection)
 			result := results[oid]
 
-			extTable := backup.ExternalTableDefinition{
-				0, 0, 0, "", "ALL_SEGMENTS",
-				"t", "delimiter '	' null '\\N' escape '\\'", "", "hostname",
-				0, "", "", "UTF8", false, nil,
-			}
+			extTable := backup.ExternalTableDefinition{Oid: 0, Type: 0, Protocol: 0, Location: "",
+				ExecLocation: "ALL_SEGMENTS", FormatType: "t", FormatOpts: "delimiter '	' null '\\N' escape '\\'",
+				Options: "", Command: "hostname", RejectLimit: 0, RejectLimitType: "", ErrTable: "", Encoding: "UTF8",
+				Writable: false, URIs: nil}
 
 			testutils.ExpectStructsToMatchExcluding(&extTable, &result, "Oid")
 		})
@@ -88,11 +85,10 @@ SEGMENT REJECT LIMIT 10 PERCENT
 			results := backup.GetExternalTableDefinitions(connection)
 			result := results[oid]
 
-			extTable := backup.ExternalTableDefinition{
-				0, 0, 0, "file://tmp/myfile.txt", "ALL_SEGMENTS",
-				"t", "delimiter '	' null '\\N' escape '\\'", "foo 'bar'", "",
-				10, "p", "ext_table", "UTF8", false, []string{"file://tmp/myfile.txt"},
-			}
+			extTable := backup.ExternalTableDefinition{Oid: 0, Type: 0, Protocol: 0, Location: "file://tmp/myfile.txt",
+				ExecLocation: "ALL_SEGMENTS", FormatType: "t", FormatOpts: "delimiter '	' null '\\N' escape '\\'",
+				Options: "foo 'bar'", Command: "", RejectLimit: 10, RejectLimitType: "p", ErrTable: "ext_table", Encoding: "UTF8",
+				Writable: false, URIs: []string{"file://tmp/myfile.txt"}}
 
 			testutils.ExpectStructsToMatchExcluding(&extTable, &result, "Oid")
 		})
@@ -112,7 +108,7 @@ SEGMENT REJECT LIMIT 10 PERCENT
 
 			results := backup.GetExternalProtocols(connection)
 
-			protocolDef := backup.ExternalProtocol{1, "s3", "testrole", false, readFunctionOid, writeFunctionOid, 0}
+			protocolDef := backup.ExternalProtocol{Oid: 1, Name: "s3", Owner: "testrole", Trusted: false, ReadFunction: readFunctionOid, WriteFunction: writeFunctionOid, Validator: 0}
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&protocolDef, &results[0], "Oid")

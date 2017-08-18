@@ -14,7 +14,7 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE OPERATOR ## (LEFTARG = bigint, PROCEDURE = numeric_fac)")
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR ## (bigint, NONE)")
 
-			expectedOperator := backup.Operator{0, "public", "##", "numeric_fac", "bigint", "-", "0", "0", "-", "-", false, false}
+			expectedOperator := backup.Operator{Oid: 0, SchemaName: "public", Name: "##", ProcedureName: "numeric_fac", LeftArgType: "bigint", RightArgType: "-", CommutatorOp: "0", NegatorOp: "0", RestrictFunction: "-", JoinFunction: "-", CanHash: false, CanMerge: false}
 
 			results := backup.GetOperators(connection)
 
@@ -43,7 +43,7 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR testschema.## (path, path)")
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR ### (path, path)")
 
-			expectedOperator := backup.Operator{0, "testschema", "##", "testschema.\"testFunc\"", "path", "path", "testschema.##", "###", "eqsel", "eqjoinsel", true, true}
+			expectedOperator := backup.Operator{Oid: 0, SchemaName: "testschema", Name: "##", ProcedureName: "testschema.\"testFunc\"", LeftArgType: "path", RightArgType: "path", CommutatorOp: "testschema.##", NegatorOp: "###", RestrictFunction: "eqsel", JoinFunction: "eqjoinsel", CanHash: true, CanMerge: true}
 
 			results := backup.GetOperators(connection)
 
@@ -56,7 +56,7 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE OPERATOR FAMILY testfam USING hash;")
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testfam USING hash")
 
-			expectedOperator := backup.OperatorFamily{0, "public", "testfam", "hash"}
+			expectedOperator := backup.OperatorFamily{Oid: 0, SchemaName: "public", Name: "testfam", IndexMethod: "hash"}
 
 			results := backup.GetOperatorFamilies(connection)
 
@@ -69,7 +69,7 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE OPERATOR CLASS testclass FOR TYPE uuid USING hash AS STORAGE uuid")
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testclass USING hash CASCADE")
 
-			expected := backup.OperatorClass{0, "public", "testclass", "public", "testclass", "hash", "uuid", false, "-", nil, nil}
+			expected := backup.OperatorClass{Oid: 0, ClassSchema: "public", ClassName: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "hash", Type: "uuid", Default: false, StorageType: "-", Operators: nil, Functions: nil}
 
 			results := backup.GetOperatorClasses(connection)
 
@@ -84,7 +84,7 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testschema.testfam USING gist CASCADE")
 			testutils.AssertQueryRuns(connection, "CREATE OPERATOR CLASS testclass DEFAULT FOR TYPE uuid USING gist FAMILY testschema.testfam AS STORAGE int")
 
-			expected := backup.OperatorClass{0, "public", "testclass", "testschema", "testfam", "gist", "uuid", true, "integer", nil, nil}
+			expected := backup.OperatorClass{Oid: 0, ClassSchema: "public", ClassName: "testclass", FamilySchema: "testschema", FamilyName: "testfam", IndexMethod: "gist", Type: "uuid", Default: true, StorageType: "integer", Operators: nil, Functions: nil}
 
 			results := backup.GetOperatorClasses(connection)
 
@@ -95,9 +95,9 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE OPERATOR CLASS testclass FOR TYPE uuid USING gist AS OPERATOR 1 = RECHECK, OPERATOR 2 < , FUNCTION 1 abs(integer), FUNCTION 2 int4out(integer)")
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testclass USING gist CASCADE")
 
-			expected := backup.OperatorClass{0, "public", "testclass", "public", "testclass", "gist", "uuid", false, "-", nil, nil}
-			expected.Operators = []backup.OperatorClassOperator{{0, 1, "=(uuid,uuid)", true}, {0, 2, "<(uuid,uuid)", false}}
-			expected.Functions = []backup.OperatorClassFunction{{0, 1, "abs(integer)"}, {0, 2, "int4out(integer)"}}
+			expected := backup.OperatorClass{Oid: 0, ClassSchema: "public", ClassName: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "gist", Type: "uuid", Default: false, StorageType: "-", Operators: nil, Functions: nil}
+			expected.Operators = []backup.OperatorClassOperator{{ClassOid: 0, StrategyNumber: 1, Operator: "=(uuid,uuid)", Recheck: true}, {ClassOid: 0, StrategyNumber: 2, Operator: "<(uuid,uuid)", Recheck: false}}
+			expected.Functions = []backup.OperatorClassFunction{{ClassOid: 0, SupportNumber: 1, FunctionName: "abs(integer)"}, {ClassOid: 0, SupportNumber: 2, FunctionName: "int4out(integer)"}}
 
 			results := backup.GetOperatorClasses(connection)
 

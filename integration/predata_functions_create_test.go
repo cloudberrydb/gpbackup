@@ -115,7 +115,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&aggregateDef, &resultAggregates[0], "Oid", "TransitionFunction", "PreliminaryFunction")
 		})
 		It("creates an aggregate with an owner and a comment", func() {
-			aggMetadata := backup.ObjectMetadata{[]backup.ACL{}, "testrole", "This is an aggregate comment."}
+			aggMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{}, Owner: "testrole", Comment: "This is an aggregate comment."}
 			aggMetadataMap := backup.MetadataMap{1: aggMetadata}
 			backup.PrintCreateAggregateStatements(backupfile, &toc, []backup.Aggregate{aggregateDef}, funcInfoMap, aggMetadataMap)
 
@@ -141,7 +141,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			castMetadataMap = backup.MetadataMap{}
 		})
 		It("prints a basic cast with a function", func() {
-			castDef := backup.Cast{0, "pg_catalog.text", "pg_catalog.int4", "public", "casttoint", "text", "a"}
+			castDef := backup.Cast{Oid: 0, SourceTypeFQN: "pg_catalog.text", TargetTypeFQN: "pg_catalog.int4", FunctionSchema: "public", FunctionName: "casttoint", FunctionArgs: "text", CastContext: "a"}
 
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION casttoint(text) RETURNS integer STRICT IMMUTABLE LANGUAGE SQL AS 'SELECT cast($1 as integer);'")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION casttoint(text)")
@@ -156,7 +156,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&castDef, &resultCasts[0], "Oid")
 		})
 		It("prints a basic cast without a function", func() {
-			castDef := backup.Cast{0, "pg_catalog.text", "public.casttesttype", "", "", "", "i"}
+			castDef := backup.Cast{Oid: 0, SourceTypeFQN: "pg_catalog.text", TargetTypeFQN: "public.casttesttype", FunctionSchema: "", FunctionName: "", FunctionArgs: "", CastContext: "i"}
 
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION cast_in(cstring) RETURNS casttesttype AS $$textin$$ LANGUAGE internal STRICT NO SQL")
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION cast_out(casttesttype) RETURNS cstring AS $$textout$$ LANGUAGE internal STRICT NO SQL")
@@ -173,7 +173,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&castDef, &resultCasts[0], "Oid")
 		})
 		It("prints a cast with a comment", func() {
-			castDef := backup.Cast{1, "pg_catalog.text", "pg_catalog.int4", "public", "casttoint", "text", "a"}
+			castDef := backup.Cast{Oid: 1, SourceTypeFQN: "pg_catalog.text", TargetTypeFQN: "pg_catalog.int4", FunctionSchema: "public", FunctionName: "casttoint", FunctionArgs: "text", CastContext: "a"}
 			castMetadataMap = testutils.DefaultMetadataMap("CAST", false, false, true)
 			castMetadata := castMetadataMap[1]
 
@@ -196,15 +196,15 @@ var _ = Describe("backup integration create statement tests", func() {
 	Describe("PrintCreateLanguageStatements", func() {
 		It("creates procedural languages", func() {
 			funcInfoMap := map[uint32]backup.FunctionInfo{
-				1: {"pg_catalog.plpgsql_validator", "oid", true},
-				2: {"pg_catalog.plpgsql_inline_handler", "internal", true},
-				3: {"pg_catalog.plpgsql_call_handler", "", true},
-				4: {"pg_catalog.plperl_validator", "oid", true},
-				5: {"pg_catalog.plperl_inline_handler", "internal", true},
-				6: {"pg_catalog.plperl_call_handler", "", true},
+				1: {QualifiedName: "pg_catalog.plpgsql_validator", Arguments: "oid", IsInternal: true},
+				2: {QualifiedName: "pg_catalog.plpgsql_inline_handler", Arguments: "internal", IsInternal: true},
+				3: {QualifiedName: "pg_catalog.plpgsql_call_handler", Arguments: "", IsInternal: true},
+				4: {QualifiedName: "pg_catalog.plperl_validator", Arguments: "oid", IsInternal: true},
+				5: {QualifiedName: "pg_catalog.plperl_inline_handler", Arguments: "internal", IsInternal: true},
+				6: {QualifiedName: "pg_catalog.plperl_call_handler", Arguments: "", IsInternal: true},
 			}
-			plpgsqlInfo := backup.ProceduralLanguage{0, "plpgsql", "testrole", true, true, 1, 2, 3}
-			plperlInfo := backup.ProceduralLanguage{1, "plperl", "testrole", true, true, 4, 5, 6}
+			plpgsqlInfo := backup.ProceduralLanguage{Oid: 0, Name: "plpgsql", Owner: "testrole", IsPl: true, PlTrusted: true, Handler: 1, Inline: 2, Validator: 3}
+			plperlInfo := backup.ProceduralLanguage{Oid: 1, Name: "plperl", Owner: "testrole", IsPl: true, PlTrusted: true, Handler: 4, Inline: 5, Validator: 6}
 			procLangs := []backup.ProceduralLanguage{plpgsqlInfo, plperlInfo}
 			langMetadataMap := testutils.DefaultMetadataMap("LANGUAGE", true, true, true)
 			langMetadata := langMetadataMap[1]
@@ -227,8 +227,8 @@ var _ = Describe("backup integration create statement tests", func() {
 	})
 	Describe("PrintCreateConversionStatements", func() {
 		It("creates conversions", func() {
-			convOne := backup.Conversion{1, "public", "conv_one", "LATIN1", "MULE_INTERNAL", "pg_catalog.latin1_to_mic", false}
-			convTwo := backup.Conversion{0, "public", "conv_two", "LATIN1", "MULE_INTERNAL", "pg_catalog.latin1_to_mic", true}
+			convOne := backup.Conversion{Oid: 1, Schema: "public", Name: "conv_one", ForEncoding: "LATIN1", ToEncoding: "MULE_INTERNAL", ConversionFunction: "pg_catalog.latin1_to_mic", IsDefault: false}
+			convTwo := backup.Conversion{Oid: 0, Schema: "public", Name: "conv_two", ForEncoding: "LATIN1", ToEncoding: "MULE_INTERNAL", ConversionFunction: "pg_catalog.latin1_to_mic", IsDefault: true}
 			conversions := []backup.Conversion{convOne, convTwo}
 			convMetadataMap := testutils.DefaultMetadataMap("CONVERSION", false, true, true)
 			convMetadata := convMetadataMap[1]

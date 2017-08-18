@@ -17,7 +17,7 @@ var _ = Describe("backup integration create statement tests", func() {
 	})
 	Describe("PrintCreateSchemaStatements", func() {
 		It("creates a non public schema", func() {
-			schemas := []backup.Schema{{0, "test_schema"}}
+			schemas := []backup.Schema{{Oid: 0, Name: "test_schema"}}
 			schemaMetadata := testutils.DefaultMetadataMap("SCHEMA", true, true, true)
 
 			backup.PrintCreateSchemaStatements(backupfile, &toc, schemas, schemaMetadata)
@@ -34,7 +34,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 
 		It("modifies the public schema", func() {
-			schemas := []backup.Schema{{2200, "public"}}
+			schemas := []backup.Schema{{Oid: 2200, Name: "public"}}
 			schemaMetadata := testutils.DefaultMetadataMap("SCHEMA", true, true, true)
 
 			backup.PrintCreateSchemaStatements(backupfile, &toc, schemas, schemaMetadata)
@@ -59,11 +59,11 @@ var _ = Describe("backup integration create statement tests", func() {
 			conMetadataMap           backup.MetadataMap
 		)
 		BeforeEach(func() {
-			uniqueConstraint = backup.Constraint{0, "uniq2", "u", "UNIQUE (a, b)", "public.testtable", false, false}
-			pkConstraint = backup.Constraint{0, "constraints_other_table_pkey", "p", "PRIMARY KEY (b)", "public.constraints_other_table", false, false}
-			fkConstraint = backup.Constraint{0, "fk1", "f", "FOREIGN KEY (b) REFERENCES constraints_other_table(b)", "public.testtable", false, false}
-			checkConstraint = backup.Constraint{0, "check1", "c", "CHECK (a <> 42)", "public.testtable", false, false}
-			partitionCheckConstraint = backup.Constraint{0, "check1", "c", "CHECK (id <> 0)", "public.part", false, true}
+			uniqueConstraint = backup.Constraint{Oid: 0, ConName: "uniq2", ConType: "u", ConDef: "UNIQUE (a, b)", OwningObject: "public.testtable", IsDomainConstraint: false, IsPartitionParent: false}
+			pkConstraint = backup.Constraint{Oid: 0, ConName: "constraints_other_table_pkey", ConType: "p", ConDef: "PRIMARY KEY (b)", OwningObject: "public.constraints_other_table", IsDomainConstraint: false, IsPartitionParent: false}
+			fkConstraint = backup.Constraint{Oid: 0, ConName: "fk1", ConType: "f", ConDef: "FOREIGN KEY (b) REFERENCES constraints_other_table(b)", OwningObject: "public.testtable", IsDomainConstraint: false, IsPartitionParent: false}
+			checkConstraint = backup.Constraint{Oid: 0, ConName: "check1", ConType: "c", ConDef: "CHECK (a <> 42)", OwningObject: "public.testtable", IsDomainConstraint: false, IsPartitionParent: false}
+			partitionCheckConstraint = backup.Constraint{Oid: 0, ConName: "check1", ConType: "c", ConDef: "CHECK (id <> 0)", OwningObject: "public.part", IsDomainConstraint: false, IsPartitionParent: true}
 			testutils.AssertQueryRuns(connection, "CREATE TABLE public.testtable(a int, b text) DISTRIBUTED BY (b)")
 			conMetadataMap = backup.MetadataMap{}
 		})
@@ -138,7 +138,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		It("doesn't create a check constraint on a domain", func() {
 			testutils.AssertQueryRuns(connection, "CREATE DOMAIN domain1 AS numeric")
 			defer testutils.AssertQueryRuns(connection, "DROP DOMAIN domain1")
-			domainCheckConstraint := backup.Constraint{0, "check1", "c", "CHECK (VALUE <> 42::numeric)", "public.domain1", true, false}
+			domainCheckConstraint := backup.Constraint{Oid: 0, ConName: "check1", ConType: "c", ConDef: "CHECK (VALUE <> 42::numeric)", OwningObject: "public.domain1", IsDomainConstraint: true, IsPartitionParent: false}
 			constraints := []backup.Constraint{domainCheckConstraint}
 			backup.PrintConstraintStatements(backupfile, &toc, constraints, conMetadataMap)
 

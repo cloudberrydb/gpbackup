@@ -18,8 +18,7 @@ var _ = Describe("backup integration create statement tests", func() {
 	})
 	Describe("PrintCreateTextSearchParserStatements", func() {
 		It("creates a basic text search parser", func() {
-			parsers := []backup.TextSearchParser{{0, "public", "testparser", "prsd_start", "prsd_nexttoken", "prsd_end", "prsd_lextype", "prsd_headline"}}
-
+			parsers := []backup.TextSearchParser{{Oid: 0, Schema: "public", Name: "testparser", StartFunc: "prsd_start", TokenFunc: "prsd_nexttoken", EndFunc: "prsd_end", LexTypesFunc: "prsd_lextype", HeadlineFunc: "prsd_headline"}}
 			backup.PrintCreateTextSearchParserStatements(backupfile, &toc, parsers, backup.MetadataMap{})
 
 			testutils.AssertQueryRuns(connection, buffer.String())
@@ -31,7 +30,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&parsers[0], &resultParsers[0], "Oid")
 		})
 		It("creates a basic text search parser with a comment", func() {
-			parsers := []backup.TextSearchParser{{1, "public", "testparser", "prsd_start", "prsd_nexttoken", "prsd_end", "prsd_lextype", "prsd_headline"}}
+			parsers := []backup.TextSearchParser{{Oid: 1, Schema: "public", Name: "testparser", StartFunc: "prsd_start", TokenFunc: "prsd_nexttoken", EndFunc: "prsd_end", LexTypesFunc: "prsd_lextype", HeadlineFunc: "prsd_headline"}}
 			parserMetadataMap := testutils.DefaultMetadataMap("TEXT SEARCH PARSER", false, false, true)
 			parserMetadata := parserMetadataMap[1]
 
@@ -52,8 +51,7 @@ var _ = Describe("backup integration create statement tests", func() {
 	})
 	Describe("PrintCreateTextSearchTemplateStatements", func() {
 		It("creates a basic text search template", func() {
-			templates := []backup.TextSearchTemplate{{0, "public", "testtemplate", "dsimple_init", "dsimple_lexize"}}
-
+			templates := []backup.TextSearchTemplate{{Oid: 0, Schema: "public", Name: "testtemplate", InitFunc: "dsimple_init", LexizeFunc: "dsimple_lexize"}}
 			backup.PrintCreateTextSearchTemplateStatements(backupfile, &toc, templates, backup.MetadataMap{})
 
 			testutils.AssertQueryRuns(connection, buffer.String())
@@ -65,7 +63,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&templates[0], &resultTemplates[0], "Oid")
 		})
 		It("creates a basic text search template with a comment", func() {
-			templates := []backup.TextSearchTemplate{{1, "public", "testtemplate", "dsimple_init", "dsimple_lexize"}}
+			templates := []backup.TextSearchTemplate{{Oid: 1, Schema: "public", Name: "testtemplate", InitFunc: "dsimple_init", LexizeFunc: "dsimple_lexize"}}
 			templateMetadataMap := testutils.DefaultMetadataMap("TEXT SEARCH TEMPLATE", false, false, true)
 			templateMetadata := templateMetadataMap[1]
 
@@ -86,7 +84,7 @@ var _ = Describe("backup integration create statement tests", func() {
 	})
 	Describe("PrintCreateTextSearchDictionaryStatements", func() {
 		It("creates a basic text search dictionary", func() {
-			dictionaries := []backup.TextSearchDictionary{{0, "public", "testdictionary", "pg_catalog.snowball", "language = 'russian', stopwords = 'russian'"}}
+			dictionaries := []backup.TextSearchDictionary{backup.TextSearchDictionary{Oid: 0, Schema: "public", Name: "testdictionary", Template: "pg_catalog.snowball", InitOption: "language = 'russian', stopwords = 'russian'"}}
 
 			backup.PrintCreateTextSearchDictionaryStatements(backupfile, &toc, dictionaries, backup.MetadataMap{})
 
@@ -99,7 +97,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&dictionaries[0], &resultDictionaries[0], "Oid")
 		})
 		It("creates a basic text search dictionary with a comment and owner", func() {
-			dictionaries := []backup.TextSearchDictionary{{1, "public", "testdictionary", "pg_catalog.snowball", "language = 'russian', stopwords = 'russian'"}}
+			dictionaries := []backup.TextSearchDictionary{{Oid: 1, Schema: "public", Name: "testdictionary", Template: "pg_catalog.snowball", InitOption: "language = 'russian', stopwords = 'russian'"}}
 			dictionaryMetadataMap := testutils.DefaultMetadataMap("TEXT SEARCH DICTIONARY", false, true, true)
 			dictionaryMetadata := dictionaryMetadataMap[1]
 
@@ -120,7 +118,7 @@ var _ = Describe("backup integration create statement tests", func() {
 	})
 	Describe("PrintCreateTextSearchConfigurationStatements", func() {
 		It("creates a basic text search configuration", func() {
-			configurations := []backup.TextSearchConfiguration{{0, "public", "testconfiguration", `pg_catalog."default"`, map[string][]string{}}}
+			configurations := []backup.TextSearchConfiguration{{Oid: 0, Schema: "public", Name: "testconfiguration", Parser: `pg_catalog."default"`, TokenToDicts: map[string][]string{}}}
 
 			backup.PrintCreateTextSearchConfigurationStatements(backupfile, &toc, configurations, backup.MetadataMap{})
 
@@ -133,7 +131,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&configurations[0], &resultConfigurations[0], "Oid")
 		})
 		It("creates a basic text search configuration with a comment and owner", func() {
-			configurations := []backup.TextSearchConfiguration{{1, "public", "testconfiguration", `pg_catalog."default"`, map[string][]string{}}}
+			configurations := []backup.TextSearchConfiguration{{Oid: 1, Schema: "public", Name: "testconfiguration", Parser: `pg_catalog."default"`, TokenToDicts: map[string][]string{}}}
 			configurationMetadataMap := testutils.DefaultMetadataMap("TEXT SEARCH CONFIGURATION", false, true, true)
 			configurationMetadata := configurationMetadataMap[1]
 
