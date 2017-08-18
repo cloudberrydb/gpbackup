@@ -18,7 +18,7 @@ var _ = Describe("backup/predata_textsearch tests", func() {
 	})
 	Describe("PrintCreateTextSearchParserStatements", func() {
 		It("prints a basic text search parser", func() {
-			parsers := []backup.TextSearchParser{{Oid: 0, Schema: "public", Name: "testparser", StartFunc: "start_func", TokenFunc: "token_func", EndFunc: "end_func", LexTypesFunc: "lextypes_func", HeadlineFunc: ""}}
+			parsers := []backup.TextSearchParser{{Oid: 0, Schema: "public", Name: "testparser", StartFunc: "start_func", TokenFunc: "token_func", EndFunc: "end_func", LexTypesFunc: "lextypes_func"}}
 			backup.PrintCreateTextSearchParserStatements(backupfile, toc, parsers, backup.MetadataMap{})
 			testutils.ExpectEntry(toc.PredataEntries, 0, "public", "testparser", "TEXT SEARCH PARSER")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE TEXT SEARCH PARSER public.testparser (
