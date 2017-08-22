@@ -70,9 +70,8 @@ SET default_with_oids = false`)
 			dbMetadataMap[1] = dbMetadata
 			dbs := []backup.DatabaseName{{Oid: 1, DatabaseName: "testdb", TablespaceName: "pg_default"}, {Oid: 2, DatabaseName: "otherdb", TablespaceName: "pg_default"}}
 			backup.PrintCreateDatabaseStatement(backupfile, toc, "testdb", dbs, dbMetadataMap, false)
-			testutils.AssertBufferContents(toc.GlobalEntries, buffer, `CREATE DATABASE testdb;
-
-COMMENT ON DATABASE testdb IS 'This is a database comment.';
+			testutils.AssertBufferContents(toc.GlobalEntries, buffer, `CREATE DATABASE testdb;`,
+				`COMMENT ON DATABASE testdb IS 'This is a database comment.';
 
 
 ALTER DATABASE testdb OWNER TO testrole;
@@ -93,9 +92,8 @@ GRANT TEMPORARY,CONNECT ON DATABASE testdb TO testrole;`)
 			}
 			dbs := []backup.DatabaseName{{Oid: 1, DatabaseName: "testdb", TablespaceName: "pg_default"}, {Oid: 2, DatabaseName: "otherdb", TablespaceName: "pg_default"}, {Oid: 3, DatabaseName: "anotherdb", TablespaceName: "pg_default"}}
 			backup.PrintCreateDatabaseStatement(backupfile, toc, "testdb", dbs, dbMetadataMap, true)
-			testutils.AssertBufferContents(toc.GlobalEntries, buffer, `CREATE DATABASE testdb;
-
-COMMENT ON DATABASE testdb IS 'This is a database comment.';
+			testutils.AssertBufferContents(toc.GlobalEntries, buffer, `CREATE DATABASE testdb;`,
+				`COMMENT ON DATABASE testdb IS 'This is a database comment.';
 
 
 ALTER DATABASE testdb OWNER TO testrole;
@@ -103,14 +101,12 @@ ALTER DATABASE testdb OWNER TO testrole;
 
 REVOKE ALL ON DATABASE testdb FROM PUBLIC;
 REVOKE ALL ON DATABASE testdb FROM testrole;
-GRANT TEMPORARY,CONNECT ON DATABASE testdb TO testrole WITH GRANT OPTION;
+GRANT TEMPORARY,CONNECT ON DATABASE testdb TO testrole WITH GRANT OPTION;`,
 
+				`REVOKE ALL ON DATABASE otherdb FROM PUBLIC;
+GRANT CREATE ON DATABASE otherdb TO testrole;`,
 
-REVOKE ALL ON DATABASE otherdb FROM PUBLIC;
-GRANT CREATE ON DATABASE otherdb TO testrole;
-
-
-REVOKE ALL ON DATABASE anotherdb FROM PUBLIC;
+				`REVOKE ALL ON DATABASE anotherdb FROM PUBLIC;
 GRANT CREATE ON DATABASE anotherdb TO testrole WITH GRANT OPTION;`)
 		})
 		It("prints a CREATE DATABASE statement with a TABLESPACE", func() {

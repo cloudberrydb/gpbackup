@@ -19,6 +19,7 @@ var (
 )
 
 var ( // Command-line flags
+	createdb       *bool
 	debug          *bool
 	dumpDir        *string
 	quiet          *bool
@@ -30,6 +31,7 @@ var ( // Command-line flags
 
 // We define and initialize flags separately to avoid import conflicts in tests
 func initializeFlags() {
+	createdb = flag.Bool("createdb", false, "Create the database before metadata restore")
 	debug = flag.Bool("debug", false, "Print verbose and debug log messages")
 	dumpDir = flag.String("dumpdir", "", "The directory in which the dump files to be restored are located")
 	quiet = flag.Bool("quiet", false, "Suppress non-warning, non-error log messages")
@@ -101,11 +103,16 @@ func DoRestore() {
 	globalFilename := fmt.Sprintf("%s/global.sql", masterDumpDir)
 	predataFilename := fmt.Sprintf("%s/predata.sql", masterDumpDir)
 	postdataFilename := fmt.Sprintf("%s/postdata.sql", masterDumpDir)
+	tocFilename := fmt.Sprintf("%s/toc.yaml", masterDumpDir)
 
 	if *restoreGlobals {
 		logger.Info("Restoring global database metadata from %s", globalFilename)
 		restoreGlobal(globalFilename)
 		logger.Info("Global database metadata restore complete")
+	} else if *createdb {
+		logger.Info("Creating database")
+		createDatabase(connection, globalFilename, tocFilename)
+		logger.Info("Database creation complete")
 	}
 
 	connection.Close()
@@ -133,6 +140,16 @@ func DoRestore() {
 		logger.Info("Restoring post-data metadata from %s", postdataFilename)
 		restorePostdata(postdataFilename)
 		logger.Info("Post-data metadata restore complete")
+	}
+}
+
+func createDatabase(connection *utils.DBConn, metadataFilename string, tocFilename string) {
+	toc := utils.NewTOC(tocFilename)
+	metadataFile := utils.MustOpenFileForReaderAt(metadataFilename)
+	statements := toc.GetSQLStatementForObjectTypes(toc.GlobalEntries, metadataFile, "SESSION GUCS", "DATABASE GUC", "DATABASE", "DATABASE METADATA")
+	for _, statement := range statements {
+		_, err := connection.Exec(statement)
+		utils.CheckError(err)
 	}
 }
 

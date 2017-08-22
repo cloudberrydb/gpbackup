@@ -51,27 +51,33 @@ SET default_with_oids = %s;
 }
 
 func PrintCreateDatabaseStatement(globalFile *utils.FileWithByteCount, toc *utils.TOC, dbname string, allDBs []DatabaseName, dbMetadata MetadataMap, dumpGlobals bool) {
-	start := globalFile.ByteCount
 	dbname = utils.QuoteIdent(dbname)
 	for _, db := range allDBs {
 		if db.DatabaseName == dbname {
+			start := globalFile.ByteCount
 			globalFile.MustPrintf("\n\nCREATE DATABASE %s", dbname)
 			if db.TablespaceName != "pg_default" {
 				globalFile.MustPrintf(" TABLESPACE %s", db.TablespaceName)
 			}
 			globalFile.MustPrintf(";")
+			toc.AddGlobalEntry("", dbname, "DATABASE", start, globalFile.ByteCount)
+			start = globalFile.ByteCount
 			PrintObjectMetadata(globalFile, dbMetadata[db.Oid], dbname, "DATABASE")
+			if globalFile.ByteCount > start {
+				toc.AddGlobalEntry("", dbname, "DATABASE METADATA", start, globalFile.ByteCount)
+			}
 			break
 		}
 	}
 	if dumpGlobals {
 		for _, db := range allDBs {
 			if db.DatabaseName != dbname {
+				start := globalFile.ByteCount
 				PrintObjectMetadata(globalFile, dbMetadata[db.Oid], db.DatabaseName, "DATABASE")
+				toc.AddGlobalEntry("", dbname, "DATABASE OTHER", start, globalFile.ByteCount)
 			}
 		}
 	}
-	toc.AddGlobalEntry("", dbname, "DATABASE", start, globalFile.ByteCount)
 }
 
 func PrintDatabaseGUCs(globalFile *utils.FileWithByteCount, toc *utils.TOC, gucs []string, dbname string) {

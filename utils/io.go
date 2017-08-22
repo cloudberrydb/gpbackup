@@ -60,6 +60,14 @@ func MustOpenFileForReading(filename string) io.ReadCloser {
 	return fileHandle
 }
 
+func MustOpenFileForReaderAt(filename string) io.ReaderAt {
+	fileHandle, err := System.OpenFile(filename, os.O_RDONLY, 0644)
+	if err != nil {
+		logger.Fatal(err, "Unable to open file for reading")
+	}
+	return fileHandle
+}
+
 func GetUserAndHostInfo() (string, string, string) {
 	currentUser, _ := System.CurrentUser()
 	userName := currentUser.Username
