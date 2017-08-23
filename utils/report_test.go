@@ -131,16 +131,24 @@ types                       1000
 			backupReport = &utils.Report{}
 		})
 		It("can set the type for a standard backup", func() {
-			backupReport.SetBackupTypeFromFlags(false, false)
+			backupReport.SetBackupTypeFromFlags(false, false, utils.ArrayFlags{})
 			Expect(backupReport.BackupType).To(Equal("Unfiltered Full Backup"))
 		})
 		It("can set the type for a metadata-only backup", func() {
-			backupReport.SetBackupTypeFromFlags(false, true)
+			backupReport.SetBackupTypeFromFlags(false, true, utils.ArrayFlags{})
 			Expect(backupReport.BackupType).To(Equal("Unfiltered Full Backup (Metadata-Only)"))
 		})
 		It("can set the type for a data-only backup", func() {
-			backupReport.SetBackupTypeFromFlags(true, false)
+			backupReport.SetBackupTypeFromFlags(true, false, utils.ArrayFlags{})
 			Expect(backupReport.BackupType).To(Equal("Unfiltered Full Backup (Data-Only)"))
+		})
+		It("can set the type for a schema-include backup", func() {
+			backupReport.SetBackupTypeFromFlags(false, false, utils.ArrayFlags{"someSchema"})
+			Expect(backupReport.BackupType).To(Equal("Schema-Filtered Full Backup"))
+		})
+		It("can set the type for a schema-include data-only backup", func() {
+			backupReport.SetBackupTypeFromFlags(true, false, utils.ArrayFlags{"someSchema"})
+			Expect(backupReport.BackupType).To(Equal("Schema-Filtered Full Backup (Data-Only)"))
 		})
 	})
 	Describe("SetBackupTypeFromString", func() {

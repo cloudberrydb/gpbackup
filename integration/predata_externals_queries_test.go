@@ -28,7 +28,6 @@ FORMAT 'TEXT' ( DELIMITER '|' NULL ' ')`)
 
 			result := backup.GetExternalTablesMap(connection)
 
-			Expect(len(result)).To(Equal(1))
 			Expect(result["public.ext_table"]).To(BeTrue())
 		})
 		// TODO: Add tests for external partitions

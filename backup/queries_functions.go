@@ -64,7 +64,7 @@ LEFT JOIN pg_namespace n
 	ON p.pronamespace = n.oid
 WHERE %s
 AND proisagg = 'f'
-ORDER BY nspname, proname, identargs;`, NonUserSchemaFilterClause("n"))
+ORDER BY nspname, proname, identargs;`, SchemaFilterClause("n"))
 
 	results := make([]Function, 0)
 	err := connection.Select(&results, query)
@@ -106,7 +106,7 @@ FROM pg_aggregate a
 LEFT JOIN pg_proc p ON a.aggfnoid = p.oid
 LEFT JOIN pg_type t ON a.aggtranstype = t.oid
 LEFT JOIN pg_namespace n ON p.pronamespace = n.oid
-WHERE %s;`, NonUserSchemaFilterClause("n"))
+WHERE %s;`, SchemaFilterClause("n"))
 
 	results := make([]Aggregate, 0)
 	err := connection.Select(&results, query)
@@ -186,7 +186,7 @@ LEFT JOIN pg_description d ON c.oid = d.objoid
 LEFT JOIN pg_namespace n ON p.pronamespace = n.oid
 WHERE (%s) OR (%s) OR (%s)
 ORDER BY 1, 2;
-`, NonUserSchemaFilterClause("sn"), NonUserSchemaFilterClause("tn"), NonUserSchemaFilterClause("n"))
+`, SchemaFilterClause("sn"), SchemaFilterClause("tn"), SchemaFilterClause("n"))
 
 	results := make([]Cast, 0)
 	err := connection.Select(&results, query)
@@ -251,7 +251,7 @@ JOIN pg_namespace n ON c.connamespace = n.oid
 JOIN pg_proc p ON c.conproc = p.oid
 JOIN pg_namespace fn ON p.pronamespace = fn.oid
 WHERE %s
-ORDER BY n.nspname, c.conname;`, NonUserSchemaFilterClause("n"))
+ORDER BY n.nspname, c.conname;`, SchemaFilterClause("n"))
 
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
@@ -281,7 +281,7 @@ AND t.typoutput != p.oid
 AND t.typreceive != p.oid
 AND t.typsend != p.oid
 AND t.typmodin != p.oid
-AND t.typmodout != p.oid;`, NonUserSchemaFilterClause("n"))
+AND t.typmodout != p.oid;`, SchemaFilterClause("n"))
 
 	results := make([]Dependency, 0)
 	dependencyMap := make(map[uint32][]string, 0)

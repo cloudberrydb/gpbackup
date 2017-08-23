@@ -9,8 +9,8 @@ import (
 )
 
 var _ = Describe("backup integration tests", func() {
-	Describe("GetFunctionDefinitions", func() {
-		It("returns a slice of function definitions", func() {
+	Describe("GetFunctions", func() {
+		It("returns a slice of functions", func() {
 			testutils.AssertQueryRuns(connection, `CREATE FUNCTION add(integer, integer) RETURNS integer
 AS 'SELECT $1 + $2'
 LANGUAGE SQL`)
@@ -47,9 +47,32 @@ MODIFIES SQL DATA
 			testutils.ExpectStructsToMatchExcluding(&results[0], &addFunction, "Oid")
 			testutils.ExpectStructsToMatchExcluding(&results[1], &appendFunction, "Oid")
 		})
+		It("returns a slice of functions in a specific schema", func() {
+			testutils.AssertQueryRuns(connection, `CREATE FUNCTION add(integer, integer) RETURNS integer
+AS 'SELECT $1 + $2'
+LANGUAGE SQL`)
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION add(integer, integer)")
+			testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
+			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
+			testutils.AssertQueryRuns(connection, `CREATE FUNCTION testschema.add(integer, integer) RETURNS integer
+AS 'SELECT $1 + $2'
+LANGUAGE SQL`)
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION testschema.add(integer, integer)")
+
+			addFunction := backup.Function{
+				SchemaName: "testschema", FunctionName: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
+				BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "integer",
+				Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 0, DataAccess: "c",
+				Language: "sql"}
+			backup.SetSchemaInclude([]string{"testschema"})
+			results := backup.GetFunctions(connection)
+
+			Expect(len(results)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&results[0], &addFunction, "Oid")
+		})
 	})
-	Describe("GetAggregateDefinitions", func() {
-		It("returns a slice of aggregate definitions", func() {
+	Describe("GetAggregates", func() {
+		It("returns a slice of aggregates", func() {
 			testutils.AssertQueryRuns(connection, `
 CREATE FUNCTION mysfunc_accum(numeric, numeric, numeric)
    RETURNS numeric
@@ -91,6 +114,58 @@ CREATE AGGREGATE agg_prefunc(numeric, numeric) (
 			Expect(len(result)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&result[0], &aggregateDef, "Oid")
 		})
+		It("returns a slice of aggregates in a specific schema", func() {
+			testutils.AssertQueryRuns(connection, `
+CREATE FUNCTION mysfunc_accum(numeric, numeric, numeric)
+   RETURNS numeric
+   AS 'select $1 + $2 + $3'
+   LANGUAGE SQL
+   IMMUTABLE
+   RETURNS NULL ON NULL INPUT;
+`)
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION mysfunc_accum(numeric, numeric, numeric)")
+			testutils.AssertQueryRuns(connection, `
+CREATE FUNCTION mypre_accum(numeric, numeric)
+   RETURNS numeric
+   AS 'select $1 + $2'
+   LANGUAGE SQL
+   IMMUTABLE
+   RETURNS NULL ON NULL INPUT;
+`)
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION mypre_accum(numeric, numeric)")
+			testutils.AssertQueryRuns(connection, `
+CREATE AGGREGATE agg_prefunc(numeric, numeric) (
+	SFUNC = mysfunc_accum,
+	STYPE = numeric,
+	PREFUNC = mypre_accum,
+	INITCOND = 0 );
+`)
+			defer testutils.AssertQueryRuns(connection, "DROP AGGREGATE agg_prefunc(numeric, numeric)")
+			testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
+			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
+			testutils.AssertQueryRuns(connection, `
+CREATE AGGREGATE testschema.agg_prefunc(numeric, numeric) (
+	SFUNC = mysfunc_accum,
+	STYPE = numeric,
+	PREFUNC = mypre_accum,
+	INITCOND = 0 );
+`)
+			defer testutils.AssertQueryRuns(connection, "DROP AGGREGATE testschema.agg_prefunc(numeric, numeric)")
+
+			transitionOid := testutils.OidFromObjectName(connection, "public", "mysfunc_accum", backup.TYPE_FUNCTION)
+			prelimOid := testutils.OidFromObjectName(connection, "public", "mypre_accum", backup.TYPE_FUNCTION)
+			aggregateDef := backup.Aggregate{
+				SchemaName: "testschema", AggregateName: "agg_prefunc", Arguments: "numeric, numeric",
+				IdentArgs: "numeric, numeric", TransitionFunction: transitionOid, PreliminaryFunction: prelimOid,
+				FinalFunction: 0, SortOperator: 0, TransitionDataType: "numeric", InitialValue: "0", IsOrdered: false,
+			}
+			backup.SetSchemaInclude([]string{"testschema"})
+
+			result := backup.GetAggregates(connection)
+
+			Expect(len(result)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&result[0], &aggregateDef, "Oid")
+		})
 	})
 	Describe("GetFunctionOidToInfoMap", func() {
 		It("returns map containing function information", func() {
@@ -116,7 +191,7 @@ LANGUAGE SQL`)
 			Expect(result[oid].IsInternal).To(BeTrue())
 		})
 	})
-	Describe("GetCastDefinitions", func() {
+	Describe("GetCasts", func() {
 		It("returns a slice for a basic cast with a function", func() {
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION casttoint(text) RETURNS integer STRICT IMMUTABLE LANGUAGE SQL AS 'SELECT cast($1 as integer);'")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION casttoint(text)")
@@ -209,6 +284,22 @@ LANGUAGE SQL`)
 
 			expectedConversion := backup.Conversion{Oid: 0, Schema: "public", Name: "testconv", ForEncoding: "LATIN1", ToEncoding: "MULE_INTERNAL", ConversionFunction: "pg_catalog.latin1_to_mic", IsDefault: false}
 
+			resultConversions := backup.GetConversions(connection)
+
+			Expect(len(resultConversions)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&expectedConversion, &resultConversions[0], "Oid")
+		})
+		It("returns a slice of conversions in a specific schema", func() {
+			testutils.AssertQueryRuns(connection, "CREATE CONVERSION testconv FOR 'LATIN1' TO 'MULE_INTERNAL' FROM latin1_to_mic")
+			defer testutils.AssertQueryRuns(connection, "DROP CONVERSION testconv")
+			testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
+			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
+			testutils.AssertQueryRuns(connection, "CREATE CONVERSION testschema.testconv FOR 'LATIN1' TO 'MULE_INTERNAL' FROM latin1_to_mic")
+			defer testutils.AssertQueryRuns(connection, "DROP CONVERSION testschema.testconv")
+
+			expectedConversion := backup.Conversion{Oid: 0, Schema: "testschema", Name: "testconv", ForEncoding: "LATIN1", ToEncoding: "MULE_INTERNAL", ConversionFunction: "pg_catalog.latin1_to_mic", IsDefault: false}
+
+			backup.SetSchemaInclude([]string{"testschema"})
 			resultConversions := backup.GetConversions(connection)
 
 			Expect(len(resultConversions)).To(Equal(1))

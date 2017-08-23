@@ -35,7 +35,7 @@ LEFT
 JOIN pg_exttable e
 	ON p.parchildrelid = e.reloid
 WHERE e.reloid IS NULL)
-ORDER BY schemaname, relationname;`, NonUserSchemaFilterClause("n"))
+ORDER BY schemaname, relationname;`, SchemaFilterClause("n"))
 
 	results := make([]Relation, 0)
 
@@ -91,7 +91,7 @@ LEFT OUTER JOIN pg_catalog.pg_attribute_encoding e ON e.attrelid = a.attrelid AN
 WHERE %s
 AND a.attnum > 0::pg_catalog.int2
 AND a.attisdropped = 'f'
-ORDER BY a.attrelid, a.attnum;`, NonUserSchemaFilterClause("n"))
+ORDER BY a.attrelid, a.attnum;`, SchemaFilterClause("n"))
 
 	results := make([]ColumnDefinition, 0)
 	err := connection.Select(&results, query)
@@ -195,7 +195,7 @@ FROM pg_depend d
 JOIN pg_class p ON d.refobjid = p.oid AND p.relkind = 'r'
 JOIN pg_namespace n ON p.relnamespace = n.oid
 JOIN pg_class c ON d.objid = c.oid AND c.relkind = 'r';
-`, NonUserSchemaFilterClause("n"))
+`, SchemaFilterClause("n"))
 
 	results := make([]struct {
 		Oid              uint32
@@ -220,7 +220,7 @@ JOIN pg_class c ON d.objid = c.oid AND c.relkind = 'r';
 }
 
 func GetAllSequenceRelations(connection *utils.DBConn) []Relation {
-	query := `SELECT
+	query := fmt.Sprintf(`SELECT
 	n.oid AS schemaoid,
 	c.oid AS relationoid,
 	n.nspname AS schemaname,
@@ -229,7 +229,8 @@ FROM pg_class c
 LEFT JOIN pg_namespace n
 	ON c.relnamespace = n.oid
 WHERE relkind = 'S'
-ORDER BY schemaname, relationname;`
+AND %s
+ORDER BY schemaname, relationname;`, SchemaFilterClause("n"))
 
 	results := make([]Relation, 0)
 	err := connection.Select(&results, query)
@@ -314,7 +315,7 @@ SELECT
 	pg_get_viewdef(c.oid) AS definition
 FROM pg_class c
 LEFT JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE c.relkind = 'v'::"char" AND %s;`, NonUserSchemaFilterClause("n"))
+WHERE c.relkind = 'v'::"char" AND %s;`, SchemaFilterClause("n"))
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results
@@ -334,7 +335,7 @@ WHERE d.classid = 'pg_rewrite'::regclass::oid
 	AND v1.oid != v2.oid
 	AND v1.relkind = 'v'
 	AND %s
-ORDER BY v2.oid, referencedobject;`, NonUserSchemaFilterClause("n"))
+ORDER BY v2.oid, referencedobject;`, SchemaFilterClause("n"))
 
 	results := make([]Dependency, 0)
 	dependencyMap := make(map[uint32][]string, 0)

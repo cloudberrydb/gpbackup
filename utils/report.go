@@ -40,7 +40,7 @@ func ParseErrorMessage(err interface{}) (string, int) {
 	return errMsg, exitCode
 }
 
-func (report *Report) SetBackupTypeFromFlags(dataOnly bool, ddlOnly bool) {
+func (report *Report) SetBackupTypeFromFlags(dataOnly bool, ddlOnly bool, schemaInclude ArrayFlags) {
 	sectionStr := ""
 	if dataOnly {
 		report.DataOnly = true
@@ -51,6 +51,10 @@ func (report *Report) SetBackupTypeFromFlags(dataOnly bool, ddlOnly bool) {
 		sectionStr = " (Metadata-Only)"
 	}
 	report.BackupType = fmt.Sprintf("Unfiltered Full Backup%s", sectionStr)
+	if len(schemaInclude) > 0 {
+		report.Filtered = true
+		report.BackupType = fmt.Sprintf("Schema-Filtered Full Backup%s", sectionStr)
+	}
 }
 
 func WriteReportFile(reportFile io.Writer, timestamp string, report *Report, objectCounts map[string]int, errMsg string) {

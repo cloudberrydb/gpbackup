@@ -84,7 +84,7 @@ LEFT JOIN pg_tablespace s
 WHERE %s
 AND i.indisprimary = 'f'
 AND n.nspname || '.' || t.relname NOT IN (SELECT partitionschemaname || '.' || partitiontablename FROM pg_partitions)
-ORDER BY name;`, NonUserSchemaFilterClause("n"))
+ORDER BY name;`, SchemaFilterClause("n"))
 
 	results := make([]QuerySimpleDefinition, 0)
 	err := connection.Select(&results, query)
@@ -102,10 +102,11 @@ ORDER BY name;`, NonUserSchemaFilterClause("n"))
 
 /*
  * Rules named "_RETURN", "pg_settings_n", and "pg_settings_u" are
- * built-in rules and we don't want to dump them.
+ * built-in rules and we don't want to dump them. We use two `%` to
+ * prevent Go from interpolating the % symbol.
  */
 func GetRules(connection *utils.DBConn) []QuerySimpleDefinition {
-	query := `
+	query := fmt.Sprintf(`
 SELECT
 	r.oid,
 	r.rulename AS name,
@@ -118,9 +119,10 @@ JOIN pg_class c
 	ON (c.oid = r.ev_class)
 JOIN pg_namespace n
 	ON (c.relnamespace = n.oid)
-WHERE rulename NOT LIKE '%RETURN'
-AND rulename NOT LIKE 'pg_%'
-ORDER BY rulename;`
+WHERE %s
+AND rulename NOT LIKE '%%RETURN'
+AND rulename NOT LIKE 'pg_%%'
+ORDER BY rulename;`, SchemaFilterClause("n"))
 
 	results := make([]QuerySimpleDefinition, 0)
 	err := connection.Select(&results, query)
@@ -129,7 +131,7 @@ ORDER BY rulename;`
 }
 
 func GetTriggers(connection *utils.DBConn) []QuerySimpleDefinition {
-	query := `
+	query := fmt.Sprintf(`
 SELECT
 	t.oid,
 	t.tgname AS name,
@@ -142,9 +144,10 @@ JOIN pg_class c
 	ON (c.oid = t.tgrelid)
 JOIN pg_namespace n
 	ON (c.relnamespace = n.oid)
-WHERE tgname NOT LIKE 'pg_%'
+WHERE %s
+AND tgname NOT LIKE 'pg_%%'
 AND tgisconstraint = 'f'
-ORDER BY tgname;`
+ORDER BY tgname;`, SchemaFilterClause("n"))
 
 	results := make([]QuerySimpleDefinition, 0)
 	err := connection.Select(&results, query)

@@ -44,7 +44,7 @@ SELECT
 	oprcanhash AS canhash
 FROM pg_operator o
 JOIN pg_namespace n on n.oid = o.oprnamespace
-WHERE %s AND oprcode != 0`, NonUserSchemaFilterClause("n"))
+WHERE %s AND oprcode != 0`, SchemaFilterClause("n"))
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results
@@ -67,7 +67,7 @@ SELECT
 	(SELECT amname FROM pg_am WHERE oid = opfmethod) AS indexMethod
 FROM pg_opfamily o
 JOIN pg_namespace n on n.oid = o.opfnamespace
-WHERE %s`, NonUserSchemaFilterClause("n"))
+WHERE %s`, SchemaFilterClause("n"))
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results
@@ -104,7 +104,7 @@ FROM pg_catalog.pg_opclass c
 LEFT JOIN pg_catalog.pg_opfamily f ON f.oid = opcfamily
 JOIN pg_catalog.pg_namespace cls_ns ON cls_ns.oid = opcnamespace
 JOIN pg_catalog.pg_namespace fam_ns ON fam_ns.oid = opfnamespace
-WHERE %s`, NonUserSchemaFilterClause("cls_ns"))
+WHERE %s`, SchemaFilterClause("cls_ns"))
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 

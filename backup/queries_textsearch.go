@@ -36,7 +36,7 @@ SELECT
 FROM pg_ts_parser p
 JOIN pg_namespace n ON n.oid = p.prsnamespace
 WHERE %s
-ORDER BY prsname;`, NonUserSchemaFilterClause("n"))
+ORDER BY prsname;`, SchemaFilterClause("n"))
 
 	results := make([]TextSearchParser, 0)
 	err := connection.Select(&results, query)
@@ -63,7 +63,7 @@ SELECT
 FROM pg_ts_template p
 JOIN pg_namespace n ON n.oid = p.tmplnamespace
 WHERE %s
-ORDER BY tmplname;`, NonUserSchemaFilterClause("n"))
+ORDER BY tmplname;`, SchemaFilterClause("n"))
 
 	results := make([]TextSearchTemplate, 0)
 	err := connection.Select(&results, query)
@@ -92,7 +92,7 @@ JOIN pg_ts_template t ON t.oid = d.dicttemplate
 JOIN pg_namespace tmpl_ns ON tmpl_ns.oid = t.tmplnamespace
 JOIN pg_namespace dict_ns ON dict_ns.oid = d.dictnamespace
 WHERE %s
-ORDER BY dictname;`, NonUserSchemaFilterClause("dict_ns"))
+ORDER BY dictname;`, SchemaFilterClause("dict_ns"))
 
 	results := make([]TextSearchDictionary, 0)
 	err := connection.Select(&results, query)
@@ -121,7 +121,7 @@ JOIN pg_ts_parser p ON p.oid = c.cfgparser
 JOIN pg_namespace cfg_ns ON cfg_ns.oid = c.cfgnamespace
 JOIN pg_namespace prs_ns ON prs_ns.oid = prsnamespace
 WHERE %s
-ORDER BY cfgname;`, NonUserSchemaFilterClause("cfg_ns"))
+ORDER BY cfgname;`, SchemaFilterClause("cfg_ns"))
 
 	results := make([]struct {
 		Schema    string

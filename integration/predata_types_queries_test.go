@@ -160,6 +160,21 @@ var _ = Describe("backup integration tests", func() {
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&results[0], &domainType, "Oid")
 		})
+		It("returns a slice for a type in a specific schema", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TYPE shell_type")
+			defer testutils.AssertQueryRuns(connection, "DROP TYPE shell_type")
+			testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
+			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
+			testutils.AssertQueryRuns(connection, "CREATE TYPE testschema.shell_type")
+			defer testutils.AssertQueryRuns(connection, "DROP TYPE testschema.shell_type")
+			backup.SetSchemaInclude([]string{"testschema"})
+
+			results := backup.GetTypes(connection)
+			shellTypeOtherSchema := backup.Type{Type: "p", TypeSchema: "testschema", TypeName: "shell_type"}
+
+			Expect(len(results)).To(Equal(1))
+			testutils.ExpectStructsToMatchIncluding(&shellTypeOtherSchema, &results[0], "TypeSchema", "TypeName", "Type")
+		})
 	})
 	Describe("ConstructCompositeTypeDependencies", func() {
 		BeforeEach(func() {

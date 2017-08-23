@@ -115,6 +115,28 @@ PARTITION BY RANGE (date)
 
 			testutils.ExpectStructsToMatchExcluding(&index1, &results[0], "Oid")
 		})
+		It("returns a slice for an index in specific schema", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int, j int, k int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
+			testutils.AssertQueryRuns(connection, "CREATE INDEX simple_table_idx1 ON simple_table(i)")
+			defer testutils.AssertQueryRuns(connection, "DROP INDEX simple_table_idx1")
+			testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
+			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
+			testutils.AssertQueryRuns(connection, "CREATE TABLE testschema.simple_table(i int, j int, k int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE testschema.simple_table")
+			testutils.AssertQueryRuns(connection, "CREATE INDEX simple_table_idx1 ON testschema.simple_table(i)")
+			defer testutils.AssertQueryRuns(connection, "DROP INDEX testschema.simple_table_idx1")
+			backup.SetSchemaInclude([]string{"testschema"})
+
+			index1 := backup.QuerySimpleDefinition{Oid: 0, Name: "simple_table_idx1", OwningSchema: "testschema", OwningTable: "simple_table", TablespaceName: "", Def: "CREATE INDEX simple_table_idx1 ON testschema.simple_table USING btree (i)"}
+
+			results := backup.GetIndexes(connection, indexNameMap)
+
+			Expect(len(results)).To(Equal(1))
+			results[0].Oid = testutils.OidFromObjectName(connection, "", "simple_table_idx1", backup.TYPE_INDEX)
+
+			testutils.ExpectStructsToMatchExcluding(&index1, &results[0], "Oid")
+		})
 	})
 	Describe("GetRuleDefinitions", func() {
 		It("returns no slice when no rule exists", func() {
@@ -141,6 +163,26 @@ PARTITION BY RANGE (date)
 			Expect(len(results)).To(Equal(2))
 			testutils.ExpectStructsToMatchExcluding(&rule1, &results[0], "Oid")
 			testutils.ExpectStructsToMatchExcluding(&rule2, &results[1], "Oid")
+		})
+		It("returns a slice of rules for a specific schema", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLE rule_table1(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE rule_table1")
+			testutils.AssertQueryRuns(connection, "CREATE RULE double_insert AS ON INSERT TO rule_table1 DO INSERT INTO rule_table1 DEFAULT VALUES")
+			defer testutils.AssertQueryRuns(connection, "DROP RULE double_insert ON rule_table1")
+			testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
+			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
+			testutils.AssertQueryRuns(connection, "CREATE TABLE testschema.rule_table1(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE testschema.rule_table1")
+			testutils.AssertQueryRuns(connection, "CREATE RULE double_insert AS ON INSERT TO testschema.rule_table1 DO INSERT INTO testschema.rule_table1 DEFAULT VALUES")
+			defer testutils.AssertQueryRuns(connection, "DROP RULE double_insert ON testschema.rule_table1")
+			backup.SetSchemaInclude([]string{"testschema"})
+
+			rule1 := backup.QuerySimpleDefinition{Oid: 0, Name: "double_insert", OwningSchema: "testschema", OwningTable: "rule_table1", TablespaceName: "", Def: "CREATE RULE double_insert AS ON INSERT TO testschema.rule_table1 DO INSERT INTO testschema.rule_table1 DEFAULT VALUES;"}
+
+			results := backup.GetRules(connection)
+
+			Expect(len(results)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&rule1, &results[0], "Oid")
 		})
 	})
 	Describe("GetTriggerDefinitions", func() {
@@ -179,6 +221,26 @@ PARTITION BY RANGE (date)
 			results := backup.GetTriggers(connection)
 
 			Expect(len(results)).To(Equal(0))
+		})
+		It("returns a slice of triggers for a specific schema", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLE trigger_table1(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE trigger_table1")
+			testutils.AssertQueryRuns(connection, "CREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON trigger_table1 FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger()")
+			defer testutils.AssertQueryRuns(connection, "DROP TRIGGER sync_trigger_table1 ON trigger_table1")
+			testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
+			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
+			testutils.AssertQueryRuns(connection, "CREATE TABLE testschema.trigger_table1(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE testschema.trigger_table1")
+			testutils.AssertQueryRuns(connection, "CREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON testschema.trigger_table1 FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger()")
+			defer testutils.AssertQueryRuns(connection, "DROP TRIGGER sync_trigger_table1 ON testschema.trigger_table1")
+			backup.SetSchemaInclude([]string{"testschema"})
+
+			trigger1 := backup.QuerySimpleDefinition{Oid: 0, Name: "sync_trigger_table1", OwningSchema: "testschema", OwningTable: "trigger_table1", TablespaceName: "", Def: "CREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON testschema.trigger_table1 FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger()"}
+
+			results := backup.GetTriggers(connection)
+
+			Expect(len(results)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&trigger1, &results[0], "Oid")
 		})
 	})
 })

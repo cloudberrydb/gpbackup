@@ -90,7 +90,7 @@ LEFT JOIN pg_type b ON t.typbasetype = b.oid
 WHERE %s
 AND NOT (t.typname[0] = '_' AND t.typelem != 0)
 AND (n.nspname || '.' || t.typname) NOT IN (SELECT nspname || '.' || relname FROM pg_namespace n join pg_class c ON n.oid = c.relnamespace WHERE c.relkind = 'r' OR c.relkind = 'S' OR c.relkind = 'v')
-ORDER BY n.nspname, t.typname, a.attname;`, NonUserSchemaFilterClause("n"))
+ORDER BY n.nspname, t.typname, a.attname;`, SchemaFilterClause("n"))
 
 	results := make([]Type, 0)
 	err := connection.Select(&results, query)
@@ -115,7 +115,7 @@ JOIN pg_type t ON (d.objid = t.oid AND t.typtype = 'b')
 JOIN pg_namespace n ON n.oid = t.typnamespace
 WHERE %s
 AND d.refclassid = 'pg_proc'::regclass
-AND d.deptype = 'n';`, NonUserSchemaFilterClause("n"))
+AND d.deptype = 'n';`, SchemaFilterClause("n"))
 
 	results := make([]Dependency, 0)
 	dependencyMap := make(map[uint32][]string, 0)
@@ -151,7 +151,7 @@ AND bt.typnamespace != (
 		bn.oid
 	FROM pg_namespace bn
 	WHERE bn.nspname = 'pg_catalog'
-);`, NonUserSchemaFilterClause("n"))
+);`, SchemaFilterClause("n"))
 
 	results := make([]Dependency, 0)
 	dependencyMap := make(map[uint32][]string, 0)
@@ -181,7 +181,7 @@ JOIN pg_namespace n ON n.oid = c.relnamespace
 WHERE %s
 AND d.refclassid = 'pg_type'::regclass
 AND c.reltype != t.oid
-AND d.deptype = 'n';`, NonUserSchemaFilterClause("n"))
+AND d.deptype = 'n';`, SchemaFilterClause("n"))
 
 	results := make([]Dependency, 0)
 	dependencyMap := make(map[uint32][]string, 0)

@@ -50,6 +50,22 @@ var _ = Describe("backup integration tests", func() {
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&expectedOperator, &results[0], "Oid")
 		})
+		It("returns a slice of operators from a specific schema", func() {
+			testutils.AssertQueryRuns(connection, "CREATE OPERATOR ## (LEFTARG = bigint, PROCEDURE = numeric_fac)")
+			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR ## (bigint, NONE)")
+			testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
+			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
+			testutils.AssertQueryRuns(connection, "CREATE OPERATOR testschema.## (LEFTARG = bigint, PROCEDURE = numeric_fac)")
+			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR testschema.## (bigint, NONE)")
+			backup.SetSchemaInclude([]string{"testschema"})
+
+			expectedOperator := backup.Operator{Oid: 0, SchemaName: "testschema", Name: "##", ProcedureName: "numeric_fac", LeftArgType: "bigint", RightArgType: "-", CommutatorOp: "0", NegatorOp: "0", RestrictFunction: "-", JoinFunction: "-", CanHash: false, CanMerge: false}
+
+			results := backup.GetOperators(connection)
+
+			Expect(len(results)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&expectedOperator, &results[0], "Oid")
+		})
 	})
 	Describe("GetOperatorFamilies", func() {
 		It("returns a slice of operator families", func() {
@@ -57,6 +73,22 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testfam USING hash")
 
 			expectedOperator := backup.OperatorFamily{Oid: 0, SchemaName: "public", Name: "testfam", IndexMethod: "hash"}
+
+			results := backup.GetOperatorFamilies(connection)
+
+			Expect(len(results)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&expectedOperator, &results[0], "Oid")
+		})
+		It("returns a slice of operator families in a specific schema", func() {
+			testutils.AssertQueryRuns(connection, "CREATE OPERATOR FAMILY testfam USING hash;")
+			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testfam USING hash")
+			testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
+			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
+			testutils.AssertQueryRuns(connection, "CREATE OPERATOR FAMILY testschema.testfam USING hash;")
+			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testschema.testfam USING hash")
+			backup.SetSchemaInclude([]string{"testschema"})
+
+			expectedOperator := backup.OperatorFamily{Oid: 0, SchemaName: "testschema", Name: "testfam", IndexMethod: "hash"}
 
 			results := backup.GetOperatorFamilies(connection)
 
@@ -103,6 +135,22 @@ var _ = Describe("backup integration tests", func() {
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&expected, &results[0], "Oid", "Operators.ClassOid", "Functions.ClassOid")
+		})
+		It("returns a slice of operator classes for a specific schema", func() {
+			testutils.AssertQueryRuns(connection, "CREATE OPERATOR CLASS testclass FOR TYPE uuid USING hash AS STORAGE uuid")
+			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testclass USING hash CASCADE")
+			testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
+			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
+			testutils.AssertQueryRuns(connection, "CREATE OPERATOR CLASS testschema.testclass FOR TYPE uuid USING hash AS STORAGE uuid")
+			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testschema.testclass USING hash CASCADE")
+			backup.SetSchemaInclude([]string{"testschema"})
+
+			expected := backup.OperatorClass{Oid: 0, ClassSchema: "testschema", ClassName: "testclass", FamilySchema: "testschema", FamilyName: "testclass", IndexMethod: "hash", Type: "uuid", Default: false, StorageType: "-", Operators: nil, Functions: nil}
+
+			results := backup.GetOperatorClasses(connection)
+
+			Expect(len(results)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&expected, &results[0], "Oid")
 		})
 	})
 })

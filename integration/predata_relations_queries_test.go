@@ -44,6 +44,22 @@ PARTITION BY LIST (gender)
 			Expect(len(tables)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&tableRank, &tables[0], "SchemaOid", "RelationOid")
 		})
+		It("returns user table information for table in specific schema", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLE foo(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE foo")
+			testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
+			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
+			testutils.AssertQueryRuns(connection, "CREATE TABLE testschema.foo(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE testschema.foo")
+
+			backup.SetSchemaInclude([]string{"testschema"})
+			tables := backup.GetAllUserTables(connection)
+
+			tableFoo := backup.BasicRelation("testschema", "foo")
+
+			Expect(len(tables)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "RelationOid")
+		})
 	})
 	Describe("GetColumnDefinitions", func() {
 		It("returns table attribute information for a heap table", func() {
@@ -222,7 +238,7 @@ SET SUBPARTITION TEMPLATE
 		})
 	})
 	Describe("GetAllSequenceRelations", func() {
-		It("", func() {
+		It("returns a slice of all sequences", func() {
 			testutils.AssertQueryRuns(connection, "CREATE SEQUENCE my_sequence START 10")
 			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE my_sequence")
 			testutils.AssertQueryRuns(connection, "COMMENT ON SEQUENCE public.my_sequence IS 'this is a sequence comment'")
@@ -239,6 +255,21 @@ SET SUBPARTITION TEMPLATE
 			Expect(len(sequences)).To(Equal(2))
 			testutils.ExpectStructsToMatchExcluding(&mySequence, &sequences[0], "SchemaOid", "RelationOid")
 			testutils.ExpectStructsToMatchExcluding(&mySequence2, &sequences[1], "SchemaOid", "RelationOid")
+		})
+		It("returns a slice of all sequences in a specific schema", func() {
+			testutils.AssertQueryRuns(connection, "CREATE SEQUENCE my_sequence START 10")
+			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE my_sequence")
+
+			testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
+			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema CASCADE")
+			testutils.AssertQueryRuns(connection, "CREATE SEQUENCE testschema.my_sequence")
+			mySequence := backup.BasicRelation("testschema", "my_sequence")
+
+			backup.SetSchemaInclude([]string{"testschema"})
+			sequences := backup.GetAllSequenceRelations(connection)
+
+			Expect(len(sequences)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&mySequence, &sequences[0], "SchemaOid", "RelationOid")
 		})
 	})
 	Describe("GetSequenceDefinition", func() {
@@ -330,6 +361,22 @@ CYCLE`)
 			results := backup.GetViews(connection)
 
 			viewDef := backup.View{Oid: 1, SchemaName: "public", ViewName: "simpleview", Definition: "SELECT pg_roles.rolname FROM pg_roles;", DependsUpon: nil}
+
+			Expect(len(results)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&viewDef, &results[0], "Oid")
+		})
+		It("returns a slice for view in a specific schema", func() {
+			testutils.AssertQueryRuns(connection, "CREATE VIEW simpleview AS SELECT rolname FROM pg_roles")
+			defer testutils.AssertQueryRuns(connection, "DROP VIEW simpleview")
+			testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
+			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
+			testutils.AssertQueryRuns(connection, "CREATE VIEW testschema.simpleview AS SELECT rolname FROM pg_roles")
+			defer testutils.AssertQueryRuns(connection, "DROP VIEW testschema.simpleview")
+			backup.SetSchemaInclude([]string{"testschema"})
+
+			results := backup.GetViews(connection)
+
+			viewDef := backup.View{Oid: 1, SchemaName: "testschema", ViewName: "simpleview", Definition: "SELECT pg_roles.rolname FROM pg_roles;", DependsUpon: nil}
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&viewDef, &results[0], "Oid")

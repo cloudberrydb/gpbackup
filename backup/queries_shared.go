@@ -8,6 +8,7 @@ package backup
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/greenplum-db/gpbackup/utils"
 
@@ -39,12 +40,24 @@ SELECT
 	nspname AS name
 FROM pg_namespace n
 WHERE %s
-ORDER BY name;`, NonUserSchemaFilterClause("n"))
+ORDER BY name;`, SchemaFilterClause("n"))
+
 	results := make([]Schema, 0)
 
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results
+}
+
+func includeSchemaFilterClause(namespace string, schemas []string) string {
+	if len(schemas) == 0 {
+		return ""
+	}
+	schemaStrings := make([]string, len(schemas))
+	for i, schema := range schemas {
+		schemaStrings[i] = fmt.Sprintf("'%s'", schema)
+	}
+	return fmt.Sprintf("AND %s.nspname IN (%s)", namespace, strings.Join(schemaStrings, ","))
 }
 
 type Constraint struct {
@@ -95,7 +108,7 @@ JOIN pg_namespace n ON n.oid = c.connamespace
 WHERE %s
 AND t.typname IS NOT NULL
 GROUP BY c.oid, conname, contype, n.nspname, t.typname
-ORDER BY conname;`, NonUserSchemaFilterClause("n"), NonUserSchemaFilterClause("n"))
+ORDER BY conname;`, SchemaFilterClause("n"), SchemaFilterClause("n"))
 
 	results := make([]Constraint, 0)
 	err := connection.Select(&results, query)
@@ -120,15 +133,15 @@ type MetadataQueryParams struct {
 }
 
 var (
-	TYPE_AGGREGATE       = MetadataQueryParams{NameField: "proname", OwnerField: "proowner", CatalogTable: "pg_proc"}
+	TYPE_AGGREGATE       = MetadataQueryParams{NameField: "proname", SchemaField: "pronamespace", OwnerField: "proowner", CatalogTable: "pg_proc"}
 	TYPE_CAST            = MetadataQueryParams{NameField: "typname", OidField: "oid", OidTable: "pg_type", CatalogTable: "pg_cast"}
-	TYPE_CONSTRAINT      = MetadataQueryParams{NameField: "conname", OidField: "oid", CatalogTable: "pg_constraint"}
+	TYPE_CONSTRAINT      = MetadataQueryParams{NameField: "conname", SchemaField: "connamespace", OidField: "oid", CatalogTable: "pg_constraint"}
 	TYPE_CONVERSION      = MetadataQueryParams{NameField: "conname", OidField: "oid", SchemaField: "connamespace", OwnerField: "conowner", CatalogTable: "pg_conversion"}
 	TYPE_DATABASE        = MetadataQueryParams{NameField: "datname", ACLField: "datacl", OwnerField: "datdba", CatalogTable: "pg_database", Shared: true}
 	TYPE_FUNCTION        = MetadataQueryParams{NameField: "proname", SchemaField: "pronamespace", ACLField: "proacl", OwnerField: "proowner", CatalogTable: "pg_proc"}
 	TYPE_INDEX           = MetadataQueryParams{NameField: "relname", OidField: "indexrelid", OidTable: "pg_class", CommentTable: "pg_class", CatalogTable: "pg_index"}
 	TYPE_PROCLANGUAGE    = MetadataQueryParams{NameField: "lanname", ACLField: "lanacl", OwnerField: "lanowner", CatalogTable: "pg_language"}
-	TYPE_OPERATOR        = MetadataQueryParams{NameField: "oprname", OidField: "oid", OwnerField: "oprowner", CatalogTable: "pg_operator"}
+	TYPE_OPERATOR        = MetadataQueryParams{NameField: "oprname", SchemaField: "oprnamespace", OidField: "oid", OwnerField: "oprowner", CatalogTable: "pg_operator"}
 	TYPE_OPERATORCLASS   = MetadataQueryParams{NameField: "opcname", SchemaField: "opcnamespace", OidField: "oid", OwnerField: "opcowner", CatalogTable: "pg_opclass"}
 	TYPE_OPERATORFAMILY  = MetadataQueryParams{NameField: "opfname", SchemaField: "opfnamespace", OidField: "oid", OwnerField: "opfowner", CatalogTable: "pg_opfamily"}
 	TYPE_PROTOCOL        = MetadataQueryParams{NameField: "ptcname", ACLField: "ptcacl", OwnerField: "ptcowner", CatalogTable: "pg_extprotocol"}
@@ -146,16 +159,17 @@ var (
 	TYPE_TYPE            = MetadataQueryParams{NameField: "typname", SchemaField: "typnamespace", OwnerField: "typowner", CatalogTable: "pg_type"}
 )
 
-// A list of schemas we don't ever want to dump, formatted for use in a WHERE clause
-func NonUserSchemaFilterClause(namespace string) string {
-	return fmt.Sprintf(`%s.nspname NOT LIKE 'pg_temp_%%' AND %s.nspname NOT LIKE 'pg_toast%%' AND %s.nspname NOT IN ('gp_toolkit', 'information_schema', 'pg_aoseg', 'pg_bitmapindex', 'pg_catalog')`, namespace, namespace, namespace)
+// A list of schemas we don't want to dump, formatted for use in a WHERE clause
+func SchemaFilterClause(namespace string) string {
+	includeSchemaFilterClauseStr := includeSchemaFilterClause(namespace, schemaInclude)
+	return fmt.Sprintf(`%s.nspname NOT LIKE 'pg_temp_%%' AND %s.nspname NOT LIKE 'pg_toast%%' AND %s.nspname NOT IN ('gp_toolkit', 'information_schema', 'pg_aoseg', 'pg_bitmapindex', 'pg_catalog') %s`, namespace, namespace, namespace, includeSchemaFilterClauseStr)
 }
 
 func GetMetadataForObjectType(connection *utils.DBConn, params MetadataQueryParams) MetadataMap {
 	schemaStr := ""
 	if params.SchemaField != "" {
 		schemaStr = fmt.Sprintf(`JOIN pg_namespace n ON o.%s = n.oid
-WHERE %s`, params.SchemaField, NonUserSchemaFilterClause("n"))
+WHERE %s`, params.SchemaField, SchemaFilterClause("n"))
 	}
 	aclStr := ""
 	if params.ACLField != "" {
@@ -226,6 +240,11 @@ func sortACLs(metadata ObjectMetadata) ObjectMetadata {
 }
 
 func GetCommentsForObjectType(connection *utils.DBConn, params MetadataQueryParams) MetadataMap {
+	schemaStr := ""
+	if params.SchemaField != "" {
+		schemaStr = fmt.Sprintf(` JOIN pg_namespace n ON o.%s = n.oid
+	 WHERE %s`, params.SchemaField, SchemaFilterClause("n"))
+	}
 	descFunc := "obj_description"
 	if params.Shared {
 		descFunc = "shobj_description"
@@ -238,8 +257,8 @@ func GetCommentsForObjectType(connection *utils.DBConn, params MetadataQueryPara
 SELECT
 	o.%s AS oid,
 	coalesce(%s(o.%s, '%s'), '') AS comment
-FROM %s o;
-`, params.OidField, descFunc, params.OidField, commentTable, params.CatalogTable)
+FROM %s o%s;
+`, params.OidField, descFunc, params.OidField, commentTable, params.CatalogTable, schemaStr)
 
 	results := make([]struct {
 		Oid     uint32

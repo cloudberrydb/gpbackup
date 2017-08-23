@@ -22,17 +22,18 @@ var (
 )
 
 var ( // Command-line flags
-	dataOnly     *bool
-	dbname       *string
-	metadataOnly *bool
-	debug        *bool
-	dumpDir      *string
-	dumpGlobals  *bool
-	noCompress   *bool
-	plugin       *bool
-	printVersion *bool
-	quiet        *bool
-	verbose      *bool
+	dataOnly      *bool
+	dbname        *string
+	metadataOnly  *bool
+	debug         *bool
+	dumpDir       *string
+	dumpGlobals   *bool
+	noCompress    *bool
+	plugin        *bool
+	printVersion  *bool
+	quiet         *bool
+	verbose       *bool
+	schemaInclude utils.ArrayFlags
 )
 
 // We define and initialize flags separately to avoid import conflicts in tests
@@ -48,6 +49,7 @@ func initializeFlags() {
 	printVersion = flag.Bool("version", false, "Print version number and exit")
 	quiet = flag.Bool("quiet", false, "Suppress non-warning, non-error log messages")
 	verbose = flag.Bool("verbose", false, "Print verbose log messages")
+	flag.Var(&schemaInclude, "schema-include", "Back up only specified schema(s). --schema-include can be specified multiple times.")
 }
 
 // This function handles setup that can be done before parsing flags.
@@ -66,6 +68,10 @@ func SetCluster(cluster utils.Cluster) {
 
 func SetVersion(v string) {
 	version = v
+}
+
+func SetSchemaInclude(schemas []string) {
+	schemaInclude = schemas
 }
 
 /*
@@ -107,7 +113,7 @@ func DoSetup() {
 		BackupVersion:   version,
 		DatabaseSize:    connection.GetDBSize(),
 	}
-	backupReport.SetBackupTypeFromFlags(*dataOnly, *metadataOnly)
+	backupReport.SetBackupTypeFromFlags(*dataOnly, *metadataOnly, schemaInclude)
 
 	logger.Verbose("Creating dump directories")
 	segConfig := utils.GetSegmentConfiguration(connection)
@@ -214,21 +220,23 @@ func backupGlobal(filename string, objectCount map[string]int) {
 	objectCount["Database GUCs"] = len(databaseGucs)
 	PrintDatabaseGUCs(globalFile, globalTOC, databaseGucs, connection.DBName)
 
-	logger.Verbose("Writing CREATE RESOURCE QUEUE statements to global file")
-	resQueues := GetResourceQueues(connection)
-	objectCount["Resource Queues"] = len(resQueues)
-	resQueueMetadata := GetCommentsForObjectType(connection, TYPE_RESOURCEQUEUE)
-	PrintCreateResourceQueueStatements(globalFile, globalTOC, resQueues, resQueueMetadata)
+	if len(schemaInclude) == 0 {
+		logger.Verbose("Writing CREATE RESOURCE QUEUE statements to global file")
+		resQueues := GetResourceQueues(connection)
+		objectCount["Resource Queues"] = len(resQueues)
+		resQueueMetadata := GetCommentsForObjectType(connection, TYPE_RESOURCEQUEUE)
+		PrintCreateResourceQueueStatements(globalFile, globalTOC, resQueues, resQueueMetadata)
 
-	logger.Verbose("Writing CREATE ROLE statements to global file")
-	roles := GetRoles(connection)
-	objectCount["Roles"] = len(roles)
-	roleMetadata := GetCommentsForObjectType(connection, TYPE_ROLE)
-	PrintCreateRoleStatements(globalFile, globalTOC, roles, roleMetadata)
+		logger.Verbose("Writing CREATE ROLE statements to global file")
+		roles := GetRoles(connection)
+		objectCount["Roles"] = len(roles)
+		roleMetadata := GetCommentsForObjectType(connection, TYPE_ROLE)
+		PrintCreateRoleStatements(globalFile, globalTOC, roles, roleMetadata)
 
-	logger.Verbose("Writing GRANT ROLE statements to global file")
-	roleMembers := GetRoleMembers(connection)
-	PrintRoleMembershipStatements(globalFile, globalTOC, roleMembers)
+		logger.Verbose("Writing GRANT ROLE statements to global file")
+		roleMembers := GetRoleMembers(connection)
+		PrintRoleMembershipStatements(globalFile, globalTOC, roleMembers)
+	}
 
 	globalFile.Close()
 }
@@ -260,15 +268,17 @@ func backupPredata(filename string, tables []Relation, tableDefs map[uint32]Tabl
 	logger.Verbose("Writing CREATE TYPE statements for shell types to predata file")
 	PrintCreateShellTypeStatements(predataFile, globalTOC, types)
 
-	logger.Verbose("Writing CREATE PROCEDURAL LANGUAGE statements to predata file")
 	procLangs := GetProceduralLanguages(connection)
-	objectCount["Procedural Languages"] = len(procLangs)
 	langFuncs, otherFuncs := ExtractLanguageFunctions(functions, procLangs)
-	for _, langFunc := range langFuncs {
-		PrintCreateFunctionStatement(predataFile, globalTOC, langFunc, functionMetadata[langFunc.Oid])
+	if len(schemaInclude) == 0 {
+		logger.Verbose("Writing CREATE PROCEDURAL LANGUAGE statements to predata file")
+		objectCount["Procedural Languages"] = len(procLangs)
+		for _, langFunc := range langFuncs {
+			PrintCreateFunctionStatement(predataFile, globalTOC, langFunc, functionMetadata[langFunc.Oid])
+		}
+		procLangMetadata := GetMetadataForObjectType(connection, TYPE_PROCLANGUAGE)
+		PrintCreateLanguageStatements(predataFile, globalTOC, procLangs, funcInfoMap, procLangMetadata)
 	}
-	procLangMetadata := GetMetadataForObjectType(connection, TYPE_PROCLANGUAGE)
-	PrintCreateLanguageStatements(predataFile, globalTOC, procLangs, funcInfoMap, procLangMetadata)
 
 	logger.Verbose("Writing CREATE TYPE statements for enum types to predata file")
 	PrintCreateEnumTypeStatements(predataFile, globalTOC, types, typeMetadata)
@@ -318,11 +328,13 @@ func backupPredata(filename string, tables []Relation, tableDefs map[uint32]Tabl
 	configurationMetadata := GetMetadataForObjectType(connection, TYPE_TSCONFIGURATION)
 	PrintCreateTextSearchConfigurationStatements(predataFile, globalTOC, configurations, configurationMetadata)
 
-	logger.Verbose("Writing CREATE PROTOCOL statements to predata file")
-	protocols := GetExternalProtocols(connection)
-	objectCount["Protocols"] = len(protocols)
-	protoMetadata := GetMetadataForObjectType(connection, TYPE_PROTOCOL)
-	PrintCreateExternalProtocolStatements(predataFile, globalTOC, protocols, funcInfoMap, protoMetadata)
+	if len(schemaInclude) == 0 {
+		logger.Verbose("Writing CREATE PROTOCOL statements to predata file")
+		protocols := GetExternalProtocols(connection)
+		objectCount["Protocols"] = len(protocols)
+		protoMetadata := GetMetadataForObjectType(connection, TYPE_PROTOCOL)
+		PrintCreateExternalProtocolStatements(predataFile, globalTOC, protocols, funcInfoMap, protoMetadata)
+	}
 
 	logger.Verbose("Writing CREATE CONVERSION statements to predata file")
 	conversions := GetConversions(connection)
