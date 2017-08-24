@@ -9,33 +9,6 @@ import (
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
-func GetExternalTablesMap(connection *utils.DBConn) map[string]bool {
-	extTableMap := make(map[string]bool)
-	query := `
-SELECT
-	n.nspname AS schemaname,
-	c.relname AS relationname
-FROM pg_class c
-LEFT JOIN pg_partition_rule pr
-	ON c.oid = pr.parchildrelid
-LEFT JOIN pg_partition p
-	ON pr.paroid = p.oid
-LEFT JOIN pg_namespace n
-	ON c.relnamespace = n.oid
-WHERE relkind = 'r'
-AND relstorage = 'x' AND (c.relnamespace > 16384
-OR n.nspname = 'public')
-ORDER BY schemaname, relationname;`
-
-	results := make([]Relation, 0)
-	err := connection.Select(&results, query)
-	utils.CheckError(err)
-	for _, table := range results {
-		extTableMap[table.ToString()] = true
-	}
-	return extTableMap
-}
-
 func GetExternalTableDefinitions(connection *utils.DBConn) map[uint32]ExternalTableDefinition {
 	query := `
 SELECT

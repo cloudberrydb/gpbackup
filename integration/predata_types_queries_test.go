@@ -11,7 +11,7 @@ import (
 )
 
 var _ = Describe("backup integration tests", func() {
-	Describe("GetTypeDefinitions", func() {
+	Describe("GetTypes", func() {
 		var (
 			shellType         backup.Type
 			baseTypeDefault   backup.Type

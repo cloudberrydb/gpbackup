@@ -9,29 +9,6 @@ import (
 )
 
 var _ = Describe("backup integration tests", func() {
-	Describe("GetExternalTablesMap", func() {
-		It("returns empty map when there are no external tables", func() {
-			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int)")
-			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
-
-			result := backup.GetExternalTablesMap(connection)
-
-			Expect(len(result)).To(Equal(0))
-		})
-		It("returns map with external tables", func() {
-			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int)")
-			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
-			testutils.AssertQueryRuns(connection, `CREATE READABLE EXTERNAL TABLE ext_table(i int)
-LOCATION ('file://tmp/myfile.txt')
-FORMAT 'TEXT' ( DELIMITER '|' NULL ' ')`)
-			defer testutils.AssertQueryRuns(connection, "DROP EXTERNAL TABLE ext_table")
-
-			result := backup.GetExternalTablesMap(connection)
-
-			Expect(result["public.ext_table"]).To(BeTrue())
-		})
-		// TODO: Add tests for external partitions
-	})
 	Describe("GetExternalTableDefinitions", func() {
 		It("returns a slice for a basic external table definition", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int)")

@@ -336,24 +336,7 @@ SET SUBPARTITION TEMPLATE
 			testutils.ExpectStructsToMatchExcluding(&seqTwoDef, &results[1].SequenceDefinition)
 		})
 	})
-	Describe("GetSequenceDefinition", func() {
-		It("returns a slice for a sequence", func() {
-			testutils.AssertQueryRuns(connection, `CREATE SEQUENCE mysequence
-MAXVALUE 1000
-CACHE 41
-START 42
-CYCLE`)
-			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE mysequence")
-			testutils.AssertQueryRuns(connection, "COMMENT ON SEQUENCE public.mysequence IS 'this is a sequence comment'")
-
-			expectedSequenceDef := backup.SequenceDefinition{Name: "mysequence", LastVal: 42, Increment: 1, MaxVal: 1000, MinVal: 1, CacheVal: 41, IsCycled: true}
-
-			result := backup.GetSequenceDefinition(connection, "mysequence")
-
-			testutils.ExpectStructsToMatch(&expectedSequenceDef, &result)
-		})
-	})
-	Describe("GetViewDefinitions", func() {
+	Describe("GetViews", func() {
 		It("returns a slice for a basic view", func() {
 			testutils.AssertQueryRuns(connection, "CREATE VIEW simpleview AS SELECT rolname FROM pg_roles")
 			defer testutils.AssertQueryRuns(connection, "DROP VIEW simpleview")

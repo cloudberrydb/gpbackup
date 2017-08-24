@@ -28,7 +28,7 @@ var _ = Describe("backup integration tests", func() {
 			Expect(indexNameMap["public.simple_table_i_key"]).To(BeTrue())
 		})
 	})
-	Describe("GetIndexDefinitions", func() {
+	Describe("GetIndex", func() {
 		var indexNameMap map[string]bool
 		BeforeEach(func() {
 			indexNameMap = make(map[string]bool, 0)
@@ -138,7 +138,7 @@ PARTITION BY RANGE (date)
 			testutils.ExpectStructsToMatchExcluding(&index1, &results[0], "Oid")
 		})
 	})
-	Describe("GetRuleDefinitions", func() {
+	Describe("GetRules", func() {
 		It("returns no slice when no rule exists", func() {
 			results := backup.GetRules(connection)
 
@@ -185,7 +185,7 @@ PARTITION BY RANGE (date)
 			testutils.ExpectStructsToMatchExcluding(&rule1, &results[0], "Oid")
 		})
 	})
-	Describe("GetTriggerDefinitions", func() {
+	Describe("GetTriggers", func() {
 		It("returns no slice when no trigger exists", func() {
 			results := backup.GetTriggers(connection)
 
