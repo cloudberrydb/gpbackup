@@ -40,6 +40,15 @@ func QuoteIdent(ident string) string {
 	return ident
 }
 
+func SliceToQuotedString(slice []string) string {
+	quotedStrings := make([]string, len(slice))
+	for i, str := range slice {
+		quotedStrings[i] = fmt.Sprintf("'%s'", str)
+	}
+	return strings.Join(quotedStrings, ",")
+
+}
+
 /*
  * Generic file/directory manipulation functions
  */

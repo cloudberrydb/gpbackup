@@ -89,6 +89,26 @@ func DoValidation() {
 	utils.CheckExclusiveFlags("data-only", "metadata-only")
 }
 
+func ValidateWithConnection(connection *utils.DBConn) {
+	if len(schemaInclude) > 0 {
+		quotedSchemasStr := utils.SliceToQuotedString(schemaInclude)
+		query := fmt.Sprintf("SELECT nspname AS string FROM pg_namespace WHERE nspname IN (%s)", quotedSchemasStr)
+		resultSchemas := SelectStringSlice(connection, query)
+		if len(resultSchemas) < len(schemaInclude) {
+			schemaMap := make(map[string]bool)
+			for _, schema := range resultSchemas {
+				schemaMap[schema] = true
+			}
+
+			for _, schema := range schemaInclude {
+				if _, ok := schemaMap[schema]; !ok {
+					logger.Fatal(nil, "Schema %s does not exist", schema)
+				}
+			}
+		}
+	}
+}
+
 // This function handles setup that must be done after parsing flags.
 func DoSetup() {
 	if *quiet {
@@ -101,6 +121,7 @@ func DoSetup() {
 	connection = utils.NewDBConn(*dbname)
 	connection.Connect()
 	connection.Exec("SET application_name TO 'gpbackup'")
+	ValidateWithConnection(connection)
 
 	backupReport = &utils.Report{
 		DatabaseName:    connection.DBName,

@@ -8,7 +8,6 @@ package backup
 import (
 	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/greenplum-db/gpbackup/utils"
 
@@ -53,11 +52,7 @@ func includeSchemaFilterClause(namespace string, schemas []string) string {
 	if len(schemas) == 0 {
 		return ""
 	}
-	schemaStrings := make([]string, len(schemas))
-	for i, schema := range schemas {
-		schemaStrings[i] = fmt.Sprintf("'%s'", schema)
-	}
-	return fmt.Sprintf("AND %s.nspname IN (%s)", namespace, strings.Join(schemaStrings, ","))
+	return fmt.Sprintf("AND %s.nspname IN (%s)", namespace, utils.SliceToQuotedString(schemas))
 }
 
 type Constraint struct {
@@ -161,7 +156,10 @@ var (
 
 // A list of schemas we don't want to dump, formatted for use in a WHERE clause
 func SchemaFilterClause(namespace string) string {
-	includeSchemaFilterClauseStr := includeSchemaFilterClause(namespace, schemaInclude)
+	includeSchemaFilterClauseStr := ""
+	if len(schemaInclude) > 0 {
+		includeSchemaFilterClauseStr = fmt.Sprintf("AND %s.nspname IN (%s)", namespace, utils.SliceToQuotedString(schemaInclude))
+	}
 	return fmt.Sprintf(`%s.nspname NOT LIKE 'pg_temp_%%' AND %s.nspname NOT LIKE 'pg_toast%%' AND %s.nspname NOT IN ('gp_toolkit', 'information_schema', 'pg_aoseg', 'pg_bitmapindex', 'pg_catalog') %s`, namespace, namespace, namespace, includeSchemaFilterClauseStr)
 }
 
