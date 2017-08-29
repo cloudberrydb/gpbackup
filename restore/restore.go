@@ -174,11 +174,14 @@ func restorePostdata(filename string) {
 }
 
 func DoTeardown() {
-	if r := recover(); r != nil {
-		fmt.Println(r)
+	var err interface{}
+	if err = recover(); err != nil {
+		fmt.Println(err)
 	}
+	_, exitCode := utils.ParseErrorMessage(err)
 	if connection != nil {
 		connection.Close()
 	}
-	// TODO: Add logic for error codes based on whether we Abort()ed or not
+
+	os.Exit(exitCode)
 }
