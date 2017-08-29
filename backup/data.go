@@ -1,7 +1,7 @@
 package backup
 
 /*
- * This file contains structs and functions related to dumping data on the segments.
+ * This file contains structs and functions related to backing up data on the segments.
  */
 
 import (
@@ -24,8 +24,8 @@ func WriteTableMapFile(tableMapFilePath string, tables []Relation, tableDefs map
 	tableMapFile.Close()
 }
 
-func CopyTableOut(connection *utils.DBConn, table Relation, dumpFile string) {
-	query := fmt.Sprintf("COPY %s TO '%s' WITH CSV DELIMITER '%s' ON SEGMENT;", table.ToString(), dumpFile, tableDelim)
+func CopyTableOut(connection *utils.DBConn, table Relation, backupFile string) {
+	query := fmt.Sprintf("COPY %s TO '%s' WITH CSV DELIMITER '%s' ON SEGMENT;", table.ToString(), backupFile, tableDelim)
 	_, err := connection.Exec(query)
 	utils.CheckError(err)
 }

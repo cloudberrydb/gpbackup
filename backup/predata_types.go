@@ -1,7 +1,7 @@
 package backup
 
 /*
- * This file contains structs and functions related to dumping type
+ * This file contains structs and functions related to backing up type
  * metadata on the master that needs to be restored before data is restored.
  */
 

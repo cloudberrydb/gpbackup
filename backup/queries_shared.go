@@ -31,7 +31,7 @@ func GetAllUserSchemas(connection *utils.DBConn) []Schema {
 	/*
 	 * This query is constructed from scratch, but the list of schemas to exclude
 	 * is copied from gpcrondump so that gpbackup exhibits similar behavior regarding
-	 * which schemas are dumped.
+	 * which schemas are backed up.
 	 */
 	query := fmt.Sprintf(`
 SELECT
@@ -154,7 +154,7 @@ var (
 	TYPE_TYPE            = MetadataQueryParams{NameField: "typname", SchemaField: "typnamespace", OwnerField: "typowner", CatalogTable: "pg_type"}
 )
 
-// A list of schemas we don't want to dump, formatted for use in a WHERE clause
+// A list of schemas we don't want to back up, formatted for use in a WHERE clause
 func SchemaFilterClause(namespace string) string {
 	includeSchemaFilterClauseStr := ""
 	if len(schemaInclude) > 0 {

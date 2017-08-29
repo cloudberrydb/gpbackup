@@ -40,7 +40,7 @@ const (
  *
  * The intended usage of these functions is as follows:
  * - Info: Messages that should always be written unless the user explicitly
- *         suppresses output, e.g. the timestamp that will be used in the dump.
+ *         suppresses output, e.g. the timestamp that will be used in the backup.
  * - Verbose: More detailed messages that are mostly useful to the user, e.g.
  *            printing information about a function's substeps for progress tracking.
  * - Debug: More detailed messages that are mostly useful to developers, e.g.

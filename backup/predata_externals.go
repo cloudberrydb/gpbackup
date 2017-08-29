@@ -1,7 +1,7 @@
 package backup
 
 /*
- * This file contains structs and functions related to dumping metadata on the
+ * This file contains structs and functions related to backing up metadata on the
  * master for objects that connect to external data (external tables and external
  * protocols).
  */

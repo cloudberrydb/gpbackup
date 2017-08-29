@@ -262,7 +262,7 @@ ORDER BY n.nspname, c.conname;`, SchemaFilterClause("n"))
  * When we retrieve function dependencies, we don't record a dependency of a
  * function on a base type if the function is part of the definition of the
  * base type, as we print out shell types for all base types at the beginning
- * of the dump and so do not need to consider those dependencies when sorting
+ * of the backup and so do not need to consider those dependencies when sorting
  * functions and types.
  */
 func ConstructFunctionDependencies(connection *utils.DBConn, functions []Function) []Function {

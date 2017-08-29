@@ -1,7 +1,7 @@
 package backup
 
 /*
- * This file contains structs and functions related to dumping metadata on the
+ * This file contains structs and functions related to backing up metadata on the
  * master for objects relating to built-in text search that needs to be restored
  * before data is restored.
  */

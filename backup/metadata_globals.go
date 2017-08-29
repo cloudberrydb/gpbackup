@@ -9,7 +9,7 @@ import (
 )
 
 /*
- * This file contains structs and functions related to dumping global cluster
+ * This file contains structs and functions related to backing up global cluster
  * metadata on the master that needs to be restored before data is restored,
  * such as roles and database configuration.
  */
@@ -50,7 +50,7 @@ SET default_with_oids = %s;
 `, gucs.ClientEncoding, gucs.StdConformingStrings, gucs.DefaultWithOids)
 }
 
-func PrintCreateDatabaseStatement(globalFile *utils.FileWithByteCount, toc *utils.TOC, dbname string, allDBs []DatabaseName, dbMetadata MetadataMap, dumpGlobals bool) {
+func PrintCreateDatabaseStatement(globalFile *utils.FileWithByteCount, toc *utils.TOC, dbname string, allDBs []DatabaseName, dbMetadata MetadataMap, backupGlobals bool) {
 	dbname = utils.QuoteIdent(dbname)
 	for _, db := range allDBs {
 		if db.DatabaseName == dbname {
@@ -69,7 +69,7 @@ func PrintCreateDatabaseStatement(globalFile *utils.FileWithByteCount, toc *util
 			break
 		}
 	}
-	if dumpGlobals {
+	if backupGlobals {
 		for _, db := range allDBs {
 			if db.DatabaseName != dbname {
 				start := globalFile.ByteCount

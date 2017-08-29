@@ -102,7 +102,7 @@ ORDER BY name;`, SchemaFilterClause("n"))
 
 /*
  * Rules named "_RETURN", "pg_settings_n", and "pg_settings_u" are
- * built-in rules and we don't want to dump them. We use two `%` to
+ * built-in rules and we don't want to back them up. We use two `%` to
  * prevent Go from interpolating the % symbol.
  */
 func GetRules(connection *utils.DBConn) []QuerySimpleDefinition {

@@ -25,8 +25,8 @@ var ( // Command-line flags
 	dbname        *string
 	metadataOnly  *bool
 	debug         *bool
-	dumpDir       *string
-	dumpGlobals   *bool
+	backupDir     *string
+	backupGlobals *bool
 	noCompress    *bool
 	printVersion  *bool
 	quiet         *bool
@@ -40,8 +40,8 @@ func initializeFlags() {
 	dbname = flag.String("dbname", "", "The database to be backed up")
 	metadataOnly = flag.Bool("metadata-only", false, "Only back up metadata, do not back up data")
 	debug = flag.Bool("debug", false, "Print verbose and debug log messages")
-	dumpDir = flag.String("dumpdir", "", "The directory to which all backup files will be written")
-	dumpGlobals = flag.Bool("globals", false, "Back up global metadata")
+	backupDir = flag.String("backupdir", "", "The directory to which all backup files will be written")
+	backupGlobals = flag.Bool("globals", false, "Back up global metadata")
 	printVersion = flag.Bool("version", false, "Print version number and exit")
 	quiet = flag.Bool("quiet", false, "Suppress non-warning, non-error log messages")
 	verbose = flag.Bool("verbose", false, "Print verbose log messages")
@@ -131,9 +131,9 @@ func DoSetup() {
 	}
 	backupReport.SetBackupTypeFromFlags(*dataOnly, *metadataOnly, schemaInclude)
 
-	logger.Verbose("Creating dump directories")
+	logger.Verbose("Creating backup directories")
 	segConfig := utils.GetSegmentConfiguration(connection)
-	globalCluster = utils.NewCluster(segConfig, *dumpDir, utils.CurrentTimestamp())
+	globalCluster = utils.NewCluster(segConfig, *backupDir, utils.CurrentTimestamp())
 	globalCluster.CreateBackupDirectoriesOnAllHosts()
 	globalTOC = &utils.TOC{}
 }
@@ -143,13 +143,13 @@ func DoBackup() {
 	logger.Info("Backup Database = %s", utils.QuoteIdent(connection.DBName))
 	logger.Info("Backup Type = %s", backupReport.BackupType)
 
-	masterDumpDir := globalCluster.GetDirForContent(-1)
+	masterBackupDir := globalCluster.GetDirForContent(-1)
 	objectCounts = make(map[string]int, 0)
 
-	globalFilename := fmt.Sprintf("%s/global.sql", masterDumpDir)
-	predataFilename := fmt.Sprintf("%s/predata.sql", masterDumpDir)
-	postdataFilename := fmt.Sprintf("%s/postdata.sql", masterDumpDir)
-	tocFilename := fmt.Sprintf("%s/toc.yaml", masterDumpDir)
+	globalFilename := fmt.Sprintf("%s/global.sql", masterBackupDir)
+	predataFilename := fmt.Sprintf("%s/predata.sql", masterBackupDir)
+	postdataFilename := fmt.Sprintf("%s/postdata.sql", masterBackupDir)
+	tocFilename := fmt.Sprintf("%s/toc.yaml", masterBackupDir)
 
 	connection.Begin()
 	connection.Exec("SET search_path TO pg_catalog")
@@ -161,22 +161,22 @@ func DoBackup() {
 	if !*dataOnly {
 		logger.Info("Writing global database metadata to %s", globalFilename)
 		backupGlobal(globalFilename, objectCounts)
-		logger.Info("Global database metadata dump complete")
+		logger.Info("Global database metadata backup complete")
 
 		logger.Info("Writing pre-data metadata to %s", predataFilename)
 		backupPredata(predataFilename, tables, tableDefs, objectCounts)
-		logger.Info("Pre-data metadata dump complete")
+		logger.Info("Pre-data metadata backup complete")
 
 		logger.Info("Writing post-data metadata to %s", postdataFilename)
 		backupPostdata(postdataFilename, objectCounts)
-		logger.Info("Post-data metadata dump complete")
+		logger.Info("Post-data metadata backup complete")
 		writeTOC(tocFilename, globalTOC)
 	}
 
 	if !*metadataOnly {
 		logger.Info("Writing data to file")
 		backupData(tables, tableDefs)
-		logger.Info("Data dump complete")
+		logger.Info("Data backup complete")
 	}
 
 	connection.Commit()
@@ -204,7 +204,7 @@ func backupGlobal(filename string, objectCount map[string]int) {
 	logger.Verbose("Writing CREATE DATABASE statement to global file")
 	dbnames := GetDatabaseNames(connection)
 	dbMetadata := GetMetadataForObjectType(connection, TYPE_DATABASE)
-	PrintCreateDatabaseStatement(globalFile, globalTOC, connection.DBName, dbnames, dbMetadata, *dumpGlobals)
+	PrintCreateDatabaseStatement(globalFile, globalTOC, connection.DBName, dbnames, dbMetadata, *backupGlobals)
 
 	logger.Verbose("Writing database GUCs to global file")
 	databaseGucs := GetDatabaseGUCs(connection)
@@ -381,10 +381,10 @@ func backupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
 	for _, table := range tables {
 		if !tableDefs[table.RelationOid].IsExternal {
 			logger.Verbose("Writing data for table %s to file", table.ToString())
-			dumpFile := globalCluster.GetTableBackupFilePathForCopyCommand(table.RelationOid)
-			CopyTableOut(connection, table, dumpFile)
+			backupFile := globalCluster.GetTableBackupFilePathForCopyCommand(table.RelationOid)
+			CopyTableOut(connection, table, backupFile)
 		} else {
-			logger.Verbose("Skipping data dump of table %s because it is an external table.", table.ToString())
+			logger.Verbose("Skipping data backup of table %s because it is an external table.", table.ToString())
 			numExtTables++
 		}
 	}
@@ -393,7 +393,7 @@ func backupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
 		if numExtTables > 1 {
 			s = "s"
 		}
-		logger.Warn("Skipped data dump of %d external table%s.", numExtTables, s)
+		logger.Warn("Skipped data backup of %d external table%s.", numExtTables, s)
 		logger.Warn("See %s for a complete list of skipped tables.", logger.GetLogFileName())
 	}
 	logger.Verbose("Writing table map file to %s", globalCluster.GetTableMapFilePath())

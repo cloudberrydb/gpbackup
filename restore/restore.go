@@ -21,7 +21,7 @@ var (
 var ( // Command-line flags
 	createdb       *bool
 	debug          *bool
-	dumpDir        *string
+	backupDir      *string
 	quiet          *bool
 	timestamp      *string
 	verbose        *bool
@@ -33,7 +33,7 @@ var ( // Command-line flags
 func initializeFlags() {
 	createdb = flag.Bool("createdb", false, "Create the database before metadata restore")
 	debug = flag.Bool("debug", false, "Print verbose and debug log messages")
-	dumpDir = flag.String("dumpdir", "", "The directory in which the dump files to be restored are located")
+	backupDir = flag.String("backupdir", "", "The directory in which the backup files to be restored are located")
 	quiet = flag.Bool("quiet", false, "Suppress non-warning, non-error log messages")
 	timestamp = flag.String("timestamp", "", "The timestamp to be restored, in the format YYYYMMDDHHMMSS")
 	verbose = flag.Bool("verbose", false, "Print verbose log messages")
@@ -86,9 +86,9 @@ func DoSetup() {
 	connection.Connect()
 	connection.Exec("SET application_name TO 'gprestore'")
 
-	logger.Verbose("Gathering information on dump directories")
+	logger.Verbose("Gathering information on backup directories")
 	segConfig := utils.GetSegmentConfiguration(connection)
-	globalCluster = utils.NewCluster(segConfig, *dumpDir, *timestamp)
+	globalCluster = utils.NewCluster(segConfig, *backupDir, *timestamp)
 
 	reportFile := utils.MustOpenFileForReading(globalCluster.GetReportFilePath())
 	backupReport = utils.ReadReportFile(reportFile)
@@ -99,11 +99,11 @@ func DoSetup() {
 func DoRestore() {
 	globalCluster.VerifyBackupDirectoriesExistOnAllHosts()
 
-	masterDumpDir := globalCluster.GetDirForContent(-1)
-	globalFilename := fmt.Sprintf("%s/global.sql", masterDumpDir)
-	predataFilename := fmt.Sprintf("%s/predata.sql", masterDumpDir)
-	postdataFilename := fmt.Sprintf("%s/postdata.sql", masterDumpDir)
-	tocFilename := fmt.Sprintf("%s/toc.yaml", masterDumpDir)
+	masterBackupDir := globalCluster.GetDirForContent(-1)
+	globalFilename := fmt.Sprintf("%s/global.sql", masterBackupDir)
+	predataFilename := fmt.Sprintf("%s/predata.sql", masterBackupDir)
+	postdataFilename := fmt.Sprintf("%s/postdata.sql", masterBackupDir)
+	tocFilename := fmt.Sprintf("%s/toc.yaml", masterBackupDir)
 
 	if *restoreGlobals {
 		logger.Info("Restoring global database metadata from %s", globalFilename)
@@ -164,8 +164,8 @@ func restorePredata(filename string) {
 func restoreData(tableMap map[string]uint32) {
 	for name, oid := range tableMap {
 		logger.Verbose("Reading data for table %s from file", name)
-		dumpFile := globalCluster.GetTableBackupFilePathForCopyCommand(oid)
-		CopyTableIn(connection, name, dumpFile)
+		backupFile := globalCluster.GetTableBackupFilePathForCopyCommand(oid)
+		CopyTableIn(connection, name, backupFile)
 	}
 }
 

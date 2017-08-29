@@ -1,7 +1,7 @@
 package restore
 
 /*
- * This file contains structs and functions related to dumping data on the segments.
+ * This file contains structs and functions related to backing up data on the segments.
  */
 
 import (
@@ -35,8 +35,8 @@ func ReadTableMapFile(tableMapFilePath string) map[string]uint32 {
 	return tableMap
 }
 
-func CopyTableIn(connection *utils.DBConn, tableName string, dumpFile string) {
-	query := fmt.Sprintf("COPY %s FROM '%s' WITH CSV DELIMITER '%s' ON SEGMENT;", tableName, dumpFile, tableDelim)
+func CopyTableIn(connection *utils.DBConn, tableName string, backupFile string) {
+	query := fmt.Sprintf("COPY %s FROM '%s' WITH CSV DELIMITER '%s' ON SEGMENT;", tableName, backupFile, tableDelim)
 	_, err := connection.Exec(query)
 	utils.CheckError(err)
 }

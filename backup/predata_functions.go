@@ -1,7 +1,7 @@
 package backup
 
 /*
- * This file contains structs and functions related to dumping function
+ * This file contains structs and functions related to backing up function
  * metadata, and metadata closely related to functions such as aggregates
  * and casts, that needs to be restored before data is restored.
  */
@@ -150,7 +150,7 @@ func PrintCreateCastStatements(predataFile *utils.FileWithByteCount, toc *utils.
 
 /*
  * This function separates out functions related to procedural languages from
- * any other functions, so that language-related functions can be dumped before
+ * any other functions, so that language-related functions can be backed up before
  * the languages themselves and we can avoid sorting languages and functions
  * together to resolve dependencies.
  */
@@ -188,7 +188,7 @@ func PrintCreateLanguageStatements(predataFile *utils.FileWithByteCount, toc *ut
 		predataFile.MustPrintf("PROCEDURAL LANGUAGE %s;", quotedLanguage)
 		/*
 		 * If the handler, validator, and inline functions are in pg_pltemplate, we can
-		 * dump a CREATE LANGUAGE command without specifying them individually.
+		 * back up a CREATE LANGUAGE command without specifying them individually.
 		 *
 		 * The schema of the handler function should match the schema of the language itself, but
 		 * the inline and validator functions can be in a different schema and must be schema-qualified.

@@ -1,7 +1,7 @@
 package backup
 
 /*
- * This file contains structs and functions related to dumping relation
+ * This file contains structs and functions related to backing up relation
  * (sequence, table, and view) metadata on the master.
  */
 

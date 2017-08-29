@@ -1,7 +1,7 @@
 package backup
 
 /*
- * This file contains structs and functions related to dumping metadata shared
+ * This file contains structs and functions related to backing up metadata shared
  * among many or all object types (privileges, owners, and comments) on the
  * master that needs to be restored before data is restored.
  */
@@ -54,7 +54,7 @@ func PrintConstraintStatements(predataFile *utils.FileWithByteCount, toc *utils.
 	allConstraints := make([]Constraint, 0)
 	allFkConstraints := make([]Constraint, 0)
 	/*
-	 * Because FOREIGN KEY constraints must be dumped after PRIMARY KEY
+	 * Because FOREIGN KEY constraints must be backed up after PRIMARY KEY
 	 * constraints, we separate the two types then concatenate the lists,
 	 * so FOREIGN KEY are guaranteed to be printed last.
 	 */
