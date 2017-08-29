@@ -48,13 +48,6 @@ ORDER BY name;`, SchemaFilterClause("n"))
 	return results
 }
 
-func includeSchemaFilterClause(namespace string, schemas []string) string {
-	if len(schemas) == 0 {
-		return ""
-	}
-	return fmt.Sprintf("AND %s.nspname IN (%s)", namespace, utils.SliceToQuotedString(schemas))
-}
-
 type Constraint struct {
 	Oid                uint32
 	ConName            string
