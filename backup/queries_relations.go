@@ -349,3 +349,10 @@ ORDER BY v2.oid, referencedobject;`, SchemaFilterClause("n"))
 	}
 	return views
 }
+
+func LockTables(connection *utils.DBConn, tables []Relation) {
+	for _, table := range tables {
+		_, err := connection.Exec(fmt.Sprintf("LOCK TABLE %s IN ACCESS SHARE MODE", table.ToString()))
+		utils.CheckError(err)
+	}
+}

@@ -155,6 +155,9 @@ func DoBackup() {
 	connection.Exec("SET search_path TO pg_catalog")
 
 	tables := GetAllUserTables(connection)
+	logger.Info("Acquiring ACCESS SHARE locks on tables")
+	LockTables(connection, tables)
+	logger.Info("Locks acquired")
 	objectCounts["Tables"] = len(tables)
 	tableDefs := ConstructDefinitionsForTables(connection, tables)
 
