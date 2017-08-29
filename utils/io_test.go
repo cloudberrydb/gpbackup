@@ -75,6 +75,19 @@ var _ = Describe("utils/io tests", func() {
 			}
 		})
 	})
+	Describe("SliceToQuotedString", func() {
+		It("quotes and joins a slice of strings into a single string", func() {
+			inputStrings := []string{"string1", "string2", "string3"}
+			expectedString := "'string1','string2','string3'"
+			resultString := utils.SliceToQuotedString(inputStrings)
+			Expect(resultString).To(Equal(expectedString))
+		})
+		It("returns an empty string when given an empty slice", func() {
+			inputStrings := []string{}
+			resultString := utils.SliceToQuotedString(inputStrings)
+			Expect(resultString).To(Equal(""))
+		})
+	})
 	Describe("CreateDirectoryOnMaster", func() {
 		It("does nothing if the directory exists", func() {
 			fakeInfo, _ := os.Stat("/tmp/log_dir")
