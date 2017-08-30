@@ -75,104 +75,85 @@ func DoValidation() {
 
 // This function handles setup that must be done after parsing flags.
 func DoSetup() {
-	if *quiet {
-		logger.SetVerbosity(utils.LOGERROR)
-	} else if *debug {
-		logger.SetVerbosity(utils.LOGDEBUG)
-	} else if *verbose {
-		logger.SetVerbosity(utils.LOGVERBOSE)
-	}
-	connection = utils.NewDBConn("postgres")
-	connection.Connect()
-	_, err := connection.Exec("SET application_name TO 'gprestore'")
-	utils.CheckError(err)
+	SetLoggerVerbosity()
+	InitializeConnection("postgres)")
+	InitializeBackupReport()
 
 	logger.Verbose("Gathering information on backup directories")
 	segConfig := utils.GetSegmentConfiguration(connection)
 	globalCluster = utils.NewCluster(segConfig, *backupDir, *timestamp)
-
-	reportFile := utils.MustOpenFileForReading(globalCluster.GetReportFilePath())
-	backupReport = utils.ReadReportFile(reportFile)
-	backupReport.SetBackupTypeFromString()
-	utils.EnsureBackupVersionCompatibility(backupReport.BackupVersion, version)
+	globalCluster.VerifyBackupDirectoriesExistOnAllHosts()
 }
 
 func DoRestore() {
-	globalCluster.VerifyBackupDirectoriesExistOnAllHosts()
-
-	masterBackupDir := globalCluster.GetDirForContent(-1)
-	globalFilename := fmt.Sprintf("%s/global.sql", masterBackupDir)
-	predataFilename := fmt.Sprintf("%s/predata.sql", masterBackupDir)
-	postdataFilename := fmt.Sprintf("%s/postdata.sql", masterBackupDir)
-	tocFilename := fmt.Sprintf("%s/toc.yaml", masterBackupDir)
-
 	if *restoreGlobals {
-		logger.Info("Restoring global database metadata from %s", globalFilename)
-		restoreGlobal(globalFilename)
-		logger.Info("Global database metadata restore complete")
+		restoreGlobal()
 	} else if *createdb {
-		logger.Info("Creating database")
-		createDatabase(connection, globalFilename, tocFilename)
-		logger.Info("Database creation complete")
+		createDatabase()
 	}
 
 	connection.Close()
-	dbname := backupReport.DatabaseName
-	connection = utils.NewDBConn(dbname)
-	connection.Connect()
-	_, err := connection.Exec("SET application_name TO 'gprestore'")
-	utils.CheckError(err)
+	InitializeConnection(backupReport.DatabaseName)
 
 	if !backupReport.DataOnly {
-		logger.Info("Restoring pre-data metadata from %s", predataFilename)
-		restorePredata(predataFilename)
-		logger.Info("Pre-data metadata restore complete")
+		restorePredata()
 	}
 
 	if !backupReport.MetadataOnly {
 		tableMap := ReadTableMapFile(globalCluster.GetTableMapFilePath())
 		backupFileCount := len(tableMap)
 		globalCluster.VerifyBackupFileCountOnSegments(backupFileCount)
-		logger.Info("Restoring data")
 		restoreData(tableMap)
-		logger.Info("Data restore complete")
 	}
 
 	if !backupReport.DataOnly {
-		logger.Info("Restoring post-data metadata from %s", postdataFilename)
-		restorePostdata(postdataFilename)
-		logger.Info("Post-data metadata restore complete")
+		restorePostdata()
 	}
 }
 
-func createDatabase(connection *utils.DBConn, metadataFilename string, tocFilename string) {
+func createDatabase() {
+	globalFilename := utils.GetGlobalFilename(globalCluster)
+	tocFilename := utils.GetTOCFilename(globalCluster)
+	logger.Info("Creating database")
 	toc := utils.NewTOC(tocFilename)
-	metadataFile := utils.MustOpenFileForReaderAt(metadataFilename)
-	statements := toc.GetSQLStatementForObjectTypes(toc.GlobalEntries, metadataFile, "SESSION GUCS", "DATABASE GUC", "DATABASE", "DATABASE METADATA")
+	globalFile := utils.MustOpenFileForReaderAt(globalFilename)
+	statements := toc.GetSQLStatementForObjectTypes(toc.GlobalEntries, globalFile, "SESSION GUCS", "DATABASE GUC", "DATABASE", "DATABASE METADATA")
 	for _, statement := range statements {
 		_, err := connection.Exec(statement)
 		utils.CheckError(err)
 	}
+	logger.Info("Database creation complete")
 }
 
-func restoreGlobal(filename string) {
-	utils.ExecuteSQLFile(connection, filename)
+func restoreGlobal() {
+	globalFilename := utils.GetGlobalFilename(globalCluster)
+	logger.Info("Restoring global database metadata from %s", globalFilename)
+	utils.ExecuteSQLFile(connection, globalFilename)
+	logger.Info("Global database metadata restore complete")
 }
 
-func restorePredata(filename string) {
-	utils.ExecuteSQLFile(connection, filename)
+func restorePredata() {
+	predataFilename := utils.GetPredataFilename(globalCluster)
+	logger.Info("Restoring pre-data metadata from %s", predataFilename)
+	utils.ExecuteSQLFile(connection, predataFilename)
+	logger.Info("Pre-data metadata restore complete")
 }
 
 func restoreData(tableMap map[string]uint32) {
+	logger.Info("Restoring data")
 	for name, oid := range tableMap {
 		logger.Verbose("Reading data for table %s from file", name)
 		backupFile := globalCluster.GetTableBackupFilePathForCopyCommand(oid)
 		CopyTableIn(connection, name, backupFile)
 	}
+	logger.Info("Data restore complete")
 }
 
-func restorePostdata(filename string) {
-	utils.ExecuteSQLFile(connection, filename)
+func restorePostdata() {
+	postdataFilename := utils.GetPostdataFilename(globalCluster)
+	logger.Info("Restoring post-data metadata from %s", postdataFilename)
+	utils.ExecuteSQLFile(connection, postdataFilename)
+	logger.Info("Post-data metadata restore complete")
 }
 
 func DoTeardown() {
