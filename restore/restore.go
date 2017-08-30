@@ -76,7 +76,7 @@ func DoValidation() {
 // This function handles setup that must be done after parsing flags.
 func DoSetup() {
 	SetLoggerVerbosity()
-	InitializeConnection("postgres)")
+	InitializeConnection("postgres")
 	InitializeBackupReport()
 
 	logger.Verbose("Gathering information on backup directories")
