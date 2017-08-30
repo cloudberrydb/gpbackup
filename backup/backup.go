@@ -138,7 +138,7 @@ func backupGlobal(objectCounts map[string]int) {
 	globalFile := utils.NewFileWithByteCountFromFile(globalFilename)
 	defer globalFile.Close()
 
-	BackupSessionGUCs(globalFile, objectCounts)
+	BackupGlobalSessionGUCs(globalFile, objectCounts)
 	BackupTablespaces(globalFile, objectCounts)
 	BackupCreateDatabase(globalFile, objectCounts)
 	BackupDatabaseGUCs(globalFile, objectCounts)
@@ -159,7 +159,7 @@ func backupPredata(tables []Relation, tableDefs map[uint32]TableDefinition, obje
 
 	PrintConnectionString(predataFile, connection.DBName)
 
-	BackupSessionGUCs(predataFile, objectCounts)
+	BackupPredataSessionGUCs(predataFile, objectCounts)
 	BackupSchemas(predataFile, objectCounts)
 
 	procLangs := GetProceduralLanguages(connection)
@@ -217,7 +217,7 @@ func backupPostdata(objectCounts map[string]int) {
 
 	PrintConnectionString(postdataFile, connection.DBName)
 
-	BackupSessionGUCs(postdataFile, objectCounts)
+	BackupPostdataSessionGUCs(postdataFile, objectCounts)
 	BackupIndexes(postdataFile, objectCounts)
 	BackupRules(postdataFile, objectCounts)
 	BackupTriggers(postdataFile, objectCounts)
