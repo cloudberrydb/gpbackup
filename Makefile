@@ -48,6 +48,10 @@ integration :
 
 test : lint unit integration
 
+end_to_end : build
+		./end_to_end/run.sh end_to_end/all_objects.sql
+		./end_to_end/run.sh end_to_end/1k_tables_and_inherits.sql
+
 coverage :
 		@./show_coverage.sh
 
