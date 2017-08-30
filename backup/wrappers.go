@@ -26,9 +26,11 @@ func SetLoggerVerbosity() {
 func InitializeConnection() {
 	connection = utils.NewDBConn(*dbname)
 	connection.Connect()
-	connection.Exec("SET application_name TO 'gpbackup'")
+	_, err := connection.Exec("SET application_name TO 'gpbackup'")
+	utils.CheckError(err)
 	connection.Begin()
-	connection.Exec("SET search_path TO pg_catalog")
+	_, err = connection.Exec("SET search_path TO pg_catalog")
+	utils.CheckError(err)
 }
 
 func InitializeBackupReport() {

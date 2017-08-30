@@ -84,7 +84,8 @@ func DoSetup() {
 	}
 	connection = utils.NewDBConn("postgres")
 	connection.Connect()
-	connection.Exec("SET application_name TO 'gprestore'")
+	_, err := connection.Exec("SET application_name TO 'gprestore'")
+	utils.CheckError(err)
 
 	logger.Verbose("Gathering information on backup directories")
 	segConfig := utils.GetSegmentConfiguration(connection)
@@ -119,7 +120,8 @@ func DoRestore() {
 	dbname := backupReport.DatabaseName
 	connection = utils.NewDBConn(dbname)
 	connection.Connect()
-	connection.Exec("SET application_name TO 'gprestore'")
+	_, err := connection.Exec("SET application_name TO 'gprestore'")
+	utils.CheckError(err)
 
 	if !backupReport.DataOnly {
 		logger.Info("Restoring pre-data metadata from %s", predataFilename)
