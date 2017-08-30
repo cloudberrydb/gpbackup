@@ -35,6 +35,20 @@ type Cluster struct {
 	Executor
 }
 
+type SegConfig struct {
+	ContentID int
+	Hostname  string
+	DataDir   string
+}
+
+/*
+ * Cluster functions
+ */
+
+func (cluster *Cluster) IsUserSpecifiedBackupDir() bool {
+	return cluster.UserSpecifiedBackupDir != ""
+}
+
 func NewCluster(segConfigs []SegConfig, userSpecifiedBackupDir string, timestamp string) Cluster {
 	cluster := Cluster{}
 	cluster.SegHostMap = make(map[int]string, 0)
@@ -48,15 +62,6 @@ func NewCluster(segConfigs []SegConfig, userSpecifiedBackupDir string, timestamp
 	}
 	cluster.Executor = &GPDBExecutor{}
 	return cluster
-}
-
-func (cluster *Cluster) IsUserSpecifiedBackupDir() bool {
-	return cluster.UserSpecifiedBackupDir != ""
-}
-
-func ConstructSSHCommand(host string, cmd string) []string {
-	currentUser, _, _ := GetUserAndHostInfo()
-	return []string{"ssh", "-o", "StrictHostKeyChecking=no", fmt.Sprintf("%s@%s", currentUser, host), cmd}
 }
 
 func (cluster *Cluster) GenerateSSHCommandMap(includeMaster bool, generateCommand func(int) string) map[int][]string {
@@ -148,6 +153,7 @@ func (cluster *Cluster) VerifyBackupDirectoriesExistOnAllHosts() {
 }
 
 func (cluster *Cluster) CreateBackupDirectoriesOnAllHosts() {
+	logger.Verbose("Creating backup directories")
 	commandMap := cluster.GenerateSSHCommandMapForCluster(func(contentID int) string {
 		return fmt.Sprintf("mkdir -p %s", cluster.GetDirForContent(contentID))
 	})
@@ -207,4 +213,31 @@ func (cluster *Cluster) GetTableBackupFilePathForCopyCommand(tableOid uint32) st
 
 func (cluster *Cluster) GetReportFilePath() string {
 	return fmt.Sprintf("%s/gpbackup_%s_report", cluster.GetDirForContent(-1), cluster.Timestamp)
+}
+
+/*
+ * Helper functions
+ */
+
+func GetSegmentConfiguration(connection *DBConn) []SegConfig {
+	query := `
+SELECT
+	s.content as contentid,
+	s.hostname,
+	e.fselocation as datadir
+FROM gp_segment_configuration s
+JOIN pg_filespace_entry e ON s.dbid = e.fsedbid
+JOIN pg_filespace f ON e.fsefsoid = f.oid
+WHERE s.role = 'p' AND f.fsname = 'pg_system'
+ORDER BY s.content;`
+
+	results := make([]SegConfig, 0)
+	err := connection.Select(&results, query)
+	CheckError(err)
+	return results
+}
+
+func ConstructSSHCommand(host string, cmd string) []string {
+	currentUser, _, _ := GetUserAndHostInfo()
+	return []string{"ssh", "-o", "StrictHostKeyChecking=no", fmt.Sprintf("%s@%s", currentUser, host), cmd}
 }

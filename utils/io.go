@@ -131,31 +131,23 @@ func MustPrintBytes(file io.Writer, bytes []byte) uint64 {
 }
 
 /*
- * Functions for working with the segment configuration
+ * Backup and restore filename functions
  */
 
-type SegConfig struct {
-	ContentID int
-	Hostname  string
-	DataDir   string
+func GetGlobalFilename(cluster Cluster) string {
+	return fmt.Sprintf("%s/global.sql", cluster.GetDirForContent(-1))
 }
 
-func GetSegmentConfiguration(connection *DBConn) []SegConfig {
-	query := `
-SELECT
-	s.content as contentid,
-	s.hostname,
-	e.fselocation as datadir
-FROM gp_segment_configuration s
-JOIN pg_filespace_entry e ON s.dbid = e.fsedbid
-JOIN pg_filespace f ON e.fsefsoid = f.oid
-WHERE s.role = 'p' AND f.fsname = 'pg_system'
-ORDER BY s.content;`
+func GetPredataFilename(cluster Cluster) string {
+	return fmt.Sprintf("%s/predata.sql", cluster.GetDirForContent(-1))
+}
 
-	results := make([]SegConfig, 0)
-	err := connection.Select(&results, query)
-	CheckError(err)
-	return results
+func GetPostdataFilename(cluster Cluster) string {
+	return fmt.Sprintf("%s/postdata.sql", cluster.GetDirForContent(-1))
+}
+
+func GetTOCFilename(cluster Cluster) string {
+	return fmt.Sprintf("%s/toc.yaml", cluster.GetDirForContent(-1))
 }
 
 /*

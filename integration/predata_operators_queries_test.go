@@ -57,7 +57,7 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
 			testutils.AssertQueryRuns(connection, "CREATE OPERATOR testschema.## (LEFTARG = bigint, PROCEDURE = numeric_fac)")
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR testschema.## (bigint, NONE)")
-			backup.SetSchemaInclude([]string{"testschema"})
+			backup.SetIncludeSchemas([]string{"testschema"})
 
 			expectedOperator := backup.Operator{Oid: 0, SchemaName: "testschema", Name: "##", ProcedureName: "numeric_fac", LeftArgType: "bigint", RightArgType: "-", CommutatorOp: "0", NegatorOp: "0", RestrictFunction: "-", JoinFunction: "-", CanHash: false, CanMerge: false}
 
@@ -86,7 +86,7 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
 			testutils.AssertQueryRuns(connection, "CREATE OPERATOR FAMILY testschema.testfam USING hash;")
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testschema.testfam USING hash")
-			backup.SetSchemaInclude([]string{"testschema"})
+			backup.SetIncludeSchemas([]string{"testschema"})
 
 			expectedOperator := backup.OperatorFamily{Oid: 0, SchemaName: "testschema", Name: "testfam", IndexMethod: "hash"}
 
@@ -143,7 +143,7 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
 			testutils.AssertQueryRuns(connection, "CREATE OPERATOR CLASS testschema.testclass FOR TYPE uuid USING hash AS STORAGE uuid")
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testschema.testclass USING hash CASCADE")
-			backup.SetSchemaInclude([]string{"testschema"})
+			backup.SetIncludeSchemas([]string{"testschema"})
 
 			expected := backup.OperatorClass{Oid: 0, ClassSchema: "testschema", ClassName: "testclass", FamilySchema: "testschema", FamilyName: "testclass", IndexMethod: "hash", Type: "uuid", Default: false, StorageType: "-", Operators: nil, Functions: nil}
 

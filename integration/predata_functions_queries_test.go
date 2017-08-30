@@ -64,7 +64,7 @@ LANGUAGE SQL`)
 				BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "integer",
 				Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 0, DataAccess: "c",
 				Language: "sql"}
-			backup.SetSchemaInclude([]string{"testschema"})
+			backup.SetIncludeSchemas([]string{"testschema"})
 			results := backup.GetFunctions(connection)
 
 			Expect(len(results)).To(Equal(1))
@@ -159,7 +159,7 @@ CREATE AGGREGATE testschema.agg_prefunc(numeric, numeric) (
 				IdentArgs: "numeric, numeric", TransitionFunction: transitionOid, PreliminaryFunction: prelimOid,
 				FinalFunction: 0, SortOperator: 0, TransitionDataType: "numeric", InitialValue: "0", IsOrdered: false,
 			}
-			backup.SetSchemaInclude([]string{"testschema"})
+			backup.SetIncludeSchemas([]string{"testschema"})
 
 			result := backup.GetAggregates(connection)
 
@@ -299,7 +299,7 @@ LANGUAGE SQL`)
 
 			expectedConversion := backup.Conversion{Oid: 0, Schema: "testschema", Name: "testconv", ForEncoding: "LATIN1", ToEncoding: "MULE_INTERNAL", ConversionFunction: "pg_catalog.latin1_to_mic", IsDefault: false}
 
-			backup.SetSchemaInclude([]string{"testschema"})
+			backup.SetIncludeSchemas([]string{"testschema"})
 			resultConversions := backup.GetConversions(connection)
 
 			Expect(len(resultConversions)).To(Equal(1))

@@ -9,7 +9,7 @@ import (
 func main() {
 	defer DoTeardown()
 	DoInit()
-	DoValidation()
+	DoFlagValidation()
 	DoSetup()
 	DoBackup()
 }

@@ -167,7 +167,7 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
 			testutils.AssertQueryRuns(connection, "CREATE TYPE testschema.shell_type")
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE testschema.shell_type")
-			backup.SetSchemaInclude([]string{"testschema"})
+			backup.SetIncludeSchemas([]string{"testschema"})
 
 			results := backup.GetTypes(connection)
 			shellTypeOtherSchema := backup.Type{Type: "p", TypeSchema: "testschema", TypeName: "shell_type"}

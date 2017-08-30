@@ -15,6 +15,7 @@ var (
 )
 
 func WriteTableMapFile(tableMapFilePath string, tables []Relation, tableDefs map[uint32]TableDefinition) {
+	logger.Verbose("Writing table map file to %s", globalCluster.GetTableMapFilePath())
 	tableMapFile := utils.MustOpenFileForWriting(tableMapFilePath)
 	for _, table := range tables {
 		if !tableDefs[table.RelationOid].IsExternal {

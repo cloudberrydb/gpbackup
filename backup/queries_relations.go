@@ -351,8 +351,10 @@ ORDER BY v2.oid, referencedobject;`, SchemaFilterClause("n"))
 }
 
 func LockTables(connection *utils.DBConn, tables []Relation) {
+	logger.Info("Acquiring ACCESS SHARE locks on tables")
 	for _, table := range tables {
 		_, err := connection.Exec(fmt.Sprintf("LOCK TABLE %s IN ACCESS SHARE MODE", table.ToString()))
 		utils.CheckError(err)
 	}
+	logger.Info("Locks acquired")
 }

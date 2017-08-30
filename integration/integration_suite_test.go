@@ -50,7 +50,7 @@ var _ = BeforeSuite(func() {
 
 var _ = BeforeEach(func() {
 	buffer = bytes.NewBuffer([]byte(""))
-	backup.SetSchemaInclude([]string{})
+	backup.SetIncludeSchemas([]string{})
 })
 
 var _ = AfterSuite(func() {

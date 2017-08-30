@@ -52,7 +52,7 @@ PARTITION BY LIST (gender)
 			testutils.AssertQueryRuns(connection, "CREATE TABLE testschema.foo(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE testschema.foo")
 
-			backup.SetSchemaInclude([]string{"testschema"})
+			backup.SetIncludeSchemas([]string{"testschema"})
 			tables := backup.GetAllUserTables(connection)
 
 			tableFoo := backup.BasicRelation("testschema", "foo")
@@ -265,7 +265,7 @@ SET SUBPARTITION TEMPLATE
 			testutils.AssertQueryRuns(connection, "CREATE SEQUENCE testschema.my_sequence")
 			mySequence := backup.BasicRelation("testschema", "my_sequence")
 
-			backup.SetSchemaInclude([]string{"testschema"})
+			backup.SetIncludeSchemas([]string{"testschema"})
 			sequences := backup.GetAllSequenceRelations(connection)
 
 			Expect(len(sequences)).To(Equal(1))
@@ -355,7 +355,7 @@ SET SUBPARTITION TEMPLATE
 			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
 			testutils.AssertQueryRuns(connection, "CREATE VIEW testschema.simpleview AS SELECT rolname FROM pg_roles")
 			defer testutils.AssertQueryRuns(connection, "DROP VIEW testschema.simpleview")
-			backup.SetSchemaInclude([]string{"testschema"})
+			backup.SetIncludeSchemas([]string{"testschema"})
 
 			results := backup.GetViews(connection)
 

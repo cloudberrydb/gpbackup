@@ -126,7 +126,7 @@ PARTITION BY RANGE (date)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE testschema.simple_table")
 			testutils.AssertQueryRuns(connection, "CREATE INDEX simple_table_idx1 ON testschema.simple_table(i)")
 			defer testutils.AssertQueryRuns(connection, "DROP INDEX testschema.simple_table_idx1")
-			backup.SetSchemaInclude([]string{"testschema"})
+			backup.SetIncludeSchemas([]string{"testschema"})
 
 			index1 := backup.QuerySimpleDefinition{Oid: 0, Name: "simple_table_idx1", OwningSchema: "testschema", OwningTable: "simple_table", TablespaceName: "", Def: "CREATE INDEX simple_table_idx1 ON testschema.simple_table USING btree (i)"}
 
@@ -175,7 +175,7 @@ PARTITION BY RANGE (date)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE testschema.rule_table1")
 			testutils.AssertQueryRuns(connection, "CREATE RULE double_insert AS ON INSERT TO testschema.rule_table1 DO INSERT INTO testschema.rule_table1 DEFAULT VALUES")
 			defer testutils.AssertQueryRuns(connection, "DROP RULE double_insert ON testschema.rule_table1")
-			backup.SetSchemaInclude([]string{"testschema"})
+			backup.SetIncludeSchemas([]string{"testschema"})
 
 			rule1 := backup.QuerySimpleDefinition{Oid: 0, Name: "double_insert", OwningSchema: "testschema", OwningTable: "rule_table1", TablespaceName: "", Def: "CREATE RULE double_insert AS ON INSERT TO testschema.rule_table1 DO INSERT INTO testschema.rule_table1 DEFAULT VALUES;"}
 
@@ -233,7 +233,7 @@ PARTITION BY RANGE (date)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE testschema.trigger_table1")
 			testutils.AssertQueryRuns(connection, "CREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON testschema.trigger_table1 FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger()")
 			defer testutils.AssertQueryRuns(connection, "DROP TRIGGER sync_trigger_table1 ON testschema.trigger_table1")
-			backup.SetSchemaInclude([]string{"testschema"})
+			backup.SetIncludeSchemas([]string{"testschema"})
 
 			trigger1 := backup.QuerySimpleDefinition{Oid: 0, Name: "sync_trigger_table1", OwningSchema: "testschema", OwningTable: "trigger_table1", TablespaceName: "", Def: "CREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON testschema.trigger_table1 FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger()"}
 
