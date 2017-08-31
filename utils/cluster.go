@@ -20,6 +20,7 @@ var (
 )
 
 type Executor interface {
+	ExecuteLocalCommand(commandStr string) error
 	ExecuteClusterCommand(commandMap map[int][]string) map[int]error
 }
 
@@ -94,6 +95,11 @@ func (cluster *Cluster) GenerateFileVerificationCommandMap(fileCount int) map[in
 		return fmt.Sprintf("find %s -type f | wc -l | grep %d", cluster.GetDirForContent(contentID), fileCount)
 	})
 	return commandMap
+}
+
+func (executor *GPDBExecutor) ExecuteLocalCommand(commandStr string) error {
+	_, err := exec.Command("bash", "-c", commandStr).CombinedOutput()
+	return err
 }
 
 func (executor *GPDBExecutor) ExecuteClusterCommand(commandMap map[int][]string) map[int]error {

@@ -256,6 +256,7 @@ func DoTeardown() {
 		reportFilename := globalCluster.GetReportFilePath()
 		reportFile := utils.MustOpenFileForWriting(reportFilename)
 		utils.WriteReportFile(reportFile, globalCluster.Timestamp, backupReport, objectCounts, errMsg)
+		utils.EmailReport(globalCluster)
 	}
 
 	os.Exit(exitCode)

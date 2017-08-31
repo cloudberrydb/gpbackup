@@ -1,6 +1,7 @@
 package utils_test
 
 import (
+	"os"
 	"strings"
 
 	"github.com/greenplum-db/gpbackup/testutils"
@@ -8,6 +9,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
+	"github.com/pkg/errors"
 )
 
 var _ = Describe("utils/report tests", func() {
@@ -51,9 +53,9 @@ Backup Status: Success
 
 Database Size: 42 MB
 Count of Database Objects in Backup:
-sequences                	1
-tables                   	42
-types                    	1000`))
+sequences                    1
+tables                       42
+types                        1000`))
 		})
 		It("writes a report for a failed backup", func() {
 			utils.WriteReportFile(buffer, timestamp, backupReport, objectCounts, "Cannot access /tmp/backups: Permission denied")
@@ -71,9 +73,9 @@ Backup Error: Cannot access /tmp/backups: Permission denied
 
 Database Size: 42 MB
 Count of Database Objects in Backup:
-sequences                	1
-tables                   	42
-types                    	1000`))
+sequences                    1
+tables                       42
+types                        1000`))
 		})
 	})
 	Describe("ReadReportFile", func() {
@@ -173,6 +175,123 @@ types                       1000
 			backupReport.SetBackupTypeFromString()
 			Expect(backupReport.DataOnly).To(BeTrue())
 			Expect(backupReport.MetadataOnly).To(BeFalse())
+		})
+	})
+	Describe("Email-related functions", func() {
+		reportFileContents := []byte(`Greenplum Database Backup Report
+
+Timestamp Key: 20170101010101`)
+		contactsFileContents := []byte(`contact1@example.com
+contact2@example.org`)
+		contactsList := "contact1@example.com contact2@example.org"
+
+		var (
+			testExecutor *testutils.TestExecutor
+			testCluster  utils.Cluster
+			w            *os.File
+			r            *os.File
+		)
+		BeforeEach(func() {
+			r, w, _ = os.Pipe()
+			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) { return r, nil }
+			utils.System.Hostname = func() (string, error) { return "localhost", nil }
+			utils.System.Getenv = func(key string) string {
+				if key == "HOME" {
+					return "home"
+				} else {
+					return "gphome"
+				}
+			}
+			testExecutor = &testutils.TestExecutor{}
+			testCluster = testutils.SetDefaultSegmentConfiguration()
+			testCluster.Timestamp = "20170101010101"
+			testCluster.Executor = testExecutor
+		})
+		AfterEach(func() {
+			utils.InitializeSystemFunctions()
+		})
+		Context("ConstructEmailMessage", func() {
+			It("adds HTML formatting to the contents of the report file", func() {
+				w.Write(reportFileContents)
+				w.Close()
+
+				message := utils.ConstructEmailMessage(testCluster, contactsList)
+				expectedMessage := `To: contact1@example.com contact2@example.org
+Subject: gpbackup 20170101010101 on localhost completed
+Content-Type: text/html
+Content-Disposition: inline
+<html>
+<body>
+<pre style=\"font: monospace\">
+Greenplum Database Backup Report
+
+Timestamp Key: 20170101010101
+</pre>
+</body>
+</html>`
+				Expect(message).To(Equal(expectedMessage))
+			})
+		})
+		Context("EmailReport", func() {
+			var (
+				expectedHomeCmd   = "test -f home/mail_contacts"
+				expectedGpHomeCmd = "test -f gphome/bin/mail_contacts"
+				expectedMessage   = `echo "To: contact1@example.com contact2@example.org
+Subject: gpbackup 20170101010101 on localhost completed
+Content-Type: text/html
+Content-Disposition: inline
+<html>
+<body>
+<pre style=\"font: monospace\">
+
+</pre>
+</body>
+</html>" | sendmail -t`
+			)
+			It("sends no email and raises a warning if no mail_contacts file is found", func() {
+				w.Write(contactsFileContents)
+				w.Close()
+
+				testExecutor.LocalError = errors.Errorf("exit status 2")
+
+				utils.EmailReport(testCluster)
+				Expect(testExecutor.NumExecutions).To(Equal(2))
+				Expect(testExecutor.LocalCommands).To(Equal([]string{expectedHomeCmd, expectedGpHomeCmd}))
+				Expect(stdout).To(gbytes.Say("Found neither gphome/bin/mail_contacts nor home/mail_contacts"))
+			})
+			It("sends an email to contacts in $HOME/mail_contacts if only that file is found", func() {
+				w.Write(contactsFileContents)
+				w.Close()
+
+				testExecutor.ErrorOnExecNum = 2 // Shouldn't hit this case, as it shouldn't be executed a second time
+				testExecutor.LocalError = errors.Errorf("exit status 2")
+
+				utils.EmailReport(testCluster)
+				Expect(testExecutor.NumExecutions).To(Equal(2))
+				Expect(testExecutor.LocalCommands).To(Equal([]string{expectedHomeCmd, expectedMessage}))
+				Expect(logfile).To(gbytes.Say("Sending email report to the following addresses: contact1@example.com contact2@example.org"))
+			})
+			It("sends an email to contacts in $GPHOME/bin/mail_contacts if only that file is found", func() {
+				w.Write(contactsFileContents)
+				w.Close()
+
+				testExecutor.ErrorOnExecNum = 1
+				testExecutor.LocalError = errors.Errorf("exit status 2")
+
+				utils.EmailReport(testCluster)
+				Expect(testExecutor.NumExecutions).To(Equal(3))
+				Expect(testExecutor.LocalCommands).To(Equal([]string{expectedHomeCmd, expectedGpHomeCmd, expectedMessage}))
+				Expect(logfile).To(gbytes.Say("Sending email report to the following addresses: contact1@example.com contact2@example.org"))
+			})
+			It("sends an email to contacts in $HOME/mail_contacts if a file exists in both $HOME and $GPHOME/bin", func() {
+				w.Write(contactsFileContents)
+				w.Close()
+
+				utils.EmailReport(testCluster)
+				Expect(testExecutor.NumExecutions).To(Equal(2))
+				Expect(testExecutor.LocalCommands).To(Equal([]string{expectedHomeCmd, expectedMessage}))
+				Expect(logfile).To(gbytes.Say("Sending email report to the following addresses: contact1@example.com contact2@example.org"))
+			})
 		})
 	})
 })

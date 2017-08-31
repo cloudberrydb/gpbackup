@@ -41,15 +41,30 @@ func (result TestResult) RowsAffected() (int64, error) {
 }
 
 type TestExecutor struct {
+	LocalError      error
+	LocalCommands   []string
 	ClusterError    map[int]error
 	ClusterCommands []map[int][]string
+	ErrorOnExecNum  int // Throw the specified error after this many executions of Execute[...]Command(); 0 means always return error
 	NumExecutions   int
+}
+
+func (executor *TestExecutor) ExecuteLocalCommand(commandStr string) error {
+	executor.NumExecutions++
+	executor.LocalCommands = append(executor.LocalCommands, commandStr)
+	if executor.ErrorOnExecNum == 0 || executor.NumExecutions == executor.ErrorOnExecNum {
+		return executor.LocalError
+	}
+	return nil
 }
 
 func (executor *TestExecutor) ExecuteClusterCommand(commandMap map[int][]string) map[int]error {
 	executor.NumExecutions++
 	executor.ClusterCommands = append(executor.ClusterCommands, commandMap)
-	return executor.ClusterError
+	if executor.ErrorOnExecNum == 0 || executor.NumExecutions == executor.ErrorOnExecNum {
+		return executor.ClusterError
+	}
+	return nil
 }
 
 /*

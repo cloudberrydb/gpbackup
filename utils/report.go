@@ -87,7 +87,7 @@ Database Size: %s`
 	}
 	sort.Strings(objectSlice)
 	for _, object := range objectSlice {
-		objectStr += fmt.Sprintf("%-25s\t%d\n", object, objectCounts[object])
+		objectStr += fmt.Sprintf("%-29s%d\n", object, objectCounts[object])
 
 	}
 	MustPrintf(reportFile, objectStr)
@@ -143,5 +143,48 @@ func EnsureBackupVersionCompatibility(backupVersion string, restoreVersion strin
 	if backupSemVer.GT(restoreSemVer) {
 		logger.Fatal(errors.Errorf("gprestore %s cannot restore a backup taken with gpbackup %s; please use gprestore %s or later.",
 			restoreVersion, backupVersion, backupVersion), "")
+	}
+}
+
+func ConstructEmailMessage(cluster Cluster, contactList string) string {
+	hostname, _ := System.Hostname()
+	emailHeader := fmt.Sprintf(`To: %s
+Subject: gpbackup %s on %s completed
+Content-Type: text/html
+Content-Disposition: inline
+<html>
+<body>
+<pre style=\"font: monospace\">
+`, contactList, cluster.Timestamp, hostname)
+	emailFooter := `
+</pre>
+</body>
+</html>`
+	fileContents := strings.Join(ReadLinesFromFile(cluster.GetReportFilePath()), "\n")
+	return emailHeader + fileContents + emailFooter
+}
+
+func EmailReport(cluster Cluster) {
+	contactsFilename := "mail_contacts"
+	gphomeFile := fmt.Sprintf("%s/bin/%s", System.Getenv("GPHOME"), contactsFilename)
+	homeFile := fmt.Sprintf("%s/%s", System.Getenv("HOME"), contactsFilename)
+	homeErr := cluster.ExecuteLocalCommand(fmt.Sprintf("test -f %s", homeFile))
+	if homeErr != nil {
+		gphomeErr := cluster.ExecuteLocalCommand(fmt.Sprintf("test -f %s", gphomeFile))
+		if gphomeErr != nil {
+			logger.Warn("Found neither %s nor %s", gphomeFile, homeFile)
+			logger.Warn("Unable to send backup email notification")
+			return
+		}
+		contactsFilename = gphomeFile
+	} else {
+		contactsFilename = homeFile
+	}
+	contactList := strings.Join(ReadLinesFromFile(contactsFilename), " ")
+	message := ConstructEmailMessage(cluster, contactList)
+	logger.Verbose("Sending email report to the following addresses: %s", contactList)
+	sendErr := cluster.ExecuteLocalCommand(fmt.Sprintf(`echo "%s" | sendmail -t`, message))
+	if sendErr != nil {
+		logger.Warn("Unable to send email report: %s", sendErr.Error())
 	}
 }
