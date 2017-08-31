@@ -60,6 +60,57 @@ PARTITION BY LIST (gender)
 			Expect(len(tables)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "RelationOid")
 		})
+		It("returns user table information for tables in includeTables", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLE foo(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE foo")
+			testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
+			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
+			testutils.AssertQueryRuns(connection, "CREATE TABLE testschema.foo(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE testschema.foo")
+
+			backup.SetIncludeTables([]string{"testschema.foo"})
+			tables := backup.GetAllUserTables(connection)
+
+			tableFoo := backup.BasicRelation("testschema", "foo")
+
+			Expect(len(tables)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "RelationOid")
+		})
+		It("returns user table information for tables not in excludeTables", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLE foo(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE foo")
+			testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
+			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
+			testutils.AssertQueryRuns(connection, "CREATE TABLE testschema.foo(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE testschema.foo")
+
+			backup.SetExcludeTables([]string{"testschema.foo"})
+			tables := backup.GetAllUserTables(connection)
+
+			tableFoo := backup.BasicRelation("public", "foo")
+
+			Expect(len(tables)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "RelationOid")
+		})
+		It("returns user table information for tables in includeSchema but not in excludeTables", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLE foo(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE foo")
+			testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
+			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
+			testutils.AssertQueryRuns(connection, "CREATE TABLE testschema.foo(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE testschema.foo")
+			testutils.AssertQueryRuns(connection, "CREATE TABLE testschema.bar(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE testschema.bar")
+
+			backup.SetIncludeSchemas([]string{"testschema"})
+			backup.SetExcludeTables([]string{"testschema.foo"})
+			tables := backup.GetAllUserTables(connection)
+
+			tableFoo := backup.BasicRelation("testschema", "bar")
+
+			Expect(len(tables)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "RelationOid")
+		})
 	})
 	Describe("GetColumnDefinitions", func() {
 		It("returns table attribute information for a heap table", func() {

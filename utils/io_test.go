@@ -1,7 +1,6 @@
 package utils_test
 
 import (
-	"database/sql/driver"
 	"errors"
 	"fmt"
 	"os"
@@ -11,7 +10,6 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
 
 var _ = Describe("utils/io tests", func() {
@@ -135,41 +133,19 @@ var _ = Describe("utils/io tests", func() {
 			utils.MustOpenFileForReading("filename")
 		})
 	})
-	Describe("GetSegmentConfiguration", func() {
-		header := []string{"contentid", "hostname", "datadir"}
-		localSegOne := []driver.Value{"0", "localhost", "/data/gpseg0"}
-		localSegTwo := []driver.Value{"1", "localhost", "/data/gpseg1"}
-		remoteSegOne := []driver.Value{"2", "remotehost", "/data/gpseg2"}
+	Describe("ReadLinesFromFile", func() {
+		fileContents := []byte(`public.foo
+public."bar%baz"`)
+		expectedContents := []string{`public.foo`, `public."bar%baz"`}
 
-		It("returns a configuration for a single-host, single-segment cluster", func() {
-			fakeResult := sqlmock.NewRows(header).AddRow(localSegOne...)
-			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
-			results := utils.GetSegmentConfiguration(connection)
-			Expect(len(results)).To(Equal(1))
-			Expect(results[0].DataDir).To(Equal("/data/gpseg0"))
-			Expect(results[0].Hostname).To(Equal("localhost"))
-		})
-		It("returns a configuration for a single-host, multi-segment cluster", func() {
-			fakeResult := sqlmock.NewRows(header).AddRow(localSegOne...).AddRow(localSegTwo...)
-			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
-			results := utils.GetSegmentConfiguration(connection)
-			Expect(len(results)).To(Equal(2))
-			Expect(results[0].DataDir).To(Equal("/data/gpseg0"))
-			Expect(results[0].Hostname).To(Equal("localhost"))
-			Expect(results[1].DataDir).To(Equal("/data/gpseg1"))
-			Expect(results[1].Hostname).To(Equal("localhost"))
-		})
-		It("returns a configuration for a multi-host, multi-segment cluster", func() {
-			fakeResult := sqlmock.NewRows(header).AddRow(localSegOne...).AddRow(localSegTwo...).AddRow(remoteSegOne...)
-			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
-			results := utils.GetSegmentConfiguration(connection)
-			Expect(len(results)).To(Equal(3))
-			Expect(results[0].DataDir).To(Equal("/data/gpseg0"))
-			Expect(results[0].Hostname).To(Equal("localhost"))
-			Expect(results[1].DataDir).To(Equal("/data/gpseg1"))
-			Expect(results[1].Hostname).To(Equal("localhost"))
-			Expect(results[2].DataDir).To(Equal("/data/gpseg2"))
-			Expect(results[2].Hostname).To(Equal("remotehost"))
+		It("reads a file containing multiple lines", func() {
+			r, w, _ := os.Pipe()
+			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) { return r, nil }
+			defer func() { utils.System.OpenFile = os.OpenFile }()
+			w.Write(fileContents)
+			w.Close()
+			contents := utils.ReadLinesFromFile("/tmp/table_file")
+			Expect(contents).To(Equal(expectedContents))
 		})
 	})
 	Describe("MustPrintf", func() {

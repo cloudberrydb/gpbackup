@@ -13,6 +13,13 @@ import (
 
 func GetAllUserTables(connection *utils.DBConn) []Relation {
 	// This query is adapted from the getTables() function in pg_dump.c.
+	filterClause := SchemaFilterClause("n")
+	if len(excludeTables) > 0 {
+		filterClause += fmt.Sprintf("\nAND quote_ident(n.nspname) || '.' || quote_ident(c.relname) NOT IN (%s)", utils.SliceToQuotedString(excludeTables))
+	}
+	if len(includeTables) > 0 {
+		filterClause += fmt.Sprintf("\nAND quote_ident(n.nspname) || '.' || quote_ident(c.relname) IN (%s)", utils.SliceToQuotedString(includeTables))
+	}
 	query := fmt.Sprintf(`
 SELECT
 	n.oid AS schemaoid,
@@ -35,7 +42,7 @@ LEFT
 JOIN pg_exttable e
 	ON p.parchildrelid = e.reloid
 WHERE e.reloid IS NULL)
-ORDER BY schemaname, relationname;`, SchemaFilterClause("n"))
+ORDER BY schemaname, relationname;`, filterClause)
 
 	results := make([]Relation, 0)
 

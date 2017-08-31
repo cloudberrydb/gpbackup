@@ -6,6 +6,7 @@ package utils
  */
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -168,6 +169,16 @@ func CreateDirectoryOnMaster(dirname string) {
 	} else if !(info.IsDir()) {
 		logger.Fatal(errors.Errorf("%s is a file, not a directory", dirname), "")
 	}
+}
+
+func ReadLinesFromFile(filename string) []string {
+	file := MustOpenFileForReading(filename)
+	contents := make([]string, 0)
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		contents = append(contents, scanner.Text())
+	}
+	return contents
 }
 
 type FileWithByteCount struct {

@@ -21,17 +21,21 @@ var (
 )
 
 var ( // Command-line flags
-	dataOnly       *bool
-	dbname         *string
-	metadataOnly   *bool
-	debug          *bool
-	backupDir      *string
-	backupGlobals  *bool
-	noCompress     *bool
-	printVersion   *bool
-	quiet          *bool
-	verbose        *bool
-	includeSchemas utils.ArrayFlags
+	dataOnly         *bool
+	dbname           *string
+	metadataOnly     *bool
+	debug            *bool
+	backupDir        *string
+	backupGlobals    *bool
+	noCompress       *bool
+	printVersion     *bool
+	quiet            *bool
+	verbose          *bool
+	includeSchemas   utils.ArrayFlags
+	excludeTableFile *string
+	excludeTables    utils.ArrayFlags
+	includeTableFile *string
+	includeTables    utils.ArrayFlags
 )
 
 // We define and initialize flags separately to avoid import conflicts in tests
@@ -46,6 +50,8 @@ func initializeFlags() {
 	quiet = flag.Bool("quiet", false, "Suppress non-warning, non-error log messages")
 	verbose = flag.Bool("verbose", false, "Print verbose log messages")
 	flag.Var(&includeSchemas, "include-schema", "Back up only the specified schema(s). --include-schema can be specified multiple times.")
+	excludeTableFile = flag.String("exclude-table-file", "", "A file containing a list of fully-qualified tables to be excluded from the backup")
+	includeTableFile = flag.String("include-table-file", "", "A file containing a list of fully-qualified tables to be included in the backup")
 }
 
 // This function handles setup that can be done before parsing flags.
@@ -70,6 +76,14 @@ func SetIncludeSchemas(schemas []string) {
 	includeSchemas = schemas
 }
 
+func SetExcludeTables(tables []string) {
+	excludeTables = tables
+}
+
+func SetIncludeTables(tables []string) {
+	includeTables = tables
+}
+
 func DoFlagValidation() {
 	if len(os.Args) == 1 {
 		flag.PrintDefaults()
@@ -89,6 +103,7 @@ func DoSetup() {
 	InitializeConnection()
 	InitializeBackupReport()
 
+	InitializeFilterLists()
 	validateSetup()
 
 	segConfig := utils.GetSegmentConfiguration(connection)
@@ -103,7 +118,9 @@ func DoSetup() {
  * initialization with any sort of side effects should go in DoInit or DoSetup.
  */
 func validateSetup() {
-	ValidateIncludeSchemas(connection)
+	ValidateFilterSchemas(connection, includeSchemas)
+	ValidateFilterTables(connection, excludeTables)
+	ValidateFilterTables(connection, includeTables)
 }
 
 func DoBackup() {

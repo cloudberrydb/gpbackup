@@ -51,6 +51,8 @@ var _ = BeforeSuite(func() {
 var _ = BeforeEach(func() {
 	buffer = bytes.NewBuffer([]byte(""))
 	backup.SetIncludeSchemas([]string{})
+	backup.SetExcludeTables([]string{})
+	backup.SetIncludeTables([]string{})
 })
 
 var _ = AfterSuite(func() {

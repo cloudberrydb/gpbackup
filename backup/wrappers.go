@@ -43,6 +43,15 @@ func InitializeBackupReport() {
 	backupReport.SetBackupTypeFromFlags(*dataOnly, *metadataOnly, includeSchemas)
 }
 
+func InitializeFilterLists() {
+	if *excludeTableFile != "" {
+		excludeTables = utils.ReadLinesFromFile(*excludeTableFile)
+	}
+	if *includeTableFile != "" {
+		includeTables = utils.ReadLinesFromFile(*includeTableFile)
+	}
+}
+
 /*
  * Metadata retrieval wrapper functions
  */

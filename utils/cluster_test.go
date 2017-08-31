@@ -1,9 +1,12 @@
 package utils_test
 
 import (
+	"database/sql/driver"
 	"fmt"
 	"os"
 	"os/user"
+
+	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
 
 	"github.com/greenplum-db/gpbackup/testutils"
 	"github.com/greenplum-db/gpbackup/utils"
@@ -34,6 +37,43 @@ var _ = Describe("utils/cluster tests", func() {
 		It("constructs an ssh command", func() {
 			cmd := utils.ConstructSSHCommand("some-host", "ls")
 			Expect(cmd).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@some-host", "ls"}))
+		})
+	})
+	Describe("GetSegmentConfiguration", func() {
+		header := []string{"contentid", "hostname", "datadir"}
+		localSegOne := []driver.Value{"0", "localhost", "/data/gpseg0"}
+		localSegTwo := []driver.Value{"1", "localhost", "/data/gpseg1"}
+		remoteSegOne := []driver.Value{"2", "remotehost", "/data/gpseg2"}
+
+		It("returns a configuration for a single-host, single-segment cluster", func() {
+			fakeResult := sqlmock.NewRows(header).AddRow(localSegOne...)
+			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
+			results := utils.GetSegmentConfiguration(connection)
+			Expect(len(results)).To(Equal(1))
+			Expect(results[0].DataDir).To(Equal("/data/gpseg0"))
+			Expect(results[0].Hostname).To(Equal("localhost"))
+		})
+		It("returns a configuration for a single-host, multi-segment cluster", func() {
+			fakeResult := sqlmock.NewRows(header).AddRow(localSegOne...).AddRow(localSegTwo...)
+			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
+			results := utils.GetSegmentConfiguration(connection)
+			Expect(len(results)).To(Equal(2))
+			Expect(results[0].DataDir).To(Equal("/data/gpseg0"))
+			Expect(results[0].Hostname).To(Equal("localhost"))
+			Expect(results[1].DataDir).To(Equal("/data/gpseg1"))
+			Expect(results[1].Hostname).To(Equal("localhost"))
+		})
+		It("returns a configuration for a multi-host, multi-segment cluster", func() {
+			fakeResult := sqlmock.NewRows(header).AddRow(localSegOne...).AddRow(localSegTwo...).AddRow(remoteSegOne...)
+			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
+			results := utils.GetSegmentConfiguration(connection)
+			Expect(len(results)).To(Equal(3))
+			Expect(results[0].DataDir).To(Equal("/data/gpseg0"))
+			Expect(results[0].Hostname).To(Equal("localhost"))
+			Expect(results[1].DataDir).To(Equal("/data/gpseg1"))
+			Expect(results[1].Hostname).To(Equal("localhost"))
+			Expect(results[2].DataDir).To(Equal("/data/gpseg2"))
+			Expect(results[2].Hostname).To(Equal("remotehost"))
 		})
 	})
 	Describe("GenerateSSHCommandMap", func() {

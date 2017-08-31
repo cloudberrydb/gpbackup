@@ -151,7 +151,7 @@ var (
 func SchemaFilterClause(namespace string) string {
 	includeSchemaFilterClauseStr := ""
 	if len(includeSchemas) > 0 {
-		includeSchemaFilterClauseStr = fmt.Sprintf("AND %s.nspname IN (%s)", namespace, utils.SliceToQuotedString(includeSchemas))
+		includeSchemaFilterClauseStr = fmt.Sprintf("\nAND %s.nspname IN (%s)", namespace, utils.SliceToQuotedString(includeSchemas))
 	}
 	return fmt.Sprintf(`%s.nspname NOT LIKE 'pg_temp_%%' AND %s.nspname NOT LIKE 'pg_toast%%' AND %s.nspname NOT IN ('gp_toolkit', 'information_schema', 'pg_aoseg', 'pg_bitmapindex', 'pg_catalog') %s`, namespace, namespace, namespace, includeSchemaFilterClauseStr)
 }
