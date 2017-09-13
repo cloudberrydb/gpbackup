@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	yaml "gopkg.in/yaml.v2"
 
@@ -257,6 +258,13 @@ func DoTeardown() {
 		reportFile := utils.MustOpenFileForWriting(reportFilename)
 		utils.WriteReportFile(reportFile, globalCluster.Timestamp, backupReport, objectCounts, errMsg)
 		utils.EmailReport(globalCluster)
+		// We sleep for 1 second to ensure multiple backups do not start within the same second.
+		time.Sleep(1000 * time.Millisecond)
+		timestampLockFile := fmt.Sprintf("/tmp/%s.lck", globalCluster.Timestamp)
+		err := os.Remove(timestampLockFile)
+		if err != nil {
+			logger.Warn("Failed to remove lock file %s.", timestampLockFile)
+		}
 	}
 
 	os.Exit(exitCode)

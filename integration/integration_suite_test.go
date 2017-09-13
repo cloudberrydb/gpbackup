@@ -2,7 +2,9 @@ package integration
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"os"
 	"testing"
 
 	"os/exec"
@@ -44,6 +46,10 @@ var _ = BeforeSuite(func() {
 	testutils.AssertQueryRuns(connection, "DROP PROTOCOL IF EXISTS gphdfs")
 	testutils.SetupTestLogger()
 	segConfig := utils.GetSegmentConfiguration(connection)
+	utils.System.IsNotExist = func(err error) bool { return true }
+	utils.System.Stat = func(name string) (os.FileInfo, error) {
+		return nil, errors.New("file does not exist")
+	}
 	cluster := utils.NewCluster(segConfig, "/tmp/test_filespace", "20170101010101")
 	setupTestFilespace(cluster)
 })
