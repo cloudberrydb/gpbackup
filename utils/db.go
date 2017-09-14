@@ -17,13 +17,14 @@ import (
 )
 
 type DBConn struct {
-	Conn   *sqlx.DB
-	Driver DBDriver
-	User   string
-	DBName string
-	Host   string
-	Port   int
-	Tx     *sqlx.Tx
+	Conn    *sqlx.DB
+	Driver  DBDriver
+	User    string
+	DBName  string
+	Host    string
+	Port    int
+	Tx      *sqlx.Tx
+	Version GPDBVersion
 }
 
 func NewDBConn(dbname string) *DBConn {
@@ -40,13 +41,14 @@ func NewDBConn(dbname string) *DBConn {
 	port, _ = strconv.Atoi(TryEnv("PGPORT", "5432"))
 
 	return &DBConn{
-		Conn:   nil,
-		Driver: GPDBDriver{},
-		User:   username,
-		DBName: dbname,
-		Host:   host,
-		Port:   port,
-		Tx:     nil,
+		Conn:    nil,
+		Driver:  GPDBDriver{},
+		User:    username,
+		DBName:  dbname,
+		Host:    host,
+		Port:    port,
+		Tx:      nil,
+		Version: GPDBVersion{},
 	}
 }
 
@@ -150,12 +152,6 @@ func (dbconn *DBConn) GetDBSize() string {
 	return size.DBSize
 }
 
-func (dbconn *DBConn) GetDatabaseVersion() string {
-	dbversion := struct{ Version string }{}
-	err := dbconn.Get(&dbversion, "SELECT version()")
-	CheckError(err)
-	version := dbversion.Version
-	versionStart := strings.Index(version, "(Greenplum Database ") + len("(Greenplum Database ")
-	versionEnd := strings.Index(version, ")")
-	return version[versionStart:versionEnd]
+func (dbconn *DBConn) SetDatabaseVersion() {
+	dbconn.Version.Initialize(dbconn)
 }

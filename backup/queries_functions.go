@@ -32,11 +32,31 @@ type Function struct {
 	DependsUpon       []string
 }
 
+/*
+ * The functions pg_get_function_arguments, pg_getfunction_identity_arguments,
+ * and pg_get_function_result were introduced in GPDB 5, so we can use those
+ * functions to retrieve arguments, identity arguments, and return values in
+ * 5 or later but in GPDB 4.3 we must query pg_proc directly and construct
+ * those values here.
+ */
 func GetFunctions(connection *utils.DBConn) []Function {
-	/*
-	 * This query is copied from the dumpFunc() function in pg_dump.c, modified
-	 * slightly to also retrieve the function's schema, name, and comment.
-	 */
+	if connection.Version.Before("5") {
+		functions := GetFunctions4(connection)
+		arguments := GetFunctionArgsAndIdentArgs(connection)
+		returns := GetFunctionReturnTypes(connection)
+		for i := range functions {
+			oid := functions[i].Oid
+			functions[i].Arguments = arguments[oid]
+			functions[i].IdentArgs = arguments[oid]
+			functions[i].ReturnsSet = returns[oid].ReturnsSet
+			functions[i].ResultType = returns[oid].ResultType
+		}
+		return functions
+	}
+	return GetFunctions5(connection)
+}
+
+func GetFunctions5(connection *utils.DBConn) []Function {
 	query := fmt.Sprintf(`
 SELECT
 	p.oid,
@@ -72,6 +92,134 @@ ORDER BY nspname, proname, identargs;`, SchemaFilterClause("n"))
 	return results
 }
 
+/*
+ * In addition to lacking the pg_get_function_* functions, GPDB 4.3 lacks
+ * several columns in pg_proc compared to GPDB 5, so we don't retrieve those.
+ */
+func GetFunctions4(connection *utils.DBConn) []Function {
+	query := fmt.Sprintf(`
+SELECT
+	p.oid,
+	nspname,
+	proname,
+	proretset,
+	coalesce(prosrc, '') AS functionbody,
+	CASE
+		WHEN probin = '-' THEN ''
+		ELSE probin
+		END AS binarypath,
+	provolatile,
+	proisstrict,
+	prosecdef,
+	(SELECT lanname FROM pg_catalog.pg_language WHERE oid = prolang) AS language
+FROM pg_proc p
+LEFT JOIN pg_namespace n
+	ON p.pronamespace = n.oid
+WHERE %s
+AND proisagg = 'f'
+ORDER BY nspname, proname;`, SchemaFilterClause("n"))
+
+	results := make([]Function, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
+}
+
+/*
+ * Functions do not have default argument values in GPDB 4.3, so there is no
+ * difference between a function's "arguments" and "identity arguments" and
+ * we can use the same map for both fields.
+ */
+func GetFunctionArgsAndIdentArgs(connection *utils.DBConn) map[uint32]string {
+	query := fmt.Sprintf(`
+SELECT
+    p.oid,
+	CASE
+        WHEN proallargtypes IS NOT NULL THEN format_type(unnest(proallargtypes), NULL)
+        ELSE format_type(unnest(proargtypes), NULL)
+        END AS type,
+    CASE
+        WHEN proargnames IS NOT NULL THEN unnest(proargnames)
+        ELSE ''
+        END AS name,
+    CASE
+        WHEN proargmodes IS NOT NULL THEN unnest(proargmodes)
+        ELSE ''
+        END AS mode
+FROM pg_proc p
+JOIN pg_namespace n
+ON p.pronamespace = n.oid
+WHERE %s`, SchemaFilterClause("n"))
+
+	results := make([]struct {
+		Oid  uint32
+		Type string
+		Name string
+		Mode string
+	}, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+
+	argMap := make(map[uint32]string, 0)
+	lastOid := uint32(0)
+	arguments := ""
+	for _, funcArgs := range results {
+		modeStr := ""
+		switch funcArgs.Mode {
+		case "b":
+			modeStr = "INOUT "
+		case "i":
+			modeStr = "IN "
+		case "o":
+			modeStr = "OUT "
+		case "t":
+			modeStr = "TABLE "
+		case "v":
+			modeStr = "VARIADIC "
+		}
+		if funcArgs.Name != "" {
+			funcArgs.Name += " "
+		}
+		argStr := fmt.Sprintf("%s%s%s", modeStr, funcArgs.Name, funcArgs.Type)
+		if funcArgs.Oid == lastOid {
+			arguments = fmt.Sprintf("%s, %s", arguments, argStr)
+		} else {
+			if lastOid != 0 {
+				argMap[lastOid] = arguments
+			}
+			arguments = argStr
+		}
+		lastOid = funcArgs.Oid
+	}
+	argMap[lastOid] = arguments
+	return argMap
+}
+
+func GetFunctionReturnTypes(connection *utils.DBConn) map[uint32]Function {
+	query := fmt.Sprintf(`
+SELECT
+    p.oid,
+	proretset,
+	CASE
+		WHEN proretset = 't' THEN 'SETOF ' || format_type(prorettype, NULL)
+		ELSE format_type(prorettype, NULL)
+		END AS resulttype
+FROM pg_proc p
+JOIN pg_namespace n
+ON p.pronamespace = n.oid
+WHERE %s`, SchemaFilterClause("n"))
+
+	results := make([]Function, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+
+	returnMap := make(map[uint32]Function, 0)
+	for _, result := range results {
+		returnMap[result.Oid] = result
+	}
+	return returnMap
+}
+
 type Aggregate struct {
 	Oid                 uint32
 	SchemaName          string `db:"nspname"`
@@ -88,13 +236,20 @@ type Aggregate struct {
 }
 
 func GetAggregates(connection *utils.DBConn) []Aggregate {
+	argStr := ""
+	if connection.Version.Before("5") {
+		argStr = `'' AS arguments,
+	'' AS identargs,`
+	} else {
+		argStr = `pg_catalog.pg_get_function_arguments(p.oid) AS arguments,
+	pg_catalog.pg_get_function_identity_arguments(p.oid) AS identargs,`
+	}
 	query := fmt.Sprintf(`
 SELECT
 	p.oid,
 	n.nspname,
 	p.proname,
-	pg_catalog.pg_get_function_arguments(p.oid) AS arguments,
-	pg_catalog.pg_get_function_identity_arguments(p.oid) AS identargs,
+	%s
 	a.aggtransfn::regproc::oid,
 	a.aggprelimfn::regproc::oid,
 	a.aggfinalfn::regproc::oid,
@@ -106,12 +261,20 @@ FROM pg_aggregate a
 LEFT JOIN pg_proc p ON a.aggfnoid = p.oid
 LEFT JOIN pg_type t ON a.aggtranstype = t.oid
 LEFT JOIN pg_namespace n ON p.pronamespace = n.oid
-WHERE %s;`, SchemaFilterClause("n"))
+WHERE %s;`, argStr, SchemaFilterClause("n"))
 
-	results := make([]Aggregate, 0)
-	err := connection.Select(&results, query)
+	aggregates := make([]Aggregate, 0)
+	err := connection.Select(&aggregates, query)
 	utils.CheckError(err)
-	return results
+	if connection.Version.Before("5") {
+		arguments := GetFunctionArgsAndIdentArgs(connection)
+		for i := range aggregates {
+			oid := aggregates[i].Oid
+			aggregates[i].Arguments = arguments[oid]
+			aggregates[i].IdentArgs = arguments[oid]
+		}
+	}
+	return aggregates
 }
 
 type FunctionInfo struct {
@@ -121,6 +284,14 @@ type FunctionInfo struct {
 }
 
 func GetFunctionOidToInfoMap(connection *utils.DBConn) map[uint32]FunctionInfo {
+	version4query := `
+SELECT
+	p.oid,
+	n.nspname,
+	p.proname
+FROM pg_proc p
+LEFT JOIN pg_namespace n ON p.pronamespace = n.oid;
+`
 	query := `
 SELECT
 	p.oid,
@@ -138,7 +309,16 @@ LEFT JOIN pg_namespace n ON p.pronamespace = n.oid;
 		Arguments      string
 	}, 0)
 	funcMap := make(map[uint32]FunctionInfo, 0)
-	err := connection.Select(&results, query)
+	var err error
+	if connection.Version.Before("5") {
+		err = connection.Select(&results, version4query)
+		arguments := GetFunctionArgsAndIdentArgs(connection)
+		for i := range results {
+			results[i].Arguments = arguments[results[i].Oid]
+		}
+	} else {
+		err = connection.Select(&results, query)
+	}
 	utils.CheckError(err)
 	for _, function := range results {
 		fqn := MakeFQN(function.FunctionSchema, function.FunctionName)
@@ -157,6 +337,7 @@ type Cast struct {
 	Oid            uint32
 	SourceTypeFQN  string
 	TargetTypeFQN  string
+	FunctionOid    uint32 // Used with GPDB 4.3 to map function arguments
 	FunctionSchema string
 	FunctionName   string
 	FunctionArgs   string
@@ -167,6 +348,13 @@ func GetCasts(connection *utils.DBConn) []Cast {
 	/* This query retrieves all casts where either the source type, the target
 	 * type, or the cast function is user-defined.
 	 */
+	argStr := ""
+	if connection.Version.Before("5") {
+		argStr = `'' AS functionargs,
+	coalesce(p.oid, 0::oid) AS functionoid,`
+	} else {
+		argStr = `coalesce(pg_get_function_arguments(p.oid), '') AS functionargs,`
+	}
 	query := fmt.Sprintf(`
 SELECT
 	c.oid,
@@ -174,7 +362,7 @@ SELECT
 	quote_ident(tn.nspname) || '.' || quote_ident(tt.typname) AS targettypefqn,
 	coalesce(n.nspname, '') AS functionschema,
 	coalesce(p.proname, '') AS functionname,
-	coalesce(pg_get_function_arguments(p.oid), '') AS functionargs,
+	%s
 	c.castcontext
 FROM pg_cast c
 JOIN pg_type st ON c.castsource = st.oid
@@ -186,12 +374,19 @@ LEFT JOIN pg_description d ON c.oid = d.objoid
 LEFT JOIN pg_namespace n ON p.pronamespace = n.oid
 WHERE (%s) OR (%s) OR (%s)
 ORDER BY 1, 2;
-`, SchemaFilterClause("sn"), SchemaFilterClause("tn"), SchemaFilterClause("n"))
+`, argStr, SchemaFilterClause("sn"), SchemaFilterClause("tn"), SchemaFilterClause("n"))
 
-	results := make([]Cast, 0)
-	err := connection.Select(&results, query)
+	casts := make([]Cast, 0)
+	err := connection.Select(&casts, query)
 	utils.CheckError(err)
-	return results
+	if connection.Version.Before("5") {
+		arguments := GetFunctionArgsAndIdentArgs(connection)
+		for i := range casts {
+			oid := casts[i].FunctionOid
+			casts[i].FunctionArgs = arguments[oid]
+		}
+	}
+	return casts
 }
 
 type ProceduralLanguage struct {
@@ -207,6 +402,19 @@ type ProceduralLanguage struct {
 
 func GetProceduralLanguages(connection *utils.DBConn) []ProceduralLanguage {
 	results := make([]ProceduralLanguage, 0)
+	version4query := `
+SELECT
+	oid,
+	l.lanname,
+	'' as owner,
+	l.lanispl,
+	l.lanpltrusted,
+	l.lanplcallfoid::regprocedure::oid,
+	0 AS laninline,
+	l.lanvalidator::regprocedure::oid
+FROM pg_language l
+WHERE l.lanispl='t';
+`
 	query := `
 SELECT
 	oid,
@@ -220,7 +428,12 @@ SELECT
 FROM pg_language l
 WHERE l.lanispl='t';
 `
-	err := connection.Select(&results, query)
+	var err error
+	if connection.Version.Before("5") {
+		err = connection.Select(&results, version4query)
+	} else {
+		err = connection.Select(&results, query)
+	}
 	utils.CheckError(err)
 	return results
 }
@@ -266,6 +479,12 @@ ORDER BY n.nspname, c.conname;`, SchemaFilterClause("n"))
  * functions and types.
  */
 func ConstructFunctionDependencies(connection *utils.DBConn, functions []Function) []Function {
+	modStr := ""
+	if connection.Version.AtLeast("5") {
+		modStr = `
+	AND t.typmodin != p.oid
+	AND t.typmodout != p.oid`
+	}
 	query := fmt.Sprintf(`
 SELECT
 p.oid,
@@ -279,9 +498,7 @@ AND d.refclassid = 'pg_type'::regclass
 AND t.typinput != p.oid
 AND t.typoutput != p.oid
 AND t.typreceive != p.oid
-AND t.typsend != p.oid
-AND t.typmodin != p.oid
-AND t.typmodout != p.oid;`, SchemaFilterClause("n"))
+AND t.typsend != p.oid%s;`, SchemaFilterClause("n"), modStr)
 
 	results := make([]Dependency, 0)
 	dependencyMap := make(map[uint32][]string, 0)

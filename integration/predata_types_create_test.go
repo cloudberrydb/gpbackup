@@ -31,8 +31,8 @@ var _ = Describe("backup integration create statement tests", func() {
 		BeforeEach(func() {
 			shellType = backup.Type{Type: "p", TypeSchema: "public", TypeName: "shell_type"}
 			baseType = backup.Type{
-				Type: "b", TypeSchema: "public", TypeName: "base_type", Input: "base_fn_in", Output: "base_fn_out", Receive: "",
-				Send: "", ModIn: "", ModOut: "", InternalLength: 4, IsPassedByValue: true, Alignment: "i", Storage: "p",
+				Type: "b", TypeSchema: "public", TypeName: "base_type", Input: "base_fn_in", Output: "base_fn_out", Receive: "-",
+				Send: "-", ModIn: "-", ModOut: "-", InternalLength: 4, IsPassedByValue: true, Alignment: "i", Storage: "p",
 				DefaultVal: "default", Element: "text", Delimiter: ";",
 			}
 			atts := []backup.CompositeTypeAttribute{{AttName: "att1", AttType: "text"}, {AttName: "att2", AttType: "integer"}}
@@ -61,7 +61,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			domainType.Send = "numeric_send"
 			domainType.DefaultVal = "5"
 			domainType.NotNull = true
-			types = []backup.Type{shellType, baseType, compositeType, enumType, domainType}
+			types = []backup.Type{shellType, baseType, compositeType, domainType}
 			typeMetadata = backup.ObjectMetadata{}
 		})
 
@@ -72,7 +72,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE shell_type")
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE base_type")
 
-			resultTypes := backup.GetTypes(connection)
+			resultTypes := backup.GetNonEnumTypes(connection)
 
 			Expect(len(resultTypes)).To(Equal(2))
 			Expect(resultTypes[0].TypeName).To(Equal("base_type"))
@@ -85,7 +85,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE composite_type")
 
-			resultTypes := backup.GetTypes(connection)
+			resultTypes := backup.GetNonEnumTypes(connection)
 
 			Expect(len(resultTypes)).To(Equal(2))
 			testutils.ExpectStructsToMatchIncluding(&compositeTypeAtt1, &resultTypes[0], "Type", "TypeSchema", "TypeName", "Comment", "Owner", "AttName", "AttType")
@@ -93,15 +93,17 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 
 		It("creates enum types", func() {
-			backup.PrintCreateEnumTypeStatements(backupfile, &toc, types, typeMetadataMap)
+			testutils.SkipIf4(connection)
+			enums := []backup.Type{enumType}
+			backup.PrintCreateEnumTypeStatements(backupfile, &toc, enums, typeMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE enum_type")
 
-			resultTypes := backup.GetTypes(connection)
+			resultTypes := backup.GetEnumTypes(connection)
 
 			Expect(len(resultTypes)).To(Equal(1))
-			testutils.ExpectStructsToMatchIncluding(&enumType, &resultTypes[0], "Type", "TypeSchema", "TypeName", "Comment", "Owner", "EnumLabels")
+			testutils.ExpectStructsToMatchIncluding(&resultTypes[0], &enumType, "Type", "TypeSchema", "TypeName", "Comment", "Owner", "EnumLabels")
 		})
 
 		It("creates base types", func() {
@@ -115,7 +117,7 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			resultTypes := backup.GetTypes(connection)
+			resultTypes := backup.GetNonEnumTypes(connection)
 
 			Expect(len(resultTypes)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&baseType, &resultTypes[0], "Oid")
@@ -127,7 +129,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP TYPE domain_type")
 
-			resultTypes := backup.GetTypes(connection)
+			resultTypes := backup.GetNonEnumTypes(connection)
 
 			Expect(len(resultTypes)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&domainType, &resultTypes[0], "Oid")

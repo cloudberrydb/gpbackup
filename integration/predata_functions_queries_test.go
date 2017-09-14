@@ -9,7 +9,10 @@ import (
 )
 
 var _ = Describe("backup integration tests", func() {
-	Describe("GetFunctions", func() {
+	Describe("GetFunctions5", func() {
+		BeforeEach(func() {
+			testutils.SkipIf4(connection)
+		})
 		It("returns a slice of functions", func() {
 			testutils.AssertQueryRuns(connection, `CREATE FUNCTION add(integer, integer) RETURNS integer
 AS 'SELECT $1 + $2'
@@ -30,7 +33,7 @@ MODIFIES SQL DATA
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION append(integer, integer)")
 			testutils.AssertQueryRuns(connection, "COMMENT ON FUNCTION append(integer, integer) IS 'this is a function comment'")
 
-			results := backup.GetFunctions(connection)
+			results := backup.GetFunctions5(connection)
 
 			addFunction := backup.Function{
 				SchemaName: "public", FunctionName: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
@@ -65,7 +68,65 @@ LANGUAGE SQL`)
 				Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 0, DataAccess: "c",
 				Language: "sql"}
 			backup.SetIncludeSchemas([]string{"testschema"})
-			results := backup.GetFunctions(connection)
+			results := backup.GetFunctions5(connection)
+
+			Expect(len(results)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&results[0], &addFunction, "Oid")
+		})
+	})
+	Describe("GetFunctions4", func() {
+		BeforeEach(func() {
+			testutils.SkipIfNot4(connection)
+		})
+		It("returns a slice of functions", func() {
+			testutils.AssertQueryRuns(connection, `CREATE FUNCTION add(numeric, integer) RETURNS numeric
+AS 'SELECT $1 + $2'
+LANGUAGE SQL`)
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION add(numeric, integer)")
+			testutils.AssertQueryRuns(connection, `
+CREATE FUNCTION append(float, integer) RETURNS SETOF record
+AS 'SELECT ($1, $2)'
+LANGUAGE SQL
+SECURITY DEFINER
+STRICT
+STABLE
+`)
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION append(float, integer)")
+			testutils.AssertQueryRuns(connection, "COMMENT ON FUNCTION append(float, integer) IS 'this is a function comment'")
+
+			results := backup.GetFunctions4(connection)
+
+			addFunction := backup.Function{
+				SchemaName: "public", FunctionName: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
+				BinaryPath: "", Arguments: "", IdentArgs: "", ResultType: "",
+				Volatility: "v", IsStrict: false, IsSecurityDefiner: false, NumRows: 0, Language: "sql"}
+			appendFunction := backup.Function{
+				SchemaName: "public", FunctionName: "append", ReturnsSet: true, FunctionBody: "SELECT ($1, $2)",
+				BinaryPath: "", Arguments: "", IdentArgs: "", ResultType: "",
+				Volatility: "s", IsStrict: true, IsSecurityDefiner: true, Language: "sql"}
+
+			Expect(len(results)).To(Equal(2))
+			testutils.ExpectStructsToMatchExcluding(&results[0], &addFunction, "Oid")
+			testutils.ExpectStructsToMatchExcluding(&results[1], &appendFunction, "Oid")
+		})
+		It("returns a slice of functions in a specific schema", func() {
+			testutils.AssertQueryRuns(connection, `CREATE FUNCTION add(numeric, integer) RETURNS numeric
+AS 'SELECT $1 + $2'
+LANGUAGE SQL`)
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION add(numeric, integer)")
+			testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
+			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
+			testutils.AssertQueryRuns(connection, `CREATE FUNCTION testschema.add(float, integer) RETURNS float
+AS 'SELECT $1 + $2'
+LANGUAGE SQL`)
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION testschema.add(float, integer)")
+
+			addFunction := backup.Function{
+				SchemaName: "testschema", FunctionName: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
+				BinaryPath: "", Arguments: "", IdentArgs: "", ResultType: "",
+				Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Language: "sql"}
+			backup.SetIncludeSchemas([]string{"testschema"})
+			results := backup.GetFunctions4(connection)
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&results[0], &addFunction, "Oid")
@@ -192,10 +253,25 @@ LANGUAGE SQL`)
 		})
 	})
 	Describe("GetCasts", func() {
-		It("returns a slice for a basic cast with a function", func() {
+		It("returns a slice for a basic cast with a function in 4.3", func() {
+			testutils.SkipIfNot4(connection)
+			testutils.AssertQueryRuns(connection, "CREATE FUNCTION casttotext(bool) RETURNS text STRICT IMMUTABLE LANGUAGE PLPGSQL AS $$ BEGIN IF $1 IS TRUE THEN RETURN 'true'; ELSE RETURN 'false'; END IF; END; $$;")
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION casttotext(bool)")
+			testutils.AssertQueryRuns(connection, "CREATE CAST (bool AS text) WITH FUNCTION casttotext(bool) AS ASSIGNMENT")
+			defer testutils.AssertQueryRuns(connection, "DROP CAST (bool AS text)")
+
+			results := backup.GetCasts(connection)
+
+			castDef := backup.Cast{Oid: 0, SourceTypeFQN: "pg_catalog.bool", TargetTypeFQN: "pg_catalog.text", FunctionSchema: "public", FunctionName: "casttotext", FunctionArgs: "boolean", CastContext: "a"}
+
+			Expect(len(results)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&castDef, &results[0], "Oid", "FunctionOid")
+		})
+		It("returns a slice for a basic cast with a function in 5", func() {
+			testutils.SkipIf4(connection)
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION casttoint(text) RETURNS integer STRICT IMMUTABLE LANGUAGE SQL AS 'SELECT cast($1 as integer);'")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION casttoint(text)")
-			testutils.AssertQueryRuns(connection, "CREATE CAST (text AS int4) WITH FUNCTION casttoint(text) AS ASSIGNMENT")
+			testutils.AssertQueryRuns(connection, "CREATE CAST (text AS integer) WITH FUNCTION casttoint(text) AS ASSIGNMENT")
 			defer testutils.AssertQueryRuns(connection, "DROP CAST (text AS int4)")
 
 			results := backup.GetCasts(connection)
@@ -216,20 +292,6 @@ LANGUAGE SQL`)
 			results := backup.GetCasts(connection)
 
 			castDef := backup.Cast{Oid: 0, SourceTypeFQN: "pg_catalog.text", TargetTypeFQN: "public.casttesttype", FunctionSchema: "", FunctionName: "", FunctionArgs: "", CastContext: "i"}
-
-			Expect(len(results)).To(Equal(1))
-			testutils.ExpectStructsToMatchExcluding(&castDef, &results[0], "Oid")
-		})
-		It("returns a slice for a basic cast with comment", func() {
-			testutils.AssertQueryRuns(connection, "CREATE FUNCTION casttoint(text) RETURNS integer STRICT IMMUTABLE LANGUAGE SQL AS 'SELECT cast($1 as integer);'")
-			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION casttoint(text)")
-			testutils.AssertQueryRuns(connection, "CREATE CAST (text AS integer) WITH FUNCTION casttoint(text) AS ASSIGNMENT")
-			defer testutils.AssertQueryRuns(connection, "DROP CAST (text AS int4)")
-			testutils.AssertQueryRuns(connection, "COMMENT ON CAST (text AS int4) IS 'this is a cast comment'")
-
-			results := backup.GetCasts(connection)
-
-			castDef := backup.Cast{Oid: 1, SourceTypeFQN: "pg_catalog.text", TargetTypeFQN: "pg_catalog.int4", FunctionSchema: "public", FunctionName: "casttoint", FunctionArgs: "text", CastContext: "a"}
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&castDef, &results[0], "Oid")
@@ -260,15 +322,21 @@ LANGUAGE SQL`)
 			defer testutils.AssertQueryRuns(connection, "DROP LANGUAGE plperl")
 
 			pgsqlHandlerOid := testutils.OidFromObjectName(connection, "pg_catalog", "plpgsql_call_handler", backup.TYPE_FUNCTION)
-			pgsqlInlineOid := testutils.OidFromObjectName(connection, "pg_catalog", "plpgsql_inline_handler", backup.TYPE_FUNCTION)
 			pgsqlValidatorOid := testutils.OidFromObjectName(connection, "pg_catalog", "plpgsql_validator", backup.TYPE_FUNCTION)
 
 			perlHandlerOid := testutils.OidFromObjectName(connection, "pg_catalog", "plperl_call_handler", backup.TYPE_FUNCTION)
-			perlInlineOid := testutils.OidFromObjectName(connection, "pg_catalog", "plperl_inline_handler", backup.TYPE_FUNCTION)
 			perlValidatorOid := testutils.OidFromObjectName(connection, "pg_catalog", "plperl_validator", backup.TYPE_FUNCTION)
 
-			expectedPlpgsqlInfo := backup.ProceduralLanguage{Oid: 0, Name: "plpgsql", Owner: "testrole", IsPl: true, PlTrusted: true, Handler: pgsqlHandlerOid, Inline: pgsqlInlineOid, Validator: pgsqlValidatorOid}
-			expectedPlperlInfo := backup.ProceduralLanguage{Oid: 1, Name: "plperl", Owner: "testrole", IsPl: true, PlTrusted: true, Handler: perlHandlerOid, Inline: perlInlineOid, Validator: perlValidatorOid}
+			expectedPlpgsqlInfo := backup.ProceduralLanguage{Oid: 0, Name: "plpgsql", Owner: "testrole", IsPl: true, PlTrusted: true, Handler: pgsqlHandlerOid, Inline: 0, Validator: pgsqlValidatorOid}
+			if connection.Version.AtLeast("5") {
+				pgsqlInlineOid := testutils.OidFromObjectName(connection, "pg_catalog", "plpgsql_inline_handler", backup.TYPE_FUNCTION)
+				expectedPlpgsqlInfo.Inline = pgsqlInlineOid
+			}
+			expectedPlperlInfo := backup.ProceduralLanguage{Oid: 1, Name: "plperl", Owner: "testrole", IsPl: true, PlTrusted: true, Handler: perlHandlerOid, Inline: 0, Validator: perlValidatorOid}
+			if connection.Version.AtLeast("5") {
+				perlInlineOid := testutils.OidFromObjectName(connection, "pg_catalog", "plperl_inline_handler", backup.TYPE_FUNCTION)
+				expectedPlperlInfo.Inline = perlInlineOid
+			}
 
 			resultProcLangs := backup.GetProceduralLanguages(connection)
 

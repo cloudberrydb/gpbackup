@@ -43,7 +43,7 @@ type Type struct {
 	DependsUpon     []string
 }
 
-func GetTypes(connection *utils.DBConn) []Type {
+func GetNonEnumTypes(connection *utils.DBConn) []Type {
 	/*
 	 * To get all user-defined types, this query needs to filter out automatically-
 	 * defined types created for tables (e.g. if the user creates table public.foo,
@@ -52,10 +52,12 @@ func GetTypes(connection *utils.DBConn) []Type {
 	 * compares schemaname.typename from pg_type to schemaname.tablename and
 	 * schemaname._tablename from pg_tables and schemaname._typename from pg_type
 	 * to filter those out.
-	 *
-	 * Several fields use "-" in place of NULL, so we filter those to empty strings
-	 * for ease of processing later.
 	 */
+	typModClause := ""
+	if connection.Version.AtLeast("5") {
+		typModClause = `t.typmodin AS modin,
+	t.typmodout AS modout,`
+	}
 	query := fmt.Sprintf(`
 SELECT
 	t.oid,
@@ -66,10 +68,9 @@ SELECT
 	coalesce(pg_catalog.format_type(a.atttypid, NULL), '') AS atttype,
 	t.typinput,
 	t.typoutput,
-	CASE WHEN t.typreceive = 0 THEN '' ELSE t.typreceive::regproc::text END AS receive,
-	CASE WHEN t.typsend = 0 THEN '' ELSE t.typsend::regproc::text END AS send,
-	CASE WHEN t.typmodin = 0 THEN '' ELSE t.typmodin::regproc::text END AS modin,
-	CASE WHEN t.typmodout = 0 THEN '' ELSE t.typmodout::regproc::text END AS modout,
+	t.typreceive AS receive,
+	t.typsend AS send,
+	%s
 	t.typlen,
 	t.typbyval,
 	CASE WHEN t.typalign = '-' THEN '' ELSE t.typalign END AS alignment,
@@ -77,20 +78,40 @@ SELECT
 	coalesce(t.typdefault, '') AS defaultval,
 	CASE WHEN t.typelem != 0::regproc THEN pg_catalog.format_type(t.typelem, NULL) ELSE '' END AS element,
 	t.typdelim,
-	coalesce(enumlabels, '') AS enumlabels,
 	coalesce(b.typname, '') AS basetype,
 	t.typnotnull
 FROM pg_type t
 LEFT JOIN pg_attribute a ON t.typrelid = a.attrelid
 LEFT JOIN pg_namespace n ON t.typnamespace = n.oid
+LEFT JOIN pg_type b ON t.typbasetype = b.oid
+WHERE %s
+AND t.typtype != 'e'
+AND NOT (t.typname[0] = '_' AND t.typelem != 0)
+AND (n.nspname || '.' || t.typname) NOT IN (SELECT nspname || '.' || relname FROM pg_namespace n join pg_class c ON n.oid = c.relnamespace WHERE c.relkind = 'r' OR c.relkind = 'S' OR c.relkind = 'v')
+ORDER BY n.nspname, t.typname, a.attname;`, typModClause, SchemaFilterClause("n"))
+
+	results := make([]Type, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
+}
+
+func GetEnumTypes(connection *utils.DBConn) []Type {
+	query := fmt.Sprintf(`
+SELECT
+	t.oid,
+	n.nspname,
+	t.typname,
+	t.typtype,
+	enumlabels
+FROM pg_type t
+LEFT JOIN pg_namespace n ON t.typnamespace = n.oid
 LEFT JOIN (
 	  SELECT enumtypid,string_agg(quote_literal(enumlabel), E',\n\t') AS enumlabels FROM pg_enum GROUP BY enumtypid
 	) e ON t.oid = e.enumtypid
-LEFT JOIN pg_type b ON t.typbasetype = b.oid
 WHERE %s
-AND NOT (t.typname[0] = '_' AND t.typelem != 0)
-AND (n.nspname || '.' || t.typname) NOT IN (SELECT nspname || '.' || relname FROM pg_namespace n join pg_class c ON n.oid = c.relnamespace WHERE c.relkind = 'r' OR c.relkind = 'S' OR c.relkind = 'v')
-ORDER BY n.nspname, t.typname, a.attname;`, SchemaFilterClause("n"))
+AND t.typtype = 'e'
+ORDER BY n.nspname, t.typname;`, SchemaFilterClause("n"))
 
 	results := make([]Type, 0)
 	err := connection.Select(&results, query)

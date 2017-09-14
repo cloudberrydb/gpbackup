@@ -51,6 +51,27 @@ FORMAT 'TEXT'`)
 			testutils.AssertQueryRuns(connection, `CREATE READABLE EXTERNAL TABLE ext_table(i int)
 LOCATION ('file://tmp/myfile.txt')
 FORMAT 'TEXT'
+LOG ERRORS
+SEGMENT REJECT LIMIT 10 PERCENT
+`)
+			defer testutils.AssertQueryRuns(connection, "DROP EXTERNAL TABLE ext_table")
+			oid := testutils.OidFromObjectName(connection, "public", "ext_table", backup.TYPE_RELATION)
+
+			results := backup.GetExternalTableDefinitions(connection)
+			result := results[oid]
+
+			extTable := backup.ExternalTableDefinition{Oid: 0, Type: 0, Protocol: 0, Location: "file://tmp/myfile.txt",
+				ExecLocation: "ALL_SEGMENTS", FormatType: "t", FormatOpts: "delimiter '	' null '\\N' escape '\\'",
+				Options: "", Command: "", RejectLimit: 10, RejectLimitType: "p", ErrTable: "ext_table", Encoding: "UTF8",
+				Writable: false, URIs: []string{"file://tmp/myfile.txt"}}
+
+			testutils.ExpectStructsToMatchExcluding(&extTable, &result, "Oid")
+		})
+		It("returns a slice for a complex external table definition with options", func() {
+			testutils.SkipIf4(connection)
+			testutils.AssertQueryRuns(connection, `CREATE READABLE EXTERNAL TABLE ext_table(i int)
+LOCATION ('file://tmp/myfile.txt')
+FORMAT 'TEXT'
 OPTIONS (foo 'bar')
 LOG ERRORS
 SEGMENT REJECT LIMIT 10 PERCENT

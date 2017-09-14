@@ -427,6 +427,7 @@ LANGUAGE SQL`)
 				testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 			})
 			It("returns a slice of default metadata for an operator family", func() {
+				testutils.SkipIf4(connection)
 				testutils.AssertQueryRuns(connection, "CREATE OPERATOR FAMILY testfam USING hash")
 				defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testfam USING hash")
 
@@ -440,9 +441,12 @@ LANGUAGE SQL`)
 				testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 			})
 			It("returns a slice of default metadata for an operator class", func() {
-				testutils.AssertQueryRuns(connection, "CREATE OPERATOR CLASS testclass FOR TYPE uuid USING hash AS STORAGE uuid")
-				defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testclass USING hash CASCADE")
-
+				testutils.AssertQueryRuns(connection, "CREATE OPERATOR CLASS testclass FOR TYPE int USING hash AS STORAGE int")
+				if connection.Version.Before("5") {
+					defer testutils.AssertQueryRuns(connection, "DROP OPERATOR CLASS testclass USING hash")
+				} else {
+					defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testclass USING hash")
+				}
 				testutils.AssertQueryRuns(connection, "COMMENT ON OPERATOR CLASS testclass USING hash IS 'This is an operator class comment.'")
 
 				resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_OPERATORCLASS)
@@ -453,6 +457,7 @@ LANGUAGE SQL`)
 				testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 			})
 			It("returns a slice of default metadata for a text search dictionary", func() {
+				testutils.SkipIf4(connection)
 				testutils.AssertQueryRuns(connection, "CREATE TEXT SEARCH DICTIONARY testdictionary(TEMPLATE = snowball, LANGUAGE = 'russian', STOPWORDS = 'russian');")
 				defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH DICTIONARY testdictionary")
 				testutils.AssertQueryRuns(connection, "COMMENT ON TEXT SEARCH DICTIONARY testdictionary IS 'This is a text search dictionary comment.'")
@@ -467,6 +472,7 @@ LANGUAGE SQL`)
 				testutils.ExpectStructsToMatch(&dictionaryMetadata, &resultMetadata)
 			})
 			It("returns a slice of default metadata for a text search configuration", func() {
+				testutils.SkipIf4(connection)
 				resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_TSCONFIGURATION)
 				configurationMetadataMap := testutils.DefaultMetadataMap("TEXT SEARCH CONFIGURATION", false, true, true)
 				configurationMetadata := configurationMetadataMap[1]
@@ -608,8 +614,13 @@ LANGUAGE SQL`)
 				oid := testutils.OidFromObjectName(connection, "testschema", "testtype", backup.TYPE_TYPE)
 				expectedMetadata := testutils.DefaultMetadataMap("TYPE", false, true, true)[1]
 				resultMetadata := resultMetadataMap[oid]
-				// Composite types generate 2 entries in pg_type
-				Expect(len(resultMetadataMap)).To(Equal(2))
+				if connection.Version.Before("5") {
+					// In 4.3, creating testtype does not generate a "_testtype" entry in pg_type
+					Expect(len(resultMetadataMap)).To(Equal(1))
+				} else {
+					// In 5, creating testtype generates 2 entries in pg_type, "testtype" and "_testtype"
+					Expect(len(resultMetadataMap)).To(Equal(2))
+				}
 				testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 			})
 			It("returns a slice of default metadata for an operator in a specific schema", func() {
@@ -631,6 +642,7 @@ LANGUAGE SQL`)
 				testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 			})
 			It("returns a slice of default metadata for an operator family in a specific schema", func() {
+				testutils.SkipIf4(connection)
 				testutils.AssertQueryRuns(connection, "CREATE OPERATOR FAMILY public.testfam USING hash")
 				defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.testfam USING hash")
 				testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
@@ -649,12 +661,20 @@ LANGUAGE SQL`)
 				testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 			})
 			It("returns a slice of default metadata for an operator class in a specific schema", func() {
-				testutils.AssertQueryRuns(connection, "CREATE OPERATOR CLASS public.testclass FOR TYPE uuid USING hash AS STORAGE uuid")
-				defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.testclass USING hash CASCADE")
+				testutils.AssertQueryRuns(connection, "CREATE OPERATOR CLASS public.testclass FOR TYPE int4 USING hash AS STORAGE int4")
+				if connection.Version.Before("5") {
+					defer testutils.AssertQueryRuns(connection, "DROP OPERATOR CLASS public.testclass USING hash CASCADE")
+				} else {
+					defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.testclass USING hash CASCADE")
+				}
 				testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
 				defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
-				testutils.AssertQueryRuns(connection, "CREATE OPERATOR CLASS testschema.testclass FOR TYPE uuid USING hash AS STORAGE uuid")
-				defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testschema.testclass USING hash CASCADE")
+				testutils.AssertQueryRuns(connection, "CREATE OPERATOR CLASS testschema.testclass FOR TYPE int4 USING hash AS STORAGE int4")
+				if connection.Version.Before("5") {
+					defer testutils.AssertQueryRuns(connection, "DROP OPERATOR CLASS testschema.testclass USING hash CASCADE")
+				} else {
+					defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testschema.testclass USING hash CASCADE")
+				}
 				testutils.AssertQueryRuns(connection, "COMMENT ON OPERATOR CLASS testschema.testclass USING hash IS 'This is an operator class comment.'")
 
 				backup.SetIncludeSchemas([]string{"testschema"})
@@ -667,6 +687,7 @@ LANGUAGE SQL`)
 				testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 			})
 			It("returns a slice of default metadata for a text search dictionary in a specific schema", func() {
+				testutils.SkipIf4(connection)
 				testutils.AssertQueryRuns(connection, "CREATE TEXT SEARCH DICTIONARY public.testdictionary(TEMPLATE = snowball, LANGUAGE = 'russian', STOPWORDS = 'russian');")
 				defer testutils.AssertQueryRuns(connection, "DROP TEXT SEARCH DICTIONARY public.testdictionary")
 				testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
@@ -686,6 +707,7 @@ LANGUAGE SQL`)
 				testutils.ExpectStructsToMatch(&dictionaryMetadata, &resultMetadata)
 			})
 			It("returns a slice of default metadata for a text search configuration in a specific schema", func() {
+				testutils.SkipIf4(connection)
 				resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_TSCONFIGURATION)
 				configurationMetadataMap := testutils.DefaultMetadataMap("TEXT SEARCH CONFIGURATION", false, true, true)
 				configurationMetadata := configurationMetadataMap[1]
@@ -767,7 +789,30 @@ LANGUAGE SQL`)
 				resultMetadata := resultMetadataMap[oid]
 				testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 			})
-			It("returns a slice of default metadata for a cast", func() {
+			It("returns a slice of default metadata for a cast in 4.3", func() {
+				testutils.SkipIfNot4(connection)
+				resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_CAST)
+				numCasts := len(resultMetadataMap)
+
+				testutils.AssertQueryRuns(connection, "CREATE FUNCTION casttotext(bool) RETURNS text STRICT IMMUTABLE LANGUAGE PLPGSQL AS $$ BEGIN IF $1 IS TRUE THEN RETURN 'true'; ELSE RETURN 'false'; END IF; END; $$;")
+				defer testutils.AssertQueryRuns(connection, "DROP FUNCTION casttotext(bool) CASCADE")
+				testutils.AssertQueryRuns(connection, "CREATE CAST (bool AS text) WITH FUNCTION casttotext(bool) AS ASSIGNMENT")
+				testutils.AssertQueryRuns(connection, "COMMENT ON CAST (bool AS text) IS 'This is a cast comment.'")
+
+				resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.TYPE_CAST)
+
+				boolOid := testutils.OidFromObjectName(connection, "", "bool", backup.TYPE_TYPE)
+				textOid := testutils.OidFromObjectName(connection, "", "text", backup.TYPE_TYPE)
+				oid := testutils.OidFromCast(connection, boolOid, textOid)
+				expectedMetadataMap := testutils.DefaultMetadataMap("CAST", false, false, true)
+				expectedMetadata := expectedMetadataMap[1]
+
+				Expect(len(resultMetadataMap)).To(Equal(numCasts + 1))
+				resultMetadata := resultMetadataMap[oid]
+				testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
+			})
+			It("returns a slice of default metadata for a cast in 5", func() {
+				testutils.SkipIf4(connection)
 				resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_CAST)
 				numCasts := len(resultMetadataMap)
 
@@ -778,8 +823,8 @@ LANGUAGE SQL`)
 
 				resultMetadataMap = backup.GetCommentsForObjectType(connection, backup.TYPE_CAST)
 
-				textOid := testutils.OidFromObjectName(connection, "", "text", backup.TYPE_CAST)
-				intOid := testutils.OidFromObjectName(connection, "", "int4", backup.TYPE_CAST)
+				textOid := testutils.OidFromObjectName(connection, "", "text", backup.TYPE_TYPE)
+				intOid := testutils.OidFromObjectName(connection, "", "int4", backup.TYPE_TYPE)
 				oid := testutils.OidFromCast(connection, textOid, intOid)
 				expectedMetadataMap := testutils.DefaultMetadataMap("CAST", false, false, true)
 				expectedMetadata := expectedMetadataMap[1]
@@ -825,6 +870,7 @@ LANGUAGE SQL`)
 				testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 			})
 			It("returns a slice of default metadata for a text search parser", func() {
+				testutils.SkipIf4(connection)
 				parserMetadataMap := testutils.DefaultMetadataMap("TEXT SEARCH PARSER", false, false, true)
 				parserMetadata := parserMetadataMap[1]
 
@@ -840,6 +886,7 @@ LANGUAGE SQL`)
 				testutils.ExpectStructsToMatch(&parserMetadata, &resultMetadata)
 			})
 			It("returns a slice of default metadata for a text search template", func() {
+				testutils.SkipIf4(connection)
 				templateMetadataMap := testutils.DefaultMetadataMap("TEXT SEARCH TEMPLATE", false, false, true)
 				templateMetadata := templateMetadataMap[1]
 
@@ -901,6 +948,7 @@ LANGUAGE SQL`)
 				testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 			})
 			It("returns a slice of default metadata for a text search parser in a specific schema", func() {
+				testutils.SkipIf4(connection)
 				parserMetadataMap := testutils.DefaultMetadataMap("TEXT SEARCH PARSER", false, false, true)
 				parserMetadata := parserMetadataMap[1]
 
@@ -921,6 +969,7 @@ LANGUAGE SQL`)
 				testutils.ExpectStructsToMatch(&parserMetadata, &resultMetadata)
 			})
 			It("returns a slice of default metadata for a text search template in a specific schema", func() {
+				testutils.SkipIf4(connection)
 				templateMetadataMap := testutils.DefaultMetadataMap("TEXT SEARCH TEMPLATE", false, false, true)
 				templateMetadata := templateMetadataMap[1]
 

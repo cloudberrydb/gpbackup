@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/blang/semver"
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/utils"
 
@@ -35,6 +36,8 @@ func CreateAndConnectMockDB() (*utils.DBConn, sqlmock.Sqlmock) {
 	connection := utils.NewDBConn("testdb")
 	connection.Driver = driver
 	connection.Connect()
+	connection.Version = utils.GPDBVersion{"5.0.0", semver.MustParse("5.0.0")}
+	backup.InitializeMetadataParams(connection)
 	return connection, mock
 }
 
@@ -203,7 +206,7 @@ func DefaultACLWithGrantWithout(grantee string, objType string, revoke ...string
 }
 
 func DefaultTypeDefinition(typeType string, typeName string) backup.Type {
-	return backup.Type{Oid: 1, TypeSchema: "public", TypeName: typeName, Type: typeType, AttName: "", AttType: "", Input: "", Output: "", Receive: "", Send: "", ModIn: "", ModOut: "", InternalLength: -1, IsPassedByValue: false, Alignment: "c", Storage: "p", DefaultVal: "", Element: "", Delimiter: "", EnumLabels: "", BaseType: "", NotNull: false, CompositeAtts: nil, DependsUpon: nil}
+	return backup.Type{Oid: 1, TypeSchema: "public", TypeName: typeName, Type: typeType, AttName: "", AttType: "", Input: "", Output: "", Receive: "-", Send: "-", ModIn: "-", ModOut: "-", InternalLength: -1, IsPassedByValue: false, Alignment: "c", Storage: "p", DefaultVal: "", Element: "", Delimiter: "", EnumLabels: "", BaseType: "", NotNull: false, CompositeAtts: nil, DependsUpon: nil}
 }
 
 /*
@@ -346,4 +349,16 @@ func OidFromObjectName(dbconn *utils.DBConn, schemaName string, objectName strin
 	err := dbconn.Get(&result, query)
 	utils.CheckError(err)
 	return result.Oid
+}
+
+func SkipIf4(dbconn *utils.DBConn) {
+	if dbconn.Version.Before("5") {
+		Skip("Test not applicable to GPDB4")
+	}
+}
+
+func SkipIfNot4(dbconn *utils.DBConn) {
+	if dbconn.Version.AtLeast("5") {
+		Skip("Test only applicable to GPDB4")
+	}
 }

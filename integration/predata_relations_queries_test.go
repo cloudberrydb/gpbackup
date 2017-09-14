@@ -331,6 +331,9 @@ SET SUBPARTITION TEMPLATE
 			resultSequenceDef := backup.GetSequenceDefinition(connection, "my_sequence")
 
 			expectedSequence := backup.SequenceDefinition{Name: "my_sequence", LastVal: 1, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
+			if connection.Version.Before("5") {
+				expectedSequence.LogCnt = 1 // In GPDB 4.3, sequence log count is one-indexed
+			}
 
 			testutils.ExpectStructsToMatch(&expectedSequence, &resultSequenceDef)
 		})
@@ -345,7 +348,12 @@ SET SUBPARTITION TEMPLATE
 
 			resultSequenceDef := backup.GetSequenceDefinition(connection, "my_sequence")
 
-			expectedSequence := backup.SequenceDefinition{Name: "my_sequence", LastVal: 105, Increment: 5, MaxVal: 1000, MinVal: 20, CacheVal: 1, LogCnt: 31, IsCycled: false, IsCalled: true}
+			expectedSequence := backup.SequenceDefinition{Name: "my_sequence", LastVal: 105, Increment: 5, MaxVal: 1000, MinVal: 20, CacheVal: 1, IsCycled: false, IsCalled: true}
+			if connection.Version.Before("5") {
+				expectedSequence.LogCnt = 32 // In GPDB 4.3, sequence log count is one-indexed
+			} else {
+				expectedSequence.LogCnt = 31 // In GPDB 5, sequence log count is zero-indexed
+			}
 
 			testutils.ExpectStructsToMatch(&expectedSequence, &resultSequenceDef)
 		})
@@ -378,6 +386,10 @@ SET SUBPARTITION TEMPLATE
 			seqOneDef := backup.SequenceDefinition{Name: "seq_one", LastVal: 3, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
 			seqTwoRelation := backup.BasicRelation("public", "seq_two")
 			seqTwoDef := backup.SequenceDefinition{Name: "seq_two", LastVal: 7, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
+			if connection.Version.Before("5") {
+				seqOneDef.LogCnt = 1 // In GPDB 4.3, sequence log count is one-indexed
+				seqTwoDef.LogCnt = 1
+			}
 
 			results := backup.GetAllSequences(connection)
 

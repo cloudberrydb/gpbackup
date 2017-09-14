@@ -39,6 +39,9 @@ var _ = BeforeSuite(func() {
 	// We can't use AssertQueryRuns since if a role already exists it will error
 	connection.Exec("CREATE ROLE testrole SUPERUSER")
 	connection.Exec("CREATE ROLE anothertestrole SUPERUSER")
+	connection.SetDatabaseVersion()
+	backup.InitializeMetadataParams(connection)
+	backup.SetConnection(connection)
 	testutils.AssertQueryRuns(connection, "SET ROLE testrole")
 	testutils.AssertQueryRuns(connection, "ALTER DATABASE testdb OWNER TO anothertestrole")
 	testutils.AssertQueryRuns(connection, "ALTER SCHEMA public OWNER TO anothertestrole")

@@ -28,6 +28,8 @@ func InitializeConnection() {
 	connection.Connect()
 	_, err := connection.Exec("SET application_name TO 'gpbackup'")
 	utils.CheckError(err)
+	connection.SetDatabaseVersion()
+	InitializeMetadataParams(connection)
 	connection.Begin()
 	_, err = connection.Exec("SET search_path TO pg_catalog")
 	utils.CheckError(err)
@@ -36,7 +38,7 @@ func InitializeConnection() {
 func InitializeBackupReport() {
 	backupReport = &utils.Report{
 		DatabaseName:    connection.DBName,
-		DatabaseVersion: connection.GetDatabaseVersion(),
+		DatabaseVersion: connection.Version.VersionString,
 		BackupVersion:   version,
 		DatabaseSize:    connection.GetDBSize(),
 	}
@@ -57,7 +59,7 @@ func InitializeFilterLists() {
  */
 
 func RetrieveFunctionsAndTypes(objectCounts map[string]int, procLangs []ProceduralLanguage) ([]Function, []Function, []Type, MetadataMap, MetadataMap, map[uint32]FunctionInfo) {
-	types := GetTypes(connection)
+	types := GetNonEnumTypes(connection)
 	objectCounts["Types"] = len(types)
 	typeMetadata := GetMetadataForObjectType(connection, TYPE_TYPE)
 	functions := GetFunctions(connection)
@@ -181,8 +183,9 @@ func BackupShellTypes(predataFile *utils.FileWithByteCount, objectCounts map[str
 }
 
 func BackupEnumTypes(predataFile *utils.FileWithByteCount, objectCounts map[string]int, types []Type, typeMetadata MetadataMap) {
+	enums := GetEnumTypes(connection)
 	logger.Verbose("Writing CREATE TYPE statements for enum types to predata file")
-	PrintCreateEnumTypeStatements(predataFile, globalTOC, types, typeMetadata)
+	PrintCreateEnumTypeStatements(predataFile, globalTOC, enums, typeMetadata)
 }
 
 func BackupCreateSequences(predataFile *utils.FileWithByteCount, objectCounts map[string]int, sequences []Sequence, relationMetadata MetadataMap) {
@@ -217,35 +220,43 @@ func BackupProtocols(predataFile *utils.FileWithByteCount, objectCounts map[stri
 }
 
 func BackupTSParsers(predataFile *utils.FileWithByteCount, objectCounts map[string]int) {
-	logger.Verbose("Writing CREATE TEXT SEARCH PARSER statements to predata file")
-	parsers := GetTextSearchParsers(connection)
-	objectCounts["Text Search Parsers"] = len(parsers)
-	parserMetadata := GetCommentsForObjectType(connection, TYPE_TSPARSER)
-	PrintCreateTextSearchParserStatements(predataFile, globalTOC, parsers, parserMetadata)
+	if connection.Version.AtLeast("5") {
+		logger.Verbose("Writing CREATE TEXT SEARCH PARSER statements to predata file")
+		parsers := GetTextSearchParsers(connection)
+		objectCounts["Text Search Parsers"] = len(parsers)
+		parserMetadata := GetCommentsForObjectType(connection, TYPE_TSPARSER)
+		PrintCreateTextSearchParserStatements(predataFile, globalTOC, parsers, parserMetadata)
+	}
 }
 
 func BackupTSTemplates(predataFile *utils.FileWithByteCount, objectCounts map[string]int) {
-	logger.Verbose("Writing CREATE TEXT SEARCH TEMPLATE statements to predata file")
-	templates := GetTextSearchTemplates(connection)
-	objectCounts["Text Search Templates"] = len(templates)
-	templateMetadata := GetCommentsForObjectType(connection, TYPE_TSTEMPLATE)
-	PrintCreateTextSearchTemplateStatements(predataFile, globalTOC, templates, templateMetadata)
+	if connection.Version.AtLeast("5") {
+		logger.Verbose("Writing CREATE TEXT SEARCH TEMPLATE statements to predata file")
+		templates := GetTextSearchTemplates(connection)
+		objectCounts["Text Search Templates"] = len(templates)
+		templateMetadata := GetCommentsForObjectType(connection, TYPE_TSTEMPLATE)
+		PrintCreateTextSearchTemplateStatements(predataFile, globalTOC, templates, templateMetadata)
+	}
 }
 
 func BackupTSDictionaries(predataFile *utils.FileWithByteCount, objectCounts map[string]int) {
-	logger.Verbose("Writing CREATE TEXT SEARCH DICTIONARY statements to predata file")
-	dictionaries := GetTextSearchDictionaries(connection)
-	objectCounts["Text Search Dictionaries"] = len(dictionaries)
-	dictionaryMetadata := GetMetadataForObjectType(connection, TYPE_TSDICTIONARY)
-	PrintCreateTextSearchDictionaryStatements(predataFile, globalTOC, dictionaries, dictionaryMetadata)
+	if connection.Version.AtLeast("5") {
+		logger.Verbose("Writing CREATE TEXT SEARCH DICTIONARY statements to predata file")
+		dictionaries := GetTextSearchDictionaries(connection)
+		objectCounts["Text Search Dictionaries"] = len(dictionaries)
+		dictionaryMetadata := GetMetadataForObjectType(connection, TYPE_TSDICTIONARY)
+		PrintCreateTextSearchDictionaryStatements(predataFile, globalTOC, dictionaries, dictionaryMetadata)
+	}
 }
 
 func BackupTSConfigurations(predataFile *utils.FileWithByteCount, objectCounts map[string]int) {
-	logger.Verbose("Writing CREATE TEXT SEARCH CONFIGURATION statements to predata file")
-	configurations := GetTextSearchConfigurations(connection)
-	objectCounts["Text Search Configurations"] = len(configurations)
-	configurationMetadata := GetMetadataForObjectType(connection, TYPE_TSCONFIGURATION)
-	PrintCreateTextSearchConfigurationStatements(predataFile, globalTOC, configurations, configurationMetadata)
+	if connection.Version.AtLeast("5") {
+		logger.Verbose("Writing CREATE TEXT SEARCH CONFIGURATION statements to predata file")
+		configurations := GetTextSearchConfigurations(connection)
+		objectCounts["Text Search Configurations"] = len(configurations)
+		configurationMetadata := GetMetadataForObjectType(connection, TYPE_TSCONFIGURATION)
+		PrintCreateTextSearchConfigurationStatements(predataFile, globalTOC, configurations, configurationMetadata)
+	}
 }
 
 func BackupConversions(predataFile *utils.FileWithByteCount, objectCounts map[string]int) {
@@ -265,11 +276,13 @@ func BackupOperators(predataFile *utils.FileWithByteCount, objectCounts map[stri
 }
 
 func BackupOperatorFamilies(predataFile *utils.FileWithByteCount, objectCounts map[string]int) {
-	logger.Verbose("Writing CREATE OPERATOR FAMILY statements to predata file")
-	operatorFamilies := GetOperatorFamilies(connection)
-	objectCounts["Operator Families"] = len(operatorFamilies)
-	operatorFamilyMetadata := GetMetadataForObjectType(connection, TYPE_OPERATORFAMILY)
-	PrintCreateOperatorFamilyStatements(predataFile, globalTOC, operatorFamilies, operatorFamilyMetadata)
+	if connection.Version.AtLeast("5") {
+		logger.Verbose("Writing CREATE OPERATOR FAMILY statements to predata file")
+		operatorFamilies := GetOperatorFamilies(connection)
+		objectCounts["Operator Families"] = len(operatorFamilies)
+		operatorFamilyMetadata := GetMetadataForObjectType(connection, TYPE_OPERATORFAMILY)
+		PrintCreateOperatorFamilyStatements(predataFile, globalTOC, operatorFamilies, operatorFamilyMetadata)
+	}
 }
 
 func BackupOperatorClasses(predataFile *utils.FileWithByteCount, objectCounts map[string]int) {

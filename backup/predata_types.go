@@ -58,17 +58,23 @@ func PrintCreateBaseTypeStatement(predataFile *utils.FileWithByteCount, toc *uti
 
 	// All of the following functions are stored in quoted form and don't need to be quoted again
 	predataFile.MustPrintf("\tINPUT = %s,\n\tOUTPUT = %s", base.Input, base.Output)
-	if base.Receive != "" {
+	/*
+	 * pg_type uses - in place of NULL for the following four functions,
+	 * so we compare against "-" instead of "" to check for existence.
+	 */
+	if base.Receive != "-" {
 		predataFile.MustPrintf(",\n\tRECEIVE = %s", base.Receive)
 	}
-	if base.Send != "" {
+	if base.Send != "-" {
 		predataFile.MustPrintf(",\n\tSEND = %s", base.Send)
 	}
-	if base.ModIn != "" {
-		predataFile.MustPrintf(",\n\tTYPMOD_IN = %s", base.ModIn)
-	}
-	if base.ModOut != "" {
-		predataFile.MustPrintf(",\n\tTYPMOD_OUT = %s", base.ModOut)
+	if connection.Version.AtLeast("5") {
+		if base.ModIn != "-" {
+			predataFile.MustPrintf(",\n\tTYPMOD_IN = %s", base.ModIn)
+		}
+		if base.ModOut != "-" {
+			predataFile.MustPrintf(",\n\tTYPMOD_OUT = %s", base.ModOut)
+		}
 	}
 	if base.InternalLength > 0 {
 		predataFile.MustPrintf(",\n\tINTERNALLENGTH = %d", base.InternalLength)
@@ -170,14 +176,12 @@ func PrintCreateCompositeTypeStatement(predataFile *utils.FileWithByteCount, toc
 	toc.AddPredataEntry(composite.TypeSchema, composite.TypeName, "TYPE", start, predataFile.ByteCount)
 }
 
-func PrintCreateEnumTypeStatements(predataFile *utils.FileWithByteCount, toc *utils.TOC, types []Type, typeMetadata MetadataMap) {
+func PrintCreateEnumTypeStatements(predataFile *utils.FileWithByteCount, toc *utils.TOC, enums []Type, typeMetadata MetadataMap) {
 	start := predataFile.ByteCount
-	for _, typ := range types {
-		if typ.Type == "e" {
-			typeFQN := MakeFQN(typ.TypeSchema, typ.TypeName)
-			predataFile.MustPrintf("\n\nCREATE TYPE %s AS ENUM (\n\t%s\n);\n", typeFQN, typ.EnumLabels)
-			PrintObjectMetadata(predataFile, typeMetadata[typ.Oid], typeFQN, "TYPE")
-			toc.AddPredataEntry(typ.TypeSchema, typ.TypeName, "TYPE", start, predataFile.ByteCount)
-		}
+	for _, enum := range enums {
+		typeFQN := MakeFQN(enum.TypeSchema, enum.TypeName)
+		predataFile.MustPrintf("\n\nCREATE TYPE %s AS ENUM (\n\t%s\n);\n", typeFQN, enum.EnumLabels)
+		PrintObjectMetadata(predataFile, typeMetadata[enum.Oid], typeFQN, "TYPE")
+		toc.AddPredataEntry(enum.TypeSchema, enum.TypeName, "TYPE", start, predataFile.ByteCount)
 	}
 }

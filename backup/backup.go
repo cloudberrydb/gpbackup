@@ -65,6 +65,10 @@ func SetLogger(log *utils.Logger) {
 	logger = log
 }
 
+func SetConnection(conn *utils.DBConn) {
+	connection = conn
+}
+
 func SetCluster(cluster utils.Cluster) {
 	globalCluster = cluster
 }
@@ -188,7 +192,9 @@ func backupPredata(tables []Relation, tableDefs map[uint32]TableDefinition, obje
 	}
 
 	BackupShellTypes(predataFile, objectCounts, types)
-	BackupEnumTypes(predataFile, objectCounts, types, typeMetadata)
+	if connection.Version.AtLeast("5") {
+		BackupEnumTypes(predataFile, objectCounts, types, typeMetadata)
+	}
 
 	relationMetadata := GetMetadataForObjectType(connection, TYPE_RELATION)
 	sequences := GetAllSequences(connection)
@@ -203,13 +209,17 @@ func backupPredata(tables []Relation, tableDefs map[uint32]TableDefinition, obje
 		BackupProtocols(predataFile, objectCounts, funcInfoMap)
 	}
 
-	BackupTSParsers(predataFile, objectCounts)
-	BackupTSTemplates(predataFile, objectCounts)
-	BackupTSDictionaries(predataFile, objectCounts)
-	BackupTSConfigurations(predataFile, objectCounts)
+	if connection.Version.AtLeast("5") {
+		BackupTSParsers(predataFile, objectCounts)
+		BackupTSTemplates(predataFile, objectCounts)
+		BackupTSDictionaries(predataFile, objectCounts)
+		BackupTSConfigurations(predataFile, objectCounts)
+	}
 
 	BackupOperators(predataFile, objectCounts)
-	BackupOperatorFamilies(predataFile, objectCounts)
+	if connection.Version.AtLeast("5") {
+		BackupOperatorFamilies(predataFile, objectCounts)
+	}
 	BackupOperatorClasses(predataFile, objectCounts)
 
 	BackupConversions(predataFile, objectCounts)

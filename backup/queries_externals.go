@@ -10,6 +10,22 @@ import (
 )
 
 func GetExternalTableDefinitions(connection *utils.DBConn) map[uint32]ExternalTableDefinition {
+	version4query := `
+SELECT
+	reloid AS oid,
+	CASE WHEN location[1] NOT IN ('ALL_SEGMENTS', 'HOST', 'MASTER_ONLY', 'PER_HOST', 'SEGMENT_ID', 'TOTAL_SEGS') THEN unnest(location) ELSE '' END AS location,
+	CASE WHEN location[1] IN ('ALL_SEGMENTS', 'HOST', 'MASTER_ONLY', 'PER_HOST', 'SEGMENT_ID', 'TOTAL_SEGS') THEN unnest(location) ELSE 'ALL_SEGMENTS' END AS execlocation,
+	fmttype AS formattype,
+	fmtopts AS formatopts,
+	'' AS options,
+	coalesce(command, '') AS command,
+	coalesce(rejectlimit, 0) AS rejectlimit,
+	coalesce(rejectlimittype, '') AS rejectlimittype,
+	coalesce((SELECT relname FROM pg_class WHERE oid = fmterrtbl), '') AS errtable,
+	pg_encoding_to_char(encoding) AS encoding,
+	writable
+FROM pg_exttable;`
+
 	query := `
 SELECT
 	reloid AS oid,
@@ -31,7 +47,12 @@ SELECT
 FROM pg_exttable;`
 
 	results := make([]ExternalTableDefinition, 0)
-	err := connection.Select(&results, query)
+	var err error
+	if connection.Version.Before("5") {
+		err = connection.Select(&results, version4query)
+	} else {
+		err = connection.Select(&results, query)
+	}
 	utils.CheckError(err)
 	resultMap := make(map[uint32]ExternalTableDefinition)
 	var extTableDef ExternalTableDefinition

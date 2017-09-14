@@ -60,6 +60,11 @@ CREATE OPERATOR %s (
 		toc.AddPredataEntry(operator.SchemaName, operator.Name, "OPERATOR", start, predataFile.ByteCount)
 	}
 }
+
+/*
+ * Operator families are not supported in GPDB 4.3, so this function
+ * is not used in a 4.3 backup.
+ */
 func PrintCreateOperatorFamilyStatements(predataFile *utils.FileWithByteCount, toc *utils.TOC, operatorFamilies []OperatorFamily, operatorFamilyMetadata MetadataMap) {
 	for _, operatorFamily := range operatorFamilies {
 		start := predataFile.ByteCount
@@ -81,7 +86,7 @@ func PrintCreateOperatorClassStatements(predataFile *utils.FileWithByteCount, to
 			forTypeStr += "DEFAULT "
 		}
 		forTypeStr += fmt.Sprintf("FOR TYPE %s USING %s", operatorClass.Type, operatorClass.IndexMethod)
-		if operatorClass.FamilyName != operatorClass.ClassName {
+		if operatorClass.FamilyName != "" && operatorClass.FamilyName != operatorClass.ClassName {
 			operatorFamilyFQN := MakeFQN(operatorClass.FamilySchema, operatorClass.FamilyName)
 			forTypeStr += fmt.Sprintf(" FAMILY %s", operatorFamilyFQN)
 		}

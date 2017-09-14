@@ -60,6 +60,9 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 	})
 	Describe("PrintCreateOperatorFamilyStatements", func() {
+		BeforeEach(func() {
+			testutils.SkipIf4(connection)
+		})
 		It("creates operator family", func() {
 			operatorFamily := backup.OperatorFamily{Oid: 1, SchemaName: "public", Name: "testfam", IndexMethod: "hash"}
 			operatorFamilies := []backup.OperatorFamily{operatorFamily}
@@ -94,20 +97,25 @@ var _ = Describe("backup integration create statement tests", func() {
 	})
 	Describe("PrintCreateOperatorClassStatements", func() {
 		It("creates basic operator class", func() {
-			operatorClass := backup.OperatorClass{Oid: 0, ClassSchema: "public", ClassName: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "hash", Type: "uuid", Default: false, StorageType: "-", Operators: nil, Functions: nil}
+			operatorClass := backup.OperatorClass{Oid: 0, ClassSchema: "public", ClassName: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "hash", Type: "integer", Default: false, StorageType: "-", Operators: nil, Functions: nil}
 
 			backup.PrintCreateOperatorClassStatements(backupfile, &toc, []backup.OperatorClass{operatorClass}, nil)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
-			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.testclass USING hash CASCADE")
+			if connection.Version.Before("5") {
+				defer testutils.AssertQueryRuns(connection, "DROP OPERATOR CLASS public.testclass USING hash")
+			} else {
+				defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.testclass USING hash CASCADE")
+			}
 
 			resultOperatorClasses := backup.GetOperatorClasses(connection)
 			Expect(len(resultOperatorClasses)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&operatorClass, &resultOperatorClasses[0], "Oid")
 		})
 		It("creates complex operator class", func() {
-			operatorClass := backup.OperatorClass{Oid: 0, ClassSchema: "public", ClassName: "testclass", FamilySchema: "public", FamilyName: "testfam", IndexMethod: "gist", Type: "uuid", Default: true, StorageType: "integer", Operators: nil, Functions: nil}
-			operatorClass.Operators = []backup.OperatorClassOperator{{ClassOid: 0, StrategyNumber: 1, Operator: "=(uuid,uuid)", Recheck: true}}
+			testutils.SkipIf4(connection)
+			operatorClass := backup.OperatorClass{Oid: 0, ClassSchema: "public", ClassName: "testclass", FamilySchema: "public", FamilyName: "testfam", IndexMethod: "gist", Type: "integer", Default: true, StorageType: "-", Operators: nil, Functions: nil}
+			operatorClass.Operators = []backup.OperatorClassOperator{{ClassOid: 0, StrategyNumber: 1, Operator: "=(integer,integer)", Recheck: true}}
 			operatorClass.Functions = []backup.OperatorClassFunction{{ClassOid: 0, SupportNumber: 1, FunctionName: "abs(integer)"}}
 
 			testutils.AssertQueryRuns(connection, "CREATE OPERATOR FAMILY public.testfam USING gist")
@@ -124,12 +132,16 @@ var _ = Describe("backup integration create statement tests", func() {
 			operatorClassMetadataMap := testutils.DefaultMetadataMap("OPERATOR CLASS", false, true, true)
 			operatorClassMetadata := operatorClassMetadataMap[1]
 
-			operatorClass := backup.OperatorClass{Oid: 1, ClassSchema: "public", ClassName: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "hash", Type: "uuid", Default: false, StorageType: "-", Operators: nil, Functions: nil}
+			operatorClass := backup.OperatorClass{Oid: 1, ClassSchema: "public", ClassName: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "hash", Type: "integer", Default: false, StorageType: "-", Operators: nil, Functions: nil}
 
 			backup.PrintCreateOperatorClassStatements(backupfile, &toc, []backup.OperatorClass{operatorClass}, operatorClassMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
-			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.testclass USING hash CASCADE")
+			if connection.Version.Before("5") {
+				defer testutils.AssertQueryRuns(connection, "DROP OPERATOR CLASS public.testclass USING hash")
+			} else {
+				defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.testclass USING hash CASCADE")
+			}
 
 			resultOperatorClasses := backup.GetOperatorClasses(connection)
 			Expect(len(resultOperatorClasses)).To(Equal(1))

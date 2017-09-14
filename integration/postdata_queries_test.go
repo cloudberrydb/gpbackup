@@ -147,15 +147,15 @@ PARTITION BY RANGE (date)
 		It("returns a slice of multiple rules", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE rule_table1(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE rule_table1")
-			testutils.AssertQueryRuns(connection, "CREATE TABLE rule_table2(j int)")
+			testutils.AssertQueryRuns(connection, "CREATE TABLE rule_table2(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE rule_table2")
-			testutils.AssertQueryRuns(connection, "CREATE RULE double_insert AS ON INSERT TO rule_table1 DO INSERT INTO rule_table2 DEFAULT VALUES")
+			testutils.AssertQueryRuns(connection, "CREATE RULE double_insert AS ON INSERT TO rule_table1 DO INSERT INTO rule_table2 (i) VALUES (1)")
 			defer testutils.AssertQueryRuns(connection, "DROP RULE double_insert ON rule_table1")
 			testutils.AssertQueryRuns(connection, "CREATE RULE update_notify AS ON UPDATE TO rule_table1 DO NOTIFY rule_table1")
 			defer testutils.AssertQueryRuns(connection, "DROP RULE update_notify ON rule_table1")
 			testutils.AssertQueryRuns(connection, "COMMENT ON RULE update_notify ON rule_table1 IS 'This is a rule comment.'")
 
-			rule1 := backup.QuerySimpleDefinition{Oid: 0, Name: "double_insert", OwningSchema: "public", OwningTable: "rule_table1", TablespaceName: "", Def: "CREATE RULE double_insert AS ON INSERT TO rule_table1 DO INSERT INTO rule_table2 DEFAULT VALUES;"}
+			rule1 := backup.QuerySimpleDefinition{Oid: 0, Name: "double_insert", OwningSchema: "public", OwningTable: "rule_table1", TablespaceName: "", Def: "CREATE RULE double_insert AS ON INSERT TO rule_table1 DO INSERT INTO rule_table2 (i) VALUES (1);"}
 			rule2 := backup.QuerySimpleDefinition{Oid: 1, Name: "update_notify", OwningSchema: "public", OwningTable: "rule_table1", TablespaceName: "", Def: "CREATE RULE update_notify AS ON UPDATE TO rule_table1 DO NOTIFY rule_table1;"}
 
 			results := backup.GetRules(connection)
@@ -167,17 +167,17 @@ PARTITION BY RANGE (date)
 		It("returns a slice of rules for a specific schema", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE rule_table1(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE rule_table1")
-			testutils.AssertQueryRuns(connection, "CREATE RULE double_insert AS ON INSERT TO rule_table1 DO INSERT INTO rule_table1 DEFAULT VALUES")
+			testutils.AssertQueryRuns(connection, "CREATE RULE double_insert AS ON INSERT TO rule_table1 DO INSERT INTO rule_table1 (i) VALUES (1)")
 			defer testutils.AssertQueryRuns(connection, "DROP RULE double_insert ON rule_table1")
 			testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
 			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
 			testutils.AssertQueryRuns(connection, "CREATE TABLE testschema.rule_table1(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE testschema.rule_table1")
-			testutils.AssertQueryRuns(connection, "CREATE RULE double_insert AS ON INSERT TO testschema.rule_table1 DO INSERT INTO testschema.rule_table1 DEFAULT VALUES")
+			testutils.AssertQueryRuns(connection, "CREATE RULE double_insert AS ON INSERT TO testschema.rule_table1 DO INSERT INTO testschema.rule_table1 (i) VALUES (1)")
 			defer testutils.AssertQueryRuns(connection, "DROP RULE double_insert ON testschema.rule_table1")
 			backup.SetIncludeSchemas([]string{"testschema"})
 
-			rule1 := backup.QuerySimpleDefinition{Oid: 0, Name: "double_insert", OwningSchema: "testschema", OwningTable: "rule_table1", TablespaceName: "", Def: "CREATE RULE double_insert AS ON INSERT TO testschema.rule_table1 DO INSERT INTO testschema.rule_table1 DEFAULT VALUES;"}
+			rule1 := backup.QuerySimpleDefinition{Oid: 0, Name: "double_insert", OwningSchema: "testschema", OwningTable: "rule_table1", TablespaceName: "", Def: "CREATE RULE double_insert AS ON INSERT TO testschema.rule_table1 DO INSERT INTO testschema.rule_table1 (i) VALUES (1);"}
 
 			results := backup.GetRules(connection)
 

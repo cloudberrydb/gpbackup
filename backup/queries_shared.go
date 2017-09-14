@@ -121,6 +121,33 @@ type MetadataQueryParams struct {
 }
 
 var (
+	TYPE_AGGREGATE       MetadataQueryParams
+	TYPE_CAST            MetadataQueryParams
+	TYPE_CONSTRAINT      MetadataQueryParams
+	TYPE_CONVERSION      MetadataQueryParams
+	TYPE_DATABASE        MetadataQueryParams
+	TYPE_FUNCTION        MetadataQueryParams
+	TYPE_INDEX           MetadataQueryParams
+	TYPE_PROCLANGUAGE    MetadataQueryParams
+	TYPE_OPERATOR        MetadataQueryParams
+	TYPE_OPERATORCLASS   MetadataQueryParams
+	TYPE_OPERATORFAMILY  MetadataQueryParams
+	TYPE_PROTOCOL        MetadataQueryParams
+	TYPE_RELATION        MetadataQueryParams
+	TYPE_RESOURCEQUEUE   MetadataQueryParams
+	TYPE_ROLE            MetadataQueryParams
+	TYPE_RULE            MetadataQueryParams
+	TYPE_SCHEMA          MetadataQueryParams
+	TYPE_TABLESPACE      MetadataQueryParams
+	TYPE_TSCONFIGURATION MetadataQueryParams
+	TYPE_TSDICTIONARY    MetadataQueryParams
+	TYPE_TSPARSER        MetadataQueryParams
+	TYPE_TSTEMPLATE      MetadataQueryParams
+	TYPE_TRIGGER         MetadataQueryParams
+	TYPE_TYPE            MetadataQueryParams
+)
+
+func InitializeMetadataParams(connection *utils.DBConn) {
 	TYPE_AGGREGATE       = MetadataQueryParams{NameField: "proname", SchemaField: "pronamespace", OwnerField: "proowner", CatalogTable: "pg_proc"}
 	TYPE_CAST            = MetadataQueryParams{NameField: "typname", OidField: "oid", OidTable: "pg_type", CatalogTable: "pg_cast"}
 	TYPE_CONSTRAINT      = MetadataQueryParams{NameField: "conname", SchemaField: "connamespace", OidField: "oid", CatalogTable: "pg_constraint"}
@@ -128,7 +155,11 @@ var (
 	TYPE_DATABASE        = MetadataQueryParams{NameField: "datname", ACLField: "datacl", OwnerField: "datdba", CatalogTable: "pg_database", Shared: true}
 	TYPE_FUNCTION        = MetadataQueryParams{NameField: "proname", SchemaField: "pronamespace", ACLField: "proacl", OwnerField: "proowner", CatalogTable: "pg_proc"}
 	TYPE_INDEX           = MetadataQueryParams{NameField: "relname", OidField: "indexrelid", OidTable: "pg_class", CommentTable: "pg_class", CatalogTable: "pg_index"}
-	TYPE_PROCLANGUAGE    = MetadataQueryParams{NameField: "lanname", ACLField: "lanacl", OwnerField: "lanowner", CatalogTable: "pg_language"}
+	if connection.Version.Before("5") {
+		TYPE_PROCLANGUAGE    = MetadataQueryParams{NameField: "lanname", ACLField: "lanacl", OwnerField: "", CatalogTable: "pg_language"}
+	} else {
+		TYPE_PROCLANGUAGE    = MetadataQueryParams{NameField: "lanname", ACLField: "lanacl", OwnerField: "lanowner", CatalogTable: "pg_language"}
+	}
 	TYPE_OPERATOR        = MetadataQueryParams{NameField: "oprname", SchemaField: "oprnamespace", OidField: "oid", OwnerField: "oprowner", CatalogTable: "pg_operator"}
 	TYPE_OPERATORCLASS   = MetadataQueryParams{NameField: "opcname", SchemaField: "opcnamespace", OidField: "oid", OwnerField: "opcowner", CatalogTable: "pg_opclass"}
 	TYPE_OPERATORFAMILY  = MetadataQueryParams{NameField: "opfname", SchemaField: "opfnamespace", OidField: "oid", OwnerField: "opfowner", CatalogTable: "pg_opfamily"}
@@ -145,7 +176,7 @@ var (
 	TYPE_TSTEMPLATE      = MetadataQueryParams{NameField: "tmplname", OidField: "oid", SchemaField: "tmplnamespace", CatalogTable: "pg_ts_template"}
 	TYPE_TRIGGER         = MetadataQueryParams{NameField: "tgname", OidField: "oid", CatalogTable: "pg_trigger"}
 	TYPE_TYPE            = MetadataQueryParams{NameField: "typname", SchemaField: "typnamespace", OwnerField: "typowner", CatalogTable: "pg_type"}
-)
+}
 
 // A list of schemas we don't want to back up, formatted for use in a WHERE clause
 func SchemaFilterClause(namespace string) string {
@@ -157,40 +188,50 @@ func SchemaFilterClause(namespace string) string {
 }
 
 func GetMetadataForObjectType(connection *utils.DBConn, params MetadataQueryParams) MetadataMap {
+	aclStr := "''"
+	kindStr := "''"
 	schemaStr := ""
+	ownerStr := "''"
+	if params.ACLField != "" {
+		aclStr = fmt.Sprintf(`CASE
+		WHEN o.%[1]s IS NULL OR array_upper(o.%[1]s, 1) = 0 THEN o.%[1]s[0]
+		ELSE unnest(o.%[1]s)
+	END
+`, params.ACLField)
+		kindStr = fmt.Sprintf(`CASE
+		WHEN o.%[1]s IS NULL THEN 'Default'
+		WHEN array_upper(o.%[1]s, 1) = 0 THEN 'Empty'
+		ELSE ''
+	END
+`, params.ACLField)
+	}
 	if params.SchemaField != "" {
 		schemaStr = fmt.Sprintf(`JOIN pg_namespace n ON o.%s = n.oid
 WHERE %s`, params.SchemaField, SchemaFilterClause("n"))
-	}
-	aclStr := ""
-	if params.ACLField != "" {
-		aclStr = fmt.Sprintf(`CASE
-		WHEN o.%s IS NULL THEN ''
-		WHEN array_length(o.%s, 1) = 0 THEN 'GRANTEE=/GRANTOR'
-		ELSE unnest(o.%s)::text
-	END
-`, params.ACLField, params.ACLField, params.ACLField)
-	} else {
-		aclStr = "''"
 	}
 	descFunc := "obj_description"
 	if params.Shared {
 		descFunc = "shobj_description"
 	}
+	if params.OwnerField != "" {
+		ownerStr = fmt.Sprintf("pg_get_userbyid(o.%s)", params.OwnerField)
+	}
 	query := fmt.Sprintf(`
 SELECT
 	o.oid,
 	%s AS privileges,
-	pg_get_userbyid(o.%s) AS owner,
+	%s AS kind,
+	%s AS owner,
 	coalesce(%s(o.oid, '%s'), '') AS comment
 FROM %s o
 %s
 ORDER BY o.oid;
-`, aclStr, params.OwnerField, descFunc, params.CatalogTable, params.CatalogTable, schemaStr)
+`, aclStr, kindStr, ownerStr, descFunc, params.CatalogTable, params.CatalogTable, schemaStr)
 
 	results := make([]struct {
 		Oid        uint32
-		Privileges string
+		Privileges interface{}
+		Kind       string
 		Owner      string
 		Comment    string
 	}, 0)
@@ -203,6 +244,13 @@ ORDER BY o.oid;
 		currentOid := uint32(0)
 		// Collect all entries for the same object into one ObjectMetadata
 		for _, result := range results {
+			privilegesStr := ""
+			if result.Privileges != nil {
+				privilegesStr = string(result.Privileges.([]byte))
+			}
+			if result.Kind == "Empty" {
+				privilegesStr = "GRANTEE=/GRANTOR"
+			}
 			if result.Oid != currentOid {
 				if currentOid != 0 {
 					metadataMap[currentOid] = sortACLs(metadata)
@@ -213,7 +261,7 @@ ORDER BY o.oid;
 				metadata.Owner = result.Owner
 				metadata.Comment = result.Comment
 			}
-			privileges := ParseACL(result.Privileges)
+			privileges := ParseACL(privilegesStr)
 			if privileges != nil {
 				metadata.Privileges = append(metadata.Privileges, *privileges)
 			}

@@ -17,7 +17,11 @@ var _ = Describe("backup integration tests", func() {
 			 */
 			results := backup.GetSessionGUCs(connection)
 			Expect(results.ClientEncoding).To(Equal("UTF8"))
-			Expect(results.StdConformingStrings).To(Equal("on"))
+			if connection.Version.Before("5") {
+				Expect(results.StdConformingStrings).To(Equal("off"))
+			} else {
+				Expect(results.StdConformingStrings).To(Equal("on"))
+			}
 			Expect(results.DefaultWithOids).To(Equal("off"))
 		})
 	})
