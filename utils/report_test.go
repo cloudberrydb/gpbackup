@@ -193,6 +193,7 @@ contact2@example.org`)
 		)
 		BeforeEach(func() {
 			r, w, _ = os.Pipe()
+			testCluster = testutils.SetDefaultSegmentConfiguration()
 			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) { return r, nil }
 			utils.System.Hostname = func() (string, error) { return "localhost", nil }
 			utils.System.Getenv = func(key string) string {
@@ -203,7 +204,6 @@ contact2@example.org`)
 				}
 			}
 			testExecutor = &testutils.TestExecutor{}
-			testCluster = testutils.SetDefaultSegmentConfiguration()
 			testCluster.Timestamp = "20170101010101"
 			testCluster.Executor = testExecutor
 		})

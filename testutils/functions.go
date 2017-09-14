@@ -1,7 +1,6 @@
 package testutils
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -72,10 +71,7 @@ func SetDefaultSegmentConfiguration() utils.Cluster {
 	configMaster := utils.SegConfig{ContentID: -1, Hostname: "localhost", DataDir: "gpseg-1"}
 	configSegOne := utils.SegConfig{ContentID: 0, Hostname: "localhost", DataDir: "gpseg0"}
 	configSegTwo := utils.SegConfig{ContentID: 1, Hostname: "localhost", DataDir: "gpseg1"}
-	utils.System.IsNotExist = func(err error) bool { return true }
-	utils.System.Stat = func(name string) (os.FileInfo, error) {
-		return nil, errors.New("file does not exist")
-	}
+	utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) { return nil, nil }
 	cluster := utils.NewCluster([]utils.SegConfig{configMaster, configSegOne, configSegTwo}, "", "20170101010101")
 	return cluster
 }
