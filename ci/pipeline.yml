@@ -28,14 +28,14 @@ resources:
     paths:
     - ci
 
-- name: gpdb_src
+- name: gpdb5_src
   type: git
   source:
     uri: https://github.com/greenplum-db/gpdb
-    branch: master
+    branch: 5X_STABLE
     tag_filter: 5.*
 
-- name: bin_gpdb
+- name: bin_gpdb5
   type: s3
   source:
       bucket: gpdb5-release-builds
@@ -76,15 +76,15 @@ jobs:
   - task: unit-tests
     file: gpbackup-ci/ci/tasks/unit-tests.yml
 
-- name: integrations
+- name: integrations-GPDB5
   serial: true
   plan:
   - aggregate:
     - get: gpbackup
       trigger: true
     - get: gpbackup-ci
-    - get: bin_gpdb
-    - get: gpdb_src
+    - get: bin_gpdb5
+    - get: gpdb5_src
     - get: ccp_src
   - put: terraform
     params:
@@ -92,7 +92,8 @@ jobs:
   - task: gen_cluster
     file: ccp_src/ci/tasks/gen_cluster.yml
     input_mapping:
-      gpdb_binary: bin_gpdb
+      gpdb_binary: bin_gpdb5
+      gpdb_src: gpdb5_src
     on_failure:
       <<: *ccp_destroy
   - task: integration-tests
@@ -108,8 +109,8 @@ jobs:
         inputs:
         - name: gpbackup
           path: go/src/github.com/greenplum-db/gpbackup
-        - name: bin_gpdb
-        - name: gpdb_src
+        - name: bin_gpdb5
+        - name: gpdb5_src
         - name: ccp_src
         - name: cluster_env_files
 
