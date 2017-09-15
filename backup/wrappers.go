@@ -42,7 +42,8 @@ func InitializeBackupReport() {
 		BackupVersion:   version,
 		DatabaseSize:    connection.GetDBSize(),
 	}
-	backupReport.SetBackupTypeFromFlags(*dataOnly, *metadataOnly, includeSchemas)
+	utils.InitializeCompressionParameters(!*noCompression)
+	backupReport.SetBackupTypeFromFlags(*dataOnly, *metadataOnly, *noCompression, includeSchemas)
 }
 
 func InitializeFilterLists() {

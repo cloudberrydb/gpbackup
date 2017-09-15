@@ -23,8 +23,9 @@ type Report struct {
 	DatabaseName    string
 	DatabaseSize    string
 	DatabaseVersion string
+	Compressed      bool
 	DataOnly        bool
-	Filtered        bool
+	SchemaFiltered  bool
 	MetadataOnly    bool
 }
 
@@ -40,21 +41,28 @@ func ParseErrorMessage(err interface{}) (string, int) {
 	return errMsg, exitCode
 }
 
-func (report *Report) SetBackupTypeFromFlags(dataOnly bool, ddlOnly bool, schemaInclude ArrayFlags) {
+func (report *Report) SetBackupTypeFromFlags(dataOnly bool, ddlOnly bool, noCompression bool, schemaInclude ArrayFlags) {
+	filterStr := "Unfiltered"
+	if len(schemaInclude) > 0 {
+		report.SchemaFiltered = true
+		filterStr = "Schema-Filtered"
+	}
+	compressStr := "Compressed"
+	if noCompression {
+		compressStr = "Uncompressed"
+	} else {
+		report.Compressed = true
+	}
 	sectionStr := ""
 	if dataOnly {
 		report.DataOnly = true
-		sectionStr = " (Data-Only)"
+		sectionStr = " Data-Only"
 	}
 	if ddlOnly {
 		report.MetadataOnly = true
-		sectionStr = " (Metadata-Only)"
+		sectionStr = " Metadata-Only"
 	}
-	report.BackupType = fmt.Sprintf("Unfiltered Full Backup%s", sectionStr)
-	if len(schemaInclude) > 0 {
-		report.Filtered = true
-		report.BackupType = fmt.Sprintf("Schema-Filtered Full Backup%s", sectionStr)
-	}
+	report.BackupType = fmt.Sprintf("%s %s Full%s Backup", filterStr, compressStr, sectionStr)
 }
 
 func WriteReportFile(reportFile io.Writer, timestamp string, report *Report, objectCounts map[string]int, errMsg string) {
@@ -94,12 +102,27 @@ Database Size: %s`
 }
 
 func (report *Report) SetBackupTypeFromString() {
-	typeRegexp := regexp.MustCompile("Unfiltered Full Backup( [^ ]+)?")
+	typeRegexp := regexp.MustCompile(`^([^ ]+) ([^ ]+) Full( [^ ]+)? Backup$`)
 	tokens := typeRegexp.FindStringSubmatch(report.BackupType)
-	if tokens[1] == " (Data-Only)" {
+	if tokens == nil || len(tokens) == 0 {
+		logger.Fatal(errors.Errorf(`Invalid backup type string format: "%s" (Valid format is "[Unfiltered|Schema-Filtered] [Compressed|Uncompressed] Full[| Metadata-Only| Data-Only] Backup")`, report.BackupType), "")
+	}
+	if tokens[1] == "Schema-Filtered" {
+		report.SchemaFiltered = true
+	} else if tokens[1] != "Unfiltered" {
+		logger.Fatal(errors.Errorf(`Invalid backup filter string: "%s"`, tokens[1]), "Could not determine whether filter was used in backup")
+	}
+	if tokens[2] == "Compressed" {
+		report.Compressed = true
+	} else if tokens[2] != "Uncompressed" {
+		logger.Fatal(errors.Errorf(`Invalid backup compression string: "%s"`, tokens[2]), "Could not determine whether compression was used in backup")
+	}
+	if tokens[3] == " Data-Only" {
 		report.DataOnly = true
-	} else if tokens[1] == " (Metadata-Only)" {
+	} else if tokens[3] == " Metadata-Only" {
 		report.MetadataOnly = true
+	} else if tokens[3] != "" {
+		logger.Fatal(errors.Errorf(`Invalid backup section string: "%s"`, tokens[3][1:]), "Could not determine whether backup included metadata, data, or both")
 	}
 }
 

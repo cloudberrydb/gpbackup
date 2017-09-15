@@ -26,7 +26,14 @@ func WriteTableMapFile(tableMapFilePath string, tables []Relation, tableDefs map
 }
 
 func CopyTableOut(connection *utils.DBConn, table Relation, backupFile string) {
-	query := fmt.Sprintf("COPY %s TO '%s' WITH CSV DELIMITER '%s' ON SEGMENT;", table.ToString(), backupFile, tableDelim)
+	usingCompression, compressionProgram := utils.GetCompressionParameters()
+	copyCmdStr := ""
+	if usingCompression {
+		copyCmdStr = fmt.Sprintf("PROGRAM '%s > %s'", compressionProgram.CompressCommand, backupFile)
+	} else {
+		copyCmdStr = fmt.Sprintf("'%s'", backupFile)
+	}
+	query := fmt.Sprintf("COPY %s TO %s WITH CSV DELIMITER '%s' ON SEGMENT;", table.ToString(), copyCmdStr, tableDelim)
 	_, err := connection.Exec(query)
 	utils.CheckError(err)
 }

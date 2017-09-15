@@ -36,5 +36,6 @@ func InitializeBackupReport() {
 	reportFile := utils.MustOpenFileForReading(globalCluster.GetReportFilePath())
 	backupReport = utils.ReadReportFile(reportFile)
 	backupReport.SetBackupTypeFromString()
+	utils.InitializeCompressionParameters(backupReport.Compressed)
 	utils.EnsureBackupVersionCompatibility(backupReport.BackupVersion, version)
 }

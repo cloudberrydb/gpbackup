@@ -14,7 +14,16 @@ import (
 
 var _ = Describe("backup/data tests", func() {
 	Describe("CopyTableOut", func() {
-		It("will back up a table to its own file", func() {
+		It("will back up a table to its own file with compression", func() {
+			utils.SetCompressionParameters(true, utils.Compression{Name: "gzip", CompressCommand: "gzip -c", DecompressCommand: "gzip -d", Extension: ".gz"})
+			testTable := backup.Relation{SchemaOid: 2345, RelationOid: 3456, SchemaName: "public", RelationName: "foo", DependsUpon: nil, Inherits: nil}
+			execStr := "COPY public.foo TO PROGRAM 'gzip -c > <SEG_DATA_DIR>/backups/20170101/20170101010101/gpbackup_<SEGID>_20170101010101_3456' WITH CSV DELIMITER ',' ON SEGMENT;"
+			mock.ExpectExec(execStr).WillReturnResult(sqlmock.NewResult(10, 0))
+			filename := "<SEG_DATA_DIR>/backups/20170101/20170101010101/gpbackup_<SEGID>_20170101010101_3456"
+			backup.CopyTableOut(connection, testTable, filename)
+		})
+		It("will back up a table to its own file without compression", func() {
+			utils.SetCompressionParameters(false, utils.Compression{})
 			testTable := backup.Relation{SchemaOid: 2345, RelationOid: 3456, SchemaName: "public", RelationName: "foo", DependsUpon: nil, Inherits: nil}
 			execStr := "COPY public.foo TO '<SEG_DATA_DIR>/backups/20170101/20170101010101/gpbackup_<SEGID>_20170101010101_3456' WITH CSV DELIMITER ',' ON SEGMENT;"
 			mock.ExpectExec(execStr).WillReturnResult(sqlmock.NewResult(10, 0))

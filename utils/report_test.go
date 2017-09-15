@@ -7,6 +7,7 @@ import (
 	"github.com/greenplum-db/gpbackup/testutils"
 	"github.com/greenplum-db/gpbackup/utils"
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/pkg/errors"
@@ -132,50 +133,90 @@ types                       1000
 		BeforeEach(func() {
 			backupReport = &utils.Report{}
 		})
-		It("can set the type for a standard backup", func() {
-			backupReport.SetBackupTypeFromFlags(false, false, utils.ArrayFlags{})
-			Expect(backupReport.BackupType).To(Equal("Unfiltered Full Backup"))
-		})
-		It("can set the type for a metadata-only backup", func() {
-			backupReport.SetBackupTypeFromFlags(false, true, utils.ArrayFlags{})
-			Expect(backupReport.BackupType).To(Equal("Unfiltered Full Backup (Metadata-Only)"))
-		})
-		It("can set the type for a data-only backup", func() {
-			backupReport.SetBackupTypeFromFlags(true, false, utils.ArrayFlags{})
-			Expect(backupReport.BackupType).To(Equal("Unfiltered Full Backup (Data-Only)"))
-		})
-		It("can set the type for a schema-include backup", func() {
-			backupReport.SetBackupTypeFromFlags(false, false, utils.ArrayFlags{"someSchema"})
-			Expect(backupReport.BackupType).To(Equal("Schema-Filtered Full Backup"))
-		})
-		It("can set the type for a schema-include data-only backup", func() {
-			backupReport.SetBackupTypeFromFlags(true, false, utils.ArrayFlags{"someSchema"})
-			Expect(backupReport.BackupType).To(Equal("Schema-Filtered Full Backup (Data-Only)"))
-		})
+		DescribeTable("Backup type classification", func(dataOnly bool, ddlOnly bool, noCompression bool, schemaInclude utils.ArrayFlags, expectedType string) {
+			backupReport.SetBackupTypeFromFlags(dataOnly, ddlOnly, noCompression, schemaInclude)
+			Expect(backupReport.BackupType).To(Equal(expectedType))
+		},
+			Entry("classifies a default backup",
+				false, false, false, utils.ArrayFlags{}, "Unfiltered Compressed Full Backup"),
+			Entry("classifies a metadata-only backup",
+				false, true, false, utils.ArrayFlags{}, "Unfiltered Compressed Full Metadata-Only Backup"),
+			Entry("classifies a data-only backup",
+				true, false, false, utils.ArrayFlags{}, "Unfiltered Compressed Full Data-Only Backup"),
+			Entry("classifies an uncompressed backup",
+				false, false, true, utils.ArrayFlags{}, "Unfiltered Uncompressed Full Backup"),
+			Entry("classifies an uncompressed metadata-only backup",
+				false, true, true, utils.ArrayFlags{}, "Unfiltered Uncompressed Full Metadata-Only Backup"),
+			Entry("classifies an uncompressed data-only backup",
+				true, false, true, utils.ArrayFlags{}, "Unfiltered Uncompressed Full Data-Only Backup"),
+			Entry("classifies a schema-filtered backup",
+				false, false, false, utils.ArrayFlags{"someSchema"}, "Schema-Filtered Compressed Full Backup"),
+			Entry("classifies a schema-filtered metadata-only backup",
+				false, true, false, utils.ArrayFlags{"someSchema"}, "Schema-Filtered Compressed Full Metadata-Only Backup"),
+			Entry("classifies a schema-filtered data-only backup",
+				true, false, false, utils.ArrayFlags{"someSchema"}, "Schema-Filtered Compressed Full Data-Only Backup"),
+			Entry("classifies an uncompressed schema-filtered backup",
+				false, false, true, utils.ArrayFlags{"someSchema"}, "Schema-Filtered Uncompressed Full Backup"),
+			Entry("classifies an uncompressed schema-filtered metadata-only backup",
+				false, true, true, utils.ArrayFlags{"someSchema"}, "Schema-Filtered Uncompressed Full Metadata-Only Backup"),
+			Entry("classifies an uncompressed schema-filtered data-only backup",
+				true, false, true, utils.ArrayFlags{"someSchema"}, "Schema-Filtered Uncompressed Full Data-Only Backup"),
+		)
 	})
 	Describe("SetBackupTypeFromString", func() {
 		var backupReport *utils.Report
 		BeforeEach(func() {
 			backupReport = &utils.Report{}
 		})
-		It("can set the type for a standard backup", func() {
-			backupReport.BackupType = "Unfiltered Full Backup"
+		DescribeTable("Backup type classification", func(dataOnly bool, ddlOnly bool, noCompression bool, schemaFiltered bool, inputType string) {
+			backupReport.BackupType = inputType
 			backupReport.SetBackupTypeFromString()
-			Expect(backupReport.DataOnly).To(BeFalse())
-			Expect(backupReport.MetadataOnly).To(BeFalse())
-		})
-		It("can set the type for a metadata-only backup", func() {
-			backupReport.BackupType = "Unfiltered Full Backup (Metadata-Only)"
+			Expect(backupReport.DataOnly).To(Equal(dataOnly))
+			Expect(backupReport.MetadataOnly).To(Equal(ddlOnly))
+			Expect(backupReport.Compressed).To(Equal(!noCompression))
+			Expect(backupReport.SchemaFiltered).To(Equal(schemaFiltered))
+		},
+			Entry("can set the type for a default backup",
+				false, false, false, false, "Unfiltered Compressed Full Backup"),
+			Entry("can set the type for a metadata-only backup",
+				false, true, false, false, "Unfiltered Compressed Full Metadata-Only Backup"),
+			Entry("can set the type for a data-only backup",
+				true, false, false, false, "Unfiltered Compressed Full Data-Only Backup"),
+			Entry("can set the type for an uncompressed backup",
+				false, false, true, false, "Unfiltered Uncompressed Full Backup"),
+			Entry("can set the type for an uncompressed metadata-only backup",
+				false, true, true, false, "Unfiltered Uncompressed Full Metadata-Only Backup"),
+			Entry("can set the type for an uncompressed data-only backup",
+				true, false, true, false, "Unfiltered Uncompressed Full Data-Only Backup"),
+			Entry("can set the type for a schema-filtered backup",
+				false, false, false, true, "Schema-Filtered Compressed Full Backup"),
+			Entry("can set the type for a schema-filtered metadata-only backup",
+				false, true, false, true, "Schema-Filtered Compressed Full Metadata-Only Backup"),
+			Entry("can set the type for a schema-filtered data-only backup",
+				true, false, false, true, "Schema-Filtered Compressed Full Data-Only Backup"),
+			Entry("can set the type for an uncompressed schema-filtered backup",
+				false, false, true, true, "Schema-Filtered Uncompressed Full Backup"),
+			Entry("can set the type for an uncompressed schema-filtered metadata-only backup",
+				false, true, true, true, "Schema-Filtered Uncompressed Full Metadata-Only Backup"),
+			Entry("can set the type for an uncompressed schema-filtered data-only backup",
+				true, false, true, true, "Schema-Filtered Uncompressed Full Data-Only Backup"),
+		)
+		DescribeTable("Classification errors", func(inputType string, errorMessage string) {
+			backupReport.BackupType = inputType
+			defer testutils.ShouldPanicWithMessage(errorMessage)
 			backupReport.SetBackupTypeFromString()
-			Expect(backupReport.DataOnly).To(BeFalse())
-			Expect(backupReport.MetadataOnly).To(BeTrue())
-		})
-		It("can set the type for a data-only backup", func() {
-			backupReport.BackupType = "Unfiltered Full Backup (Data-Only)"
-			backupReport.SetBackupTypeFromString()
-			Expect(backupReport.DataOnly).To(BeTrue())
-			Expect(backupReport.MetadataOnly).To(BeFalse())
-		})
+		},
+			Entry("can detect an invalid format due to extra tokens",
+				"Unfiltered Compressed Full Backup Extra-Token", `Invalid backup type string format: "Unfiltered Compressed Full Backup Extra-Token"`),
+			Entry("can detect an invalid format due to missing tokens",
+				"Unfiltered Full Backup", `Invalid backup type string format: "Unfiltered Full Backup"`),
+			Entry("can detect an invalid filter string",
+				"Table-Filtered Compressed Full Backup", `Invalid backup filter string: "Table-Filtered"`),
+			Entry("can detect an invalid compression string",
+				"Unfiltered Gzip-Compressed Full Backup", `Invalid backup compression string: "Gzip-Compressed"`),
+			Entry("can detect an invalid section string",
+				"Unfiltered Compressed Full Postdata-Only Backup", `Invalid backup section string: "Postdata-Only"`),
+		)
 	})
 	Describe("Email-related functions", func() {
 		reportFileContents := []byte(`Greenplum Database Backup Report

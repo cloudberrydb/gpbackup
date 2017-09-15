@@ -106,12 +106,7 @@ func ExecuteSQLFile(dbconn *DBConn, filename string) {
 	}
 	out, err := exec.Command("psql", connStr...).CombinedOutput()
 	if err != nil {
-		/*
-		 * Not using logger.Fatal, as this is a SQL error rather than a code error,
-		 * so we don't want a stack trace.
-		 */
-		logger.Error("Execution of SQL file encountered an error: %s", out)
-		Abort()
+		logger.Fatal(errors.Errorf("Execution of SQL file encountered an error: %s", out), "")
 	}
 }
 

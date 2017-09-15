@@ -16,8 +16,30 @@ import (
 )
 
 var (
-	compressExtension = ".gz"
+	usingCompression   = true
+	compressionProgram Compression
 )
+
+type Compression struct {
+	Name              string
+	CompressCommand   string
+	DecompressCommand string
+	Extension         string
+}
+
+func InitializeCompressionParameters(compress bool) {
+	usingCompression = compress
+	compressionProgram = Compression{Name: "gzip", CompressCommand: "gzip -c", DecompressCommand: "gzip -d", Extension: ".gz"}
+}
+
+func GetCompressionParameters() (bool, Compression) {
+	return usingCompression, compressionProgram
+}
+
+func SetCompressionParameters(compress bool, compression Compression) {
+	usingCompression = compress
+	compressionProgram = compression
+}
 
 type Executor interface {
 	ExecuteLocalCommand(commandStr string) error
@@ -206,6 +228,9 @@ func (cluster *Cluster) GetTableBackupFilePath(contentID int, tableOid uint32) s
 
 func (cluster *Cluster) GetTableBackupFilePathForCopyCommand(tableOid uint32) string {
 	backupFilePath := fmt.Sprintf("gpbackup_<SEGID>_%s_%d", cluster.Timestamp, tableOid)
+	if usingCompression {
+		backupFilePath += compressionProgram.Extension
+	}
 	baseDir := "<SEG_DATA_DIR>"
 	if cluster.IsUserSpecifiedBackupDir() {
 		baseDir = path.Join(cluster.UserSpecifiedBackupDir, "gpseg<SEGID>")

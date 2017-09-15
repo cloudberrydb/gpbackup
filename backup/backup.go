@@ -28,7 +28,7 @@ var ( // Command-line flags
 	debug            *bool
 	backupDir        *string
 	backupGlobals    *bool
-	noCompress       *bool
+	noCompression    *bool
 	printVersion     *bool
 	quiet            *bool
 	verbose          *bool
@@ -47,6 +47,7 @@ func initializeFlags() {
 	debug = flag.Bool("debug", false, "Print verbose and debug log messages")
 	backupDir = flag.String("backupdir", "", "The directory to which all backup files will be written")
 	backupGlobals = flag.Bool("globals", false, "Back up global metadata")
+	noCompression = flag.Bool("no-compression", false, "Disable compression of data files")
 	printVersion = flag.Bool("version", false, "Print version number and exit")
 	quiet = flag.Bool("quiet", false, "Suppress non-warning, non-error log messages")
 	verbose = flag.Bool("verbose", false, "Print verbose log messages")
