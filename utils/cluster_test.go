@@ -30,7 +30,6 @@ var _ = Describe("utils/cluster tests", func() {
 		utils.System.CurrentUser = func() (*user.User, error) { return &user.User{Username: "testUser", HomeDir: "testDir"}, nil }
 		utils.System.Hostname = func() (string, error) { return "testHost", nil }
 		testExecutor = &testutils.TestExecutor{}
-		utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) { return nil, nil }
 		testCluster = utils.NewCluster([]utils.SegConfig{masterSeg, localSegOne, remoteSegOne}, "", "20170101010101")
 		testCluster.Executor = testExecutor
 	})
@@ -273,13 +272,6 @@ var _ = Describe("utils/cluster tests", func() {
 		It("returns the content directory based on the user specified path", func() {
 			cluster := utils.NewCluster([]utils.SegConfig{masterSeg}, "/foo/bar", "20170101010101")
 			Expect(cluster.GetDirForContent(-1)).To(Equal("/foo/bar/gpseg-1/backups/20170101/20170101010101"))
-		})
-		It("Panics if lock file exists for current timestamp", func() {
-			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) {
-				return nil, errors.New("file does not exist")
-			}
-			defer testutils.ShouldPanicWithMessage("A backup with timestamp 20170101010101 is already in progress. Wait 1 second and try the backup again.")
-			utils.NewCluster([]utils.SegConfig{masterSeg}, "/foo/bar", "20170101010101")
 		})
 	})
 	Describe("GetTableBackupFilePathForCopyCommand()", func() {

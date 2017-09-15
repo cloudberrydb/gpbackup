@@ -168,4 +168,19 @@ public."bar%baz"`)
 			utils.MustPrintln(os.Stdin, "text")
 		})
 	})
+	Describe("CreateBackupLockFile", func() {
+		It("Does not panic if lock file does not exist for current timestamp", func() {
+			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) {
+				return nil, nil
+			}
+			utils.CreateBackupLockFile("20170101010101")
+		})
+		It("Panics if lock file exists for current timestamp", func() {
+			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) {
+				return nil, errors.New("file does not exist")
+			}
+			defer testutils.ShouldPanicWithMessage("A backup with timestamp 20170101010101 is already in progress. Wait 1 second and try the backup again.")
+			utils.CreateBackupLockFile("20170101010101")
+		})
+	})
 })

@@ -3,7 +3,6 @@ package integration
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"testing"
 
 	"os/exec"
@@ -48,7 +47,6 @@ var _ = BeforeSuite(func() {
 	testutils.AssertQueryRuns(connection, "DROP PROTOCOL IF EXISTS gphdfs")
 	testutils.SetupTestLogger()
 	segConfig := utils.GetSegmentConfiguration(connection)
-	utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) { return nil, nil }
 	cluster := utils.NewCluster(segConfig, "/tmp/test_filespace", "20170101010101")
 	setupTestFilespace(cluster)
 })

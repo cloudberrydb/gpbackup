@@ -112,7 +112,9 @@ func DoSetup() {
 	validateSetup()
 
 	segConfig := utils.GetSegmentConfiguration(connection)
-	globalCluster = utils.NewCluster(segConfig, *backupDir, utils.CurrentTimestamp())
+	timestamp := utils.CurrentTimestamp()
+	utils.CreateBackupLockFile(timestamp)
+	globalCluster = utils.NewCluster(segConfig, *backupDir, timestamp)
 	globalCluster.CreateBackupDirectoriesOnAllHosts()
 	globalTOC = &utils.TOC{}
 }

@@ -78,6 +78,14 @@ func MustOpenFileForReaderAt(filename string) io.ReaderAt {
 	return fileHandle
 }
 
+func CreateBackupLockFile(timestamp string) {
+	timestampLockFile := fmt.Sprintf("/tmp/%s.lck", timestamp)
+	_, err := System.OpenFile(timestampLockFile, os.O_CREATE|os.O_EXCL, 0644)
+	if err != nil {
+		logger.Fatal(errors.Errorf("A backup with timestamp %s is already in progress. Wait 1 second and try the backup again.", timestamp), "")
+	}
+}
+
 func GetUserAndHostInfo() (string, string, string) {
 	currentUser, _ := System.CurrentUser()
 	userName := currentUser.Username

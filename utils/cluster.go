@@ -7,7 +7,6 @@ package utils
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"path"
 	"strconv"
@@ -56,12 +55,6 @@ func NewCluster(segConfigs []SegConfig, userSpecifiedBackupDir string, timestamp
 	cluster.SegHostMap = make(map[int]string, 0)
 	cluster.SegDirMap = make(map[int]string, 0)
 	cluster.UserSpecifiedBackupDir = userSpecifiedBackupDir
-	timestampLockFile := fmt.Sprintf("/tmp/%s.lck", timestamp)
-	_, err := System.OpenFile(timestampLockFile, os.O_CREATE|os.O_EXCL, 0644)
-	if err != nil {
-		logger.Fatal(errors.Errorf("A backup with timestamp %s is already in progress. Wait 1 second and try the backup again.", timestamp), "")
-	}
-
 	cluster.Timestamp = timestamp
 	for _, seg := range segConfigs {
 		cluster.ContentIDs = append(cluster.ContentIDs, seg.ContentID)
