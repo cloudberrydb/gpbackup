@@ -54,9 +54,14 @@ func GetNonEnumTypes(connection *utils.DBConn) []Type {
 	 * to filter those out.
 	 */
 	typModClause := ""
-	if connection.Version.AtLeast("5") {
-		typModClause = `t.typmodin AS modin,
-	t.typmodout AS modout,`
+	if connection.Version.Before("5") {
+		typModClause = `t.typreceive AS receive,
+	t.typsend AS send,`
+	} else {
+		typModClause = `CASE WHEN t.typreceive = '-'::regproc THEN '' ELSE t.typreceive::regproc::text END AS receive,
+	CASE WHEN t.typsend = '-'::regproc THEN '' ELSE t.typsend::regproc::text END AS send,
+	CASE WHEN t.typmodin = '-'::regproc THEN '' ELSE t.typmodin::regproc::text END AS modin,
+	CASE WHEN t.typmodout = '-'::regproc THEN '' ELSE t.typmodout::regproc::text END AS modout,`
 	}
 	query := fmt.Sprintf(`
 SELECT
@@ -68,8 +73,6 @@ SELECT
 	coalesce(pg_catalog.format_type(a.atttypid, NULL), '') AS atttype,
 	t.typinput,
 	t.typoutput,
-	t.typreceive AS receive,
-	t.typsend AS send,
 	%s
 	t.typlen,
 	t.typbyval,
@@ -93,6 +96,21 @@ ORDER BY n.nspname, t.typname, a.attname;`, typModClause, SchemaFilterClause("n"
 	results := make([]Type, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
+	/*
+	 * GPDB 4.3 has no built-in regproc-to-text cast and uses "-" in place of
+	 * NULL for several fields, so to avoid dealing with hyphens later on we
+	 * replace those with empty strings here.
+	 */
+	if connection.Version.Before("5") {
+		for i := range results {
+			if results[i].Send == "-" {
+				results[i].Send = ""
+			}
+			if results[i].Receive == "-" {
+				results[i].Receive = ""
+			}
+		}
+	}
 	return results
 }
 

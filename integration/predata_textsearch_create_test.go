@@ -84,7 +84,7 @@ var _ = Describe("backup integration create statement tests", func() {
 	})
 	Describe("PrintCreateTextSearchDictionaryStatements", func() {
 		It("creates a basic text search dictionary", func() {
-			dictionaries := []backup.TextSearchDictionary{backup.TextSearchDictionary{Oid: 0, Schema: "public", Name: "testdictionary", Template: "pg_catalog.snowball", InitOption: "language = 'russian', stopwords = 'russian'"}}
+			dictionaries := []backup.TextSearchDictionary{{Oid: 0, Schema: "public", Name: "testdictionary", Template: "pg_catalog.snowball", InitOption: "language = 'russian', stopwords = 'russian'"}}
 
 			backup.PrintCreateTextSearchDictionaryStatements(backupfile, &toc, dictionaries, backup.MetadataMap{})
 

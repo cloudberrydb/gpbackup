@@ -76,6 +76,7 @@ var _ = Describe("backup/queries_shared tests", func() {
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT
 	o.oid,
 	'' AS privileges,
+	'' AS kind,
 	pg_get_userbyid(o.owner) AS owner,
 	coalesce(obj_description(o.oid, 'table'), '') AS comment
 FROM table o
@@ -87,6 +88,7 @@ ORDER BY o.oid;`)).WillReturnRows(emptyRows)
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT
 	o.oid,
 	'' AS privileges,
+	'' AS kind,
 	pg_get_userbyid(o.owner) AS owner,
 	coalesce(obj_description(o.oid, 'table'), '') AS comment
 FROM table o
@@ -100,11 +102,13 @@ ORDER BY o.oid;`)).WillReturnRows(emptyRows)
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT
 	o.oid,
 	CASE
-		WHEN o.acl IS NULL THEN ''
-		WHEN array_length(o.acl, 1) = 0 THEN 'GRANTEE=/GRANTOR'
-		ELSE unnest(o.acl)::text
-	END
- AS privileges,
+		WHEN o.acl IS NULL OR array_upper(o.acl, 1) = 0 THEN o.acl[0]
+		ELSE unnest(o.acl)
+		END AS privileges,
+	CASE
+		WHEN o.acl IS NULL THEN 'Default'
+		WHEN array_upper(o.acl, 1) = 0 THEN 'Empty'
+		ELSE '' END AS kind,
 	pg_get_userbyid(o.owner) AS owner,
 	coalesce(obj_description(o.oid, 'table'), '') AS comment
 FROM table o
@@ -117,6 +121,7 @@ ORDER BY o.oid;`)).WillReturnRows(emptyRows)
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT
 	o.oid,
 	'' AS privileges,
+	'' AS kind,
 	pg_get_userbyid(o.owner) AS owner,
 	coalesce(shobj_description(o.oid, 'table'), '') AS comment
 FROM table o

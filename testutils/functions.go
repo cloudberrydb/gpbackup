@@ -36,7 +36,8 @@ func CreateAndConnectMockDB() (*utils.DBConn, sqlmock.Sqlmock) {
 	connection := utils.NewDBConn("testdb")
 	connection.Driver = driver
 	connection.Connect()
-	connection.Version = utils.GPDBVersion{"5.0.0", semver.MustParse("5.0.0")}
+	connection.Version = utils.GPDBVersion{VersionString: "5.0.0", SemVer: semver.MustParse("5.0.0")}
+	backup.SetConnection(connection)
 	backup.InitializeMetadataParams(connection)
 	return connection, mock
 }
@@ -206,7 +207,7 @@ func DefaultACLWithGrantWithout(grantee string, objType string, revoke ...string
 }
 
 func DefaultTypeDefinition(typeType string, typeName string) backup.Type {
-	return backup.Type{Oid: 1, TypeSchema: "public", TypeName: typeName, Type: typeType, AttName: "", AttType: "", Input: "", Output: "", Receive: "-", Send: "-", ModIn: "-", ModOut: "-", InternalLength: -1, IsPassedByValue: false, Alignment: "c", Storage: "p", DefaultVal: "", Element: "", Delimiter: "", EnumLabels: "", BaseType: "", NotNull: false, CompositeAtts: nil, DependsUpon: nil}
+	return backup.Type{Oid: 1, TypeSchema: "public", TypeName: typeName, Type: typeType, AttName: "", AttType: "", Input: "", Output: "", Receive: "", Send: "", ModIn: "", ModOut: "", InternalLength: -1, IsPassedByValue: false, Alignment: "c", Storage: "p", DefaultVal: "", Element: "", Delimiter: "", EnumLabels: "", BaseType: "", NotNull: false, CompositeAtts: nil, DependsUpon: nil}
 }
 
 /*

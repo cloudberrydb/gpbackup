@@ -24,13 +24,13 @@ var _ = Describe("backup integration tests", func() {
 		BeforeEach(func() {
 			shellType = backup.Type{Type: "p", TypeSchema: "public", TypeName: "shell_type"}
 			baseTypeDefault = backup.Type{
-				Oid: 1, Type: "b", TypeSchema: "public", TypeName: "base_type", Input: "base_fn_in", Output: "base_fn_out", Receive: "-",
-				Send: "-", ModIn: "-", ModOut: "-", InternalLength: -1, IsPassedByValue: false, Alignment: "i", Storage: "p",
+				Oid: 1, Type: "b", TypeSchema: "public", TypeName: "base_type", Input: "base_fn_in", Output: "base_fn_out", Receive: "",
+				Send: "", ModIn: "", ModOut: "", InternalLength: -1, IsPassedByValue: false, Alignment: "i", Storage: "p",
 				DefaultVal: "", Element: "", Delimiter: ",",
 			}
 			baseTypeCustom = backup.Type{
-				Oid: 1, Type: "b", TypeSchema: "public", TypeName: "base_type", Input: "base_fn_in", Output: "base_fn_out", Receive: "-",
-				Send: "-", ModIn: "-", ModOut: "-", InternalLength: 8, IsPassedByValue: true, Alignment: "c", Storage: "p",
+				Oid: 1, Type: "b", TypeSchema: "public", TypeName: "base_type", Input: "base_fn_in", Output: "base_fn_out", Receive: "",
+				Send: "", ModIn: "", ModOut: "", InternalLength: 8, IsPassedByValue: true, Alignment: "c", Storage: "p",
 				DefaultVal: "0", Element: "integer", Delimiter: ";",
 			}
 			compositeTypeAtt1 = backup.Type{
@@ -161,7 +161,7 @@ var _ = Describe("backup integration tests", func() {
 		It("returns a slice for a domain type", func() {
 			domainType := backup.Type{
 				Oid: 1, Type: "d", TypeSchema: "public", TypeName: "domain1", AttName: "", AttType: "", Input: "domain_in", Output: "numeric_out",
-				Receive: "domain_recv", Send: "numeric_send", ModIn: "-", ModOut: "-", InternalLength: -1, IsPassedByValue: false,
+				Receive: "domain_recv", Send: "numeric_send", ModIn: "", ModOut: "", InternalLength: -1, IsPassedByValue: false,
 				Alignment: "i", Storage: "m", DefaultVal: "4", Element: "", Delimiter: ",", EnumLabels: "", BaseType: "numeric",
 			}
 			testutils.AssertQueryRuns(connection, "CREATE DOMAIN domain1 AS numeric DEFAULT 4")

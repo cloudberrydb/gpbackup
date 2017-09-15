@@ -31,8 +31,8 @@ var _ = Describe("backup integration create statement tests", func() {
 		BeforeEach(func() {
 			shellType = backup.Type{Type: "p", TypeSchema: "public", TypeName: "shell_type"}
 			baseType = backup.Type{
-				Type: "b", TypeSchema: "public", TypeName: "base_type", Input: "base_fn_in", Output: "base_fn_out", Receive: "-",
-				Send: "-", ModIn: "-", ModOut: "-", InternalLength: 4, IsPassedByValue: true, Alignment: "i", Storage: "p",
+				Type: "b", TypeSchema: "public", TypeName: "base_type", Input: "base_fn_in", Output: "base_fn_out", Receive: "",
+				Send: "", ModIn: "", ModOut: "", InternalLength: 4, IsPassedByValue: true, Alignment: "i", Storage: "p",
 				DefaultVal: "default", Element: "text", Delimiter: ";",
 			}
 			atts := []backup.CompositeTypeAttribute{{AttName: "att1", AttType: "text"}, {AttName: "att2", AttType: "integer"}}

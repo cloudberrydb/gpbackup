@@ -58,21 +58,17 @@ func PrintCreateBaseTypeStatement(predataFile *utils.FileWithByteCount, toc *uti
 
 	// All of the following functions are stored in quoted form and don't need to be quoted again
 	predataFile.MustPrintf("\tINPUT = %s,\n\tOUTPUT = %s", base.Input, base.Output)
-	/*
-	 * pg_type uses - in place of NULL for the following four functions,
-	 * so we compare against "-" instead of "" to check for existence.
-	 */
-	if base.Receive != "-" {
+	if base.Receive != "" {
 		predataFile.MustPrintf(",\n\tRECEIVE = %s", base.Receive)
 	}
-	if base.Send != "-" {
+	if base.Send != "" {
 		predataFile.MustPrintf(",\n\tSEND = %s", base.Send)
 	}
 	if connection.Version.AtLeast("5") {
-		if base.ModIn != "-" {
+		if base.ModIn != "" {
 			predataFile.MustPrintf(",\n\tTYPMOD_IN = %s", base.ModIn)
 		}
-		if base.ModOut != "-" {
+		if base.ModOut != "" {
 			predataFile.MustPrintf(",\n\tTYPMOD_OUT = %s", base.ModOut)
 		}
 	}
