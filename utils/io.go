@@ -130,6 +130,7 @@ func MustPrintBytes(file io.Writer, bytes []byte) uint64 {
 	}
 	return uint64(bytesWritten)
 }
+
 /*
  * Generic file/directory manipulation functions
  */

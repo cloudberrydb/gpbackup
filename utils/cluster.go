@@ -229,29 +229,28 @@ func (cluster *Cluster) GetBackupFilePathPrefix() string {
 }
 
 func (cluster *Cluster) GetGlobalFilePath() string {
-	return fmt.Sprintf("%sglobal.sql", GetBackupFilePathPrefix(cluster))
+	return fmt.Sprintf("%sglobal.sql", cluster.GetBackupFilePathPrefix())
 }
 
 func (cluster *Cluster) GetPredataFilePath() string {
-	return fmt.Sprintf("%spredata.sql", GetBackupFilePathPrefix(cluster))
+	return fmt.Sprintf("%spredata.sql", cluster.GetBackupFilePathPrefix())
 }
 
 func (cluster *Cluster) GetPostdataFilePath() string {
-	return fmt.Sprintf("%spostdata.sql", GetBackupFilePathPrefix(cluster))
+	return fmt.Sprintf("%spostdata.sql", cluster.GetBackupFilePathPrefix())
 }
 
 func (cluster *Cluster) GetTOCFilePath() string {
-	return fmt.Sprintf("%stoc.yaml", GetBackupFilePathPrefix(cluster))
+	return fmt.Sprintf("%stoc.yaml", cluster.GetBackupFilePathPrefix())
 }
 
 func (cluster *Cluster) GetTableMapFilePath() string {
-	return fmt.Sprintf("%stable_map", GetBackupFilePathPrefix(cluster))
+	return fmt.Sprintf("%stable_map", cluster.GetBackupFilePathPrefix())
 }
 
 func (cluster *Cluster) GetReportFilePath() string {
-	return fmt.Sprintf("%sreport", GetBackupFilePathPrefix(cluster))
+	return fmt.Sprintf("%sreport", cluster.GetBackupFilePathPrefix())
 }
-
 
 /*
  * Helper functions
