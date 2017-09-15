@@ -130,27 +130,6 @@ func MustPrintBytes(file io.Writer, bytes []byte) uint64 {
 	}
 	return uint64(bytesWritten)
 }
-
-/*
- * Backup and restore filename functions
- */
-
-func GetGlobalFilename(cluster Cluster) string {
-	return fmt.Sprintf("%s/global.sql", cluster.GetDirForContent(-1))
-}
-
-func GetPredataFilename(cluster Cluster) string {
-	return fmt.Sprintf("%s/predata.sql", cluster.GetDirForContent(-1))
-}
-
-func GetPostdataFilename(cluster Cluster) string {
-	return fmt.Sprintf("%s/postdata.sql", cluster.GetDirForContent(-1))
-}
-
-func GetTOCFilename(cluster Cluster) string {
-	return fmt.Sprintf("%s/toc.yaml", cluster.GetDirForContent(-1))
-}
-
 /*
  * Generic file/directory manipulation functions
  */

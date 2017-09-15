@@ -124,7 +124,7 @@ func (logger *Logger) GetLogPrefix(level string) string {
 	return fmt.Sprintf("%s %s", logTimestamp, fmt.Sprintf(logger.header, level))
 }
 
-func (logger *Logger) GetLogFileName() string {
+func (logger *Logger) GetLogFilePath() string {
 	return logger.logFileName
 }
 

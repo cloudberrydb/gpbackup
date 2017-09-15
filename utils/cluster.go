@@ -186,7 +186,7 @@ func (cluster *Cluster) LogFatalError(errMessage string, numErrors int) {
 	if numErrors != 1 {
 		s = "s"
 	}
-	logger.Fatal(errors.Errorf("%s on %d segment%s. See %s for a complete list of segments with errors.", errMessage, numErrors, s, logger.GetLogFileName()), "")
+	logger.Fatal(errors.Errorf("%s on %d segment%s. See %s for a complete list of segments with errors.", errMessage, numErrors, s, logger.GetLogFilePath()), "")
 }
 
 func (cluster *Cluster) GetContentList() []int {
@@ -205,10 +205,6 @@ func (cluster *Cluster) GetDirForContent(contentID int) string {
 	return path.Join(cluster.SegDirMap[contentID], "backups", cluster.Timestamp[0:8], cluster.Timestamp)
 }
 
-func (cluster *Cluster) GetTableMapFilePath() string {
-	return path.Join(cluster.GetDirForContent(-1), fmt.Sprintf("gpbackup_%s_table_map", cluster.Timestamp))
-}
-
 func (cluster *Cluster) GetTableBackupFilePath(contentID int, tableOid uint32) string {
 	templateFilePath := cluster.GetTableBackupFilePathForCopyCommand(tableOid)
 	filePath := strings.Replace(templateFilePath, "<SEG_DATA_DIR>", cluster.SegDirMap[contentID], -1)
@@ -216,17 +212,46 @@ func (cluster *Cluster) GetTableBackupFilePath(contentID int, tableOid uint32) s
 }
 
 func (cluster *Cluster) GetTableBackupFilePathForCopyCommand(tableOid uint32) string {
-	backupFilename := fmt.Sprintf("gpbackup_<SEGID>_%s_%d", cluster.Timestamp, tableOid)
+	backupFilePath := fmt.Sprintf("gpbackup_<SEGID>_%s_%d", cluster.Timestamp, tableOid)
 	baseDir := "<SEG_DATA_DIR>"
 	if cluster.IsUserSpecifiedBackupDir() {
 		baseDir = path.Join(cluster.UserSpecifiedBackupDir, "gpseg<SEGID>")
 	}
-	return path.Join(baseDir, "backups", cluster.Timestamp[0:8], cluster.Timestamp, backupFilename)
+	return path.Join(baseDir, "backups", cluster.Timestamp[0:8], cluster.Timestamp, backupFilePath)
+}
+
+/*
+ * Backup and restore filename functions
+ */
+
+func (cluster *Cluster) GetBackupFilePathPrefix() string {
+	return path.Join(cluster.GetDirForContent(-1), fmt.Sprintf("gpbackup_%s_", cluster.Timestamp))
+}
+
+func (cluster *Cluster) GetGlobalFilePath() string {
+	return fmt.Sprintf("%sglobal.sql", GetBackupFilePathPrefix(cluster))
+}
+
+func (cluster *Cluster) GetPredataFilePath() string {
+	return fmt.Sprintf("%spredata.sql", GetBackupFilePathPrefix(cluster))
+}
+
+func (cluster *Cluster) GetPostdataFilePath() string {
+	return fmt.Sprintf("%spostdata.sql", GetBackupFilePathPrefix(cluster))
+}
+
+func (cluster *Cluster) GetTOCFilePath() string {
+	return fmt.Sprintf("%stoc.yaml", GetBackupFilePathPrefix(cluster))
+}
+
+func (cluster *Cluster) GetTableMapFilePath() string {
+	return fmt.Sprintf("%stable_map", GetBackupFilePathPrefix(cluster))
 }
 
 func (cluster *Cluster) GetReportFilePath() string {
-	return fmt.Sprintf("%s/gpbackup_%s_report", cluster.GetDirForContent(-1), cluster.Timestamp)
+	return fmt.Sprintf("%sreport", GetBackupFilePathPrefix(cluster))
 }
+
 
 /*
  * Helper functions

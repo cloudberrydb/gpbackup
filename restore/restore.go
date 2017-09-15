@@ -113,8 +113,8 @@ func DoRestore() {
 }
 
 func createDatabase() {
-	globalFilename := utils.GetGlobalFilename(globalCluster)
-	tocFilename := utils.GetTOCFilename(globalCluster)
+	globalFilename := globalCluster.GetGlobalFilePath()
+	tocFilename := globalCluster.GetTOCFilePath()
 	logger.Info("Creating database")
 	toc := utils.NewTOC(tocFilename)
 	globalFile := utils.MustOpenFileForReaderAt(globalFilename)
@@ -127,14 +127,14 @@ func createDatabase() {
 }
 
 func restoreGlobal() {
-	globalFilename := utils.GetGlobalFilename(globalCluster)
+	globalFilename := globalCluster.GetGlobalFilePath()
 	logger.Info("Restoring global database metadata from %s", globalFilename)
 	utils.ExecuteSQLFile(connection, globalFilename)
 	logger.Info("Global database metadata restore complete")
 }
 
 func restorePredata() {
-	predataFilename := utils.GetPredataFilename(globalCluster)
+	predataFilename := globalCluster.GetPredataFilePath()
 	logger.Info("Restoring pre-data metadata from %s", predataFilename)
 	utils.ExecuteSQLFile(connection, predataFilename)
 	logger.Info("Pre-data metadata restore complete")
@@ -151,7 +151,7 @@ func restoreData(tableMap map[string]uint32) {
 }
 
 func restorePostdata() {
-	postdataFilename := utils.GetPostdataFilename(globalCluster)
+	postdataFilename := globalCluster.GetPostdataFilePath()
 	logger.Info("Restoring post-data metadata from %s", postdataFilename)
 	utils.ExecuteSQLFile(connection, postdataFilename)
 	logger.Info("Post-data metadata restore complete")

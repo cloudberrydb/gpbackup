@@ -380,6 +380,6 @@ func BackupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
 			s = "s"
 		}
 		logger.Warn("Skipped data backup of %d external table%s.", numExtTables, s)
-		logger.Warn("See %s for a complete list of skipped tables.", logger.GetLogFileName())
+		logger.Warn("See %s for a complete list of skipped tables.", logger.GetLogFilePath())
 	}
 }

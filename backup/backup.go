@@ -138,7 +138,7 @@ func DoBackup() {
 		backupGlobal(objectCounts)
 		backupPredata(tables, tableDefs, objectCounts)
 		backupPostdata(objectCounts)
-		writeTOC(utils.GetTOCFilename(globalCluster), globalTOC)
+		writeTOC(globalCluster.GetTOCFilePath(), globalTOC)
 	}
 
 	if !*metadataOnly {
@@ -155,7 +155,7 @@ func writeTOC(filename string, toc *utils.TOC) {
 }
 
 func backupGlobal(objectCounts map[string]int) {
-	globalFilename := utils.GetGlobalFilename(globalCluster)
+	globalFilename := globalCluster.GetGlobalFilePath()
 	logger.Info("Writing global database metadata to %s", globalFilename)
 	globalFile := utils.NewFileWithByteCountFromFile(globalFilename)
 	defer globalFile.Close()
@@ -174,7 +174,7 @@ func backupGlobal(objectCounts map[string]int) {
 }
 
 func backupPredata(tables []Relation, tableDefs map[uint32]TableDefinition, objectCounts map[string]int) {
-	predataFilename := utils.GetPredataFilename(globalCluster)
+	predataFilename := globalCluster.GetPredataFilePath()
 	logger.Info("Writing pre-data metadata to %s", predataFilename)
 	predataFile := utils.NewFileWithByteCountFromFile(predataFilename)
 	defer predataFile.Close()
@@ -238,7 +238,7 @@ func backupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
 }
 
 func backupPostdata(objectCounts map[string]int) {
-	postdataFilename := utils.GetPostdataFilename(globalCluster)
+	postdataFilename := globalCluster.GetPostdataFilePath()
 	logger.Info("Writing post-data metadata to %s", postdataFilename)
 	postdataFile := utils.NewFileWithByteCountFromFile(postdataFilename)
 	defer postdataFile.Close()
