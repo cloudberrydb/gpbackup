@@ -23,7 +23,7 @@ set -o pipefail
 
 print_header Backing up "$dbname" to "$backupdir"
 gpbackup --dbname "$dbname" --backupdir "$backupdir" | tee "$log_file"
-timestamp=$(head -1 "$log_file" | grep "Backup Timestamp " | grep -Eo "\d{14}")
+timestamp=$(head -1 "$log_file" | grep "Backup Timestamp " | grep -Eo "[[:digit:]]{14}")
 
 print_header Restoring "$dbname" from "$backupdir"
 dropdb "$dbname"
