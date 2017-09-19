@@ -5,7 +5,7 @@ SHELL := /bin/bash
 BACKUP=gpbackup
 RESTORE=gprestore
 DIR_PATH=$(shell dirname `pwd`)
-BIN_DIR=$(HOME)/go/bin
+BIN_DIR=$(shell echo $${GOPATH:-~/go/bin} | awk -F':' '{ print $$1 "/bin"}')
 
 GIT_VERSION := $(shell git describe --tags | awk -F "-" '{$$2+=0; print $$1 "." $$2}')
 DEV_VERSION := $(shell git diff | wc -l | awk '{if($$1!=0) {print "+dev"}}')
