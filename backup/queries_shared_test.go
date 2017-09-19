@@ -77,7 +77,7 @@ var _ = Describe("backup/queries_shared tests", func() {
 	o.oid,
 	'' AS privileges,
 	'' AS kind,
-	pg_get_userbyid(o.owner) AS owner,
+	pg_get_userbyid(owner) AS owner,
 	coalesce(obj_description(o.oid, 'table'), '') AS comment
 FROM table o
 
@@ -89,7 +89,7 @@ ORDER BY o.oid;`)).WillReturnRows(emptyRows)
 	o.oid,
 	'' AS privileges,
 	'' AS kind,
-	pg_get_userbyid(o.owner) AS owner,
+	pg_get_userbyid(owner) AS owner,
 	coalesce(obj_description(o.oid, 'table'), '') AS comment
 FROM table o
 JOIN pg_namespace n ON o.schema = n.oid
@@ -102,14 +102,14 @@ ORDER BY o.oid;`)).WillReturnRows(emptyRows)
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT
 	o.oid,
 	CASE
-		WHEN o.acl IS NULL OR array_upper(o.acl, 1) = 0 THEN o.acl[0]
-		ELSE unnest(o.acl)
+		WHEN acl IS NULL OR array_upper(acl, 1) = 0 THEN acl[0]
+		ELSE unnest(acl)
 		END AS privileges,
 	CASE
-		WHEN o.acl IS NULL THEN 'Default'
-		WHEN array_upper(o.acl, 1) = 0 THEN 'Empty'
+		WHEN acl IS NULL THEN 'Default'
+		WHEN array_upper(acl, 1) = 0 THEN 'Empty'
 		ELSE '' END AS kind,
-	pg_get_userbyid(o.owner) AS owner,
+	pg_get_userbyid(owner) AS owner,
 	coalesce(obj_description(o.oid, 'table'), '') AS comment
 FROM table o
 
@@ -122,7 +122,7 @@ ORDER BY o.oid;`)).WillReturnRows(emptyRows)
 	o.oid,
 	'' AS privileges,
 	'' AS kind,
-	pg_get_userbyid(o.owner) AS owner,
+	pg_get_userbyid(owner) AS owner,
 	coalesce(shobj_description(o.oid, 'table'), '') AS comment
 FROM table o
 

@@ -423,8 +423,7 @@ GRANT TRIGGER ON TABLE public.tablename TO PUBLIC;`)
 			testutils.ExpectRegexp(buffer, `
 CREATE FUNCTION public.function(integer, integer) RETURNS integer AS
 $_$SELECT $1 + $2$_$
-LANGUAGE sql
-COST 0;
+LANGUAGE sql;
 
 
 COMMENT ON FUNCTION public.function(integer, integer) IS 'function';
@@ -465,8 +464,7 @@ COMMENT ON TABLE public.relation IS 'relation';
 			testutils.ExpectRegexp(buffer, `
 CREATE FUNCTION public.function(integer, integer) RETURNS integer AS
 $_$SELECT $1 + $2$_$
-LANGUAGE sql
-COST 0;
+LANGUAGE sql;
 
 
 COMMENT ON FUNCTION public.function(integer, integer) IS 'function';

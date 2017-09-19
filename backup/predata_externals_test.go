@@ -292,7 +292,17 @@ ENCODING 'UTF-8'`)
 FORMAT 'text'
 ENCODING 'UTF-8'`)
 			})
-			It("prints a CREATE block for a table with error logging enabled", func() {
+			It("prints a CREATE block for a table using error logging with an error table", func() {
+				extTableDef.ErrTable = "error_table"
+				backup.PrintExternalTableStatements(backupfile, testTable, extTableDef)
+				testutils.ExpectRegexp(buffer, `LOCATION (
+	'file://host:port/path/file'
+)
+FORMAT 'text'
+ENCODING 'UTF-8'
+LOG ERRORS INTO error_table`)
+			})
+			It("prints a CREATE block for a table using error logging without an error table", func() {
 				extTableDef.ErrTable = "tablename"
 				backup.PrintExternalTableStatements(backupfile, testTable, extTableDef)
 				testutils.ExpectRegexp(buffer, `LOCATION (

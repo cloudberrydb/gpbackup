@@ -45,6 +45,7 @@ var _ = BeforeSuite(func() {
 	testutils.AssertQueryRuns(connection, "ALTER DATABASE testdb OWNER TO anothertestrole")
 	testutils.AssertQueryRuns(connection, "ALTER SCHEMA public OWNER TO anothertestrole")
 	testutils.AssertQueryRuns(connection, "DROP PROTOCOL IF EXISTS gphdfs")
+	testutils.AssertQueryRuns(connection, `SET standard_conforming_strings TO "on"`)
 	testutils.SetupTestLogger()
 	segConfig := utils.GetSegmentConfiguration(connection)
 	cluster := utils.NewCluster(segConfig, "/tmp/test_filespace", "20170101010101")

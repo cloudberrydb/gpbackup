@@ -98,6 +98,10 @@ var _ = Describe("backup integration create statement tests", func() {
 	Describe("PrintCreateOperatorClassStatements", func() {
 		It("creates basic operator class", func() {
 			operatorClass := backup.OperatorClass{Oid: 0, ClassSchema: "public", ClassName: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "hash", Type: "integer", Default: false, StorageType: "-", Operators: nil, Functions: nil}
+			if connection.Version.Before("5") { // Operator families do not exist prior to GPDB5
+				operatorClass.FamilySchema = ""
+				operatorClass.FamilyName = ""
+			}
 
 			backup.PrintCreateOperatorClassStatements(backupfile, &toc, []backup.OperatorClass{operatorClass}, nil)
 
@@ -115,6 +119,10 @@ var _ = Describe("backup integration create statement tests", func() {
 		It("creates complex operator class", func() {
 			testutils.SkipIf4(connection)
 			operatorClass := backup.OperatorClass{Oid: 0, ClassSchema: "public", ClassName: "testclass", FamilySchema: "public", FamilyName: "testfam", IndexMethod: "gist", Type: "integer", Default: true, StorageType: "-", Operators: nil, Functions: nil}
+			if connection.Version.Before("5") { // Operator families do not exist prior to GPDB5
+				operatorClass.FamilySchema = ""
+				operatorClass.FamilyName = ""
+			}
 			operatorClass.Operators = []backup.OperatorClassOperator{{ClassOid: 0, StrategyNumber: 1, Operator: "=(integer,integer)", Recheck: true}}
 			operatorClass.Functions = []backup.OperatorClassFunction{{ClassOid: 0, SupportNumber: 1, FunctionName: "abs(integer)"}}
 
@@ -133,6 +141,10 @@ var _ = Describe("backup integration create statement tests", func() {
 			operatorClassMetadata := operatorClassMetadataMap[1]
 
 			operatorClass := backup.OperatorClass{Oid: 1, ClassSchema: "public", ClassName: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "hash", Type: "integer", Default: false, StorageType: "-", Operators: nil, Functions: nil}
+			if connection.Version.Before("5") { // Operator families do not exist prior to GPDB5
+				operatorClass.FamilySchema = ""
+				operatorClass.FamilyName = ""
+			}
 
 			backup.PrintCreateOperatorClassStatements(backupfile, &toc, []backup.OperatorClass{operatorClass}, operatorClassMetadataMap)
 

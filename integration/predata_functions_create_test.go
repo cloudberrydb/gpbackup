@@ -16,60 +16,122 @@ var _ = Describe("backup integration create statement tests", func() {
 		backupfile = utils.NewFileWithByteCount(buffer)
 	})
 	Describe("PrintCreateFunctionStatement", func() {
-		funcMetadata := backup.ObjectMetadata{}
-		It("creates a function with a simple return type", func() {
-			addFunction := backup.Function{
-				SchemaName: "public", FunctionName: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
-				BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "integer",
-				Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 0, DataAccess: "c",
-				Language: "sql",
-			}
+		Context("Tests for GPDB 4.3", func() {
+			BeforeEach(func() {
+				testutils.SkipIfNot4(connection)
+			})
+			funcMetadata := backup.ObjectMetadata{}
+			It("creates a function with a simple return type", func() {
+				addFunction := backup.Function{
+					SchemaName: "public", FunctionName: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
+					BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "integer",
+					Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", NumRows: 0, Language: "sql",
+				}
 
-			backup.PrintCreateFunctionStatement(backupfile, &toc, addFunction, funcMetadata)
+				backup.PrintCreateFunctionStatement(backupfile, &toc, addFunction, funcMetadata)
 
-			testutils.AssertQueryRuns(connection, buffer.String())
-			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION add(integer, integer)")
+				testutils.AssertQueryRuns(connection, buffer.String())
+				defer testutils.AssertQueryRuns(connection, "DROP FUNCTION add(integer, integer)")
 
-			resultFunctions := backup.GetFunctions(connection)
+				resultFunctions := backup.GetFunctions(connection)
 
-			Expect(len(resultFunctions)).To(Equal(1))
-			testutils.ExpectStructsToMatchExcluding(&addFunction, &resultFunctions[0], "Oid")
+				Expect(len(resultFunctions)).To(Equal(1))
+				testutils.ExpectStructsToMatchExcluding(&addFunction, &resultFunctions[0], "Oid")
+			})
+			It("creates a function that returns a set", func() {
+				appendFunction := backup.Function{
+					SchemaName: "public", FunctionName: "append", ReturnsSet: true, FunctionBody: "SELECT ($1, $2)",
+					BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "SETOF record",
+					Volatility: "s", IsStrict: true, IsSecurityDefiner: true, Language: "sql",
+				}
+
+				backup.PrintCreateFunctionStatement(backupfile, &toc, appendFunction, funcMetadata)
+
+				testutils.AssertQueryRuns(connection, buffer.String())
+				defer testutils.AssertQueryRuns(connection, "DROP FUNCTION append(integer, integer)")
+
+				resultFunctions := backup.GetFunctions(connection)
+
+				Expect(len(resultFunctions)).To(Equal(1))
+				testutils.ExpectStructsToMatchExcluding(&appendFunction, &resultFunctions[0], "Oid")
+			})
+			It("creates a function that returns a table", func() {
+				dupFunction := backup.Function{
+					SchemaName: "public", FunctionName: "dup", ReturnsSet: true, FunctionBody: "SELECT $1, CAST($1 AS text) || ' is text'",
+					BinaryPath: "", Arguments: "integer", IdentArgs: "integer", ResultType: "TABLE(f1 integer, f2 text)",
+					Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Language: "sql",
+				}
+
+				backup.PrintCreateFunctionStatement(backupfile, &toc, dupFunction, funcMetadata)
+
+				testutils.AssertQueryRuns(connection, buffer.String())
+				defer testutils.AssertQueryRuns(connection, "DROP FUNCTION dup(integer)")
+
+				resultFunctions := backup.GetFunctions(connection)
+
+				Expect(len(resultFunctions)).To(Equal(1))
+				testutils.ExpectStructsToMatchExcluding(&dupFunction, &resultFunctions[0], "Oid")
+			})
 		})
-		It("creates a function that returns a set", func() {
-			appendFunction := backup.Function{
-				SchemaName: "public", FunctionName: "append", ReturnsSet: true, FunctionBody: "SELECT ($1, $2)",
-				BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "SETOF record",
-				Volatility: "s", IsStrict: true, IsSecurityDefiner: true, Config: "SET search_path TO pg_temp", Cost: 200,
-				NumRows: 200, DataAccess: "m", Language: "sql",
-			}
+		Context("Tests for GPDB 5", func() {
+			BeforeEach(func() {
+				testutils.SkipIf4(connection)
+			})
+			funcMetadata := backup.ObjectMetadata{}
+			It("creates a function with a simple return type", func() {
+				addFunction := backup.Function{
+					SchemaName: "public", FunctionName: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
+					BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "integer",
+					Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 0, DataAccess: "c",
+					Language: "sql",
+				}
 
-			backup.PrintCreateFunctionStatement(backupfile, &toc, appendFunction, funcMetadata)
+				backup.PrintCreateFunctionStatement(backupfile, &toc, addFunction, funcMetadata)
 
-			testutils.AssertQueryRuns(connection, buffer.String())
-			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION append(integer, integer)")
+				testutils.AssertQueryRuns(connection, buffer.String())
+				defer testutils.AssertQueryRuns(connection, "DROP FUNCTION add(integer, integer)")
 
-			resultFunctions := backup.GetFunctions(connection)
+				resultFunctions := backup.GetFunctions(connection)
 
-			Expect(len(resultFunctions)).To(Equal(1))
-			testutils.ExpectStructsToMatchExcluding(&appendFunction, &resultFunctions[0], "Oid")
-		})
-		It("creates a function that returns a table", func() {
-			dupFunction := backup.Function{
-				SchemaName: "public", FunctionName: "dup", ReturnsSet: true, FunctionBody: "SELECT $1, CAST($1 AS text) || ' is text'",
-				BinaryPath: "", Arguments: "integer", IdentArgs: "integer", ResultType: "TABLE(f1 integer, f2 text)",
-				Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 1000, DataAccess: "c",
-				Language: "sql",
-			}
+				Expect(len(resultFunctions)).To(Equal(1))
+				testutils.ExpectStructsToMatchExcluding(&addFunction, &resultFunctions[0], "Oid")
+			})
+			It("creates a function that returns a set", func() {
+				appendFunction := backup.Function{
+					SchemaName: "public", FunctionName: "append", ReturnsSet: true, FunctionBody: "SELECT ($1, $2)",
+					BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "SETOF record",
+					Volatility: "s", IsStrict: true, IsSecurityDefiner: true, Config: "SET search_path TO pg_temp", Cost: 200,
+					NumRows: 200, DataAccess: "m", Language: "sql",
+				}
 
-			backup.PrintCreateFunctionStatement(backupfile, &toc, dupFunction, funcMetadata)
+				backup.PrintCreateFunctionStatement(backupfile, &toc, appendFunction, funcMetadata)
 
-			testutils.AssertQueryRuns(connection, buffer.String())
-			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION dup(integer)")
+				testutils.AssertQueryRuns(connection, buffer.String())
+				defer testutils.AssertQueryRuns(connection, "DROP FUNCTION append(integer, integer)")
 
-			resultFunctions := backup.GetFunctions(connection)
+				resultFunctions := backup.GetFunctions(connection)
 
-			Expect(len(resultFunctions)).To(Equal(1))
-			testutils.ExpectStructsToMatchExcluding(&dupFunction, &resultFunctions[0], "Oid")
+				Expect(len(resultFunctions)).To(Equal(1))
+				testutils.ExpectStructsToMatchExcluding(&appendFunction, &resultFunctions[0], "Oid")
+			})
+			It("creates a function that returns a table", func() {
+				dupFunction := backup.Function{
+					SchemaName: "public", FunctionName: "dup", ReturnsSet: true, FunctionBody: "SELECT $1, CAST($1 AS text) || ' is text'",
+					BinaryPath: "", Arguments: "integer", IdentArgs: "integer", ResultType: "TABLE(f1 integer, f2 text)",
+					Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 1000, DataAccess: "c",
+					Language: "sql",
+				}
+
+				backup.PrintCreateFunctionStatement(backupfile, &toc, dupFunction, funcMetadata)
+
+				testutils.AssertQueryRuns(connection, buffer.String())
+				defer testutils.AssertQueryRuns(connection, "DROP FUNCTION dup(integer)")
+
+				resultFunctions := backup.GetFunctions(connection)
+
+				Expect(len(resultFunctions)).To(Equal(1))
+				testutils.ExpectStructsToMatchExcluding(&dupFunction, &resultFunctions[0], "Oid")
+			})
 		})
 	})
 	Describe("PrintCreateAggregateStatements", func() {
@@ -141,19 +203,19 @@ var _ = Describe("backup integration create statement tests", func() {
 			castMetadataMap = backup.MetadataMap{}
 		})
 		It("prints a basic cast with a function", func() {
-			castDef := backup.Cast{Oid: 0, SourceTypeFQN: "pg_catalog.text", TargetTypeFQN: "pg_catalog.int4", FunctionSchema: "public", FunctionName: "casttoint", FunctionArgs: "text", CastContext: "a"}
+			castDef := backup.Cast{Oid: 0, SourceTypeFQN: "pg_catalog.money", TargetTypeFQN: "pg_catalog.text", FunctionSchema: "public", FunctionName: "money_to_text", FunctionArgs: "money", CastContext: "a"}
 
-			testutils.AssertQueryRuns(connection, "CREATE FUNCTION casttoint(text) RETURNS integer STRICT IMMUTABLE LANGUAGE SQL AS 'SELECT cast($1 as integer);'")
-			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION casttoint(text)")
+			testutils.AssertQueryRuns(connection, "CREATE FUNCTION money_to_text(money) RETURNS TEXT AS $$ SELECT textin(cash_out($1)) $$ LANGUAGE SQL;")
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION money_to_text(money)")
 
 			backup.PrintCreateCastStatements(backupfile, &toc, []backup.Cast{castDef}, castMetadataMap)
-			defer testutils.AssertQueryRuns(connection, "DROP CAST (text AS int4)")
+			defer testutils.AssertQueryRuns(connection, "DROP CAST (money AS text)")
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
 			resultCasts := backup.GetCasts(connection)
 			Expect(len(resultCasts)).To(Equal(1))
-			testutils.ExpectStructsToMatchExcluding(&castDef, &resultCasts[0], "Oid")
+			testutils.ExpectStructsToMatchExcluding(&castDef, &resultCasts[0], "Oid", "FunctionOid")
 		})
 		It("prints a basic cast without a function", func() {
 			castDef := backup.Cast{Oid: 0, SourceTypeFQN: "pg_catalog.text", TargetTypeFQN: "public.casttesttype", FunctionSchema: "", FunctionName: "", FunctionArgs: "", CastContext: "i"}
@@ -173,15 +235,15 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&castDef, &resultCasts[0], "Oid")
 		})
 		It("prints a cast with a comment", func() {
-			castDef := backup.Cast{Oid: 1, SourceTypeFQN: "pg_catalog.text", TargetTypeFQN: "pg_catalog.int4", FunctionSchema: "public", FunctionName: "casttoint", FunctionArgs: "text", CastContext: "a"}
+			castDef := backup.Cast{Oid: 1, SourceTypeFQN: "pg_catalog.money", TargetTypeFQN: "pg_catalog.text", FunctionSchema: "public", FunctionName: "money_to_text", FunctionArgs: "money", CastContext: "a"}
 			castMetadataMap = testutils.DefaultMetadataMap("CAST", false, false, true)
 			castMetadata := castMetadataMap[1]
 
-			testutils.AssertQueryRuns(connection, "CREATE FUNCTION casttoint(text) RETURNS integer STRICT IMMUTABLE LANGUAGE SQL AS 'SELECT cast($1 as integer);'")
-			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION casttoint(text)")
+			testutils.AssertQueryRuns(connection, "CREATE FUNCTION money_to_text(money) RETURNS TEXT AS $$ SELECT textin(cash_out($1)) $$ LANGUAGE SQL;")
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION money_to_text(money)")
 
 			backup.PrintCreateCastStatements(backupfile, &toc, []backup.Cast{castDef}, castMetadataMap)
-			defer testutils.AssertQueryRuns(connection, "DROP CAST (text AS int4)")
+			defer testutils.AssertQueryRuns(connection, "DROP CAST (money AS text)")
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
@@ -189,7 +251,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			Expect(len(resultCasts)).To(Equal(1))
 			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_CAST)
 			resultMetadata := resultMetadataMap[resultCasts[0].Oid]
-			testutils.ExpectStructsToMatchExcluding(&castDef, &resultCasts[0], "Oid")
+			testutils.ExpectStructsToMatchExcluding(&castDef, &resultCasts[0], "Oid", "FunctionOid")
 			testutils.ExpectStructsToMatchExcluding(&resultMetadata, &castMetadata, "Oid")
 		})
 	})
@@ -203,11 +265,23 @@ var _ = Describe("backup integration create statement tests", func() {
 				5: {QualifiedName: "pg_catalog.plperl_inline_handler", Arguments: "internal", IsInternal: true},
 				6: {QualifiedName: "pg_catalog.plperl_call_handler", Arguments: "", IsInternal: true},
 			}
-			plpgsqlInfo := backup.ProceduralLanguage{Oid: 0, Name: "plpgsql", Owner: "testrole", IsPl: true, PlTrusted: true, Handler: 1, Inline: 2, Validator: 3}
-			plperlInfo := backup.ProceduralLanguage{Oid: 1, Name: "plperl", Owner: "testrole", IsPl: true, PlTrusted: true, Handler: 4, Inline: 5, Validator: 6}
-			procLangs := []backup.ProceduralLanguage{plpgsqlInfo, plperlInfo}
+			langOwner := ""
+			if connection.Version.Before("5") {
+				langOwner = testutils.GetUserByID(connection, 10)
+			} else {
+				langOwner = "testrole"
+			}
+			plpgsqlInfo := backup.ProceduralLanguage{Oid: 0, Name: "plpgsql", Owner: langOwner, IsPl: true, PlTrusted: true, Handler: 1, Inline: 2, Validator: 3}
+			plperlInfo := backup.ProceduralLanguage{Oid: 1, Name: "plperl", Owner: langOwner, IsPl: true, PlTrusted: true, Handler: 4, Inline: 5, Validator: 6}
 			langMetadataMap := testutils.DefaultMetadataMap("LANGUAGE", true, true, true)
+			if connection.Version.Before("5") {
+				plpgsqlInfo.Inline = 0
+				plperlInfo.Inline = 0
+			}
 			langMetadata := langMetadataMap[1]
+			langMetadata.Owner = langOwner
+			langMetadata.Privileges[0].Grantee = langOwner
+			procLangs := []backup.ProceduralLanguage{plpgsqlInfo, plperlInfo}
 
 			backup.PrintCreateLanguageStatements(backupfile, &toc, procLangs, funcInfoMap, langMetadataMap)
 

@@ -7,6 +7,7 @@ package backup
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/greenplum-db/gpbackup/utils"
 )
@@ -42,14 +43,18 @@ type Function struct {
 func GetFunctions(connection *utils.DBConn) []Function {
 	if connection.Version.Before("5") {
 		functions := GetFunctions4(connection)
-		arguments := GetFunctionArgsAndIdentArgs(connection)
+		arguments, tableArguments := GetFunctionArgsAndIdentArgs(connection)
 		returns := GetFunctionReturnTypes(connection)
 		for i := range functions {
 			oid := functions[i].Oid
 			functions[i].Arguments = arguments[oid]
 			functions[i].IdentArgs = arguments[oid]
 			functions[i].ReturnsSet = returns[oid].ReturnsSet
-			functions[i].ResultType = returns[oid].ResultType
+			if tableArguments[oid] != "" {
+				functions[i].ResultType = fmt.Sprintf("TABLE(%s)", tableArguments[oid])
+			} else {
+				functions[i].ResultType = returns[oid].ResultType
+			}
 		}
 		return functions
 	}
@@ -130,7 +135,7 @@ ORDER BY nspname, proname;`, SchemaFilterClause("n"))
  * difference between a function's "arguments" and "identity arguments" and
  * we can use the same map for both fields.
  */
-func GetFunctionArgsAndIdentArgs(connection *utils.DBConn) map[uint32]string {
+func GetFunctionArgsAndIdentArgs(connection *utils.DBConn) (map[uint32]string, map[uint32]string) {
 	query := fmt.Sprintf(`
 SELECT
     p.oid,
@@ -161,19 +166,17 @@ WHERE %s`, SchemaFilterClause("n"))
 	utils.CheckError(err)
 
 	argMap := make(map[uint32]string, 0)
+	tableArgMap := make(map[uint32]string, 0)
 	lastOid := uint32(0)
-	arguments := ""
+	arguments := make([]string, 0)
+	tableArguments := make([]string, 0)
 	for _, funcArgs := range results {
 		modeStr := ""
 		switch funcArgs.Mode {
 		case "b":
 			modeStr = "INOUT "
-		case "i":
-			modeStr = "IN "
 		case "o":
 			modeStr = "OUT "
-		case "t":
-			modeStr = "TABLE "
 		case "v":
 			modeStr = "VARIADIC "
 		}
@@ -181,18 +184,22 @@ WHERE %s`, SchemaFilterClause("n"))
 			funcArgs.Name += " "
 		}
 		argStr := fmt.Sprintf("%s%s%s", modeStr, funcArgs.Name, funcArgs.Type)
-		if funcArgs.Oid == lastOid {
-			arguments = fmt.Sprintf("%s, %s", arguments, argStr)
+		if funcArgs.Oid != lastOid && lastOid != 0 {
+			argMap[lastOid] = strings.Join(arguments, ", ")
+			tableArgMap[lastOid] = strings.Join(tableArguments, ", ")
+			arguments = []string{}
+			tableArguments = []string{}
+		}
+		if funcArgs.Mode == "t" {
+			tableArguments = append(tableArguments, argStr)
 		} else {
-			if lastOid != 0 {
-				argMap[lastOid] = arguments
-			}
-			arguments = argStr
+			arguments = append(arguments, argStr)
 		}
 		lastOid = funcArgs.Oid
 	}
-	argMap[lastOid] = arguments
-	return argMap
+	argMap[lastOid] = strings.Join(arguments, ", ")
+	tableArgMap[lastOid] = strings.Join(tableArguments, ", ")
+	return argMap, tableArgMap
 }
 
 func GetFunctionReturnTypes(connection *utils.DBConn) map[uint32]Function {
@@ -267,7 +274,7 @@ WHERE %s;`, argStr, SchemaFilterClause("n"))
 	err := connection.Select(&aggregates, query)
 	utils.CheckError(err)
 	if connection.Version.Before("5") {
-		arguments := GetFunctionArgsAndIdentArgs(connection)
+		arguments, _ := GetFunctionArgsAndIdentArgs(connection)
 		for i := range aggregates {
 			oid := aggregates[i].Oid
 			aggregates[i].Arguments = arguments[oid]
@@ -312,7 +319,7 @@ LEFT JOIN pg_namespace n ON p.pronamespace = n.oid;
 	var err error
 	if connection.Version.Before("5") {
 		err = connection.Select(&results, version4query)
-		arguments := GetFunctionArgsAndIdentArgs(connection)
+		arguments, _ := GetFunctionArgsAndIdentArgs(connection)
 		for i := range results {
 			results[i].Arguments = arguments[results[i].Oid]
 		}
@@ -380,7 +387,7 @@ ORDER BY 1, 2;
 	err := connection.Select(&casts, query)
 	utils.CheckError(err)
 	if connection.Version.Before("5") {
-		arguments := GetFunctionArgsAndIdentArgs(connection)
+		arguments, _ := GetFunctionArgsAndIdentArgs(connection)
 		for i := range casts {
 			oid := casts[i].FunctionOid
 			casts[i].FunctionArgs = arguments[oid]
@@ -402,11 +409,12 @@ type ProceduralLanguage struct {
 
 func GetProceduralLanguages(connection *utils.DBConn) []ProceduralLanguage {
 	results := make([]ProceduralLanguage, 0)
+	// Languages are owned by the bootstrap superuser, OID 10
 	version4query := `
 SELECT
 	oid,
 	l.lanname,
-	'' as owner,
+	pg_get_userbyid(10) as owner, 
 	l.lanispl,
 	l.lanpltrusted,
 	l.lanplcallfoid::regprocedure::oid,

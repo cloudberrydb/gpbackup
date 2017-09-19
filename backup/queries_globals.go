@@ -12,17 +12,14 @@ import (
 )
 
 type SessionGUCs struct {
-	ClientEncoding       string `db:"client_encoding"`
-	StdConformingStrings string `db:"standard_conforming_strings"`
-	DefaultWithOids      string `db:"default_with_oids"`
+	ClientEncoding  string `db:"client_encoding"`
+	DefaultWithOids string `db:"default_with_oids"`
 }
 
 func GetSessionGUCs(connection *utils.DBConn) SessionGUCs {
 	result := SessionGUCs{}
 	query := "SHOW client_encoding;"
 	err := connection.Get(&result, query)
-	query = "SHOW standard_conforming_strings;"
-	err = connection.Get(&result, query)
 	query = "SHOW default_with_oids;"
 	err = connection.Get(&result, query)
 	utils.CheckError(err)

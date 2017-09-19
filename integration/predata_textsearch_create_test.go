@@ -14,6 +14,7 @@ var _ = Describe("backup integration create statement tests", func() {
 	var backupfile *utils.FileWithByteCount
 
 	BeforeEach(func() {
+		testutils.SkipIf4(connection)
 		backupfile = utils.NewFileWithByteCount(buffer)
 	})
 	Describe("PrintCreateTextSearchParserStatements", func() {

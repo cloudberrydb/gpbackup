@@ -287,6 +287,9 @@ SET SUBPARTITION TEMPLATE  ` + `
 		It("creates a basic sequence", func() {
 			sequenceDef.SequenceDefinition = backup.SequenceDefinition{Name: "my_sequence", LastVal: 1, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
 			backup.PrintCreateSequenceStatements(backupfile, &toc, []backup.Sequence{sequenceDef}, sequenceMetadataMap)
+			if connection.Version.Before("5") {
+				sequenceDef.LogCnt = 1 // In GPDB 4.3, sequence log count is one-indexed
+			}
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE my_sequence")
@@ -315,6 +318,9 @@ SET SUBPARTITION TEMPLATE  ` + `
 			sequenceMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{testutils.DefaultACLWithout("testrole", "SEQUENCE", "UPDATE")}, Owner: "testrole", Comment: "This is a sequence comment."}
 			sequenceMetadataMap[1] = sequenceMetadata
 			backup.PrintCreateSequenceStatements(backupfile, &toc, []backup.Sequence{sequenceDef}, sequenceMetadataMap)
+			if connection.Version.Before("5") {
+				sequenceDef.LogCnt = 1 // In GPDB 4.3, sequence log count is one-indexed
+			}
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE my_sequence")

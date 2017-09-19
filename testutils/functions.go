@@ -351,6 +351,10 @@ func OidFromObjectName(dbconn *utils.DBConn, schemaName string, objectName strin
 	return result.Oid
 }
 
+func GetUserByID(dbconn *utils.DBConn, oid uint32) string {
+	return backup.SelectString(dbconn, fmt.Sprintf("SELECT rolname AS string FROM pg_roles WHERE oid = %d", oid))
+}
+
 func SkipIf4(dbconn *utils.DBConn) {
 	if dbconn.Version.Before("5") {
 		Skip("Test not applicable to GPDB4")

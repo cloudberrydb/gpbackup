@@ -173,12 +173,13 @@ func PrintExternalTableStatements(predataFile *utils.FileWithByteCount, table Re
 	predataFile.MustPrintf("ENCODING '%s'", extTableDef.Encoding)
 	if extTableDef.Type == READABLE || extTableDef.Type == READABLE_WEB {
 		/*
-		 * In GPDB 5 and later, LOG ERRORS INTO [table] has been replaced by LOG ERRORS,
-		 * but it still uses the same catalog entries to store that information.  If the
-		 * value of pg_exttable.fmterrtbl matches the table's own name, LOG ERRORS is set.
+		 * If an external table is created using LOG ERRORS instead of LOG ERRORS INTO [tablename],
+		 * the value of pg_exttable.fmterrtbl will match the table's own name.
 		 */
 		if extTableDef.ErrTable == table.RelationName {
 			predataFile.MustPrintf("\nLOG ERRORS")
+		} else if extTableDef.ErrTable != "" {
+			predataFile.MustPrintf("\nLOG ERRORS INTO %s", extTableDef.ErrTable)
 		}
 		if extTableDef.RejectLimit != 0 {
 			predataFile.MustPrintf("\nSEGMENT REJECT LIMIT %d ", extTableDef.RejectLimit)

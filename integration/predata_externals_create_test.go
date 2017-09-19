@@ -39,6 +39,29 @@ var _ = Describe("backup integration create statement tests", func() {
 		It("creates a READABLE EXTERNAL table", func() {
 			extTable.Type = backup.READABLE
 			extTable.Writable = false
+			extTable.ErrTable = "testtable"
+			extTable.RejectLimit = 2
+			extTable.RejectLimitType = "r"
+			tableDef.ExtTableDef = extTable
+
+			backup.PrintExternalTableCreateStatement(backupfile, &toc, testTable, tableDef)
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+
+			oid := testutils.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
+			resultTableDefs := backup.GetExternalTableDefinitions(connection)
+			resultTableDef := resultTableDefs[oid]
+			resultTableDef.Type, resultTableDef.Protocol = backup.DetermineExternalTableCharacteristics(resultTableDef)
+
+			testutils.ExpectStructsToMatchExcluding(&extTable, &resultTableDef, "Oid")
+		})
+		It("creates a READABLE EXTERNAL table with LOG ERRORS INTO", func() {
+			testutils.SkipIfNot4(connection)
+			extTable.Type = backup.READABLE
+			extTable.Writable = false
+			extTable.ErrTable = "err_table"
+			extTable.RejectLimit = 2
+			extTable.RejectLimitType = "r"
 			tableDef.ExtTableDef = extTable
 
 			backup.PrintExternalTableCreateStatement(backupfile, &toc, testTable, tableDef)

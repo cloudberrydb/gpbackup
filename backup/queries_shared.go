@@ -156,10 +156,11 @@ func InitializeMetadataParams(connection *utils.DBConn) {
 	TYPE_DATABASE = MetadataQueryParams{NameField: "datname", ACLField: "datacl", OwnerField: "datdba", CatalogTable: "pg_database", Shared: true}
 	TYPE_FUNCTION = MetadataQueryParams{NameField: "proname", SchemaField: "pronamespace", ACLField: "proacl", OwnerField: "proowner", CatalogTable: "pg_proc"}
 	TYPE_INDEX = MetadataQueryParams{NameField: "relname", OidField: "indexrelid", OidTable: "pg_class", CommentTable: "pg_class", CatalogTable: "pg_index"}
+	TYPE_PROCLANGUAGE = MetadataQueryParams{NameField: "lanname", ACLField: "lanacl", CatalogTable: "pg_language"}
 	if connection.Version.Before("5") {
-		TYPE_PROCLANGUAGE = MetadataQueryParams{NameField: "lanname", ACLField: "lanacl", OwnerField: "", CatalogTable: "pg_language"}
+		TYPE_PROCLANGUAGE.OwnerField = "10" // In GPDB 4.3, there is no lanowner field in pg_language, but languages have an implicit owner
 	} else {
-		TYPE_PROCLANGUAGE = MetadataQueryParams{NameField: "lanname", ACLField: "lanacl", OwnerField: "lanowner", CatalogTable: "pg_language"}
+		TYPE_PROCLANGUAGE.OwnerField = "lanowner"
 	}
 	TYPE_OPERATOR = MetadataQueryParams{NameField: "oprname", SchemaField: "oprnamespace", OidField: "oid", OwnerField: "oprowner", CatalogTable: "pg_operator"}
 	TYPE_OPERATORCLASS = MetadataQueryParams{NameField: "opcname", SchemaField: "opcnamespace", OidField: "oid", OwnerField: "opcowner", CatalogTable: "pg_opclass"}
@@ -195,12 +196,12 @@ func GetMetadataForObjectType(connection *utils.DBConn, params MetadataQueryPara
 	ownerStr := "''"
 	if params.ACLField != "" {
 		aclStr = fmt.Sprintf(`CASE
-		WHEN o.%[1]s IS NULL OR array_upper(o.%[1]s, 1) = 0 THEN o.%[1]s[0]
-		ELSE unnest(o.%[1]s)
+		WHEN %[1]s IS NULL OR array_upper(%[1]s, 1) = 0 THEN %[1]s[0]
+		ELSE unnest(%[1]s)
 	END`, params.ACLField)
 		kindStr = fmt.Sprintf(`CASE
-		WHEN o.%[1]s IS NULL THEN 'Default'
-		WHEN array_upper(o.%[1]s, 1) = 0 THEN 'Empty'
+		WHEN %[1]s IS NULL THEN 'Default'
+		WHEN array_upper(%[1]s, 1) = 0 THEN 'Empty'
 		ELSE ''
 	END`, params.ACLField)
 	}
@@ -213,7 +214,7 @@ WHERE %s`, params.SchemaField, SchemaFilterClause("n"))
 		descFunc = "shobj_description"
 	}
 	if params.OwnerField != "" {
-		ownerStr = fmt.Sprintf("pg_get_userbyid(o.%s)", params.OwnerField)
+		ownerStr = fmt.Sprintf("pg_get_userbyid(%s)", params.OwnerField)
 	}
 	query := fmt.Sprintf(`
 SELECT

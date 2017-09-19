@@ -13,15 +13,10 @@ var _ = Describe("backup integration tests", func() {
 		It("returns a slice of values for session level GUCs", func() {
 			/*
 			 * We shouldn't need to run any setup queries, because we're using
-			 * the default values for GPDB 5.
+			 * the default values of these GUCs.
 			 */
 			results := backup.GetSessionGUCs(connection)
 			Expect(results.ClientEncoding).To(Equal("UTF8"))
-			if connection.Version.Before("5") {
-				Expect(results.StdConformingStrings).To(Equal("off"))
-			} else {
-				Expect(results.StdConformingStrings).To(Equal("on"))
-			}
 			Expect(results.DefaultWithOids).To(Equal("off"))
 		})
 	})

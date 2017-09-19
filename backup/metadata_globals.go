@@ -45,9 +45,9 @@ func printSessionGUCs(metadataFile *utils.FileWithByteCount, gucs SessionGUCs) {
 SET check_function_bodies = false;
 SET client_min_messages = error;
 SET client_encoding = '%s';
-SET standard_conforming_strings = %s;
+SET standard_conforming_strings = on;
 SET default_with_oids = %s;
-`, gucs.ClientEncoding, gucs.StdConformingStrings, gucs.DefaultWithOids)
+`, gucs.ClientEncoding, gucs.DefaultWithOids)
 }
 
 func PrintCreateDatabaseStatement(globalFile *utils.FileWithByteCount, toc *utils.TOC, dbname string, allDBs []DatabaseName, dbMetadata MetadataMap, backupGlobals bool) {

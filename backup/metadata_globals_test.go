@@ -18,7 +18,7 @@ var _ = Describe("backup/metadata_globals tests", func() {
 	})
 	Describe("PrintPredataSessionGUCs", func() {
 		It("prints predata session GUCs", func() {
-			gucs := backup.SessionGUCs{ClientEncoding: "UTF8", StdConformingStrings: "on", DefaultWithOids: "false"}
+			gucs := backup.SessionGUCs{ClientEncoding: "UTF8", DefaultWithOids: "false"}
 
 			backup.PrintPredataSessionGUCs(backupfile, toc, gucs)
 			testutils.ExpectRegexp(buffer, `SET statement_timeout = 0;
@@ -31,7 +31,7 @@ SET default_with_oids = false`)
 	})
 	Describe("PrintPostdataSessionGUCs", func() {
 		It("prints predata session GUCs", func() {
-			gucs := backup.SessionGUCs{ClientEncoding: "UTF8", StdConformingStrings: "on", DefaultWithOids: "false"}
+			gucs := backup.SessionGUCs{ClientEncoding: "UTF8", DefaultWithOids: "false"}
 
 			backup.PrintPostdataSessionGUCs(backupfile, toc, gucs)
 			testutils.ExpectRegexp(buffer, `SET statement_timeout = 0;
@@ -44,7 +44,7 @@ SET default_with_oids = false`)
 	})
 	Describe("PrintGlobalSessionGUCs", func() {
 		It("prints predata session GUCs", func() {
-			gucs := backup.SessionGUCs{ClientEncoding: "UTF8", StdConformingStrings: "on", DefaultWithOids: "false"}
+			gucs := backup.SessionGUCs{ClientEncoding: "UTF8", DefaultWithOids: "false"}
 
 			backup.PrintGlobalSessionGUCs(backupfile, toc, gucs)
 			testutils.ExpectRegexp(buffer, `SET statement_timeout = 0;

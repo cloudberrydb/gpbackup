@@ -162,37 +162,34 @@ PARTITION BY RANGE (year)
 			testutils.ExpectStructsToMatchExcluding(&partitionCheckConstraint, &resultConstraints[0], "Oid")
 		})
 	})
-	Describe("PrintPredataSessionGUCs", func() {
-		It("prints the default session GUCs", func() {
-			gucs := backup.SessionGUCs{ClientEncoding: "UTF8", StdConformingStrings: "on", DefaultWithOids: "off"}
+	Describe("GUC-printing functions", func() {
+		gucs := backup.SessionGUCs{ClientEncoding: "UTF8", DefaultWithOids: "off"}
+		Describe("PrintPredataSessionGUCs", func() {
+			It("prints the default session GUCs", func() {
+				backup.PrintPredataSessionGUCs(backupfile, &toc, gucs)
 
-			backup.PrintPredataSessionGUCs(backupfile, &toc, gucs)
+				//We just want to check that these queries run successfully, no setup required
+				testutils.AssertQueryRuns(connection, buffer.String())
+			})
 
-			//We just want to check that these queries run successfully, no setup required
-			testutils.AssertQueryRuns(connection, buffer.String())
 		})
+		Describe("PrintPostdataSessionGUCs", func() {
+			It("prints the default session GUCs", func() {
+				backup.PrintPostdataSessionGUCs(backupfile, &toc, gucs)
 
-	})
-	Describe("PrintPostdataSessionGUCs", func() {
-		It("prints the default session GUCs", func() {
-			gucs := backup.SessionGUCs{ClientEncoding: "UTF8", StdConformingStrings: "on", DefaultWithOids: "off"}
+				//We just want to check that these queries run successfully, no setup required
+				testutils.AssertQueryRuns(connection, buffer.String())
+			})
 
-			backup.PrintPostdataSessionGUCs(backupfile, &toc, gucs)
-
-			//We just want to check that these queries run successfully, no setup required
-			testutils.AssertQueryRuns(connection, buffer.String())
 		})
+		Describe("PrintGlobalSessionGUCs", func() {
+			It("prints the default session GUCs", func() {
+				backup.PrintGlobalSessionGUCs(backupfile, &toc, gucs)
 
-	})
-	Describe("PrintGlobalSessionGUCs", func() {
-		It("prints the default session GUCs", func() {
-			gucs := backup.SessionGUCs{ClientEncoding: "UTF8", StdConformingStrings: "on", DefaultWithOids: "off"}
+				//We just want to check that these queries run successfully, no setup required
+				testutils.AssertQueryRuns(connection, buffer.String())
+			})
 
-			backup.PrintGlobalSessionGUCs(backupfile, &toc, gucs)
-
-			//We just want to check that these queries run successfully, no setup required
-			testutils.AssertQueryRuns(connection, buffer.String())
 		})
-
 	})
 })

@@ -71,7 +71,7 @@ func PrintFunctionModifiers(predataFile *utils.FileWithByteCount, funcDef Functi
 	}
 	// Default cost is 1 for C and internal functions or 100 for functions in other languages
 	isInternalOrC := funcDef.Language == "c" || funcDef.Language == "internal"
-	if !((!isInternalOrC && funcDef.Cost == 100) || (isInternalOrC && funcDef.Cost == 1)) {
+	if !((!isInternalOrC && funcDef.Cost == 100) || (isInternalOrC && funcDef.Cost == 1) || funcDef.Cost == 0) {
 		predataFile.MustPrintf("\nCOST %v", funcDef.Cost)
 	}
 	if funcDef.ReturnsSet && funcDef.NumRows != 0 && funcDef.NumRows != 1000 {
