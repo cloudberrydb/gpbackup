@@ -28,21 +28,39 @@ resources:
     paths:
     - ci
 
-- name: gpdb5_src
+- name: gpdb_src
   type: git
   source:
     uri: https://github.com/greenplum-db/gpdb
     branch: 5X_STABLE
     tag_filter: 5.*
 
-- name: bin_gpdb5
+- name: bin_gpdb_master
   type: s3
   source:
-      bucket: gpdb5-release-builds
-      versioned_file: bin_gpdb_centos6/bin_gpdb.tar.gz
+      bucket: gpdb5-concourse-builds
+      versioned_file: bin_gpdb_centos/bin_gpdb.tar.gz
       region_name: us-west-2
       access_key_id: {{bucket-access-key-id}}
       secret_access_key: {{bucket-secret-access-key}}
+
+- name: bin_gpdb_5x_stable
+  type: s3
+  source:
+      bucket: gpdb5-release-builds
+      versioned_file: bin_gpdb_centos/bin_gpdb.tar.gz
+      region_name: us-west-2
+      access_key_id: {{bucket-access-key-id}}
+      secret_access_key: {{bucket-secret-access-key}}
+
+- name: bin_gpdb_43_stable
+  type: s3
+  source:
+      bucket: gpdb-4.3-stable-concourse
+      versioned_file: bin_gpdb_centos/bin_gpdb.tar.gz
+      region_name: us-west-2
+      access_key_id: {{gpdb4-bucket-access-key-id}}
+      secret_access_key: {{gpdb4-bucket-secret-access-key}}
 
 - name: ccp_src
   type: git
@@ -76,6 +94,32 @@ jobs:
   - task: unit-tests
     file: gpbackup-ci/ci/tasks/unit-tests.yml
 
+- name: integrations-master
+  serial: true
+  plan:
+  - aggregate:
+    - get: gpbackup
+      trigger: true
+    - get: gpbackup-ci
+    - get: bin_gpdb_master
+    - get: ccp_src
+    - get: gpdb_src
+  - put: terraform
+    params:
+      <<: *ccp_create_params
+  - task: gen_cluster
+    file: ccp_src/ci/tasks/gen_cluster.yml
+    input_mapping:
+      gpdb_binary: bin_gpdb_master
+      gpdb_src: gpdb_src
+    on_failure:
+      <<: *ccp_destroy
+  - task: integration-tests
+    file: gpbackup-ci/ci/tasks/integration-tests.yml
+    on_failure:
+      <<: *ccp_destroy
+  - *ccp_destroy
+
 - name: integrations-GPDB5
   serial: true
   plan:
@@ -83,71 +127,49 @@ jobs:
     - get: gpbackup
       trigger: true
     - get: gpbackup-ci
-    - get: bin_gpdb5
-    - get: gpdb5_src
+    - get: bin_gpdb_5x_stable
     - get: ccp_src
+    - get: gpdb_src
   - put: terraform
     params:
       <<: *ccp_create_params
   - task: gen_cluster
     file: ccp_src/ci/tasks/gen_cluster.yml
     input_mapping:
-      gpdb_binary: bin_gpdb5
-      gpdb_src: gpdb5_src
+      gpdb_binary: bin_gpdb_5x_stable
+      gpdb_src: gpdb_src
     on_failure:
       <<: *ccp_destroy
   - task: integration-tests
-    config:
-        platform: linux
-
-        image_resource:
-          type: docker-image
-          source:
-            repository: pivotaldata/centos-gpdb-dev
-            tag: '6-gcc6.2-llvm3.7'
-
-        inputs:
-        - name: gpbackup
-          path: go/src/github.com/greenplum-db/gpbackup
-        - name: bin_gpdb5
-        - name: gpdb5_src
-        - name: ccp_src
-        - name: cluster_env_files
-
-        run:
-          path: bash
-          args:
-          - -c
-          - |
-            set -ex
-
-            ccp_src/aws/setup_ssh_to_cluster.sh
-
-            cat <<SCRIPT > /tmp/run_tests.bash
-            export GOPATH=/home/gpadmin/go
-            export PATH=\$GOPATH/bin:/usr/local/go/bin:$PATH
-
-            pushd \$GOPATH/src/github.com/greenplum-db/gpbackup
-                make depend
-            popd
-
-            chown gpadmin:gpadmin -R \$GOPATH
-            source /usr/local/greenplum-db-devel/greenplum_path.sh
-            export PGPORT=5432
-            export MASTER_DATA_DIRECTORY=/data/gpdata/master/gpseg-1
-
-            cd \$GOPATH/src/github.com/greenplum-db/gpbackup
-            make integration
-            SCRIPT
-
-            ssh -t centos@mdw "sudo yum -y install wget git && wget https://storage.googleapis.com/golang/go1.8.3.linux-amd64.tar.gz && tar -xzf go1.8.3.linux-amd64.tar.gz && sudo mv go /usr/local"
-            chmod +x /tmp/run_tests.bash
-            scp /tmp/run_tests.bash mdw:/home/gpadmin/run_tests.bash
-            ssh -t mdw "mkdir -p /home/gpadmin/go/src/github.com/greenplum-db"
-            scp -r go/src/github.com/greenplum-db/gpbackup mdw:/home/gpadmin/go/src/github.com/greenplum-db/gpbackup
-            ssh -t mdw "bash /home/gpadmin/run_tests.bash"
+    file: gpbackup-ci/ci/tasks/integration-tests.yml
     on_failure:
-      <<: *debug_sleep
+      <<: *ccp_destroy
+  - *ccp_destroy
+
+- name: integrations-GPDB4.3
+  serial: true
+  plan:
+  - aggregate:
+    - get: gpbackup
+      trigger: true
+    - get: gpbackup-ci
+    - get: bin_gpdb_43_stable
+    - get: ccp_src
+    - get: gpdb_src
+  - put: terraform
+    params:
+      <<: *ccp_create_params
+  - task: gen_cluster
+    file: ccp_src/ci/tasks/gen_cluster.yml
+    input_mapping:
+      gpdb_binary: bin_gpdb_43_stable
+      gpdb_src: gpdb_src
+    on_failure:
+      <<: *ccp_destroy
+  - task: integration-tests
+    file: gpbackup-ci/ci/tasks/integration-tests.yml
+    on_failure:
+      <<: *ccp_destroy
   - *ccp_destroy
 
 ccp_create_params_anchor: &ccp_create_params
