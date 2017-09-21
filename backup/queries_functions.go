@@ -136,7 +136,7 @@ ORDER BY nspname, proname;`, SchemaFilterClause("n"))
  * we can use the same map for both fields.
  */
 func GetFunctionArgsAndIdentArgs(connection *utils.DBConn) (map[uint32]string, map[uint32]string) {
-	query := fmt.Sprintf(`
+	query := `
 SELECT
     p.oid,
 	CASE
@@ -153,8 +153,7 @@ SELECT
         END AS mode
 FROM pg_proc p
 JOIN pg_namespace n
-ON p.pronamespace = n.oid
-WHERE %s`, SchemaFilterClause("n"))
+ON p.pronamespace = n.oid;`
 
 	results := make([]struct {
 		Oid  uint32
