@@ -30,6 +30,8 @@ func InitializeConnection(dbname string) {
 	utils.CheckError(err)
 	_, err = connection.Exec("SET search_path TO pg_catalog")
 	utils.CheckError(err)
+	_, err = connection.Exec("SET gp_enable_segment_copy_checking TO false")
+	utils.CheckError(err)
 }
 
 func InitializeBackupReport() {
