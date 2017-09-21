@@ -28,9 +28,9 @@ var _ = Describe("backup/dependencies tests", func() {
 	)
 
 	BeforeEach(func() {
-		function1 = backup.Function{SchemaName: "public", FunctionName: "function1", DependsUpon: []string{}}
-		function2 = backup.Function{SchemaName: "public", FunctionName: "function2", DependsUpon: []string{}}
-		function3 = backup.Function{SchemaName: "public", FunctionName: "function3", DependsUpon: []string{}}
+		function1 = backup.Function{SchemaName: "public", FunctionName: "function1", Arguments: "integer, integer", DependsUpon: []string{}}
+		function2 = backup.Function{SchemaName: "public", FunctionName: "function1", Arguments: "numeric, text", DependsUpon: []string{}}
+		function3 = backup.Function{SchemaName: "public", FunctionName: "function2", Arguments: "integer, integer", DependsUpon: []string{}}
 		relation1 = backup.Relation{SchemaName: "public", RelationName: "relation1", DependsUpon: []string{}}
 		relation2 = backup.Relation{SchemaName: "public", RelationName: "relation2", DependsUpon: []string{}}
 		relation3 = backup.Relation{SchemaName: "public", RelationName: "relation3", DependsUpon: []string{}}
@@ -83,14 +83,14 @@ var _ = Describe("backup/dependencies tests", func() {
 			Expect(types[2].Name()).To(Equal("public.type2"))
 		})
 		It("sorts the slice correctly if there are complex dependencies", func() {
-			type2.DependsUpon = []string{"public.type1", "public.function3"}
+			type2.DependsUpon = []string{"public.type1", "public.function2(integer, integer)"}
 			function3.DependsUpon = []string{"public.type1"}
 			sortable := []backup.Sortable{type1, type2, function3}
 
 			sortable = backup.TopologicalSort(sortable)
 
 			Expect(sortable[0].Name()).To(Equal("public.type1"))
-			Expect(sortable[1].Name()).To(Equal("public.function3"))
+			Expect(sortable[1].Name()).To(Equal("public.function2(integer, integer)"))
 			Expect(sortable[2].Name()).To(Equal("public.type2"))
 		})
 		It("aborts if dependency loop (this shouldn't be possible)", func() {
@@ -120,7 +120,7 @@ var _ = Describe("backup/dependencies tests", func() {
 			Expect(results).To(Equal(expected))
 		})
 		It("returns a slice of sorted functions, types, and relations if there are dependencies among objects of the same type", func() {
-			function2.DependsUpon = []string{"public.function3"}
+			function2.DependsUpon = []string{"public.function2(integer, integer)"}
 			type2.DependsUpon = []string{"public.type3"}
 			relation2.DependsUpon = []string{"public.relation3"}
 			functions := []backup.Function{function1, function2, function3}
@@ -144,9 +144,11 @@ var _ = Describe("backup/dependencies tests", func() {
 	})
 	Describe("ConstructFunctionAndTypeDependencyLists", func() {
 		It("queries dependencies for functions and types", func() {
+			funcInfoMap := map[uint32]backup.FunctionInfo{}
 			header := []string{"oid", "referencedobject"}
 			functionRows := sqlmock.NewRows(header).AddRow([]driver.Value{"1", "public.type"}...)
-			baseTypeRows := sqlmock.NewRows(header).AddRow([]driver.Value{"2", "public.func"}...)
+			var baseTypeRows *sqlmock.Rows
+			baseTypeRows = sqlmock.NewRows(header).AddRow([]driver.Value{"2", "public.func(integer, integer)"}...)
 			compTypeRows := sqlmock.NewRows(header).AddRow([]driver.Value{"3", "public.othertype"}...)
 			domainRows := sqlmock.NewRows(header).AddRow([]driver.Value{"4", "public.builtin"}...)
 
@@ -166,10 +168,10 @@ var _ = Describe("backup/dependencies tests", func() {
 			mock.ExpectQuery(`SELECT (.*)`).WillReturnRows(domainRows)
 			mock.ExpectQuery(`SELECT (.*)`).WillReturnRows(compTypeRows)
 
-			functions, types = backup.ConstructFunctionAndTypeDependencyLists(connection, functions, types)
+			functions, types = backup.ConstructFunctionAndTypeDependencyLists(connection, functions, types, funcInfoMap)
 
 			Expect(functions[0].DependsUpon).To(Equal([]string{"public.type"}))
-			Expect(types[0].DependsUpon).To(Equal([]string{"public.func"}))
+			Expect(types[0].DependsUpon).To(Equal([]string{"public.func(integer, integer)"}))
 			Expect(types[1].DependsUpon).To(Equal([]string{"public.othertype"}))
 			Expect(types[2].DependsUpon).To(Equal([]string{"public.builtin"}))
 		})

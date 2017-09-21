@@ -35,6 +35,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		AfterEach(func() {
 			os.Remove("/tmp/ext_table_file")
 			testutils.AssertQueryRuns(connection, "DROP EXTERNAL TABLE testtable")
+			testutils.AssertQueryRuns(connection, "DROP TABLE IF EXISTS err_table")
 		})
 		It("creates a READABLE EXTERNAL table", func() {
 			extTable.Type = backup.READABLE

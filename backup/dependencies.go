@@ -1,6 +1,8 @@
 package backup
 
 import (
+	"fmt"
+
 	"github.com/greenplum-db/gpbackup/utils"
 	"github.com/pkg/errors"
 )
@@ -22,7 +24,7 @@ func SortFunctionsAndTypesAndTablesInDependencyOrder(functions []Function, types
 	return sorted
 }
 
-func ConstructFunctionAndTypeDependencyLists(connection *utils.DBConn, functions []Function, types []Type) ([]Function, []Type) {
+func ConstructFunctionAndTypeDependencyLists(connection *utils.DBConn, functions []Function, types []Type, funcInfoMap map[uint32]FunctionInfo) ([]Function, []Type) {
 	functions = ConstructFunctionDependencies(connection, functions)
 	types = CoalesceCompositeTypes(types)
 	/*
@@ -31,7 +33,11 @@ func ConstructFunctionAndTypeDependencyLists(connection *utils.DBConn, functions
 	 * elements, so we re-use the same slice for each call and after all three calls
 	 * all of the types will have their dependencies set.
 	 */
-	types = ConstructBaseTypeDependencies(connection, types)
+	if connection.Version.Before("5") {
+		types = ConstructBaseTypeDependencies4(connection, types, funcInfoMap)
+	} else {
+		types = ConstructBaseTypeDependencies5(connection, types)
+	}
 	types = ConstructDomainDependencies(connection, types)
 	types = ConstructCompositeTypeDependencies(connection, types)
 	return functions, types
@@ -69,7 +75,11 @@ func (v View) Name() string {
 }
 
 func (f Function) Name() string {
-	return MakeFQN(f.SchemaName, f.FunctionName)
+	/*
+	 * We need to include arguments to differentiate functions with the same name;
+	 * we don't use IdentArgs because we already have Arguments in the funcInfoMap.
+	 */
+	return fmt.Sprintf("%s(%s)", MakeFQN(f.SchemaName, f.FunctionName), f.Arguments)
 }
 
 func (t Type) Name() string {

@@ -267,8 +267,66 @@ var _ = Describe("backup integration tests", func() {
 			Expect(compTypes[0].DependsUpon[0]).To(Equal("public.base_type"))
 		})
 	})
-	Describe("ConstructBaseTypeDependencies", func() {
+	Describe("ConstructBaseTypeDependencies4", func() {
+		funcInfoMap := map[uint32]backup.FunctionInfo{}
 		BeforeEach(func() {
+			testutils.SkipIfNot4(connection)
+			testutils.AssertQueryRuns(connection, "CREATE FUNCTION base_fn_in(cstring) RETURNS base_type AS 'boolin' LANGUAGE internal")
+			testutils.AssertQueryRuns(connection, "CREATE FUNCTION base_fn_out(base_type) RETURNS cstring AS 'boolout' LANGUAGE internal")
+			inOid := testutils.OidFromObjectName(connection, "public", "base_fn_in", backup.TYPE_FUNCTION)
+			outOid := testutils.OidFromObjectName(connection, "public", "base_fn_out", backup.TYPE_FUNCTION)
+			funcInfoMap[inOid] = backup.FunctionInfo{QualifiedName: "public.base_fn_in", Arguments: "cstring"}
+			funcInfoMap[outOid] = backup.FunctionInfo{QualifiedName: "public.base_fn_out", Arguments: "base_type"}
+		})
+		AfterEach(func() {
+			testutils.AssertQueryRuns(connection, "DROP TYPE base_type CASCADE")
+		})
+		It("constructs dependencies on user-defined functions", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TYPE base_type(INPUT=base_fn_in, OUTPUT=base_fn_out)")
+
+			allTypes := backup.GetNonEnumTypes(connection)
+			baseType := backup.Type{}
+			for _, typ := range allTypes {
+				if typ.TypeName == "base_type" {
+					baseType = typ
+					break
+				}
+			}
+			baseTypes := []backup.Type{baseType}
+
+			baseTypes = backup.ConstructBaseTypeDependencies4(connection, baseTypes, funcInfoMap)
+
+			Expect(len(baseTypes)).To(Equal(1))
+			Expect(len(baseTypes[0].DependsUpon)).To(Equal(2))
+			sort.Strings(baseTypes[0].DependsUpon)
+			Expect(baseTypes[0].DependsUpon[0]).To(Equal("public.base_fn_in(cstring)"))
+			Expect(baseTypes[0].DependsUpon[1]).To(Equal("public.base_fn_out(base_type)"))
+		})
+		It("doesn't construct dependencies on built-in functions", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TYPE base_type(INPUT=base_fn_in, OUTPUT=base_fn_out, TYPMOD_IN=numerictypmodin, TYPMOD_OUT=numerictypmodout)")
+
+			allTypes := backup.GetNonEnumTypes(connection)
+			baseType := backup.Type{}
+			for _, typ := range allTypes {
+				if typ.TypeName == "base_type" {
+					baseType = typ
+					break
+				}
+			}
+			baseTypes := []backup.Type{baseType}
+
+			baseTypes = backup.ConstructBaseTypeDependencies4(connection, baseTypes, funcInfoMap)
+
+			Expect(len(baseTypes)).To(Equal(1))
+			Expect(len(baseTypes[0].DependsUpon)).To(Equal(2))
+			sort.Strings(baseTypes[0].DependsUpon)
+			Expect(baseTypes[0].DependsUpon[0]).To(Equal("public.base_fn_in(cstring)"))
+			Expect(baseTypes[0].DependsUpon[1]).To(Equal("public.base_fn_out(base_type)"))
+		})
+	})
+	Describe("ConstructBaseTypeDependencies5", func() {
+		BeforeEach(func() {
+			testutils.SkipIf4(connection)
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION base_fn_in(cstring) RETURNS base_type AS 'boolin' LANGUAGE internal")
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION base_fn_out(base_type) RETURNS cstring AS 'boolout' LANGUAGE internal")
 		})
@@ -288,13 +346,13 @@ var _ = Describe("backup integration tests", func() {
 			}
 			baseTypes := []backup.Type{baseType}
 
-			baseTypes = backup.ConstructBaseTypeDependencies(connection, baseTypes)
+			baseTypes = backup.ConstructBaseTypeDependencies5(connection, baseTypes)
 
 			Expect(len(baseTypes)).To(Equal(1))
 			Expect(len(baseTypes[0].DependsUpon)).To(Equal(2))
 			sort.Strings(baseTypes[0].DependsUpon)
-			Expect(baseTypes[0].DependsUpon[0]).To(Equal("public.base_fn_in"))
-			Expect(baseTypes[0].DependsUpon[1]).To(Equal("public.base_fn_out"))
+			Expect(baseTypes[0].DependsUpon[0]).To(Equal("public.base_fn_in(cstring)"))
+			Expect(baseTypes[0].DependsUpon[1]).To(Equal("public.base_fn_out(base_type)"))
 		})
 		It("doesn't construct dependencies on built-in functions", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TYPE base_type(INPUT=base_fn_in, OUTPUT=base_fn_out, TYPMOD_IN=numerictypmodin, TYPMOD_OUT=numerictypmodout)")
@@ -309,13 +367,13 @@ var _ = Describe("backup integration tests", func() {
 			}
 			baseTypes := []backup.Type{baseType}
 
-			baseTypes = backup.ConstructBaseTypeDependencies(connection, baseTypes)
+			baseTypes = backup.ConstructBaseTypeDependencies5(connection, baseTypes)
 
 			Expect(len(baseTypes)).To(Equal(1))
 			Expect(len(baseTypes[0].DependsUpon)).To(Equal(2))
 			sort.Strings(baseTypes[0].DependsUpon)
-			Expect(baseTypes[0].DependsUpon[0]).To(Equal("public.base_fn_in"))
-			Expect(baseTypes[0].DependsUpon[1]).To(Equal("public.base_fn_out"))
+			Expect(baseTypes[0].DependsUpon[0]).To(Equal("public.base_fn_in(cstring)"))
+			Expect(baseTypes[0].DependsUpon[1]).To(Equal("public.base_fn_out(base_type)"))
 		})
 	})
 	Describe("ConstructDomainDependencies", func() {

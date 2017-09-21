@@ -143,11 +143,44 @@ ORDER BY n.nspname, t.typname;`, SchemaFilterClause("n"))
  * functions is a built-in function (and therefore should not be considered a
  * dependency for dependency sorting purposes).
  */
-func ConstructBaseTypeDependencies(connection *utils.DBConn, types []Type) []Type {
+func ConstructBaseTypeDependencies4(connection *utils.DBConn, types []Type, funcInfoMap map[uint32]FunctionInfo) []Type {
 	query := fmt.Sprintf(`
 SELECT DISTINCT
     t.oid,
-    quote_ident(n.nspname) || '.' || quote_ident(p.proname) AS referencedobject
+    p.oid AS referencedoid
+FROM pg_depend d
+JOIN pg_proc p ON (d.refobjid = p.oid AND p.pronamespace != (SELECT oid FROM pg_namespace WHERE nspname = 'pg_catalog'))
+JOIN pg_type t ON (d.objid = t.oid AND t.typtype = 'b')
+JOIN pg_namespace n ON n.oid = t.typnamespace
+WHERE %s
+AND d.refclassid = 'pg_proc'::regclass
+AND d.deptype = 'n';`, SchemaFilterClause("n"))
+
+	results := make([]struct {
+		Oid           uint32
+		ReferencedOid uint32
+	}, 0)
+	dependencyMap := make(map[uint32][]string, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	for _, dependency := range results {
+		referencedFunc := funcInfoMap[dependency.ReferencedOid]
+		dependencyStr := fmt.Sprintf("%s(%s)", referencedFunc.QualifiedName, referencedFunc.Arguments)
+		dependencyMap[dependency.Oid] = append(dependencyMap[dependency.Oid], dependencyStr)
+	}
+	for i := 0; i < len(types); i++ {
+		if types[i].Type == "b" {
+			types[i].DependsUpon = dependencyMap[types[i].Oid]
+		}
+	}
+	return types
+}
+
+func ConstructBaseTypeDependencies5(connection *utils.DBConn, types []Type) []Type {
+	query := fmt.Sprintf(`
+SELECT DISTINCT
+    t.oid,
+    quote_ident(n.nspname) || '.' || quote_ident(p.proname) || '(' || pg_get_function_arguments(p.oid) || ')' AS referencedobject
 FROM pg_depend d
 JOIN pg_proc p ON (d.refobjid = p.oid AND p.pronamespace != (SELECT oid FROM pg_namespace WHERE nspname = 'pg_catalog'))
 JOIN pg_type t ON (d.objid = t.oid AND t.typtype = 'b')

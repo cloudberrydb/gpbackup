@@ -67,7 +67,7 @@ func RetrieveFunctionsAndTypes(objectCounts map[string]int, procLangs []Procedur
 	objectCounts["Functions"] = len(functions)
 	funcInfoMap := GetFunctionOidToInfoMap(connection)
 	functionMetadata := GetMetadataForObjectType(connection, TYPE_FUNCTION)
-	functions, types = ConstructFunctionAndTypeDependencyLists(connection, functions, types)
+	functions, types = ConstructFunctionAndTypeDependencyLists(connection, functions, types, funcInfoMap)
 	langFuncs, otherFuncs := ExtractLanguageFunctions(functions, procLangs)
 	return langFuncs, otherFuncs, types, functionMetadata, typeMetadata, funcInfoMap
 }
