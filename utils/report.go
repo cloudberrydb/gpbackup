@@ -27,6 +27,7 @@ type Report struct {
 	DataOnly        bool
 	SchemaFiltered  bool
 	MetadataOnly    bool
+	WithStatistics  bool
 }
 
 func ParseErrorMessage(err interface{}) (string, int) {
@@ -41,7 +42,7 @@ func ParseErrorMessage(err interface{}) (string, int) {
 	return errMsg, exitCode
 }
 
-func (report *Report) SetBackupTypeFromFlags(dataOnly bool, ddlOnly bool, noCompression bool, schemaInclude ArrayFlags) {
+func (report *Report) SetBackupTypeFromFlags(dataOnly bool, ddlOnly bool, noCompression bool, schemaInclude ArrayFlags, withStats bool) {
 	filterStr := "Unfiltered"
 	if len(schemaInclude) > 0 {
 		report.SchemaFiltered = true
@@ -62,7 +63,11 @@ func (report *Report) SetBackupTypeFromFlags(dataOnly bool, ddlOnly bool, noComp
 		report.MetadataOnly = true
 		sectionStr = " Metadata-Only"
 	}
-	report.BackupType = fmt.Sprintf("%s %s Full%s Backup", filterStr, compressStr, sectionStr)
+	statsStr := ""
+	if withStats {
+		statsStr = " With Statistics"
+	}
+	report.BackupType = fmt.Sprintf("%s %s Full%s Backup%s", filterStr, compressStr, sectionStr, statsStr)
 }
 
 func WriteReportFile(reportFile io.Writer, timestamp string, report *Report, objectCounts map[string]int, errMsg string) {
@@ -102,10 +107,10 @@ Database Size: %s`
 }
 
 func (report *Report) SetBackupTypeFromString() {
-	typeRegexp := regexp.MustCompile(`^([^ ]+) ([^ ]+) Full( [^ ]+)? Backup$`)
+	typeRegexp := regexp.MustCompile(`^([^ ]+) ([^ ]+) Full( [^ ]+)? Backup( .+)?$`)
 	tokens := typeRegexp.FindStringSubmatch(report.BackupType)
 	if tokens == nil || len(tokens) == 0 {
-		logger.Fatal(errors.Errorf(`Invalid backup type string format: "%s" (Valid format is "[Unfiltered|Schema-Filtered] [Compressed|Uncompressed] Full[| Metadata-Only| Data-Only] Backup")`, report.BackupType), "")
+		logger.Fatal(errors.Errorf(`Invalid backup type string format: "%s" (Valid format is "[Unfiltered|Schema-Filtered] [Compressed|Uncompressed] Full[| Metadata-Only| Data-Only] Backup[| With Statistics]")`, report.BackupType), "")
 	}
 	if tokens[1] == "Schema-Filtered" {
 		report.SchemaFiltered = true
@@ -123,6 +128,11 @@ func (report *Report) SetBackupTypeFromString() {
 		report.MetadataOnly = true
 	} else if tokens[3] != "" {
 		logger.Fatal(errors.Errorf(`Invalid backup section string: "%s"`, tokens[3][1:]), "Could not determine whether backup included metadata, data, or both")
+	}
+	if tokens[4] == " With Statistics" {
+		report.WithStatistics = true
+	} else if tokens[4] != "" {
+		logger.Fatal(errors.Errorf(`Invalid backup statistics string: "%s"`, tokens[4]), "Could not determine whether query planner statistics were included in backup")
 	}
 }
 

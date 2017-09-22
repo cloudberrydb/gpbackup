@@ -37,6 +37,7 @@ var ( // Command-line flags
 	excludeTables    utils.ArrayFlags
 	includeTableFile *string
 	includeTables    utils.ArrayFlags
+	withStats        *bool
 )
 
 // We define and initialize flags separately to avoid import conflicts in tests
@@ -54,6 +55,7 @@ func initializeFlags() {
 	flag.Var(&includeSchemas, "include-schema", "Back up only the specified schema(s). --include-schema can be specified multiple times.")
 	excludeTableFile = flag.String("exclude-table-file", "", "A file containing a list of fully-qualified tables to be excluded from the backup")
 	includeTableFile = flag.String("include-table-file", "", "A file containing a list of fully-qualified tables to be included in the backup")
+	withStats = flag.Bool("with-stats", false, "Back up query plan statistics")
 }
 
 // This function handles setup that can be done before parsing flags.
@@ -151,6 +153,10 @@ func DoBackup() {
 		backupData(tables, tableDefs)
 	}
 
+	if *withStats {
+		backupStatistics(tables)
+	}
+
 	writeTOC(globalCluster.GetTOCFilePath(), globalTOC)
 	connection.Commit()
 }
@@ -167,7 +173,7 @@ func backupGlobal(objectCounts map[string]int) {
 	globalFile := utils.NewFileWithByteCountFromFile(globalFilename)
 	defer globalFile.Close()
 
-	BackupGlobalSessionGUCs(globalFile, objectCounts)
+	BackupGlobalSessionGUCs(globalFile)
 	BackupTablespaces(globalFile, objectCounts)
 	BackupCreateDatabase(globalFile, objectCounts)
 	BackupDatabaseGUCs(globalFile, objectCounts)
@@ -188,7 +194,7 @@ func backupPredata(tables []Relation, tableDefs map[uint32]TableDefinition, obje
 
 	PrintConnectionString(predataFile, connection.DBName)
 
-	BackupPredataSessionGUCs(predataFile, objectCounts)
+	BackupPredataSessionGUCs(predataFile)
 	BackupSchemas(predataFile, objectCounts)
 
 	procLangs := GetProceduralLanguages(connection)
@@ -252,11 +258,19 @@ func backupPostdata(objectCounts map[string]int) {
 
 	PrintConnectionString(postdataFile, connection.DBName)
 
-	BackupPostdataSessionGUCs(postdataFile, objectCounts)
+	BackupPostdataSessionGUCs(postdataFile)
 	BackupIndexes(postdataFile, objectCounts)
 	BackupRules(postdataFile, objectCounts)
 	BackupTriggers(postdataFile, objectCounts)
 	logger.Info("Post-data metadata backup complete")
+}
+
+func backupStatistics(tables []Relation) {
+	statisticsFilename := globalCluster.GetStatisticsFilePath()
+	logger.Info("Writing query planner statistics to %s", statisticsFilename)
+	statisticsFile := utils.NewFileWithByteCountFromFile(statisticsFilename)
+	BackupStatistics(statisticsFile, tables)
+	logger.Info("Query planner statistics backup complete")
 }
 
 func DoTeardown() {

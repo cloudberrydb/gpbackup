@@ -43,7 +43,7 @@ func InitializeBackupReport() {
 		DatabaseSize:    connection.GetDBSize(),
 	}
 	utils.InitializeCompressionParameters(!*noCompression)
-	backupReport.SetBackupTypeFromFlags(*dataOnly, *metadataOnly, *noCompression, includeSchemas)
+	backupReport.SetBackupTypeFromFlags(*dataOnly, *metadataOnly, *noCompression, includeSchemas, *withStats)
 }
 
 func InitializeFilterLists() {
@@ -100,7 +100,7 @@ func LogBackupInfo() {
  * Global metadata wrapper functions
  */
 
-func BackupGlobalSessionGUCs(globalFile *utils.FileWithByteCount, objectCounts map[string]int) {
+func BackupGlobalSessionGUCs(globalFile *utils.FileWithByteCount) {
 	logger.Verbose("Writing session GUCs to global file")
 	gucs := GetSessionGUCs(connection)
 	PrintGlobalSessionGUCs(globalFile, globalTOC, gucs)
@@ -154,7 +154,7 @@ func BackupRoleGrants(globalFile *utils.FileWithByteCount, objectCounts map[stri
  * Predata wrapper functions
  */
 
-func BackupPredataSessionGUCs(predataFile *utils.FileWithByteCount, objectCounts map[string]int) {
+func BackupPredataSessionGUCs(predataFile *utils.FileWithByteCount) {
 	logger.Verbose("Writing session GUCs to predata file")
 	gucs := GetSessionGUCs(connection)
 	PrintPredataSessionGUCs(predataFile, globalTOC, gucs)
@@ -328,7 +328,7 @@ func BackupConstraints(predataFile *utils.FileWithByteCount, objectCounts map[st
  * Postdata wrapper functions
  */
 
-func BackupPostdataSessionGUCs(postdataFile *utils.FileWithByteCount, objectCounts map[string]int) {
+func BackupPostdataSessionGUCs(postdataFile *utils.FileWithByteCount) {
 	logger.Verbose("Writing session GUCs to postdata file")
 	gucs := GetSessionGUCs(connection)
 	PrintPostdataSessionGUCs(postdataFile, globalTOC, gucs)
@@ -383,4 +383,19 @@ func BackupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
 		logger.Warn("Skipped data backup of %d external table%s.", numExtTables, s)
 		logger.Warn("See %s for a complete list of skipped tables.", logger.GetLogFilePath())
 	}
+}
+
+func BackupStatistics(statisticsFile *utils.FileWithByteCount, tables []Relation) {
+	attStats := GetAttributeStatistics(connection, tables)
+	tupleStats := GetTupleStatistics(connection, tables)
+	PrintConnectionString(statisticsFile, connection.DBName)
+
+	BackupStatisticsSessionGUCs(statisticsFile)
+	PrintStatisticsStatements(statisticsFile, globalTOC, tables, attStats, tupleStats)
+}
+
+func BackupStatisticsSessionGUCs(statisticsFile *utils.FileWithByteCount) {
+	logger.Verbose("Writing session GUCs to statistics file")
+	gucs := GetSessionGUCs(connection)
+	PrintStatisticsSessionGUCs(statisticsFile, globalTOC, gucs)
 }

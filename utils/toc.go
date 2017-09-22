@@ -8,10 +8,11 @@ import (
 )
 
 type TOC struct {
-	GlobalEntries   []MetadataEntry
-	PredataEntries  []MetadataEntry
-	PostdataEntries []MetadataEntry
-	DataEntries     []DataEntry
+	GlobalEntries     []MetadataEntry
+	PredataEntries    []MetadataEntry
+	PostdataEntries   []MetadataEntry
+	StatisticsEntries []MetadataEntry
+	DataEntries       []DataEntry
 }
 
 type MetadataEntry struct {
@@ -69,4 +70,8 @@ func (toc *TOC) AddGlobalEntry(schema string, name string, objectType string, st
 
 func (toc *TOC) AddDataEntry(schema string, name string, oid uint32, attributeString string) {
 	toc.DataEntries = append(toc.DataEntries, DataEntry{schema, name, oid, attributeString})
+}
+
+func (toc *TOC) AddStatisticsEntry(schema string, name string, objectType string, start uint64, end uint64) {
+	toc.StatisticsEntries = append(toc.StatisticsEntries, MetadataEntry{schema, name, objectType, start, end})
 }

@@ -44,10 +44,9 @@ func QuoteIdent(ident string) string {
 func SliceToQuotedString(slice []string) string {
 	quotedStrings := make([]string, len(slice))
 	for i, str := range slice {
-		quotedStrings[i] = fmt.Sprintf("'%s'", str)
+		quotedStrings[i] = fmt.Sprintf("'%s'", strings.Replace(str, "'", "''", -1))
 	}
 	return strings.Join(quotedStrings, ",")
-
 }
 
 /*
@@ -78,6 +77,19 @@ func MustOpenFileForReaderAt(filename string) io.ReaderAt {
 	return fileHandle
 }
 
+func FileExistsAndIsReadable(filename string) bool {
+	_, err := System.Stat(filename)
+	if err == nil {
+		var fileHandle io.ReadCloser
+		fileHandle, err = System.OpenFile(filename, os.O_RDONLY, 0644)
+		fileHandle.Close()
+		if err == nil {
+			return true
+		}
+	}
+	return false
+}
+
 func CreateBackupLockFile(timestamp string) {
 	timestampLockFile := fmt.Sprintf("/tmp/%s.lck", timestamp)
 	_, err := System.OpenFile(timestampLockFile, os.O_CREATE|os.O_EXCL, 0644)
@@ -101,7 +113,7 @@ func ExecuteSQLFile(dbconn *DBConn, filename string) {
 		"-h", dbconn.Host,
 		"-p", fmt.Sprintf("%d", dbconn.Port),
 		"-f", fmt.Sprintf("%s", filename),
-		"-v", "ON_ERROR_STOP=1",
+		//"-v", "ON_ERROR_STOP=1",
 		"-q",
 	}
 	out, err := exec.Command("psql", connStr...).CombinedOutput()

@@ -242,28 +242,67 @@ func (cluster *Cluster) GetTableBackupFilePathForCopyCommand(tableOid uint32) st
  * Backup and restore filename functions
  */
 
-func (cluster *Cluster) GetBackupFilePathPrefix() string {
-	return path.Join(cluster.GetDirForContent(-1), fmt.Sprintf("gpbackup_%s_", cluster.Timestamp))
+var metadataFilenameMap = map[string]string{
+	"global":            "global.sql",
+	"predata":           "predata.sql",
+	"postdata":          "postdata.sql",
+	"statistics":        "statistics.sql",
+	"table of contents": "toc.yaml",
+	"report":            "report",
+}
+
+func (cluster *Cluster) GetBackupFilePath(filetype string) string {
+	return path.Join(cluster.GetDirForContent(-1), fmt.Sprintf("gpbackup_%s_%s", cluster.Timestamp, metadataFilenameMap[filetype]))
 }
 
 func (cluster *Cluster) GetGlobalFilePath() string {
-	return fmt.Sprintf("%sglobal.sql", cluster.GetBackupFilePathPrefix())
+	return cluster.GetBackupFilePath("global")
 }
 
 func (cluster *Cluster) GetPredataFilePath() string {
-	return fmt.Sprintf("%spredata.sql", cluster.GetBackupFilePathPrefix())
+	return cluster.GetBackupFilePath("predata")
 }
 
 func (cluster *Cluster) GetPostdataFilePath() string {
-	return fmt.Sprintf("%spostdata.sql", cluster.GetBackupFilePathPrefix())
+	return cluster.GetBackupFilePath("postdata")
+}
+
+func (cluster *Cluster) GetStatisticsFilePath() string {
+	return cluster.GetBackupFilePath("statistics")
 }
 
 func (cluster *Cluster) GetTOCFilePath() string {
-	return fmt.Sprintf("%stoc.yaml", cluster.GetBackupFilePathPrefix())
+	return cluster.GetBackupFilePath("table of contents")
 }
 
 func (cluster *Cluster) GetReportFilePath() string {
-	return fmt.Sprintf("%sreport", cluster.GetBackupFilePathPrefix())
+	return cluster.GetBackupFilePath("report")
+}
+
+func (cluster *Cluster) VerifyMetadataFilePaths(dataOnly bool, withStats bool) {
+	filetypes := []string{"table of contents", "report"}
+	if !dataOnly {
+		filetypes = append(filetypes, []string{"global", "predata", "postdata"}...)
+	}
+	missing := false
+	for _, filetype := range filetypes {
+		filepath := cluster.GetBackupFilePath(filetype)
+		if !FileExistsAndIsReadable(filepath) {
+			missing = true
+			logger.Error("Cannot access %s file %s", filetype, filepath)
+		}
+	}
+	if withStats {
+		filepath := cluster.GetStatisticsFilePath()
+		if !FileExistsAndIsReadable(filepath) {
+			missing = true
+			logger.Error("Cannot access statistics file %s", filepath)
+			logger.Error(`Note that the "-with-stats" flag must be passed to gpbackup to generate a statistics file.`)
+		}
+	}
+	if missing {
+		logger.Fatal(errors.Errorf("One or more metadata files do not exist or are not readable."), "Cannot proceed with restore")
+	}
 }
 
 /*

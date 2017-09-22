@@ -28,6 +28,7 @@ var ( // Command-line flags
 	verbose        *bool
 	restoreGlobals *bool
 	printVersion   *bool
+	withStats      *bool
 )
 
 // We define and initialize flags separately to avoid import conflicts in tests
@@ -40,6 +41,7 @@ func initializeFlags() {
 	verbose = flag.Bool("verbose", false, "Print verbose log messages")
 	restoreGlobals = flag.Bool("globals", false, "Restore global metadata")
 	printVersion = flag.Bool("version", false, "Print version number and exit")
+	withStats = flag.Bool("with-stats", false, "Restore query plan statistics")
 }
 
 // This function handles setup that can be done before parsing flags.
@@ -89,6 +91,7 @@ func DoSetup() {
 	globalCluster.VerifyBackupDirectoriesExistOnAllHosts()
 
 	InitializeBackupReport()
+	globalCluster.VerifyMetadataFilePaths(backupReport.DataOnly, *withStats)
 }
 
 func DoRestore() {
@@ -116,6 +119,10 @@ func DoRestore() {
 
 	if !backupReport.DataOnly {
 		restorePostdata()
+	}
+
+	if *withStats && backupReport.WithStatistics {
+		restoreStatistics()
 	}
 }
 
@@ -161,6 +168,13 @@ func restorePostdata() {
 	logger.Info("Restoring post-data metadata from %s", postdataFilename)
 	utils.ExecuteSQLFile(connection, postdataFilename)
 	logger.Info("Post-data metadata restore complete")
+}
+
+func restoreStatistics() {
+	statisticsFilename := globalCluster.GetStatisticsFilePath()
+	logger.Info("Restoring query planner statistics from %s", statisticsFilename)
+	utils.ExecuteSQLFile(connection, statisticsFilename)
+	logger.Info("Query planner statistics restore complete")
 }
 
 func DoTeardown() {

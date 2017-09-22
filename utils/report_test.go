@@ -134,34 +134,34 @@ types                       1000
 		BeforeEach(func() {
 			backupReport = &utils.Report{}
 		})
-		DescribeTable("Backup type classification", func(dataOnly bool, ddlOnly bool, noCompression bool, schemaInclude utils.ArrayFlags, expectedType string) {
-			backupReport.SetBackupTypeFromFlags(dataOnly, ddlOnly, noCompression, schemaInclude)
+		DescribeTable("Backup type classification", func(dataOnly bool, ddlOnly bool, noCompression bool, schemaInclude utils.ArrayFlags, withStats bool, expectedType string) {
+			backupReport.SetBackupTypeFromFlags(dataOnly, ddlOnly, noCompression, schemaInclude, withStats)
 			Expect(backupReport.BackupType).To(Equal(expectedType))
 		},
 			Entry("classifies a default backup",
-				false, false, false, utils.ArrayFlags{}, "Unfiltered Compressed Full Backup"),
+				false, false, false, utils.ArrayFlags{}, false, "Unfiltered Compressed Full Backup"),
 			Entry("classifies a metadata-only backup",
-				false, true, false, utils.ArrayFlags{}, "Unfiltered Compressed Full Metadata-Only Backup"),
+				false, true, false, utils.ArrayFlags{}, false, "Unfiltered Compressed Full Metadata-Only Backup"),
 			Entry("classifies a data-only backup",
-				true, false, false, utils.ArrayFlags{}, "Unfiltered Compressed Full Data-Only Backup"),
+				true, false, false, utils.ArrayFlags{}, false, "Unfiltered Compressed Full Data-Only Backup"),
 			Entry("classifies an uncompressed backup",
-				false, false, true, utils.ArrayFlags{}, "Unfiltered Uncompressed Full Backup"),
+				false, false, true, utils.ArrayFlags{}, false, "Unfiltered Uncompressed Full Backup"),
 			Entry("classifies an uncompressed metadata-only backup",
-				false, true, true, utils.ArrayFlags{}, "Unfiltered Uncompressed Full Metadata-Only Backup"),
+				false, true, true, utils.ArrayFlags{}, false, "Unfiltered Uncompressed Full Metadata-Only Backup"),
 			Entry("classifies an uncompressed data-only backup",
-				true, false, true, utils.ArrayFlags{}, "Unfiltered Uncompressed Full Data-Only Backup"),
+				true, false, true, utils.ArrayFlags{}, false, "Unfiltered Uncompressed Full Data-Only Backup"),
 			Entry("classifies a schema-filtered backup",
-				false, false, false, utils.ArrayFlags{"someSchema"}, "Schema-Filtered Compressed Full Backup"),
+				false, false, false, utils.ArrayFlags{"someSchema"}, false, "Schema-Filtered Compressed Full Backup"),
 			Entry("classifies a schema-filtered metadata-only backup",
-				false, true, false, utils.ArrayFlags{"someSchema"}, "Schema-Filtered Compressed Full Metadata-Only Backup"),
+				false, true, false, utils.ArrayFlags{"someSchema"}, false, "Schema-Filtered Compressed Full Metadata-Only Backup"),
 			Entry("classifies a schema-filtered data-only backup",
-				true, false, false, utils.ArrayFlags{"someSchema"}, "Schema-Filtered Compressed Full Data-Only Backup"),
+				true, false, false, utils.ArrayFlags{"someSchema"}, false, "Schema-Filtered Compressed Full Data-Only Backup"),
 			Entry("classifies an uncompressed schema-filtered backup",
-				false, false, true, utils.ArrayFlags{"someSchema"}, "Schema-Filtered Uncompressed Full Backup"),
+				false, false, true, utils.ArrayFlags{"someSchema"}, false, "Schema-Filtered Uncompressed Full Backup"),
 			Entry("classifies an uncompressed schema-filtered metadata-only backup",
-				false, true, true, utils.ArrayFlags{"someSchema"}, "Schema-Filtered Uncompressed Full Metadata-Only Backup"),
+				false, true, true, utils.ArrayFlags{"someSchema"}, false, "Schema-Filtered Uncompressed Full Metadata-Only Backup"),
 			Entry("classifies an uncompressed schema-filtered data-only backup",
-				true, false, true, utils.ArrayFlags{"someSchema"}, "Schema-Filtered Uncompressed Full Data-Only Backup"),
+				true, false, true, utils.ArrayFlags{"someSchema"}, false, "Schema-Filtered Uncompressed Full Data-Only Backup"),
 		)
 	})
 	Describe("SetBackupTypeFromString", func() {
@@ -208,7 +208,7 @@ types                       1000
 			backupReport.SetBackupTypeFromString()
 		},
 			Entry("can detect an invalid format due to extra tokens",
-				"Unfiltered Compressed Full Backup Extra-Token", `Invalid backup type string format: "Unfiltered Compressed Full Backup Extra-Token"`),
+				"Unfiltered Compressed Full Backup Extra-Token", `Invalid backup statistics string: " Extra-Token"`),
 			Entry("can detect an invalid format due to missing tokens",
 				"Unfiltered Full Backup", `Invalid backup type string format: "Unfiltered Full Backup"`),
 			Entry("can detect an invalid filter string",

@@ -40,6 +40,12 @@ func PrintGlobalSessionGUCs(metadataFile *utils.FileWithByteCount, toc *utils.TO
 	toc.AddGlobalEntry("", "", "SESSION GUCS", start, metadataFile.ByteCount)
 }
 
+func PrintStatisticsSessionGUCs(metadataFile *utils.FileWithByteCount, toc *utils.TOC, gucs SessionGUCs) {
+	start := metadataFile.ByteCount
+	printSessionGUCs(metadataFile, gucs)
+	toc.AddStatisticsEntry("", "", "SESSION GUCS", start, metadataFile.ByteCount)
+}
+
 func printSessionGUCs(metadataFile *utils.FileWithByteCount, gucs SessionGUCs) {
 	metadataFile.MustPrintf(`SET statement_timeout = 0;
 SET check_function_bodies = false;

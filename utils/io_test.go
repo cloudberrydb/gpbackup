@@ -133,6 +133,45 @@ var _ = Describe("utils/io tests", func() {
 			utils.MustOpenFileForReading("filename")
 		})
 	})
+	Describe("FileExistsAndIsReadable", func() {
+		AfterEach(func() {
+			utils.System = utils.InitializeSystemFunctions()
+		})
+		It("returns true if the file both exists and is readable", func() {
+			utils.System.Stat = func(name string) (os.FileInfo, error) {
+				return nil, nil
+			}
+			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) {
+				return &os.File{}, nil
+			}
+			check := utils.FileExistsAndIsReadable("filename")
+			Expect(check).To(BeTrue())
+		})
+		It("returns false if the file does not exist", func() {
+			utils.System.Stat = func(name string) (os.FileInfo, error) {
+				return nil, os.ErrNotExist
+			}
+			check := utils.FileExistsAndIsReadable("filename")
+			Expect(check).To(BeFalse())
+		})
+		It("returns false if there is an error accessing the file", func() {
+			utils.System.Stat = func(name string) (os.FileInfo, error) {
+				return nil, os.ErrPermission
+			}
+			check := utils.FileExistsAndIsReadable("filename")
+			Expect(check).To(BeFalse())
+		})
+		It("returns false if there is an error opening the file", func() {
+			utils.System.Stat = func(name string) (os.FileInfo, error) {
+				return nil, nil
+			}
+			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) {
+				return nil, &os.PathError{}
+			}
+			check := utils.FileExistsAndIsReadable("filename")
+			Expect(check).To(BeFalse())
+		})
+	})
 	Describe("ReadLinesFromFile", func() {
 		fileContents := []byte(`public.foo
 public."bar%baz"`)
