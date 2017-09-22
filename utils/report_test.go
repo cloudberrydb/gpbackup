@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/blang/semver"
 	"github.com/greenplum-db/gpbackup/testutils"
 	"github.com/greenplum-db/gpbackup/utils"
 	. "github.com/onsi/ginkgo"
@@ -217,6 +218,38 @@ types                       1000
 			Entry("can detect an invalid section string",
 				"Unfiltered Compressed Full Postdata-Only Backup", `Invalid backup section string: "Postdata-Only"`),
 		)
+	})
+	Describe("EnsureBackupVersionCompatibility", func() {
+		It("Panics if gpbackup version is greater than gprestore version", func() {
+			defer testutils.ShouldPanicWithMessage("gprestore 0.1.0 cannot restore a backup taken with gpbackup 0.2.0; please use gprestore 0.2.0 or later.")
+			utils.EnsureBackupVersionCompatibility("0.2.0", "0.1.0")
+		})
+		It("Does not panic if gpbackup version is less than gprestore version", func() {
+			utils.EnsureBackupVersionCompatibility("0.1.0", "0.1.3")
+		})
+		It("Does not panic if gpbackup version equals gprestore version", func() {
+			utils.EnsureBackupVersionCompatibility("0.1.0", "0.1.0")
+		})
+	})
+	Describe("EnsureDatabaseVersionCompatibility", func() {
+		var restoreVersion utils.GPDBVersion
+		BeforeEach(func() {
+			semver, _ := semver.Make("5.0.0")
+			restoreVersion = utils.GPDBVersion{
+				VersionString: "5.0.0-beta.9+dev.129.g4bd4e41 build dev",
+				SemVer:        semver,
+			}
+		})
+		It("Panics if backup database major version is greater than restore major version", func() {
+			defer testutils.ShouldPanicWithMessage("Cannot restore from GPDB version 6.0.0-beta.9+dev.129.g4bd4e41 build dev to 5.0.0-beta.9+dev.129.g4bd4e41 build dev due to catalog incompatibilities.")
+			utils.EnsureDatabaseVersionCompatibility("6.0.0-beta.9+dev.129.g4bd4e41 build dev", restoreVersion)
+		})
+		It("Does not panic if backup database major version is greater than restore major version", func() {
+			utils.EnsureDatabaseVersionCompatibility("4.3.16-beta.9+dev.129.g4bd4e41 build dev", restoreVersion)
+		})
+		It("Does not panic if backup database major version is equal to restore major version", func() {
+			utils.EnsureDatabaseVersionCompatibility("5.0.6-beta.9+dev.129.g4bd4e41 build dev", restoreVersion)
+		})
 	})
 	Describe("Email-related functions", func() {
 		reportFileContents := []byte(`Greenplum Database Backup Report

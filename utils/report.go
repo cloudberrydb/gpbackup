@@ -169,6 +169,16 @@ func EnsureBackupVersionCompatibility(backupVersion string, restoreVersion strin
 	}
 }
 
+func EnsureDatabaseVersionCompatibility(backupGPDBVersion string, restoreGPDBVersion GPDBVersion) {
+	pattern := regexp.MustCompile(`\d+\.\d+\.\d+`)
+	threeDigitVersion := pattern.FindStringSubmatch(backupGPDBVersion)[0]
+	backupGPDBSemVer, err := semver.Make(threeDigitVersion)
+	CheckError(err)
+	if backupGPDBSemVer.Major > restoreGPDBVersion.SemVer.Major {
+		logger.Fatal(errors.Errorf("Cannot restore from GPDB version %s to %s due to catalog incompatibilities.", backupGPDBVersion, restoreGPDBVersion.VersionString), "")
+	}
+}
+
 func ConstructEmailMessage(cluster Cluster, contactList string) string {
 	hostname, _ := System.Hostname()
 	emailHeader := fmt.Sprintf(`To: %s

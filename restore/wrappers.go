@@ -28,6 +28,7 @@ func InitializeConnection(dbname string) {
 	connection.Connect()
 	_, err := connection.Exec("SET application_name TO 'gprestore'")
 	utils.CheckError(err)
+	connection.SetDatabaseVersion()
 	_, err = connection.Exec("SET search_path TO pg_catalog")
 	utils.CheckError(err)
 	_, err = connection.Exec("SET gp_enable_segment_copy_checking TO false")
@@ -40,4 +41,5 @@ func InitializeBackupReport() {
 	backupReport.SetBackupTypeFromString()
 	utils.InitializeCompressionParameters(backupReport.Compressed)
 	utils.EnsureBackupVersionCompatibility(backupReport.BackupVersion, version)
+	utils.EnsureDatabaseVersionCompatibility(backupReport.DatabaseVersion, connection.Version)
 }

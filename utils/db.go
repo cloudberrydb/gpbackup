@@ -16,6 +16,9 @@ import (
 	"github.com/pkg/errors"
 )
 
+const MINIMUM_GPDB4_VERSION = "4.3.16"
+const MINIMUM_GPDB5_VERSION = "5.0.0"
+
 type DBConn struct {
 	Conn    *sqlx.DB
 	Driver  DBDriver
@@ -154,4 +157,13 @@ func (dbconn *DBConn) GetDBSize() string {
 
 func (dbconn *DBConn) SetDatabaseVersion() {
 	dbconn.Version.Initialize(dbconn)
+	dbconn.validateGPDBVersionCompatibility()
+}
+
+func (dbconn *DBConn) validateGPDBVersionCompatibility() {
+	if dbconn.Version.Before(MINIMUM_GPDB4_VERSION) {
+		logger.Fatal(errors.Errorf(`GPDB version %s is not supported. Please upgrade to GPDB %s.0 or later.`, dbconn.Version.VersionString, MINIMUM_GPDB4_VERSION), "")
+	} else if dbconn.Version.Is("5") && dbconn.Version.Before(MINIMUM_GPDB5_VERSION) {
+		logger.Fatal(errors.Errorf(`GPDB version %s is not supported. Please upgrade to GPDB %s or later.`, dbconn.Version.VersionString, MINIMUM_GPDB5_VERSION), "")
+	}
 }
