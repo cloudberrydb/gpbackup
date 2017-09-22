@@ -599,7 +599,7 @@ LANGUAGE SQL`)
 				resultMetadata := resultMetadataMap[oid]
 				testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 			})
-			It("returns a slice of default metadata for a type in a specfic schema", func() {
+			It("returns a slice of default metadata for a type in a specific schema", func() {
 				testutils.AssertQueryRuns(connection, `CREATE TYPE public.testtype`)
 				defer testutils.AssertQueryRuns(connection, "DROP TYPE public.testtype")
 				testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
