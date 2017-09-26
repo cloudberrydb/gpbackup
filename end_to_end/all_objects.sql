@@ -732,7 +732,7 @@ CREATE INDEX simple_table_idx1 ON foo4 USING btree (n);
 -- Name: double_insert; Type: RULE; Schema: public; Owner: pivotal
 --
 
-CREATE RULE double_insert AS ON INSERT TO rule_table1 DO INSERT INTO rule_table1 DEFAULT VALUES;
+CREATE RULE double_insert AS ON INSERT TO rule_table1 DO INSERT INTO rule_table1 VALUES (1);
 
 
 --
