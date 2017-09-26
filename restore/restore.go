@@ -14,6 +14,7 @@ var (
 	connection    *utils.DBConn
 	logger        *utils.Logger
 	globalCluster utils.Cluster
+	globalTOC     *utils.TOC
 	backupReport  utils.Report
 	version       string
 )
@@ -49,6 +50,10 @@ func DoInit() {
 
 func SetLogger(log *utils.Logger) {
 	logger = log
+}
+
+func SetTOC(toc *utils.TOC) {
+	globalTOC = toc
 }
 
 /*
@@ -87,6 +92,8 @@ func DoSetup() {
 }
 
 func DoRestore() {
+	tocFilename := globalCluster.GetTOCFilePath()
+	globalTOC = utils.NewTOC(tocFilename)
 	if *restoreGlobals {
 		restoreGlobal()
 	} else if *createdb {
@@ -101,7 +108,7 @@ func DoRestore() {
 	}
 
 	if !backupReport.MetadataOnly {
-		tableMap := ReadTableMapFile(globalCluster.GetTableMapFilePath())
+		tableMap := GetTableDataEntriesFromTOC()
 		backupFileCount := len(tableMap)
 		globalCluster.VerifyBackupFileCountOnSegments(backupFileCount)
 		restoreData(tableMap)
@@ -114,11 +121,9 @@ func DoRestore() {
 
 func createDatabase() {
 	globalFilename := globalCluster.GetGlobalFilePath()
-	tocFilename := globalCluster.GetTOCFilePath()
 	logger.Info("Creating database")
-	toc := utils.NewTOC(tocFilename)
 	globalFile := utils.MustOpenFileForReaderAt(globalFilename)
-	statements := toc.GetSQLStatementForObjectTypes(toc.GlobalEntries, globalFile, "SESSION GUCS", "DATABASE GUC", "DATABASE", "DATABASE METADATA")
+	statements := globalTOC.GetSQLStatementForObjectTypes(globalTOC.GlobalEntries, globalFile, "SESSION GUCS", "DATABASE GUC", "DATABASE", "DATABASE METADATA")
 	for _, statement := range statements {
 		_, err := connection.Exec(statement)
 		utils.CheckError(err)
@@ -140,12 +145,13 @@ func restorePredata() {
 	logger.Info("Pre-data metadata restore complete")
 }
 
-func restoreData(tableMap map[string]uint32) {
+func restoreData(tableMap map[uint32]utils.DataEntry) {
 	logger.Info("Restoring data")
-	for name, oid := range tableMap {
+	for oid, entry := range tableMap {
+		name := utils.MakeFQN(entry.Schema, entry.Name)
 		logger.Verbose("Reading data for table %s from file", name)
 		backupFile := globalCluster.GetTableBackupFilePathForCopyCommand(oid)
-		CopyTableIn(connection, name, backupFile)
+		CopyTableIn(connection, name, entry.AttributeString, backupFile)
 	}
 	logger.Info("Data restore complete")
 }

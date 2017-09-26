@@ -17,7 +17,7 @@ import (
 func PrintCreateOperatorStatements(predataFile *utils.FileWithByteCount, toc *utils.TOC, operators []Operator, operatorMetadata MetadataMap) {
 	for _, operator := range operators {
 		start := predataFile.ByteCount
-		// We do not use MakeFQN here as the operator cannot be quoted
+		// We do not use utils.MakeFQN here as the operator cannot be quoted
 		schema := utils.QuoteIdent(operator.SchemaName)
 		operatorFQN := fmt.Sprintf("%s.%s", schema, operator.Name)
 		optionalFields := make([]string, 0)
@@ -68,7 +68,7 @@ CREATE OPERATOR %s (
 func PrintCreateOperatorFamilyStatements(predataFile *utils.FileWithByteCount, toc *utils.TOC, operatorFamilies []OperatorFamily, operatorFamilyMetadata MetadataMap) {
 	for _, operatorFamily := range operatorFamilies {
 		start := predataFile.ByteCount
-		operatorFamilyFQN := MakeFQN(operatorFamily.SchemaName, operatorFamily.Name)
+		operatorFamilyFQN := utils.MakeFQN(operatorFamily.SchemaName, operatorFamily.Name)
 		operatorFamilyStr := fmt.Sprintf("%s USING %s", operatorFamilyFQN, utils.QuoteIdent(operatorFamily.IndexMethod))
 		predataFile.MustPrintf("\n\nCREATE OPERATOR FAMILY %s;", operatorFamilyStr)
 		PrintObjectMetadata(predataFile, operatorFamilyMetadata[operatorFamily.Oid], operatorFamilyStr, "OPERATOR FAMILY")
@@ -79,7 +79,7 @@ func PrintCreateOperatorFamilyStatements(predataFile *utils.FileWithByteCount, t
 func PrintCreateOperatorClassStatements(predataFile *utils.FileWithByteCount, toc *utils.TOC, operatorClasses []OperatorClass, operatorClassMetadata MetadataMap) {
 	for _, operatorClass := range operatorClasses {
 		start := predataFile.ByteCount
-		operatorClassFQN := MakeFQN(operatorClass.ClassSchema, operatorClass.ClassName)
+		operatorClassFQN := utils.MakeFQN(operatorClass.ClassSchema, operatorClass.ClassName)
 		predataFile.MustPrintf("\n\nCREATE OPERATOR CLASS %s", operatorClassFQN)
 		forTypeStr := ""
 		if operatorClass.Default {
@@ -87,7 +87,7 @@ func PrintCreateOperatorClassStatements(predataFile *utils.FileWithByteCount, to
 		}
 		forTypeStr += fmt.Sprintf("FOR TYPE %s USING %s", operatorClass.Type, operatorClass.IndexMethod)
 		if operatorClass.FamilyName != "" && operatorClass.FamilyName != operatorClass.ClassName {
-			operatorFamilyFQN := MakeFQN(operatorClass.FamilySchema, operatorClass.FamilyName)
+			operatorFamilyFQN := utils.MakeFQN(operatorClass.FamilySchema, operatorClass.FamilyName)
 			forTypeStr += fmt.Sprintf(" FAMILY %s", operatorFamilyFQN)
 		}
 		predataFile.MustPrintf("\n\t%s", forTypeStr)

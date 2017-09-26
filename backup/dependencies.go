@@ -71,7 +71,7 @@ func (r Relation) Name() string {
 }
 
 func (v View) Name() string {
-	return MakeFQN(v.SchemaName, v.ViewName)
+	return utils.MakeFQN(v.SchemaName, v.ViewName)
 }
 
 func (f Function) Name() string {
@@ -79,11 +79,11 @@ func (f Function) Name() string {
 	 * We need to include arguments to differentiate functions with the same name;
 	 * we don't use IdentArgs because we already have Arguments in the funcInfoMap.
 	 */
-	return fmt.Sprintf("%s(%s)", MakeFQN(f.SchemaName, f.FunctionName), f.Arguments)
+	return fmt.Sprintf("%s(%s)", utils.MakeFQN(f.SchemaName, f.FunctionName), f.Arguments)
 }
 
 func (t Type) Name() string {
-	return MakeFQN(t.TypeSchema, t.TypeName)
+	return utils.MakeFQN(t.TypeSchema, t.TypeName)
 }
 
 func (r Relation) Dependencies() []string {

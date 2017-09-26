@@ -19,7 +19,7 @@ import (
 func PrintCreateTextSearchParserStatements(predataFile *utils.FileWithByteCount, toc *utils.TOC, parsers []TextSearchParser, parserMetadata MetadataMap) {
 	for _, parser := range parsers {
 		start := predataFile.ByteCount
-		parserFQN := MakeFQN(parser.Schema, parser.Name)
+		parserFQN := utils.MakeFQN(parser.Schema, parser.Name)
 		predataFile.MustPrintf("\n\nCREATE TEXT SEARCH PARSER %s (", parserFQN)
 		predataFile.MustPrintf("\n\tSTART = %s,", parser.StartFunc)
 		predataFile.MustPrintf("\n\tGETTOKEN = %s,", parser.TokenFunc)
@@ -37,7 +37,7 @@ func PrintCreateTextSearchParserStatements(predataFile *utils.FileWithByteCount,
 func PrintCreateTextSearchTemplateStatements(predataFile *utils.FileWithByteCount, toc *utils.TOC, templates []TextSearchTemplate, templateMetadata MetadataMap) {
 	for _, template := range templates {
 		start := predataFile.ByteCount
-		templateFQN := MakeFQN(template.Schema, template.Name)
+		templateFQN := utils.MakeFQN(template.Schema, template.Name)
 		predataFile.MustPrintf("\n\nCREATE TEXT SEARCH TEMPLATE %s (", templateFQN)
 		if template.InitFunc != "" {
 			predataFile.MustPrintf("\n\tINIT = %s,", template.InitFunc)
@@ -51,7 +51,7 @@ func PrintCreateTextSearchTemplateStatements(predataFile *utils.FileWithByteCoun
 
 func PrintCreateTextSearchDictionaryStatements(predataFile *utils.FileWithByteCount, toc *utils.TOC, dictionaries []TextSearchDictionary, dictionaryMetadata MetadataMap) {
 	for _, dictionary := range dictionaries {
-		dictionaryFQN := MakeFQN(dictionary.Schema, dictionary.Name)
+		dictionaryFQN := utils.MakeFQN(dictionary.Schema, dictionary.Name)
 		start := predataFile.ByteCount
 		predataFile.MustPrintf("\n\nCREATE TEXT SEARCH DICTIONARY %s (", dictionaryFQN)
 		predataFile.MustPrintf("\n\tTEMPLATE = %s", dictionary.Template)
@@ -66,7 +66,7 @@ func PrintCreateTextSearchDictionaryStatements(predataFile *utils.FileWithByteCo
 
 func PrintCreateTextSearchConfigurationStatements(predataFile *utils.FileWithByteCount, toc *utils.TOC, configurations []TextSearchConfiguration, configurationMetadata MetadataMap) {
 	for _, configuration := range configurations {
-		configurationFQN := MakeFQN(configuration.Schema, configuration.Name)
+		configurationFQN := utils.MakeFQN(configuration.Schema, configuration.Name)
 		start := predataFile.ByteCount
 		predataFile.MustPrintf("\n\nCREATE TEXT SEARCH CONFIGURATION %s (", configurationFQN)
 		predataFile.MustPrintf("\n\tPARSER = %s", configuration.Parser)

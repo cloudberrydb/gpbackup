@@ -262,10 +262,6 @@ func (cluster *Cluster) GetTOCFilePath() string {
 	return fmt.Sprintf("%stoc.yaml", cluster.GetBackupFilePathPrefix())
 }
 
-func (cluster *Cluster) GetTableMapFilePath() string {
-	return fmt.Sprintf("%stable_map", cluster.GetBackupFilePathPrefix())
-}
-
 func (cluster *Cluster) GetReportFilePath() string {
 	return fmt.Sprintf("%sreport", cluster.GetBackupFilePathPrefix())
 }

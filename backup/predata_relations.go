@@ -27,7 +27,7 @@ type Relation struct {
  * everything quoted and escaped appropriately.
  */
 func (t Relation) ToString() string {
-	return MakeFQN(t.SchemaName, t.RelationName)
+	return utils.MakeFQN(t.SchemaName, t.RelationName)
 }
 
 /* Parse an appropriately-escaped schema.table string into a Relation.  The Relation's
@@ -289,7 +289,7 @@ func PrintAlterSequenceStatements(predataFile *utils.FileWithByteCount, toc *uti
 func PrintCreateViewStatements(predataFile *utils.FileWithByteCount, toc *utils.TOC, views []View, viewMetadata MetadataMap) {
 	for _, view := range views {
 		start := predataFile.ByteCount
-		viewFQN := MakeFQN(view.SchemaName, view.ViewName)
+		viewFQN := utils.MakeFQN(view.SchemaName, view.ViewName)
 		predataFile.MustPrintf("\n\nCREATE VIEW %s AS %s\n", viewFQN, view.Definition)
 		PrintObjectMetadata(predataFile, viewMetadata[view.Oid], viewFQN, "VIEW")
 		toc.AddPredataEntry(view.SchemaName, view.ViewName, "VIEW", start, predataFile.ByteCount)

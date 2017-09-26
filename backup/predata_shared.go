@@ -40,12 +40,6 @@ func SchemaFromString(name string) Schema {
 	return Schema{0, schema}
 }
 
-func MakeFQN(schema string, object string) string {
-	schema = utils.QuoteIdent(schema)
-	object = utils.QuoteIdent(object)
-	return fmt.Sprintf("%s.%s", schema, object)
-}
-
 /*
  * There's no built-in function to generate constraint definitions like there is for other types of
  * metadata, so this function constructs them.
@@ -435,7 +429,7 @@ func PrintCreateDependentTypeAndFunctionAndTablesStatements(predataFile *utils.F
 			case "c":
 				PrintCreateCompositeTypeStatement(predataFile, toc, obj, metadataMap[obj.Oid])
 			case "d":
-				domainName := MakeFQN(obj.TypeSchema, obj.TypeName)
+				domainName := utils.MakeFQN(obj.TypeSchema, obj.TypeName)
 				PrintCreateDomainStatement(predataFile, toc, obj, metadataMap[obj.Oid], conMap[domainName])
 			}
 		case Function:

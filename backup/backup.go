@@ -90,6 +90,10 @@ func SetIncludeTables(tables []string) {
 	includeTables = tables
 }
 
+func SetTOC(toc *utils.TOC) {
+	globalTOC = toc
+}
+
 func DoFlagValidation() {
 	if len(os.Args) == 1 {
 		flag.PrintDefaults()
@@ -141,13 +145,13 @@ func DoBackup() {
 		backupGlobal(objectCounts)
 		backupPredata(tables, tableDefs, objectCounts)
 		backupPostdata(objectCounts)
-		writeTOC(globalCluster.GetTOCFilePath(), globalTOC)
 	}
 
 	if !*metadataOnly {
 		backupData(tables, tableDefs)
 	}
 
+	writeTOC(globalCluster.GetTOCFilePath(), globalTOC)
 	connection.Commit()
 }
 
@@ -236,7 +240,7 @@ func backupPredata(tables []Relation, tableDefs map[uint32]TableDefinition, obje
 func backupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
 	logger.Info("Writing data to file")
 	BackupData(tables, tableDefs)
-	WriteTableMapFile(globalCluster.GetTableMapFilePath(), tables, tableDefs)
+	AddTableDataEntriesToTOC(tables, tableDefs)
 	logger.Info("Data backup complete")
 }
 

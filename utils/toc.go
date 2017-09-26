@@ -8,17 +8,25 @@ import (
 )
 
 type TOC struct {
-	GlobalEntries   []Entry
-	PredataEntries  []Entry
-	PostdataEntries []Entry
+	GlobalEntries   []MetadataEntry
+	PredataEntries  []MetadataEntry
+	PostdataEntries []MetadataEntry
+	DataEntries     []DataEntry
 }
 
-type Entry struct {
-	Name       string
+type MetadataEntry struct {
 	Schema     string
+	Name       string
 	ObjectType string
 	StartByte  uint64
 	EndByte    uint64
+}
+
+type DataEntry struct {
+	Schema          string
+	Name            string
+	Oid             uint32
+	AttributeString string
 }
 
 func NewTOC(filename string) *TOC {
@@ -30,7 +38,7 @@ func NewTOC(filename string) *TOC {
 	return toc
 }
 
-func (toc *TOC) GetSQLStatementForObjectTypes(entries []Entry, metadataFile io.ReaderAt, objectTypes ...string) []string {
+func (toc *TOC) GetSQLStatementForObjectTypes(entries []MetadataEntry, metadataFile io.ReaderAt, objectTypes ...string) []string {
 	objectHashes := make(map[string]bool, len(objectTypes))
 	for _, objectType := range objectTypes {
 		objectHashes[objectType] = true
@@ -48,13 +56,17 @@ func (toc *TOC) GetSQLStatementForObjectTypes(entries []Entry, metadataFile io.R
 }
 
 func (toc *TOC) AddPredataEntry(schema string, name string, objectType string, start uint64, end uint64) {
-	toc.PredataEntries = append(toc.PredataEntries, Entry{name, schema, objectType, start, end})
+	toc.PredataEntries = append(toc.PredataEntries, MetadataEntry{schema, name, objectType, start, end})
 }
 
 func (toc *TOC) AddPostdataEntry(schema string, name string, objectType string, start uint64, end uint64) {
-	toc.PostdataEntries = append(toc.PostdataEntries, Entry{name, schema, objectType, start, end})
+	toc.PostdataEntries = append(toc.PostdataEntries, MetadataEntry{schema, name, objectType, start, end})
 }
 
 func (toc *TOC) AddGlobalEntry(schema string, name string, objectType string, start uint64, end uint64) {
-	toc.GlobalEntries = append(toc.GlobalEntries, Entry{name, schema, objectType, start, end})
+	toc.GlobalEntries = append(toc.GlobalEntries, MetadataEntry{schema, name, objectType, start, end})
+}
+
+func (toc *TOC) AddDataEntry(schema string, name string, oid uint32, attributeString string) {
+	toc.DataEntries = append(toc.DataEntries, DataEntry{schema, name, oid, attributeString})
 }

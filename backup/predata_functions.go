@@ -14,7 +14,7 @@ import (
 
 func PrintCreateFunctionStatement(predataFile *utils.FileWithByteCount, toc *utils.TOC, funcDef Function, funcMetadata ObjectMetadata) {
 	start := predataFile.ByteCount
-	funcFQN := MakeFQN(funcDef.SchemaName, funcDef.FunctionName)
+	funcFQN := utils.MakeFQN(funcDef.SchemaName, funcDef.FunctionName)
 	predataFile.MustPrintf("\n\nCREATE FUNCTION %s(%s) RETURNS ", funcFQN, funcDef.Arguments)
 	predataFile.MustPrintf("%s AS", funcDef.ResultType)
 	PrintFunctionBodyOrPath(predataFile, funcDef)
@@ -85,7 +85,7 @@ func PrintFunctionModifiers(predataFile *utils.FileWithByteCount, funcDef Functi
 func PrintCreateAggregateStatements(predataFile *utils.FileWithByteCount, toc *utils.TOC, aggDefs []Aggregate, funcInfoMap map[uint32]FunctionInfo, aggMetadata MetadataMap) {
 	for _, aggDef := range aggDefs {
 		start := predataFile.ByteCount
-		aggFQN := MakeFQN(aggDef.SchemaName, aggDef.AggregateName)
+		aggFQN := utils.MakeFQN(aggDef.SchemaName, aggDef.AggregateName)
 		orderedStr := ""
 		if aggDef.IsOrdered {
 			orderedStr = "ORDERED "
@@ -215,7 +215,7 @@ func PrintCreateLanguageStatements(predataFile *utils.FileWithByteCount, toc *ut
 func PrintCreateConversionStatements(predataFile *utils.FileWithByteCount, toc *utils.TOC, conversions []Conversion, conversionMetadata MetadataMap) {
 	for _, conversion := range conversions {
 		start := predataFile.ByteCount
-		convFQN := MakeFQN(conversion.Schema, conversion.Name)
+		convFQN := utils.MakeFQN(conversion.Schema, conversion.Name)
 		defaultStr := ""
 		if conversion.IsDefault {
 			defaultStr = " DEFAULT"

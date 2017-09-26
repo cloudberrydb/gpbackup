@@ -292,8 +292,8 @@ WHERE s.relkind = 'S';`
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	for _, seqOwner := range results {
-		seqFQN := MakeFQN(seqOwner.SchemaName, seqOwner.SequenceName)
-		columnFQN := fmt.Sprintf("%s.%s", MakeFQN(seqOwner.SchemaName, seqOwner.TableName), utils.QuoteIdent(seqOwner.ColumnName))
+		seqFQN := utils.MakeFQN(seqOwner.SchemaName, seqOwner.SequenceName)
+		columnFQN := fmt.Sprintf("%s.%s", utils.MakeFQN(seqOwner.SchemaName, seqOwner.TableName), utils.QuoteIdent(seqOwner.ColumnName))
 		sequenceOwners[seqFQN] = columnFQN
 	}
 	return sequenceOwners
@@ -308,7 +308,7 @@ type View struct {
 }
 
 func (v View) ToString() string {
-	return MakeFQN(v.SchemaName, v.ViewName)
+	return utils.MakeFQN(v.SchemaName, v.ViewName)
 }
 
 func GetViews(connection *utils.DBConn) []View {

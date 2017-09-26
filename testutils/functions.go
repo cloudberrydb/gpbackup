@@ -231,7 +231,7 @@ func ExpectRegex(result string, testStr string) {
 	Expect(result).Should(MatchRegexp(regexp.QuoteMeta(testStr)))
 }
 
-func SliceBufferByEntries(entries []utils.Entry, buffer *gbytes.Buffer) ([]string, string) {
+func SliceBufferByEntries(entries []utils.MetadataEntry, buffer *gbytes.Buffer) ([]string, string) {
 	contents := buffer.Contents()
 	hunks := []string{}
 	length := uint64(len(contents))
@@ -262,7 +262,7 @@ func CompareSlicesIgnoringWhitespace(actual []string, expected []string) bool {
 	return true
 }
 
-func formatEntries(entries []utils.Entry, slice []string) string {
+func formatEntries(entries []utils.MetadataEntry, slice []string) string {
 	formatted := ""
 	for i, item := range slice {
 		formatted += fmt.Sprintf("%v -> %q\n", entries[i], item)
@@ -278,7 +278,7 @@ func formatContents(slice []string) string {
 	return formatted
 }
 
-func AssertBufferContents(entries []utils.Entry, buffer *gbytes.Buffer, expected ...string) {
+func AssertBufferContents(entries []utils.MetadataEntry, buffer *gbytes.Buffer, expected ...string) {
 	if len(entries) == 0 {
 		Fail("TOC is empty")
 	}
@@ -292,9 +292,9 @@ func AssertBufferContents(entries []utils.Entry, buffer *gbytes.Buffer, expected
 	}
 }
 
-func ExpectEntry(entries []utils.Entry, index int, schema, name, objectType string) {
+func ExpectEntry(entries []utils.MetadataEntry, index int, schema, name, objectType string) {
 	Expect(len(entries)).To(BeNumerically(">", index))
-	ExpectStructsToMatchExcluding(entries[index], utils.Entry{Schema: schema, Name: name, ObjectType: objectType, StartByte: 0, EndByte: 0}, "StartByte", "EndByte")
+	ExpectStructsToMatchExcluding(entries[index], utils.MetadataEntry{Schema: schema, Name: name, ObjectType: objectType, StartByte: 0, EndByte: 0}, "StartByte", "EndByte")
 }
 
 func ExpectPathToExist(path string) {

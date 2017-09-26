@@ -26,7 +26,7 @@ func PrintCreateRuleStatements(postdataFile *utils.FileWithByteCount, toc *utils
 	for _, rule := range rules {
 		start := postdataFile.ByteCount
 		postdataFile.MustPrintf("\n\n%s", rule.Def)
-		tableFQN := MakeFQN(rule.OwningSchema, rule.OwningTable)
+		tableFQN := utils.MakeFQN(rule.OwningSchema, rule.OwningTable)
 		PrintObjectMetadata(postdataFile, ruleMetadata[rule.Oid], rule.Name, "RULE", tableFQN)
 		toc.AddPostdataEntry(rule.OwningSchema, rule.Name, "RULE", start, postdataFile.ByteCount)
 	}
@@ -36,7 +36,7 @@ func PrintCreateTriggerStatements(postdataFile *utils.FileWithByteCount, toc *ut
 	for _, trigger := range triggers {
 		start := postdataFile.ByteCount
 		postdataFile.MustPrintf("\n\n%s;", trigger.Def)
-		tableFQN := MakeFQN(trigger.OwningSchema, trigger.OwningTable)
+		tableFQN := utils.MakeFQN(trigger.OwningSchema, trigger.OwningTable)
 		PrintObjectMetadata(postdataFile, triggerMetadata[trigger.Oid], trigger.Name, "TRIGGER", tableFQN)
 		toc.AddPostdataEntry(trigger.OwningSchema, trigger.Name, "TRIGGER", start, postdataFile.ByteCount)
 	}

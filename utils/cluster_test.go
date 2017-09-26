@@ -284,16 +284,6 @@ var _ = Describe("utils/cluster tests", func() {
 			Expect(cluster.GetTableBackupFilePathForCopyCommand(1234)).To(Equal("/foo/bar/gpseg<SEGID>/backups/20170101/20170101010101/gpbackup_<SEGID>_20170101010101_1234"))
 		})
 	})
-	Describe("GetTableMapFilePath()", func() {
-		It("returns table map file path", func() {
-			cluster := utils.NewCluster([]utils.SegConfig{masterSeg}, "", "20170101010101")
-			Expect(cluster.GetTableMapFilePath()).To(Equal("/data/gpseg-1/backups/20170101/20170101010101/gpbackup_20170101010101_table_map"))
-		})
-		It("returns table map file path based on user specified path", func() {
-			cluster := utils.NewCluster(nil, "/foo/bar", "20170101010101")
-			Expect(cluster.GetTableMapFilePath()).To(Equal("/foo/bar/gpseg-1/backups/20170101/20170101010101/gpbackup_20170101010101_table_map"))
-		})
-	})
 	Describe("GetReportFilePath", func() {
 		It("returns report file path", func() {
 			cluster := utils.NewCluster([]utils.SegConfig{masterSeg}, "", "20170101010101")

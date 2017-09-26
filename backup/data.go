@@ -6,6 +6,7 @@ package backup
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/greenplum-db/gpbackup/utils"
 )
@@ -14,15 +15,26 @@ var (
 	tableDelim = ","
 )
 
-func WriteTableMapFile(tableMapFilePath string, tables []Relation, tableDefs map[uint32]TableDefinition) {
-	logger.Verbose("Writing table map file to %s", globalCluster.GetTableMapFilePath())
-	tableMapFile := utils.MustOpenFileForWriting(tableMapFilePath)
-	for _, table := range tables {
-		if !tableDefs[table.RelationOid].IsExternal {
-			utils.MustPrintf(tableMapFile, "%s: %d\n", table.ToString(), table.RelationOid)
+func ConstructTableAttributesList(columnDefs []ColumnDefinition) string {
+	names := make([]string, 0)
+	for _, col := range columnDefs {
+		if !col.IsDropped {
+			names = append(names, utils.QuoteIdent(col.Name))
 		}
 	}
-	tableMapFile.Close()
+	if len(names) > 0 {
+		return fmt.Sprintf("(%s)", strings.Join(names, ","))
+	}
+	return ""
+}
+
+func AddTableDataEntriesToTOC(tables []Relation, tableDefs map[uint32]TableDefinition) {
+	for _, table := range tables {
+		if !tableDefs[table.RelationOid].IsExternal {
+			attributes := ConstructTableAttributesList(tableDefs[table.RelationOid].ColumnDefs)
+			globalTOC.AddDataEntry(table.SchemaName, table.RelationName, table.RelationOid, attributes)
+		}
+	}
 }
 
 func CopyTableOut(connection *utils.DBConn, table Relation, backupFile string) {

@@ -65,3 +65,9 @@ func DollarQuoteString(literal string) string {
 	}
 	return quoteStr + literal + quoteStr
 }
+
+func MakeFQN(schema string, object string) string {
+	schema = QuoteIdent(schema)
+	object = QuoteIdent(object)
+	return fmt.Sprintf("%s.%s", schema, object)
+}

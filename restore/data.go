@@ -5,10 +5,7 @@ package restore
  */
 
 import (
-	"bufio"
 	"fmt"
-	"strconv"
-	"strings"
 
 	"github.com/greenplum-db/gpbackup/utils"
 )
@@ -17,25 +14,15 @@ var (
 	tableDelim = ","
 )
 
-func ReadTableMapFile(tableMapFilePath string) map[string]uint32 {
-	tableMapFile := utils.MustOpenFileForReading(tableMapFilePath)
-	tableMap := make(map[string]uint32, 0)
-	scanner := bufio.NewScanner(tableMapFile)
-	for scanner.Scan() {
-		tokens := strings.Split(scanner.Text(), ": ")
-		if len(tokens) > 2 { // A table name may contain ": ", so if we split on that, put the table name back together
-			tokens = []string{strings.Join(tokens[0:len(tokens)-1], ": "), tokens[len(tokens)-1]}
-		}
-		tablename, oidStr := tokens[0], tokens[1]
-		oid, err := strconv.ParseUint(oidStr, 10, 32)
-		utils.CheckError(err)
-		tableMap[tablename] = uint32(oid)
+func GetTableDataEntriesFromTOC() map[uint32]utils.DataEntry {
+	tableMap := make(map[uint32]utils.DataEntry, 0)
+	for _, entry := range globalTOC.DataEntries {
+		tableMap[entry.Oid] = entry
 	}
-	utils.CheckError(scanner.Err())
 	return tableMap
 }
 
-func CopyTableIn(connection *utils.DBConn, tableName string, backupFile string) {
+func CopyTableIn(connection *utils.DBConn, tableName string, tableAttributes string, backupFile string) {
 	usingCompression, compressionProgram := utils.GetCompressionParameters()
 	copyCmdStr := ""
 	if usingCompression {
@@ -43,7 +30,7 @@ func CopyTableIn(connection *utils.DBConn, tableName string, backupFile string) 
 	} else {
 		copyCmdStr = fmt.Sprintf("'%s'", backupFile)
 	}
-	query := fmt.Sprintf("COPY %s FROM %s WITH CSV DELIMITER '%s' ON SEGMENT;", tableName, copyCmdStr, tableDelim)
+	query := fmt.Sprintf("COPY %s%s FROM %s WITH CSV DELIMITER '%s' ON SEGMENT;", tableName, tableAttributes, copyCmdStr, tableDelim)
 	_, err := connection.Exec(query)
 	utils.CheckError(err)
 }
