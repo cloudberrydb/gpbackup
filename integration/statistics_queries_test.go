@@ -54,13 +54,13 @@ var _ = Describe("backup integration tests", func() {
 				Operator2: 58, Numbers2: []string{"-1"}, Values1: []string{"f", "t"}}
 
 			if connection.Version.Before("5") {
-				testutils.ExpectStructsToMatch(&expectedStats4I, &tableAttStatsI)
-				testutils.ExpectStructsToMatch(&expectedStats4J, &tableAttStatsJ)
-				testutils.ExpectStructsToMatch(&expectedStats4K, &tableAttStatsK)
+				testutils.ExpectStructsToMatchExcluding(&expectedStats4I, &tableAttStatsI, "Numbers2")
+				testutils.ExpectStructsToMatchExcluding(&expectedStats4J, &tableAttStatsJ, "Numbers2")
+				testutils.ExpectStructsToMatchExcluding(&expectedStats4K, &tableAttStatsK, "Numbers2")
 			} else {
-				testutils.ExpectStructsToMatch(&expectedStats5I, &tableAttStatsI)
-				testutils.ExpectStructsToMatch(&expectedStats5J, &tableAttStatsJ)
-				testutils.ExpectStructsToMatch(&expectedStats5K, &tableAttStatsK)
+				testutils.ExpectStructsToMatchExcluding(&expectedStats5I, &tableAttStatsI, "Numbers2")
+				testutils.ExpectStructsToMatchExcluding(&expectedStats5J, &tableAttStatsJ, "Numbers2")
+				testutils.ExpectStructsToMatchExcluding(&expectedStats5K, &tableAttStatsK, "Numbers2")
 			}
 		})
 	})
