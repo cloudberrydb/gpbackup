@@ -38,7 +38,7 @@ resources:
 - name: bin_gpdb_master
   type: s3
   source:
-      bucket: gpdb5-concourse-builds
+      bucket: gpdb5-assert-concourse-builds
       versioned_file: bin_gpdb_centos/bin_gpdb.tar.gz
       region_name: us-west-2
       access_key_id: {{bucket-access-key-id}}
