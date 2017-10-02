@@ -258,12 +258,11 @@ var _ = Describe("backup integration create statement tests", func() {
 	Describe("PrintCreateLanguageStatements", func() {
 		It("creates procedural languages", func() {
 			funcInfoMap := map[uint32]backup.FunctionInfo{
-				1: {QualifiedName: "pg_catalog.plpgsql_validator", Arguments: "oid", IsInternal: true},
+				1: {QualifiedName: "pg_catalog.plpgsql_call_handler", Arguments: "", IsInternal: true},
 				2: {QualifiedName: "pg_catalog.plpgsql_inline_handler", Arguments: "internal", IsInternal: true},
-				3: {QualifiedName: "pg_catalog.plpgsql_call_handler", Arguments: "", IsInternal: true},
-				4: {QualifiedName: "pg_catalog.plperl_validator", Arguments: "oid", IsInternal: true},
-				5: {QualifiedName: "pg_catalog.plperl_inline_handler", Arguments: "internal", IsInternal: true},
-				6: {QualifiedName: "pg_catalog.plperl_call_handler", Arguments: "", IsInternal: true},
+				3: {QualifiedName: "pg_catalog.plpgsql_validator", Arguments: "oid", IsInternal: true},
+				4: {QualifiedName: "pg_catalog.plpython_call_handler", Arguments: "", IsInternal: true},
+				5: {QualifiedName: "pg_catalog.plpython_inline_handler", Arguments: "internal", IsInternal: true},
 			}
 			langOwner := ""
 			if connection.Version.Before("5") {
@@ -272,30 +271,28 @@ var _ = Describe("backup integration create statement tests", func() {
 				langOwner = "testrole"
 			}
 			plpgsqlInfo := backup.ProceduralLanguage{Oid: 0, Name: "plpgsql", Owner: langOwner, IsPl: true, PlTrusted: true, Handler: 1, Inline: 2, Validator: 3}
-			plperlInfo := backup.ProceduralLanguage{Oid: 1, Name: "plperl", Owner: langOwner, IsPl: true, PlTrusted: true, Handler: 4, Inline: 5, Validator: 6}
-			langMetadataMap := testutils.DefaultMetadataMap("LANGUAGE", true, true, true)
+			plpythonInfo := backup.ProceduralLanguage{Oid: 1, Name: "plpythonu", Owner: langOwner, IsPl: true, PlTrusted: false, Handler: 4, Inline: 5}
+			langMetadata := backup.ObjectMetadata{[]backup.ACL{testutils.DefaultACLForType(langOwner, "LANGUAGE")}, langOwner, "This is a language comment"}
+			langMetadataMap := map[uint32]backup.ObjectMetadata{0: langMetadata}
 			if connection.Version.Before("5") {
 				plpgsqlInfo.Inline = 0
-				plperlInfo.Inline = 0
+				plpythonInfo.Inline = 0
 			}
-			langMetadata := langMetadataMap[1]
-			langMetadata.Owner = langOwner
-			langMetadata.Privileges[0].Grantee = langOwner
-			procLangs := []backup.ProceduralLanguage{plpgsqlInfo, plperlInfo}
+			procLangs := []backup.ProceduralLanguage{plpgsqlInfo, plpythonInfo}
 
 			backup.PrintCreateLanguageStatements(backupfile, &toc, procLangs, funcInfoMap, langMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
-			defer testutils.AssertQueryRuns(connection, "DROP LANGUAGE plperl")
+			defer testutils.AssertQueryRuns(connection, "DROP LANGUAGE plpythonu")
 
 			resultProcLangs := backup.GetProceduralLanguages(connection)
 			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_PROCLANGUAGE)
 
-			plperlInfo.Oid = testutils.OidFromObjectName(connection, "", "plperl", backup.TYPE_PROCLANGUAGE)
+			plpgsqlInfo.Oid = testutils.OidFromObjectName(connection, "", "plpgsql", backup.TYPE_PROCLANGUAGE)
 			Expect(len(resultProcLangs)).To(Equal(2))
-			resultMetadata := resultMetadataMap[plperlInfo.Oid]
+			resultMetadata := resultMetadataMap[plpgsqlInfo.Oid]
 			testutils.ExpectStructsToMatchIncluding(&plpgsqlInfo, &resultProcLangs[0], "IsPl", "PlTrusted")
-			testutils.ExpectStructsToMatchIncluding(&plperlInfo, &resultProcLangs[1], "IsPl", "PlTrusted")
+			testutils.ExpectStructsToMatchIncluding(&plpythonInfo, &resultProcLangs[1], "IsPl", "PlTrusted")
 			testutils.ExpectStructsToMatch(&langMetadata, &resultMetadata)
 		})
 	})
