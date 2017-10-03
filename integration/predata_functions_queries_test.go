@@ -318,31 +318,30 @@ LANGUAGE SQL`)
 	})
 	Describe("GetProceduralLanguages", func() {
 		It("returns a slice of procedural languages", func() {
-			testutils.AssertQueryRuns(connection, "CREATE LANGUAGE plperl")
-			defer testutils.AssertQueryRuns(connection, "DROP LANGUAGE plperl")
+			testutils.AssertQueryRuns(connection, "CREATE LANGUAGE plpythonu")
+			defer testutils.AssertQueryRuns(connection, "DROP LANGUAGE plpythonu")
 
 			pgsqlHandlerOid := testutils.OidFromObjectName(connection, "pg_catalog", "plpgsql_call_handler", backup.TYPE_FUNCTION)
 			pgsqlValidatorOid := testutils.OidFromObjectName(connection, "pg_catalog", "plpgsql_validator", backup.TYPE_FUNCTION)
 
-			perlHandlerOid := testutils.OidFromObjectName(connection, "pg_catalog", "plperl_call_handler", backup.TYPE_FUNCTION)
-			perlValidatorOid := testutils.OidFromObjectName(connection, "pg_catalog", "plperl_validator", backup.TYPE_FUNCTION)
+			pythonHandlerOid := testutils.OidFromObjectName(connection, "pg_catalog", "plpython_call_handler", backup.TYPE_FUNCTION)
 
 			expectedPlpgsqlInfo := backup.ProceduralLanguage{Oid: 0, Name: "plpgsql", Owner: "testrole", IsPl: true, PlTrusted: true, Handler: pgsqlHandlerOid, Inline: 0, Validator: pgsqlValidatorOid}
 			if connection.Version.AtLeast("5") {
 				pgsqlInlineOid := testutils.OidFromObjectName(connection, "pg_catalog", "plpgsql_inline_handler", backup.TYPE_FUNCTION)
 				expectedPlpgsqlInfo.Inline = pgsqlInlineOid
 			}
-			expectedPlperlInfo := backup.ProceduralLanguage{Oid: 1, Name: "plperl", Owner: "testrole", IsPl: true, PlTrusted: true, Handler: perlHandlerOid, Inline: 0, Validator: perlValidatorOid}
+			expectedPlpythonInfo := backup.ProceduralLanguage{Oid: 1, Name: "plpythonu", Owner: "testrole", IsPl: true, PlTrusted: false, Handler: pythonHandlerOid, Inline: 0}
 			if connection.Version.AtLeast("5") {
-				perlInlineOid := testutils.OidFromObjectName(connection, "pg_catalog", "plperl_inline_handler", backup.TYPE_FUNCTION)
-				expectedPlperlInfo.Inline = perlInlineOid
+				pythonInlineOid := testutils.OidFromObjectName(connection, "pg_catalog", "plpython_inline_handler", backup.TYPE_FUNCTION)
+				expectedPlpythonInfo.Inline = pythonInlineOid
 			}
 
 			resultProcLangs := backup.GetProceduralLanguages(connection)
 
 			Expect(len(resultProcLangs)).To(Equal(2))
 			testutils.ExpectStructsToMatchExcluding(&expectedPlpgsqlInfo, &resultProcLangs[0], "Oid", "Owner")
-			testutils.ExpectStructsToMatchExcluding(&expectedPlperlInfo, &resultProcLangs[1], "Oid", "Owner")
+			testutils.ExpectStructsToMatchExcluding(&expectedPlpythonInfo, &resultProcLangs[1], "Oid", "Owner")
 		})
 	})
 	Describe("GetConversions", func() {
