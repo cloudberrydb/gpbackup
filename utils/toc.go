@@ -39,6 +39,12 @@ func NewTOC(filename string) *TOC {
 	return toc
 }
 
+func (toc *TOC) WriteToFile(filename string) {
+	tocFile := MustOpenFileForWriting(filename)
+	tocContents, _ := yaml.Marshal(toc)
+	MustPrintBytes(tocFile, tocContents)
+}
+
 func (toc *TOC) GetSQLStatementForObjectTypes(entries []MetadataEntry, metadataFile io.ReaderAt, objectTypes ...string) []string {
 	objectHashes := make(map[string]bool, len(objectTypes))
 	for _, objectType := range objectTypes {

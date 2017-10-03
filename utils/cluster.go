@@ -243,6 +243,7 @@ func (cluster *Cluster) GetTableBackupFilePathForCopyCommand(tableOid uint32) st
  */
 
 var metadataFilenameMap = map[string]string{
+	"config":            "config.yaml",
 	"global":            "global.sql",
 	"predata":           "predata.sql",
 	"postdata":          "postdata.sql",
@@ -279,8 +280,12 @@ func (cluster *Cluster) GetReportFilePath() string {
 	return cluster.GetBackupFilePath("report")
 }
 
+func (cluster *Cluster) GetConfigFilePath() string {
+	return cluster.GetBackupFilePath("config")
+}
+
 func (cluster *Cluster) VerifyMetadataFilePaths(dataOnly bool, withStats bool) {
-	filetypes := []string{"table of contents", "report"}
+	filetypes := []string{"config", "table of contents"}
 	if !dataOnly {
 		filetypes = append(filetypes, []string{"global", "predata", "postdata"}...)
 	}

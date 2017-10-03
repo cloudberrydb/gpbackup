@@ -2,7 +2,6 @@ package utils_test
 
 import (
 	"os"
-	"strings"
 
 	"github.com/blang/semver"
 	"github.com/greenplum-db/gpbackup/testutils"
@@ -31,17 +30,20 @@ var _ = Describe("utils/report tests", func() {
 	})
 	Describe("WriteReportFile", func() {
 		timestamp := "20170101010101"
-		backupReport := &utils.Report{
-			BackupType:      "Unfiltered Full Backup",
+		config := utils.BackupConfig{
 			BackupVersion:   "0.1.0",
 			DatabaseName:    "testdb",
-			DatabaseSize:    "42 MB",
 			DatabaseVersion: "5.0.0 build test",
+		}
+		backupReport := &utils.Report{
+			BackupType:   "Unfiltered Full Backup",
+			DatabaseSize: "42 MB",
+			BackupConfig: config,
 		}
 		objectCounts := map[string]int{"tables": 42, "sequences": 1, "types": 1000}
 
 		It("writes a report for a successful backup", func() {
-			utils.WriteReportFile(buffer, timestamp, backupReport, objectCounts, "")
+			backupReport.WriteReportFile(buffer, timestamp, objectCounts, "")
 			Expect(buffer).To(gbytes.Say(`Greenplum Database Backup Report
 
 Timestamp Key: 20170101010101
@@ -60,7 +62,7 @@ tables                       42
 types                        1000`))
 		})
 		It("writes a report for a failed backup", func() {
-			utils.WriteReportFile(buffer, timestamp, backupReport, objectCounts, "Cannot access /tmp/backups: Permission denied")
+			backupReport.WriteReportFile(buffer, timestamp, objectCounts, "Cannot access /tmp/backups: Permission denied")
 			Expect(buffer).To(gbytes.Say(`Greenplum Database Backup Report
 
 Timestamp Key: 20170101010101
@@ -78,55 +80,6 @@ Count of Database Objects in Backup:
 sequences                    1
 tables                       42
 types                        1000`))
-		})
-	})
-	Describe("ReadReportFile", func() {
-		It("can read a report file for a successful backup", func() {
-			reportFileContents := `Greenplum Database Backup Report
-
-Timestamp Key: 20170101010101
-GPDB Version: 5.0.0 build test
-gpbackup Version: 0.1.0
-
-Database Name: testdb
-Command Line: gpbackup --dbname testdb
-Backup Type: Unfiltered Full Backup
-Backup Status: Success
-
-Database Size: 42 MB
-Count of Database Objects in Backup:
-sequences                   1
-tables                      42
-types                       1000
-`
-			reportReader := strings.NewReader(reportFileContents)
-			backupReport := utils.ReadReportFile(reportReader)
-			expectedReport := utils.Report{DatabaseName: "testdb", DatabaseVersion: "5.0.0 build test", BackupVersion: "0.1.0", BackupType: "Unfiltered Full Backup"}
-			testutils.ExpectStructsToMatch(&expectedReport, &backupReport)
-		})
-		It("can read a report file for a failed backup", func() {
-			reportFileContents := `Greenplum Database Backup Report
-
-Timestamp Key: 20170101010101
-GPDB Version: 5.0.0 build test
-gpbackup Version: 0.1.0
-
-Database Name: testdb
-Command Line: gpbackup --dbname testdb
-Backup Type: Unfiltered Full Backup
-Backup Status: Failure
-Backup Error: Cannot access /tmp/backups: Permission denied
-
-Database Size: 42 MB
-Count of Database Objects in Backup:
-sequences                   1
-tables                      42
-types                       1000
-`
-			reportReader := strings.NewReader(reportFileContents)
-			backupReport := utils.ReadReportFile(reportReader)
-			expectedReport := utils.Report{DatabaseName: "testdb", DatabaseVersion: "5.0.0 build test", BackupVersion: "0.1.0", BackupType: "Unfiltered Full Backup"}
-			testutils.ExpectStructsToMatch(&expectedReport, &backupReport)
 		})
 	})
 	Describe("SetBackupTypeFromFlags", func() {
@@ -162,61 +115,6 @@ types                       1000
 				false, true, true, utils.ArrayFlags{"someSchema"}, false, "Schema-Filtered Uncompressed Full Metadata-Only Backup"),
 			Entry("classifies an uncompressed schema-filtered data-only backup",
 				true, false, true, utils.ArrayFlags{"someSchema"}, false, "Schema-Filtered Uncompressed Full Data-Only Backup"),
-		)
-	})
-	Describe("SetBackupTypeFromString", func() {
-		var backupReport *utils.Report
-		BeforeEach(func() {
-			backupReport = &utils.Report{}
-		})
-		DescribeTable("Backup type classification", func(dataOnly bool, ddlOnly bool, noCompression bool, schemaFiltered bool, inputType string) {
-			backupReport.BackupType = inputType
-			backupReport.SetBackupTypeFromString()
-			Expect(backupReport.DataOnly).To(Equal(dataOnly))
-			Expect(backupReport.MetadataOnly).To(Equal(ddlOnly))
-			Expect(backupReport.Compressed).To(Equal(!noCompression))
-			Expect(backupReport.SchemaFiltered).To(Equal(schemaFiltered))
-		},
-			Entry("can set the type for a default backup",
-				false, false, false, false, "Unfiltered Compressed Full Backup"),
-			Entry("can set the type for a metadata-only backup",
-				false, true, false, false, "Unfiltered Compressed Full Metadata-Only Backup"),
-			Entry("can set the type for a data-only backup",
-				true, false, false, false, "Unfiltered Compressed Full Data-Only Backup"),
-			Entry("can set the type for an uncompressed backup",
-				false, false, true, false, "Unfiltered Uncompressed Full Backup"),
-			Entry("can set the type for an uncompressed metadata-only backup",
-				false, true, true, false, "Unfiltered Uncompressed Full Metadata-Only Backup"),
-			Entry("can set the type for an uncompressed data-only backup",
-				true, false, true, false, "Unfiltered Uncompressed Full Data-Only Backup"),
-			Entry("can set the type for a schema-filtered backup",
-				false, false, false, true, "Schema-Filtered Compressed Full Backup"),
-			Entry("can set the type for a schema-filtered metadata-only backup",
-				false, true, false, true, "Schema-Filtered Compressed Full Metadata-Only Backup"),
-			Entry("can set the type for a schema-filtered data-only backup",
-				true, false, false, true, "Schema-Filtered Compressed Full Data-Only Backup"),
-			Entry("can set the type for an uncompressed schema-filtered backup",
-				false, false, true, true, "Schema-Filtered Uncompressed Full Backup"),
-			Entry("can set the type for an uncompressed schema-filtered metadata-only backup",
-				false, true, true, true, "Schema-Filtered Uncompressed Full Metadata-Only Backup"),
-			Entry("can set the type for an uncompressed schema-filtered data-only backup",
-				true, false, true, true, "Schema-Filtered Uncompressed Full Data-Only Backup"),
-		)
-		DescribeTable("Classification errors", func(inputType string, errorMessage string) {
-			backupReport.BackupType = inputType
-			defer testutils.ShouldPanicWithMessage(errorMessage)
-			backupReport.SetBackupTypeFromString()
-		},
-			Entry("can detect an invalid format due to extra tokens",
-				"Unfiltered Compressed Full Backup Extra-Token", `Invalid backup statistics string: " Extra-Token"`),
-			Entry("can detect an invalid format due to missing tokens",
-				"Unfiltered Full Backup", `Invalid backup type string format: "Unfiltered Full Backup"`),
-			Entry("can detect an invalid filter string",
-				"Table-Filtered Compressed Full Backup", `Invalid backup filter string: "Table-Filtered"`),
-			Entry("can detect an invalid compression string",
-				"Unfiltered Gzip-Compressed Full Backup", `Invalid backup compression string: "Gzip-Compressed"`),
-			Entry("can detect an invalid section string",
-				"Unfiltered Compressed Full Postdata-Only Backup", `Invalid backup section string: "Postdata-Only"`),
 		)
 	})
 	Describe("EnsureBackupVersionCompatibility", func() {

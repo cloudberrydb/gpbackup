@@ -35,11 +35,9 @@ func InitializeConnection(dbname string) {
 	utils.CheckError(err)
 }
 
-func InitializeBackupReport() {
-	reportFile := utils.MustOpenFileForReading(globalCluster.GetReportFilePath())
-	backupReport = utils.ReadReportFile(reportFile)
-	backupReport.SetBackupTypeFromString()
-	utils.InitializeCompressionParameters(backupReport.Compressed)
-	utils.EnsureBackupVersionCompatibility(backupReport.BackupVersion, version)
-	utils.EnsureDatabaseVersionCompatibility(backupReport.DatabaseVersion, connection.Version)
+func InitializeBackupConfig() {
+	backupConfig = utils.ReadConfigFile(globalCluster.GetConfigFilePath())
+	utils.InitializeCompressionParameters(backupConfig.Compressed)
+	utils.EnsureBackupVersionCompatibility(backupConfig.BackupVersion, version)
+	utils.EnsureDatabaseVersionCompatibility(backupConfig.DatabaseVersion, connection.Version)
 }

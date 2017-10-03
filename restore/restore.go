@@ -15,7 +15,7 @@ var (
 	logger        *utils.Logger
 	globalCluster utils.Cluster
 	globalTOC     *utils.TOC
-	backupReport  utils.Report
+	backupConfig  *utils.BackupConfig
 	version       string
 )
 
@@ -90,8 +90,8 @@ func DoSetup() {
 	globalCluster = utils.NewCluster(segConfig, *backupDir, *timestamp)
 	globalCluster.VerifyBackupDirectoriesExistOnAllHosts()
 
-	InitializeBackupReport()
-	globalCluster.VerifyMetadataFilePaths(backupReport.DataOnly, *withStats)
+	InitializeBackupConfig()
+	globalCluster.VerifyMetadataFilePaths(backupConfig.DataOnly, *withStats)
 }
 
 func DoRestore() {
@@ -104,24 +104,24 @@ func DoRestore() {
 	}
 
 	connection.Close()
-	InitializeConnection(backupReport.DatabaseName)
+	InitializeConnection(backupConfig.DatabaseName)
 
-	if !backupReport.DataOnly {
+	if !backupConfig.DataOnly {
 		restorePredata()
 	}
 
-	if !backupReport.MetadataOnly {
+	if !backupConfig.MetadataOnly {
 		tableMap := GetTableDataEntriesFromTOC()
 		backupFileCount := len(tableMap)
 		globalCluster.VerifyBackupFileCountOnSegments(backupFileCount)
 		restoreData(tableMap)
 	}
 
-	if !backupReport.DataOnly {
+	if !backupConfig.DataOnly {
 		restorePostdata()
 	}
 
-	if *withStats && backupReport.WithStatistics {
+	if *withStats && backupConfig.WithStatistics {
 		restoreStatistics()
 	}
 }

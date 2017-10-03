@@ -6,8 +6,6 @@ import (
 	"os"
 	"time"
 
-	yaml "gopkg.in/yaml.v2"
-
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
@@ -157,14 +155,8 @@ func DoBackup() {
 		backupStatistics(tables)
 	}
 
-	writeTOC(globalCluster.GetTOCFilePath(), globalTOC)
+	globalTOC.WriteToFile(globalCluster.GetTOCFilePath())
 	connection.Commit()
-}
-
-func writeTOC(filename string, toc *utils.TOC) {
-	tocFile := utils.MustOpenFileForWriting(filename)
-	tocContents, _ := yaml.Marshal(toc)
-	utils.MustPrintBytes(tocFile, tocContents)
 }
 
 func backupGlobal(objectCounts map[string]int) {
@@ -285,9 +277,10 @@ func DoTeardown() {
 
 	// Only create a report file if we fail after the cluster is initialized
 	if globalCluster.Timestamp != "" {
-		reportFilename := globalCluster.GetReportFilePath()
-		reportFile := utils.MustOpenFileForWriting(reportFilename)
-		utils.WriteReportFile(reportFile, globalCluster.Timestamp, backupReport, objectCounts, errMsg)
+		reportFile := utils.MustOpenFileForWriting(globalCluster.GetReportFilePath())
+		configFile := utils.MustOpenFileForWriting(globalCluster.GetConfigFilePath())
+		backupReport.WriteReportFile(reportFile, globalCluster.Timestamp, objectCounts, errMsg)
+		backupReport.WriteConfigFile(configFile)
 		utils.EmailReport(globalCluster)
 		// We sleep for 1 second to ensure multiple backups do not start within the same second.
 		time.Sleep(1000 * time.Millisecond)

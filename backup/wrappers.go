@@ -36,11 +36,14 @@ func InitializeConnection() {
 }
 
 func InitializeBackupReport() {
-	backupReport = &utils.Report{
+	config := utils.BackupConfig{
 		DatabaseName:    connection.DBName,
 		DatabaseVersion: connection.Version.VersionString,
 		BackupVersion:   version,
-		DatabaseSize:    connection.GetDBSize(),
+	}
+	backupReport = &utils.Report{
+		DatabaseSize: connection.GetDBSize(),
+		BackupConfig: config,
 	}
 	utils.InitializeCompressionParameters(!*noCompression)
 	backupReport.SetBackupTypeFromFlags(*dataOnly, *metadataOnly, *noCompression, includeSchemas, *withStats)

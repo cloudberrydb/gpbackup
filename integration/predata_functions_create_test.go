@@ -272,7 +272,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			}
 			plpgsqlInfo := backup.ProceduralLanguage{Oid: 0, Name: "plpgsql", Owner: langOwner, IsPl: true, PlTrusted: true, Handler: 1, Inline: 2, Validator: 3}
 			plpythonInfo := backup.ProceduralLanguage{Oid: 1, Name: "plpythonu", Owner: langOwner, IsPl: true, PlTrusted: false, Handler: 4, Inline: 5}
-			langMetadata := backup.ObjectMetadata{[]backup.ACL{testutils.DefaultACLForType(langOwner, "LANGUAGE")}, langOwner, "This is a language comment"}
+			langMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{testutils.DefaultACLForType(langOwner, "LANGUAGE")}, Owner: langOwner, Comment: "This is a language comment"}
 			langMetadataMap := map[uint32]backup.ObjectMetadata{0: langMetadata}
 			if connection.Version.Before("5") {
 				plpgsqlInfo.Inline = 0

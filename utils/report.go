@@ -1,33 +1,40 @@
 package utils
 
 import (
-	"bufio"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"regexp"
 	"sort"
 	"strings"
 
+	yaml "gopkg.in/yaml.v2"
+
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
 )
 
-/*
- * This struct holds information that will be printed to the report file
- * after a backup that we will want to read in for a restore.
- */
-type Report struct {
-	BackupType      string
+type BackupConfig struct {
 	BackupVersion   string
 	DatabaseName    string
-	DatabaseSize    string
 	DatabaseVersion string
 	Compressed      bool
 	DataOnly        bool
 	SchemaFiltered  bool
 	MetadataOnly    bool
 	WithStatistics  bool
+}
+
+/*
+ * This struct holds information that will be printed to the report file
+ * after a backup, as well as information printed to the configuration
+ * file that we will want to read in for a restore.
+ */
+type Report struct {
+	BackupType   string
+	DatabaseSize string
+	BackupConfig
 }
 
 func ParseErrorMessage(err interface{}) (string, int) {
@@ -70,7 +77,22 @@ func (report *Report) SetBackupTypeFromFlags(dataOnly bool, ddlOnly bool, noComp
 	report.BackupType = fmt.Sprintf("%s %s Full%s Backup%s", filterStr, compressStr, sectionStr, statsStr)
 }
 
-func WriteReportFile(reportFile io.Writer, timestamp string, report *Report, objectCounts map[string]int, errMsg string) {
+func ReadConfigFile(filename string) *BackupConfig {
+	config := &BackupConfig{}
+	contents, err := ioutil.ReadFile(filename)
+	CheckError(err)
+	err = yaml.Unmarshal(contents, config)
+	CheckError(err)
+	return config
+}
+
+func (report *Report) WriteConfigFile(configFile io.Writer) {
+	config := report.BackupConfig
+	configContents, _ := yaml.Marshal(config)
+	MustPrintBytes(configFile, configContents)
+}
+
+func (report *Report) WriteReportFile(reportFile io.Writer, timestamp string, objectCounts map[string]int, errMsg string) {
 	reportFileTemplate := `Greenplum Database Backup Report
 
 Timestamp Key: %s
@@ -104,58 +126,6 @@ Database Size: %s`
 
 	}
 	MustPrintf(reportFile, objectStr)
-}
-
-func (report *Report) SetBackupTypeFromString() {
-	typeRegexp := regexp.MustCompile(`^([^ ]+) ([^ ]+) Full( [^ ]+)? Backup( .+)?$`)
-	tokens := typeRegexp.FindStringSubmatch(report.BackupType)
-	if tokens == nil || len(tokens) == 0 {
-		logger.Fatal(errors.Errorf(`Invalid backup type string format: "%s" (Valid format is "[Unfiltered|Schema-Filtered] [Compressed|Uncompressed] Full[| Metadata-Only| Data-Only] Backup[| With Statistics]")`, report.BackupType), "")
-	}
-	if tokens[1] == "Schema-Filtered" {
-		report.SchemaFiltered = true
-	} else if tokens[1] != "Unfiltered" {
-		logger.Fatal(errors.Errorf(`Invalid backup filter string: "%s"`, tokens[1]), "Could not determine whether filter was used in backup")
-	}
-	if tokens[2] == "Compressed" {
-		report.Compressed = true
-	} else if tokens[2] != "Uncompressed" {
-		logger.Fatal(errors.Errorf(`Invalid backup compression string: "%s"`, tokens[2]), "Could not determine whether compression was used in backup")
-	}
-	if tokens[3] == " Data-Only" {
-		report.DataOnly = true
-	} else if tokens[3] == " Metadata-Only" {
-		report.MetadataOnly = true
-	} else if tokens[3] != "" {
-		logger.Fatal(errors.Errorf(`Invalid backup section string: "%s"`, tokens[3][1:]), "Could not determine whether backup included metadata, data, or both")
-	}
-	if tokens[4] == " With Statistics" {
-		report.WithStatistics = true
-	} else if tokens[4] != "" {
-		logger.Fatal(errors.Errorf(`Invalid backup statistics string: "%s"`, tokens[4]), "Could not determine whether query planner statistics were included in backup")
-	}
-}
-
-func ReadReportFile(reportFile io.Reader) Report {
-	scanner := bufio.NewScanner(reportFile)
-	backupReport := Report{}
-	for scanner.Scan() {
-		tokens := strings.SplitN(scanner.Text(), ": ", 2)
-		if tokens[0] == "GPDB Version" {
-			backupReport.DatabaseVersion = tokens[1]
-		}
-		if tokens[0] == "gpbackup Version" {
-			backupReport.BackupVersion = tokens[1]
-		}
-		if tokens[0] == "Database Name" {
-			backupReport.DatabaseName = tokens[1]
-		}
-		if tokens[0] == "Backup Type" {
-			backupReport.BackupType = tokens[1]
-			break // We don't care about the report file contents after this line
-		}
-	}
-	return backupReport
 }
 
 /*
