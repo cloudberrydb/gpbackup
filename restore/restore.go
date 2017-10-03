@@ -20,27 +20,27 @@ var (
 )
 
 var ( // Command-line flags
+	backupDir      *string
 	createdb       *bool
 	debug          *bool
-	backupDir      *string
+	printVersion   *bool
 	quiet          *bool
+	restoreGlobals *bool
 	timestamp      *string
 	verbose        *bool
-	restoreGlobals *bool
-	printVersion   *bool
 	withStats      *bool
 )
 
 // We define and initialize flags separately to avoid import conflicts in tests
 func initializeFlags() {
+	backupDir = flag.String("backupdir", "", "The directory in which the backup files to be restored are located")
 	createdb = flag.Bool("createdb", false, "Create the database before metadata restore")
 	debug = flag.Bool("debug", false, "Print verbose and debug log messages")
-	backupDir = flag.String("backupdir", "", "The directory in which the backup files to be restored are located")
+	printVersion = flag.Bool("version", false, "Print version number and exit")
 	quiet = flag.Bool("quiet", false, "Suppress non-warning, non-error log messages")
+	restoreGlobals = flag.Bool("globals", false, "Restore global metadata")
 	timestamp = flag.String("timestamp", "", "The timestamp to be restored, in the format YYYYMMDDHHMMSS")
 	verbose = flag.Bool("verbose", false, "Print verbose log messages")
-	restoreGlobals = flag.Bool("globals", false, "Restore global metadata")
-	printVersion = flag.Bool("version", false, "Print version number and exit")
 	withStats = flag.Bool("with-stats", false, "Restore query plan statistics")
 }
 

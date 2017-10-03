@@ -20,41 +20,41 @@ var (
 )
 
 var ( // Command-line flags
-	dataOnly         *bool
-	dbname           *string
-	metadataOnly     *bool
-	debug            *bool
 	backupDir        *string
 	backupGlobals    *bool
+	dataOnly         *bool
+	dbname           *string
+	debug            *bool
+	excludeSchemas   utils.ArrayFlags
+	excludeTableFile *string
+	excludeTables    utils.ArrayFlags
+	includeSchemas   utils.ArrayFlags
+	includeTableFile *string
+	includeTables    utils.ArrayFlags
+	metadataOnly     *bool
 	noCompression    *bool
 	printVersion     *bool
 	quiet            *bool
 	verbose          *bool
-	includeSchemas   utils.ArrayFlags
-	excludeSchemas   utils.ArrayFlags
-	excludeTableFile *string
-	excludeTables    utils.ArrayFlags
-	includeTableFile *string
-	includeTables    utils.ArrayFlags
 	withStats        *bool
 )
 
 // We define and initialize flags separately to avoid import conflicts in tests
 func initializeFlags() {
-	dataOnly = flag.Bool("data-only", false, "Only back up data, do not back up metadata")
-	dbname = flag.String("dbname", "", "The database to be backed up")
-	metadataOnly = flag.Bool("metadata-only", false, "Only back up metadata, do not back up data")
-	debug = flag.Bool("debug", false, "Print verbose and debug log messages")
 	backupDir = flag.String("backupdir", "", "The directory to which all backup files will be written")
 	backupGlobals = flag.Bool("globals", false, "Back up global metadata")
+	dataOnly = flag.Bool("data-only", false, "Only back up data, do not back up metadata")
+	dbname = flag.String("dbname", "", "The database to be backed up")
+	debug = flag.Bool("debug", false, "Print verbose and debug log messages")
+	flag.Var(&excludeSchemas, "exclude-schema", "Do not back up only the specified schema(s). --exclude-schema can be specified multiple times.")
+	excludeTableFile = flag.String("exclude-table-file", "", "A file containing a list of fully-qualified tables to be excluded from the backup")
+	flag.Var(&includeSchemas, "include-schema", "Back up only the specified schema(s). --include-schema can be specified multiple times.")
+	includeTableFile = flag.String("include-table-file", "", "A file containing a list of fully-qualified tables to be included in the backup")
+	metadataOnly = flag.Bool("metadata-only", false, "Only back up metadata, do not back up data")
 	noCompression = flag.Bool("no-compression", false, "Disable compression of data files")
 	printVersion = flag.Bool("version", false, "Print version number and exit")
 	quiet = flag.Bool("quiet", false, "Suppress non-warning, non-error log messages")
 	verbose = flag.Bool("verbose", false, "Print verbose log messages")
-	flag.Var(&includeSchemas, "include-schema", "Back up only the specified schema(s). --include-schema can be specified multiple times.")
-	flag.Var(&excludeSchemas, "exclude-schema", "Do not back up only the specified schema(s). --exclude-schema can be specified multiple times.")
-	excludeTableFile = flag.String("exclude-table-file", "", "A file containing a list of fully-qualified tables to be excluded from the backup")
-	includeTableFile = flag.String("include-table-file", "", "A file containing a list of fully-qualified tables to be included in the backup")
 	withStats = flag.Bool("with-stats", false, "Back up query plan statistics")
 }
 
