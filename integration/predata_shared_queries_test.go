@@ -9,6 +9,10 @@ import (
 )
 
 var _ = Describe("backup integration tests", func() {
+	AfterEach(func() {
+		backup.SetIncludeSchemas([]string{})
+		backup.SetExcludeSchemas([]string{})
+	})
 	Describe("GetAllUserSchemas", func() {
 		It("returns user schema information", func() {
 			testutils.AssertQueryRuns(connection, "CREATE SCHEMA bar")
@@ -273,7 +277,6 @@ PARTITION BY RANGE (date)
 				resultMetadata := resultMetadataMap[oid]
 				testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 			})
-
 			It("returns a slice of default metadata for a table", func() {
 				testutils.AssertQueryRuns(connection, "CREATE TABLE testtable(i int)")
 				defer testutils.AssertQueryRuns(connection, "DROP TABLE testtable")
@@ -519,6 +522,25 @@ LANGUAGE SQL`)
 				testutils.AssertQueryRuns(connection, "GRANT ALL ON TABLE testschema.testtable TO testrole")
 				testutils.AssertQueryRuns(connection, "COMMENT ON TABLE testschema.testtable IS 'This is a table comment.'")
 				backup.SetIncludeSchemas([]string{"testschema"})
+
+				resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_RELATION)
+
+				oid := testutils.OidFromObjectName(connection, "testschema", "testtable", backup.TYPE_RELATION)
+				expectedMetadata := testutils.DefaultMetadataMap("TABLE", true, true, true)[1]
+				Expect(len(resultMetadataMap)).To(Equal(1))
+				resultMetadata := resultMetadataMap[oid]
+				testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
+			})
+			It("returns a slice of default metadata for a table not in a specific schema", func() {
+				testutils.AssertQueryRuns(connection, "CREATE TABLE testtable(i int)")
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE testtable")
+				testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
+				defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
+				testutils.AssertQueryRuns(connection, "CREATE TABLE testschema.testtable(i int)")
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE testschema.testtable")
+				testutils.AssertQueryRuns(connection, "GRANT ALL ON TABLE testschema.testtable TO testrole")
+				testutils.AssertQueryRuns(connection, "COMMENT ON TABLE testschema.testtable IS 'This is a table comment.'")
+				backup.SetExcludeSchemas([]string{"public"})
 
 				resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_RELATION)
 

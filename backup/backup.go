@@ -31,6 +31,7 @@ var ( // Command-line flags
 	quiet            *bool
 	verbose          *bool
 	includeSchemas   utils.ArrayFlags
+	excludeSchemas   utils.ArrayFlags
 	excludeTableFile *string
 	excludeTables    utils.ArrayFlags
 	includeTableFile *string
@@ -51,6 +52,7 @@ func initializeFlags() {
 	quiet = flag.Bool("quiet", false, "Suppress non-warning, non-error log messages")
 	verbose = flag.Bool("verbose", false, "Print verbose log messages")
 	flag.Var(&includeSchemas, "include-schema", "Back up only the specified schema(s). --include-schema can be specified multiple times.")
+	flag.Var(&excludeSchemas, "exclude-schema", "Do not back up only the specified schema(s). --exclude-schema can be specified multiple times.")
 	excludeTableFile = flag.String("exclude-table-file", "", "A file containing a list of fully-qualified tables to be excluded from the backup")
 	includeTableFile = flag.String("include-table-file", "", "A file containing a list of fully-qualified tables to be included in the backup")
 	withStats = flag.Bool("with-stats", false, "Back up query plan statistics")
@@ -76,6 +78,10 @@ func SetCluster(cluster utils.Cluster) {
 
 func SetVersion(v string) {
 	version = v
+}
+
+func SetExcludeSchemas(schemas []string) {
+	excludeSchemas = schemas
 }
 
 func SetIncludeSchemas(schemas []string) {
@@ -130,6 +136,7 @@ func DoSetup() {
  * initialization with any sort of side effects should go in DoInit or DoSetup.
  */
 func validateSetup() {
+	ValidateFilterSchemas(connection, excludeSchemas)
 	ValidateFilterSchemas(connection, includeSchemas)
 	ValidateFilterTables(connection, excludeTables)
 	ValidateFilterTables(connection, includeTables)

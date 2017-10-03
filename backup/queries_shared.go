@@ -194,11 +194,14 @@ func InitializeMetadataParams(connection *utils.DBConn) {
 
 // A list of schemas we don't want to back up, formatted for use in a WHERE clause
 func SchemaFilterClause(namespace string) string {
-	includeSchemaFilterClauseStr := ""
+	schemaFilterClauseStr := ""
 	if len(includeSchemas) > 0 {
-		includeSchemaFilterClauseStr = fmt.Sprintf("\nAND %s.nspname IN (%s)", namespace, utils.SliceToQuotedString(includeSchemas))
+		schemaFilterClauseStr = fmt.Sprintf("\nAND %s.nspname IN (%s)", namespace, utils.SliceToQuotedString(includeSchemas))
 	}
-	return fmt.Sprintf(`%s.nspname NOT LIKE 'pg_temp_%%' AND %s.nspname NOT LIKE 'pg_toast%%' AND %s.nspname NOT IN ('gp_toolkit', 'information_schema', 'pg_aoseg', 'pg_bitmapindex', 'pg_catalog') %s`, namespace, namespace, namespace, includeSchemaFilterClauseStr)
+	if len(excludeSchemas) > 0 {
+		schemaFilterClauseStr = fmt.Sprintf("\nAND %s.nspname NOT IN (%s)", namespace, utils.SliceToQuotedString(excludeSchemas))
+	}
+	return fmt.Sprintf(`%s.nspname NOT LIKE 'pg_temp_%%' AND %s.nspname NOT LIKE 'pg_toast%%' AND %s.nspname NOT IN ('gp_toolkit', 'information_schema', 'pg_aoseg', 'pg_bitmapindex', 'pg_catalog') %s`, namespace, namespace, namespace, schemaFilterClauseStr)
 }
 
 func GetMetadataForObjectType(connection *utils.DBConn, params MetadataQueryParams) MetadataMap {

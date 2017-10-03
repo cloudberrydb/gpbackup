@@ -61,5 +61,6 @@ func ValidateFlagCombinations() {
 	utils.CheckExclusiveFlags("debug", "quiet", "verbose")
 	utils.CheckExclusiveFlags("data-only", "metadata-only")
 	utils.CheckExclusiveFlags("include-schema", "include-table-file")
-	utils.CheckExclusiveFlags("exclude-table-file", "include-table-file")
+	utils.CheckExclusiveFlags("exclude-schema", "include-schema")
+	utils.CheckExclusiveFlags("exclude-schema", "exclude-table-file", "include-table-file")
 }
