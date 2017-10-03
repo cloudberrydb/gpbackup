@@ -186,6 +186,25 @@ PARTITION BY RANGE (date)
 				Expect(len(constraints)).To(Equal(1))
 				testutils.ExpectStructsToMatchExcluding(&constraints[0], &constraintInSchema, "Oid")
 			})
+			It("returns a constraint array for only the tables in the backup set", func() {
+				testutils.AssertQueryRuns(connection, "CREATE TABLE public.constraints_table(a int, b text, c float)")
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE public.constraints_table")
+				testutils.AssertQueryRuns(connection, "ALTER TABLE ONLY public.constraints_table ADD CONSTRAINT uniq2 UNIQUE (a, b)")
+				testutils.AssertQueryRuns(connection, "COMMENT ON CONSTRAINT uniq2 ON public.constraints_table IS 'this is a constraint comment'")
+				testutils.AssertQueryRuns(connection, "CREATE TABLE public.other_table(d bool, e float)")
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE public.other_table")
+
+				constraintsOid := testutils.OidFromObjectName(connection, "public", "constraints_table", backup.TYPE_RELATION)
+				otherOid := testutils.OidFromObjectName(connection, "public", "other_table", backup.TYPE_RELATION)
+				tables := []backup.Relation{backup.Relation{RelationOid: constraintsOid, SchemaName: "public", RelationName: "constraints_table"}}
+				constraints := backup.GetConstraints(connection, tables...)
+				Expect(len(constraints)).To(Equal(1))
+				testutils.ExpectStructsToMatchExcluding(&constraints[0], &uniqueConstraint, "Oid")
+
+				tables = []backup.Relation{backup.Relation{RelationOid: otherOid, SchemaName: "public", RelationName: "other_table"}}
+				constraints = backup.GetConstraints(connection, tables...)
+				Expect(len(constraints)).To(Equal(0))
+			})
 		})
 		Context("Multiple constraints", func() {
 			It("returns a constraint array for a table with multiple constraints", func() {

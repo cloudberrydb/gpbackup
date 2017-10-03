@@ -83,8 +83,8 @@ func RetrieveAndLockTables(objectCounts map[string]int) ([]Relation, map[uint32]
 	return tables, tableDefs
 }
 
-func RetrieveConstraints(objectCounts map[string]int) ([]Constraint, MetadataMap) {
-	constraints := GetConstraints(connection)
+func RetrieveConstraints(objectCounts map[string]int, tables ...Relation) ([]Constraint, MetadataMap) {
+	constraints := GetConstraints(connection, tables...)
 	conMetadata := GetCommentsForObjectType(connection, TYPE_CONSTRAINT)
 	return constraints, conMetadata
 }
@@ -203,10 +203,22 @@ func BackupFunctionsAndTypesAndTables(predataFile *utils.FileWithByteCount, othe
 	logger.Verbose("Writing CREATE FUNCTION statements to predata file")
 	logger.Verbose("Writing CREATE TYPE statements for base, composite, and domain types to predata file")
 	logger.Verbose("Writing CREATE TABLE statements to predata file")
-	tables = ConstructTableDependencies(connection, tables)
+	tables = ConstructTableDependencies(connection, tables, false)
 	sortedSlice := SortFunctionsAndTypesAndTablesInDependencyOrder(otherFuncs, types, tables)
 	filteredMetadata := ConstructFunctionAndTypeAndTableMetadataMap(functionMetadata, typeMetadata, relationMetadata)
 	PrintCreateDependentTypeAndFunctionAndTablesStatements(predataFile, globalTOC, sortedSlice, filteredMetadata, tableDefs, constraints)
+}
+
+// This function should be used only with a table-only backup.  For an unfiltered backup, the above function is used.
+func BackupTables(predataFile *utils.FileWithByteCount, tables []Relation, relationMetadata MetadataMap, tableDefs map[uint32]TableDefinition, constraints []Constraint) {
+	logger.Verbose("Writing CREATE TABLE statements to predata file")
+	tables = ConstructTableDependencies(connection, tables, true)
+	sortable := make([]Sortable, 0)
+	for _, table := range tables {
+		sortable = append(sortable, table)
+	}
+	sortedSlice := TopologicalSort(sortable)
+	PrintCreateDependentTypeAndFunctionAndTablesStatements(predataFile, globalTOC, sortedSlice, relationMetadata, tableDefs, constraints)
 }
 
 func BackupAlterSequences(predataFile *utils.FileWithByteCount, objectCounts map[string]int, sequences []Sequence) {

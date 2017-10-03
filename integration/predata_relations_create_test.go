@@ -176,7 +176,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE public.testtable")
 			testTable.RelationOid = testutils.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
 			tables := []backup.Relation{testTable}
-			tables = backup.ConstructTableDependencies(connection, tables)
+			tables = backup.ConstructTableDependencies(connection, tables, false)
 
 			Expect(len(tables)).To(Equal(1))
 			Expect(len(tables[0].DependsUpon)).To(Equal(1))
@@ -199,7 +199,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE public.testtable")
 			testTable.RelationOid = testutils.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
 			tables := []backup.Relation{testTable}
-			tables = backup.ConstructTableDependencies(connection, tables)
+			tables = backup.ConstructTableDependencies(connection, tables, false)
 
 			Expect(len(tables)).To(Equal(1))
 			Expect(len(tables[0].DependsUpon)).To(Equal(2))

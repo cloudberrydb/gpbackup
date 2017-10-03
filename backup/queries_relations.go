@@ -7,6 +7,7 @@ package backup
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/greenplum-db/gpbackup/utils"
 )
@@ -182,8 +183,18 @@ type Dependency struct {
 	ReferencedObject string
 }
 
-func ConstructTableDependencies(connection *utils.DBConn, tables []Relation) []Relation {
-	query := fmt.Sprintf(`
+func ConstructTableDependencies(connection *utils.DBConn, tables []Relation, isTableFiltered bool) []Relation {
+	var tableNameMap map[string]bool
+	var tableOidList []string
+	if isTableFiltered {
+		tableNameMap = make(map[string]bool, len(tables))
+		tableOidList = make([]string, len(tables))
+		for i, table := range tables {
+			tableNameMap[table.ToString()] = true
+			tableOidList[i] = fmt.Sprintf("%d", table.RelationOid)
+		}
+	}
+	nonTableQuery := fmt.Sprintf(`
 SELECT
 	objid AS oid,
 	quote_ident(n.nspname) || '.' || quote_ident(p.typname) AS referencedobject,
@@ -192,8 +203,8 @@ FROM pg_depend d
 JOIN pg_type p ON d.refobjid = p.oid
 JOIN pg_namespace n ON p.typnamespace = n.oid
 JOIN pg_class c ON d.objid = c.oid AND c.relkind = 'r'
-WHERE %s
-UNION
+WHERE %s `, SchemaFilterClause("n"))
+	tableQuery := `
 SELECT
 	objid AS oid,
 	quote_ident(n.nspname) || '.' || quote_ident(p.relname) AS referencedobject,
@@ -201,9 +212,15 @@ SELECT
 FROM pg_depend d
 JOIN pg_class p ON d.refobjid = p.oid AND p.relkind = 'r'
 JOIN pg_namespace n ON p.relnamespace = n.oid
-JOIN pg_class c ON d.objid = c.oid AND c.relkind = 'r';
-`, SchemaFilterClause("n"))
+JOIN pg_class c ON d.objid = c.oid AND c.relkind = 'r'`
 
+	query := ""
+	// If we are filtering on tables, we only want to record dependencies on other tables in the list
+	if isTableFiltered {
+		query = fmt.Sprintf("%s\nWHERE objid IN (%s);", tableQuery, strings.Join(tableOidList, ","))
+	} else {
+		query = fmt.Sprintf("%s\nUNION\n%s;", nonTableQuery, tableQuery)
+	}
 	results := make([]struct {
 		Oid              uint32
 		ReferencedObject string
@@ -214,10 +231,13 @@ JOIN pg_class c ON d.objid = c.oid AND c.relkind = 'r';
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	for _, dependency := range results {
-		dependencyMap[dependency.Oid] = append(dependencyMap[dependency.Oid], dependency.ReferencedObject)
 		if dependency.IsTable {
 			inheritanceMap[dependency.Oid] = append(inheritanceMap[dependency.Oid], dependency.ReferencedObject)
 		}
+		if isTableFiltered && !tableNameMap[dependency.ReferencedObject] {
+			continue
+		}
+		dependencyMap[dependency.Oid] = append(dependencyMap[dependency.Oid], dependency.ReferencedObject)
 	}
 	for i := 0; i < len(tables); i++ {
 		tables[i].DependsUpon = dependencyMap[tables[i].RelationOid]

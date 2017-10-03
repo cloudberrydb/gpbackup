@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/greenplum-db/gpbackup/utils"
 
@@ -59,9 +60,9 @@ type Constraint struct {
 	IsPartitionParent  bool
 }
 
-func GetConstraints(connection *utils.DBConn) []Constraint {
+func GetConstraints(connection *utils.DBConn, tables ...Relation) []Constraint {
 	// This query is adapted from the queries underlying \d in psql.
-	query := fmt.Sprintf(`
+	tableQuery := `
 SELECT
 	c.oid,
 	conname,
@@ -81,9 +82,8 @@ WHERE %s
 AND r.relname IS NOT NULL
 AND conrelid NOT IN (SELECT parchildrelid FROM pg_partition_rule)
 AND (conrelid, conname) NOT IN (SELECT i.inhrelid, c.conname FROM pg_inherits i JOIN pg_constraint c ON i.inhrelid = c.conrelid JOIN pg_constraint p ON i.inhparent = p.conrelid WHERE c.conname = p.conname)
-GROUP BY c.oid, conname, contype, r.relname, n.nspname, pt.parrelid
-UNION
-SELECT
+GROUP BY c.oid, conname, contype, r.relname, n.nspname, pt.parrelid`
+	nonTableQuery := fmt.Sprintf(`SELECT
 	c.oid,
 	conname,
 	contype,
@@ -97,8 +97,20 @@ JOIN pg_namespace n ON n.oid = c.connamespace
 WHERE %s
 AND t.typname IS NOT NULL
 GROUP BY c.oid, conname, contype, n.nspname, t.typname
-ORDER BY conname;`, SchemaFilterClause("n"), SchemaFilterClause("n"))
+ORDER BY conname;`, SchemaFilterClause("n"))
 
+	query := ""
+	if len(tables) > 0 {
+		oidList := make([]string, 0)
+		for _, table := range tables {
+			oidList = append(oidList, fmt.Sprintf("%d", table.RelationOid))
+		}
+		filterClause := fmt.Sprintf("%s\nAND r.oid IN (%s)", SchemaFilterClause("n"), strings.Join(oidList, ","))
+		query = fmt.Sprintf(tableQuery, filterClause)
+	} else {
+		tableQuery = fmt.Sprintf(tableQuery, SchemaFilterClause("n"))
+		query = fmt.Sprintf("%s\nUNION\n%s", tableQuery, nonTableQuery)
+	}
 	results := make([]Constraint, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)

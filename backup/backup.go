@@ -141,10 +141,16 @@ func DoBackup() {
 	objectCounts = make(map[string]int, 0)
 	tables, tableDefs := RetrieveAndLockTables(objectCounts)
 
+	isTableFiltered := len(includeTables) > 0 || len(excludeTables) > 0
+
 	if !*dataOnly {
-		backupGlobal(objectCounts)
-		backupPredata(tables, tableDefs, objectCounts)
-		backupPostdata(objectCounts)
+		if isTableFiltered {
+			backupTablePredata(tables, tableDefs, objectCounts)
+		} else {
+			backupGlobal(objectCounts)
+			backupPredata(tables, tableDefs, objectCounts)
+			backupPostdata(objectCounts)
+		}
 	}
 
 	if !*metadataOnly {
@@ -233,6 +239,25 @@ func backupPredata(tables []Relation, tableDefs map[uint32]TableDefinition, obje
 	BackupViews(predataFile, objectCounts, relationMetadata)
 	BackupConstraints(predataFile, objectCounts, constraints, conMetadata)
 	logger.Info("Pre-data metadata backup complete")
+}
+
+func backupTablePredata(tables []Relation, tableDefs map[uint32]TableDefinition, objectCounts map[string]int) {
+	predataFilename := globalCluster.GetPredataFilePath()
+	logger.Info("Writing table metadata to %s", predataFilename)
+	predataFile := utils.NewFileWithByteCountFromFile(predataFilename)
+	defer predataFile.Close()
+
+	PrintConnectionString(predataFile, connection.DBName)
+
+	BackupPredataSessionGUCs(predataFile)
+
+	relationMetadata := GetMetadataForObjectType(connection, TYPE_RELATION)
+
+	constraints, conMetadata := RetrieveConstraints(objectCounts, tables...)
+
+	BackupTables(predataFile, tables, relationMetadata, tableDefs, constraints)
+	BackupConstraints(predataFile, objectCounts, constraints, conMetadata)
+	logger.Info("Table metadata backup complete")
 }
 
 func backupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
