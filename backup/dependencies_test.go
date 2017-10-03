@@ -3,8 +3,10 @@ package backup_test
 import (
 	"database/sql/driver"
 
+	"github.com/blang/semver"
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
+	"github.com/greenplum-db/gpbackup/utils"
 	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
 
 	. "github.com/onsi/ginkgo"
@@ -143,12 +145,54 @@ var _ = Describe("backup/dependencies tests", func() {
 		})
 	})
 	Describe("ConstructFunctionAndTypeDependencyLists", func() {
-		It("queries dependencies for functions and types", func() {
+		var oldVersion utils.GPDBVersion
+		BeforeEach(func() {
+			oldVersion = connection.Version
+		})
+		AfterEach(func() {
+			connection.Version = oldVersion
+		})
+		It("queries dependencies for functions and types in GPDB 5", func() {
+			connection.Version = utils.GPDBVersion{VersionString: "5.0.0", SemVer: semver.MustParse("5.0.0")}
 			funcInfoMap := map[uint32]backup.FunctionInfo{}
 			header := []string{"oid", "referencedobject"}
 			functionRows := sqlmock.NewRows(header).AddRow([]driver.Value{"1", "public.type"}...)
-			var baseTypeRows *sqlmock.Rows
-			baseTypeRows = sqlmock.NewRows(header).AddRow([]driver.Value{"2", "public.func(integer, integer)"}...)
+			baseTypeRows := sqlmock.NewRows(header).AddRow([]driver.Value{"2", "public.func(integer, integer)"}...)
+			compTypeRows := sqlmock.NewRows(header).AddRow([]driver.Value{"3", "public.othertype"}...)
+			domainRows := sqlmock.NewRows(header).AddRow([]driver.Value{"4", "public.builtin"}...)
+
+			function1.Oid = 1
+			type1.Oid = 2
+			type1.Type = "b"
+			type2.Oid = 3
+			type2.Type = "c"
+			type3.Oid = 4
+			type3.Type = "d"
+
+			functions := []backup.Function{function1}
+			types := []backup.Type{type1, type2, type3}
+
+			mock.ExpectQuery(`SELECT (.*)`).WillReturnRows(functionRows)
+			mock.ExpectQuery(`SELECT (.*)`).WillReturnRows(baseTypeRows)
+			mock.ExpectQuery(`SELECT (.*)`).WillReturnRows(domainRows)
+			mock.ExpectQuery(`SELECT (.*)`).WillReturnRows(compTypeRows)
+
+			functions, types = backup.ConstructFunctionAndTypeDependencyLists(connection, functions, types, funcInfoMap)
+
+			Expect(functions[0].DependsUpon).To(Equal([]string{"public.type"}))
+			Expect(types[0].DependsUpon).To(Equal([]string{"public.func(integer, integer)"}))
+			Expect(types[1].DependsUpon).To(Equal([]string{"public.othertype"}))
+			Expect(types[2].DependsUpon).To(Equal([]string{"public.builtin"}))
+		})
+		It("queries dependencies for functions and types in GPDB 4.3", func() {
+			connection.Version = utils.GPDBVersion{VersionString: "4.3.0", SemVer: semver.MustParse("4.3.0")}
+			funcInfoMap := map[uint32]backup.FunctionInfo{
+				5: {QualifiedName: "public.func", Arguments: "integer, integer"},
+			}
+			header := []string{"oid", "referencedobject"}
+			functionRows := sqlmock.NewRows(header).AddRow([]driver.Value{"1", "public.type"}...)
+			baseTypeHeader := []string{"oid", "referencedoid"}
+			baseTypeRows := sqlmock.NewRows(baseTypeHeader).AddRow([]driver.Value{"2", "5"}...)
 			compTypeRows := sqlmock.NewRows(header).AddRow([]driver.Value{"3", "public.othertype"}...)
 			domainRows := sqlmock.NewRows(header).AddRow([]driver.Value{"4", "public.builtin"}...)
 

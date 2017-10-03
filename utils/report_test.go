@@ -93,6 +93,8 @@ types                        1000`))
 		},
 			Entry("classifies a default backup",
 				false, false, false, utils.ArrayFlags{}, false, "Unfiltered Compressed Full Backup"),
+			Entry("classifies a default backup with stats",
+				false, false, false, utils.ArrayFlags{}, true, "Unfiltered Compressed Full Backup With Statistics"),
 			Entry("classifies a metadata-only backup",
 				false, true, false, utils.ArrayFlags{}, false, "Unfiltered Compressed Full Metadata-Only Backup"),
 			Entry("classifies a data-only backup",
