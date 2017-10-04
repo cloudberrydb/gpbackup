@@ -2,6 +2,7 @@ package utils_test
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/user"
 	"reflect"
@@ -19,7 +20,6 @@ var _ = Describe("utils/log tests", func() {
 	var (
 		testLogger   *utils.Logger
 		sampleLogger *utils.Logger
-		fakeFile     *os.File
 		fakeInfo     os.FileInfo
 	)
 
@@ -28,9 +28,8 @@ var _ = Describe("utils/log tests", func() {
 		Expect(err).ToNot(HaveOccurred())
 		fakeInfo, err = os.Stat("/tmp/log_dir")
 		Expect(err).ToNot(HaveOccurred())
-		fakeFile = &os.File{}
 
-		utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) { return fakeFile, nil }
+		utils.System.OpenFileWrite = func(name string, flag int, perm os.FileMode) (io.WriteCloser, error) { return buffer, nil }
 		utils.System.CurrentUser = func() (*user.User, error) { return &user.User{Username: "testUser", HomeDir: "testDir"}, nil }
 		utils.System.Getpid = func() int { return 0 }
 		utils.System.Hostname = func() (string, error) { return "testHost", nil }
@@ -45,7 +44,7 @@ var _ = Describe("utils/log tests", func() {
 
 	Describe("InitializeLogging", func() {
 		BeforeEach(func() {
-			sampleLogger = utils.NewLogger(os.Stdout, os.Stderr, fakeFile, "testDir/gpAdminLogs/testProgram_20170101.log",
+			sampleLogger = utils.NewLogger(os.Stdout, os.Stderr, buffer, "testDir/gpAdminLogs/testProgram_20170101.log",
 				utils.LOGINFO, "testProgram:testUser:testHost:000000-[%s]:-")
 		})
 		Context("Logger initialized with default log directory and Info log level", func() {
@@ -62,7 +61,7 @@ var _ = Describe("utils/log tests", func() {
 		})
 		Context("Logger initialized with a specified log directory and Info log level", func() {
 			It("creates a new logger writing to the specified log directory and sets utils.logger to this new logger", func() {
-				sampleLogger = utils.NewLogger(os.Stdout, os.Stderr, fakeFile, "/tmp/log_dir/testProgram_20170101.log",
+				sampleLogger = utils.NewLogger(os.Stdout, os.Stderr, buffer, "/tmp/log_dir/testProgram_20170101.log",
 					utils.LOGINFO, "testProgram:testUser:testHost:000000-[%s]:-")
 				newLogger := utils.InitializeLogging("testProgram", "/tmp/log_dir")
 				testLogger = utils.GetLogger()
@@ -87,9 +86,9 @@ var _ = Describe("utils/log tests", func() {
 			})
 			It("creates a log file if given a nonexistent log file", func() {
 				calledWith := ""
-				utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) {
+				utils.System.OpenFileWrite = func(name string, flag int, perm os.FileMode) (io.WriteCloser, error) {
 					calledWith = name
-					return fakeFile, nil
+					return buffer, nil
 				}
 				utils.System.IsNotExist = func(err error) bool { return true }
 				utils.System.Stat = func(name string) (os.FileInfo, error) { return fakeInfo, errors.New("file does not exist") }
@@ -102,7 +101,7 @@ var _ = Describe("utils/log tests", func() {
 				utils.InitializeLogging("testProgram", "/tmp/log_dir")
 			})
 			It("panics if given a non-writable log file", func() {
-				utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) {
+				utils.System.OpenFileWrite = func(name string, flag int, perm os.FileMode) (io.WriteCloser, error) {
 					return nil, errors.New("permission denied")
 				}
 				defer testutils.ShouldPanicWithMessage("permission denied")

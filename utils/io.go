@@ -54,23 +54,15 @@ func SliceToQuotedString(slice []string) string {
  */
 
 func MustOpenFileForWriting(filename string) io.WriteCloser {
-	fileHandle, err := System.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	fileHandle, err := System.OpenFileWrite(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		logger.Fatal(err, "Unable to create or open file for writing")
 	}
 	return fileHandle
 }
 
-func MustOpenFileForReading(filename string) io.ReadCloser {
-	fileHandle, err := System.OpenFile(filename, os.O_RDONLY, 0644)
-	if err != nil {
-		logger.Fatal(err, "Unable to open file for reading")
-	}
-	return fileHandle
-}
-
-func MustOpenFileForReaderAt(filename string) io.ReaderAt {
-	fileHandle, err := System.OpenFile(filename, os.O_RDONLY, 0644)
+func MustOpenFileForReading(filename string) ReadCloserAt {
+	fileHandle, err := System.OpenFileRead(filename, os.O_RDONLY, 0644)
 	if err != nil {
 		logger.Fatal(err, "Unable to open file for reading")
 	}
@@ -81,7 +73,7 @@ func FileExistsAndIsReadable(filename string) bool {
 	_, err := System.Stat(filename)
 	if err == nil {
 		var fileHandle io.ReadCloser
-		fileHandle, err = System.OpenFile(filename, os.O_RDONLY, 0644)
+		fileHandle, err = System.OpenFileRead(filename, os.O_RDONLY, 0644)
 		fileHandle.Close()
 		if err == nil {
 			return true
@@ -92,7 +84,7 @@ func FileExistsAndIsReadable(filename string) bool {
 
 func CreateBackupLockFile(timestamp string) {
 	timestampLockFile := fmt.Sprintf("/tmp/%s.lck", timestamp)
-	_, err := System.OpenFile(timestampLockFile, os.O_CREATE|os.O_EXCL, 0644)
+	_, err := System.OpenFileWrite(timestampLockFile, os.O_CREATE|os.O_EXCL, 0644)
 	if err != nil {
 		logger.Fatal(errors.Errorf("A backup with timestamp %s is already in progress. Wait 1 second and try the backup again.", timestamp), "")
 	}

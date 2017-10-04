@@ -46,7 +46,7 @@ func InitializeBackupConfig() {
 
 func GetGlobalStatements(objectTypes ...string) []utils.StatementWithType {
 	globalFilename := globalCluster.GetGlobalFilePath()
-	globalFile := utils.MustOpenFileForReaderAt(globalFilename)
+	globalFile := utils.MustOpenFileForReading(globalFilename)
 	var statements []utils.StatementWithType
 	if len(objectTypes) > 0 {
 		statements = globalTOC.GetSQLStatementForObjectTypes(globalTOC.GlobalEntries, globalFile, "SESSION GUCS", "DATABASE GUC", "DATABASE", "DATABASE METADATA")

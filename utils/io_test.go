@@ -3,6 +3,7 @@ package utils_test
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/greenplum-db/gpbackup/testutils"
@@ -103,32 +104,32 @@ var _ = Describe("utils/io tests", func() {
 
 	Describe("MustOpenFileForWriting", func() {
 		It("creates or opens the file for writing", func() {
-			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) { return os.Stdout, nil }
-			defer func() { utils.System.OpenFile = os.OpenFile }()
+			utils.System.OpenFileWrite = func(name string, flag int, perm os.FileMode) (io.WriteCloser, error) { return os.Stdout, nil }
+			defer func() { utils.System.OpenFileWrite = utils.OpenFileWrite }()
 			fileHandle := utils.MustOpenFileForWriting("filename")
 			Expect(fileHandle).To(Equal(os.Stdout))
 		})
 		It("panics on error", func() {
-			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) {
+			utils.System.OpenFileWrite = func(name string, flag int, perm os.FileMode) (io.WriteCloser, error) {
 				return nil, errors.New("Permission denied")
 			}
-			defer func() { utils.System.OpenFile = os.OpenFile }()
+			defer func() { utils.System.OpenFileWrite = utils.OpenFileWrite }()
 			defer testutils.ShouldPanicWithMessage("Unable to create or open file for writing: Permission denied")
 			utils.MustOpenFileForWriting("filename")
 		})
 	})
 	Describe("MustOpenFileForReading", func() {
 		It("creates or opens the file for reading", func() {
-			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) { return os.Stdin, nil }
-			defer func() { utils.System.OpenFile = os.OpenFile }()
+			utils.System.OpenFileRead = func(name string, flag int, perm os.FileMode) (utils.ReadCloserAt, error) { return os.Stdin, nil }
+			defer func() { utils.System.OpenFileRead = utils.OpenFileRead }()
 			fileHandle := utils.MustOpenFileForReading("filename")
 			Expect(fileHandle).To(Equal(os.Stdin))
 		})
 		It("panics on error", func() {
-			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) {
+			utils.System.OpenFileRead = func(name string, flag int, perm os.FileMode) (utils.ReadCloserAt, error) {
 				return nil, errors.New("Permission denied")
 			}
-			defer func() { utils.System.OpenFile = os.OpenFile }()
+			defer func() { utils.System.OpenFileRead = utils.OpenFileRead }()
 			defer testutils.ShouldPanicWithMessage("Unable to open file for reading: Permission denied")
 			utils.MustOpenFileForReading("filename")
 		})
@@ -141,7 +142,7 @@ var _ = Describe("utils/io tests", func() {
 			utils.System.Stat = func(name string) (os.FileInfo, error) {
 				return nil, nil
 			}
-			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) {
+			utils.System.OpenFileRead = func(name string, flag int, perm os.FileMode) (utils.ReadCloserAt, error) {
 				return &os.File{}, nil
 			}
 			check := utils.FileExistsAndIsReadable("filename")
@@ -165,8 +166,8 @@ var _ = Describe("utils/io tests", func() {
 			utils.System.Stat = func(name string) (os.FileInfo, error) {
 				return nil, nil
 			}
-			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) {
-				return nil, &os.PathError{}
+			utils.System.OpenFileRead = func(name string, flag int, perm os.FileMode) (utils.ReadCloserAt, error) {
+				return &os.File{}, &os.PathError{}
 			}
 			check := utils.FileExistsAndIsReadable("filename")
 			Expect(check).To(BeFalse())
@@ -179,8 +180,8 @@ public."bar%baz"`)
 
 		It("reads a file containing multiple lines", func() {
 			r, w, _ := os.Pipe()
-			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) { return r, nil }
-			defer func() { utils.System.OpenFile = os.OpenFile }()
+			utils.System.OpenFileRead = func(name string, flag int, perm os.FileMode) (utils.ReadCloserAt, error) { return r, nil }
+			defer func() { utils.System.OpenFileRead = utils.OpenFileRead }()
 			w.Write(fileContents)
 			w.Close()
 			contents := utils.ReadLinesFromFile("/tmp/table_file")
@@ -209,13 +210,13 @@ public."bar%baz"`)
 	})
 	Describe("CreateBackupLockFile", func() {
 		It("Does not panic if lock file does not exist for current timestamp", func() {
-			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) {
+			utils.System.OpenFileWrite = func(name string, flag int, perm os.FileMode) (io.WriteCloser, error) {
 				return nil, nil
 			}
 			utils.CreateBackupLockFile("20170101010101")
 		})
 		It("Panics if lock file exists for current timestamp", func() {
-			utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) {
+			utils.System.OpenFileWrite = func(name string, flag int, perm os.FileMode) (io.WriteCloser, error) {
 				return nil, errors.New("file does not exist")
 			}
 			defer testutils.ShouldPanicWithMessage("A backup with timestamp 20170101010101 is already in progress. Wait 1 second and try the backup again.")
