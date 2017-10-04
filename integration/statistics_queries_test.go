@@ -70,10 +70,10 @@ var _ = Describe("backup integration tests", func() {
 			Expect(len(tupleStats)).To(Equal(1))
 			tableTupleStats := tupleStats[tableOid]
 
-			// Tuple statistics will not vary by GPDB version.
-			expectedStats := backup.TupleStatistic{Oid: tableOid, SchemaName: "public", TableName: "foo", RelPages: 2, RelTuples: 2}
+			// Tuple statistics will not vary by GPDB version. Relpages may vary based on the hardware.
+			expectedStats := backup.TupleStatistic{Oid: tableOid, SchemaName: "public", TableName: "foo", RelTuples: 2}
 
-			testutils.ExpectStructsToMatch(&expectedStats, &tableTupleStats)
+			testutils.ExpectStructsToMatchExcluding(&expectedStats, &tableTupleStats, "RelPages")
 		})
 	})
 })
