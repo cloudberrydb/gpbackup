@@ -403,7 +403,6 @@ func BackupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
 func BackupStatistics(statisticsFile *utils.FileWithByteCount, tables []Relation) {
 	attStats := GetAttributeStatistics(connection, tables)
 	tupleStats := GetTupleStatistics(connection, tables)
-	PrintConnectionString(statisticsFile, connection.DBName)
 
 	BackupStatisticsSessionGUCs(statisticsFile)
 	PrintStatisticsStatements(statisticsFile, globalTOC, tables, attStats, tupleStats)

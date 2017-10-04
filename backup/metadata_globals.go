@@ -14,10 +14,6 @@ import (
  * such as roles and database configuration.
  */
 
-func PrintConnectionString(metadataFile *utils.FileWithByteCount, dbname string) {
-	metadataFile.MustPrintf("\\c %s\n", dbname)
-}
-
 /*
  * Session GUCs are printed to global, predata, and postdata files so we
  * will use the correct settings when the files are run during restore

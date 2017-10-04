@@ -45,19 +45,35 @@ func (toc *TOC) WriteToFile(filename string) {
 	MustPrintBytes(tocFile, tocContents)
 }
 
-func (toc *TOC) GetSQLStatementForObjectTypes(entries []MetadataEntry, metadataFile io.ReaderAt, objectTypes ...string) []string {
+type StatementWithType struct {
+	ObjectType string
+	Statement  string
+}
+
+func (toc *TOC) GetSQLStatementForObjectTypes(entries []MetadataEntry, metadataFile io.ReaderAt, objectTypes ...string) []StatementWithType {
 	objectHashes := make(map[string]bool, len(objectTypes))
 	for _, objectType := range objectTypes {
 		objectHashes[objectType] = true
 	}
-	statements := []string{}
+	statements := make([]StatementWithType, 0)
 	for _, entry := range entries {
 		if _, ok := objectHashes[entry.ObjectType]; ok {
 			contents := make([]byte, entry.EndByte-entry.StartByte)
 			_, err := metadataFile.ReadAt(contents, int64(entry.StartByte))
 			CheckError(err)
-			statements = append(statements, string(contents))
+			statements = append(statements, StatementWithType{ObjectType: entry.ObjectType, Statement: string(contents)})
 		}
+	}
+	return statements
+}
+
+func (toc *TOC) GetAllSQLStatements(entries []MetadataEntry, metadataFile io.ReaderAt) []StatementWithType {
+	statements := make([]StatementWithType, 0)
+	for _, entry := range entries {
+		contents := make([]byte, entry.EndByte-entry.StartByte)
+		_, err := metadataFile.ReadAt(contents, int64(entry.StartByte))
+		CheckError(err)
+		statements = append(statements, StatementWithType{ObjectType: entry.ObjectType, Statement: string(contents)})
 	}
 	return statements
 }

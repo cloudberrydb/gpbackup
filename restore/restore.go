@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/greenplum-db/gpbackup/utils"
 
@@ -25,6 +26,7 @@ var ( // Command-line flags
 	debug          *bool
 	printVersion   *bool
 	quiet          *bool
+	redirect       *string
 	restoreGlobals *bool
 	timestamp      *string
 	verbose        *bool
@@ -38,6 +40,7 @@ func initializeFlags() {
 	debug = flag.Bool("debug", false, "Print verbose and debug log messages")
 	printVersion = flag.Bool("version", false, "Print version number and exit")
 	quiet = flag.Bool("quiet", false, "Suppress non-warning, non-error log messages")
+	redirect = flag.String("redirect", "", "Restore to the specified database instead of the database that was backed up")
 	restoreGlobals = flag.Bool("globals", false, "Restore global metadata")
 	timestamp = flag.String("timestamp", "", "The timestamp to be restored, in the format YYYYMMDDHHMMSS")
 	verbose = flag.Bool("verbose", false, "Print verbose log messages")
@@ -104,7 +107,13 @@ func DoRestore() {
 	}
 
 	connection.Close()
-	InitializeConnection(backupConfig.DatabaseName)
+	restoreDatabase := ""
+	if *redirect != "" {
+		restoreDatabase = *redirect
+	} else {
+		restoreDatabase = backupConfig.DatabaseName
+	}
+	InitializeConnection(restoreDatabase)
 
 	if !backupConfig.DataOnly {
 		restorePredata()
@@ -127,21 +136,17 @@ func DoRestore() {
 }
 
 func createDatabase() {
-	globalFilename := globalCluster.GetGlobalFilePath()
 	logger.Info("Creating database")
-	globalFile := utils.MustOpenFileForReaderAt(globalFilename)
-	statements := globalTOC.GetSQLStatementForObjectTypes(globalTOC.GlobalEntries, globalFile, "SESSION GUCS", "DATABASE GUC", "DATABASE", "DATABASE METADATA")
-	for _, statement := range statements {
-		_, err := connection.Exec(statement)
-		utils.CheckError(err)
-	}
+	statements := GetGlobalStatements("SESSION GUCS", "DATABASE GUC", "DATABASE", "DATABASE METADATA")
+	connection.ExecuteAllStatements(statements)
 	logger.Info("Database creation complete")
 }
 
 func restoreGlobal() {
 	globalFilename := globalCluster.GetGlobalFilePath()
 	logger.Info("Restoring global database metadata from %s", globalFilename)
-	utils.ExecuteSQLFile(connection, globalFilename)
+	statements := GetGlobalStatements()
+	connection.ExecuteAllStatements(statements)
 	logger.Info("Global database metadata restore complete")
 }
 
@@ -178,11 +183,15 @@ func restoreStatistics() {
 }
 
 func DoTeardown() {
-	var err interface{}
-	if err = recover(); err != nil {
-		fmt.Println(err)
+	errStr := ""
+	if err := recover(); err != nil {
+		errStr := err.(string)
+		if strings.Contains(errStr, fmt.Sprintf(`Database "%s" does not exist`, connection.DBName)) {
+			errStr = fmt.Sprintf(`%s.  Use the --createdb flag to create "%s" as part of the restore process.`, errStr, connection.DBName)
+		}
+		fmt.Println(errStr)
 	}
-	_, exitCode := utils.ParseErrorMessage(err)
+	_, exitCode := utils.ParseErrorMessage(errStr)
 	if connection != nil {
 		connection.Close()
 	}

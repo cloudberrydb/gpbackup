@@ -37,11 +37,10 @@ type Report struct {
 	BackupConfig
 }
 
-func ParseErrorMessage(err interface{}) (string, int) {
-	if err == nil {
+func ParseErrorMessage(errStr string) (string, int) {
+	if errStr == "" {
 		return "", 0
 	}
-	errStr := err.(string)
 	errLevelStr := "[CRITICAL]:-"
 	headerIndex := strings.Index(errStr, errLevelStr)
 	errMsg := errStr[headerIndex+len(errLevelStr):]

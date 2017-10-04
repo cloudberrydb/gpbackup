@@ -16,14 +16,13 @@ import (
 var _ = Describe("utils/report tests", func() {
 	Describe("ParseErrorMessage", func() {
 		It("Parses a CRITICAL error message and returns error code 1", func() {
-			var err interface{}
-			err = "testProgram:testUser:testHost:000000-[CRITICAL]:-Error Message"
-			errMsg, exitCode := utils.ParseErrorMessage(err)
+			errStr := "testProgram:testUser:testHost:000000-[CRITICAL]:-Error Message"
+			errMsg, exitCode := utils.ParseErrorMessage(errStr)
 			Expect(errMsg).To(Equal("Error Message"))
 			Expect(exitCode).To(Equal(1))
 		})
 		It("Returns error code 0 for an empty error message", func() {
-			errMsg, exitCode := utils.ParseErrorMessage(nil)
+			errMsg, exitCode := utils.ParseErrorMessage("")
 			Expect(errMsg).To(Equal(""))
 			Expect(exitCode).To(Equal(0))
 		})

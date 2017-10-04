@@ -197,8 +197,6 @@ func backupPredata(tables []Relation, tableDefs map[uint32]TableDefinition, obje
 	predataFile := utils.NewFileWithByteCountFromFile(predataFilename)
 	defer predataFile.Close()
 
-	PrintConnectionString(predataFile, connection.DBName)
-
 	BackupPredataSessionGUCs(predataFile)
 	BackupSchemas(predataFile, objectCounts)
 
@@ -254,8 +252,6 @@ func backupTablePredata(tables []Relation, tableDefs map[uint32]TableDefinition,
 	predataFile := utils.NewFileWithByteCountFromFile(predataFilename)
 	defer predataFile.Close()
 
-	PrintConnectionString(predataFile, connection.DBName)
-
 	BackupPredataSessionGUCs(predataFile)
 
 	relationMetadata := GetMetadataForObjectType(connection, TYPE_RELATION)
@@ -280,8 +276,6 @@ func backupPostdata(objectCounts map[string]int) {
 	postdataFile := utils.NewFileWithByteCountFromFile(postdataFilename)
 	defer postdataFile.Close()
 
-	PrintConnectionString(postdataFile, connection.DBName)
-
 	BackupPostdataSessionGUCs(postdataFile)
 	BackupIndexes(postdataFile, objectCounts)
 	BackupRules(postdataFile, objectCounts)
@@ -302,7 +296,7 @@ func DoTeardown() {
 	if err = recover(); err != nil {
 		fmt.Println(err)
 	}
-	errMsg, exitCode := utils.ParseErrorMessage(err)
+	errMsg, exitCode := utils.ParseErrorMessage(err.(string))
 	if connection != nil {
 		connection.Close()
 	}

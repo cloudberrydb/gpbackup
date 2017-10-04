@@ -103,9 +103,9 @@ func (dbconn *DBConn) Connect() {
 	if err != nil {
 		if strings.Contains(err.Error(), "does not exist") {
 			if strings.Contains(err.Error(), "pq: role") {
-				logger.Fatal(errors.Errorf("Role \"%s\" does not exist, exiting", dbconn.User), "")
+				logger.Fatal(errors.Errorf(`Role "%s" does not exist, exiting`, dbconn.User), "")
 			} else if strings.Contains(err.Error(), "pq: database") {
-				logger.Fatal(errors.Errorf("Database \"%s\" does not exist, exiting", dbconn.DBName), "")
+				logger.Fatal(errors.Errorf(`Database "%s" does not exist, exiting`, dbconn.DBName), "")
 			}
 		} else if strings.Contains(err.Error(), "connection refused") {
 			logger.Fatal(errors.Errorf(`could not connect to server: Connection refused
@@ -165,5 +165,12 @@ func (dbconn *DBConn) validateGPDBVersionCompatibility() {
 		logger.Fatal(errors.Errorf(`GPDB version %s is not supported. Please upgrade to GPDB %s.0 or later.`, dbconn.Version.VersionString, MINIMUM_GPDB4_VERSION), "")
 	} else if dbconn.Version.Is("5") && dbconn.Version.Before(MINIMUM_GPDB5_VERSION) {
 		logger.Fatal(errors.Errorf(`GPDB version %s is not supported. Please upgrade to GPDB %s or later.`, dbconn.Version.VersionString, MINIMUM_GPDB5_VERSION), "")
+	}
+}
+
+func (dbconn *DBConn) ExecuteAllStatements(statements []StatementWithType) {
+	for _, statement := range statements {
+		_, err := dbconn.Exec(statement.Statement)
+		CheckError(err)
 	}
 }
