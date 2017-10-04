@@ -292,11 +292,12 @@ func backupStatistics(tables []Relation) {
 }
 
 func DoTeardown() {
-	var err interface{}
-	if err = recover(); err != nil {
+	errStr := ""
+	if err := recover(); err != nil {
+		errStr = err.(string)
 		fmt.Println(err)
 	}
-	errMsg, exitCode := utils.ParseErrorMessage(err.(string))
+	errMsg, exitCode := utils.ParseErrorMessage(errStr)
 	if connection != nil {
 		connection.Close()
 	}
