@@ -1,8 +1,10 @@
 package utils
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
+	"regexp"
 
 	yaml "gopkg.in/yaml.v2"
 )
@@ -74,6 +76,19 @@ func (toc *TOC) GetAllSQLStatements(entries []MetadataEntry, metadataFile io.Rea
 		_, err := metadataFile.ReadAt(contents, int64(entry.StartByte))
 		CheckError(err)
 		statements = append(statements, StatementWithType{ObjectType: entry.ObjectType, Statement: string(contents)})
+	}
+	return statements
+}
+
+func SubstituteRedirectDatabaseInStatements(statements []StatementWithType, oldName string, newName string) []StatementWithType {
+	shouldReplace := map[string]bool{"DATABASE GUC": true, "DATABASE": true, "DATABASE METADATA": true}
+	originalDatabase := regexp.QuoteMeta(QuoteIdent(oldName))
+	newDatabase := QuoteIdent(newName)
+	pattern := regexp.MustCompile(fmt.Sprintf("DATABASE %s(;| OWNER| SET)", originalDatabase))
+	for i := range statements {
+		if shouldReplace[statements[i].ObjectType] {
+			statements[i].Statement = pattern.ReplaceAllString(statements[i].Statement, fmt.Sprintf("DATABASE %s$1", newDatabase))
+		}
 	}
 	return statements
 }

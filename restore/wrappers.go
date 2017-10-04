@@ -1,9 +1,6 @@
 package restore
 
 import (
-	"fmt"
-	"regexp"
-
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
@@ -47,18 +44,6 @@ func InitializeBackupConfig() {
 	utils.EnsureDatabaseVersionCompatibility(backupConfig.DatabaseVersion, connection.Version)
 }
 
-func SubstituteRedirectDatabaseInStatements(statements []utils.StatementWithType) []utils.StatementWithType {
-	shouldReplace := map[string]bool{"SESSION GUCS": true, "DATABASE GUC": true, "DATABASE": true, "DATABASE METADATA": true}
-	originalDatabase := regexp.QuoteMeta(backupConfig.DatabaseName)
-	pattern := regexp.MustCompile(fmt.Sprintf("DATABASE %s(;| OWNER| SET)", originalDatabase))
-	for i := range statements {
-		if shouldReplace[statements[i].ObjectType] {
-			statements[i].Statement = pattern.ReplaceAllString(statements[i].Statement, fmt.Sprintf("DATABASE %s$1", *redirect))
-		}
-	}
-	return statements
-}
-
 func GetGlobalStatements(objectTypes ...string) []utils.StatementWithType {
 	globalFilename := globalCluster.GetGlobalFilePath()
 	globalFile := utils.MustOpenFileForReaderAt(globalFilename)
@@ -69,7 +54,7 @@ func GetGlobalStatements(objectTypes ...string) []utils.StatementWithType {
 		statements = globalTOC.GetAllSQLStatements(globalTOC.GlobalEntries, globalFile)
 	}
 	if *redirect != "" {
-		statements = SubstituteRedirectDatabaseInStatements(statements)
+		statements = utils.SubstituteRedirectDatabaseInStatements(statements, backupConfig.DatabaseName, *redirect)
 	}
 	return statements
 }
