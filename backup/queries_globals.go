@@ -48,8 +48,13 @@ ON d.dattablespace = t.oid;`
 	return results
 }
 func GetDatabaseGUCs(connection *utils.DBConn) []string {
+	//We do not want to quote list type config settings such as search_path and DateStyle
 	query := fmt.Sprintf(`
-SELECT ('SET ' || option_name || ' TO ' || option_value) AS string
+SELECT CASE
+	WHEN option_name='search_path' OR option_name = 'DateStyle'
+	THEN ('SET ' || option_name || ' TO ' || option_value)
+	ELSE ('SET ' || option_name || ' TO ' || quote_ident(option_value))
+END AS string
 FROM pg_options_to_table(
 	(SELECT datconfig FROM pg_database WHERE datname = '%s')
 );`, connection.DBName)
