@@ -208,6 +208,42 @@ public."bar%baz"`)
 			utils.MustPrintln(os.Stdin, "text")
 		})
 	})
+	Describe("Close", func() {
+		var file *utils.FileWithByteCount
+		var wasCalled bool
+		BeforeEach(func() {
+			wasCalled = false
+			utils.System.Chmod = func(name string, mode os.FileMode) error {
+				wasCalled = true
+				return nil
+			}
+			utils.System.OpenFileWrite = func(name string, flag int, perm os.FileMode) (io.WriteCloser, error) {
+				return &os.File{}, nil
+			}
+		})
+		AfterEach(func() {
+			utils.System.OpenFileWrite = utils.OpenFileWrite
+		})
+		It("does nothing if the FileWithByteCount's closer is nil", func() {
+			file = utils.NewFileWithByteCount(buffer)
+			file.Close()
+			file.MustPrintf("message")
+		})
+		It("closes the FileWithByteCount if it has no filename", func() {
+			file = utils.NewFileWithByteCountFromFile("")
+			file.Close()
+			Expect(wasCalled).To(BeFalse())
+			defer testutils.ShouldPanicWithMessage("invalid memory address or nil pointer dereference")
+			file.MustPrintf("message")
+		})
+		It("closes the FileWithByteCount and makes it read-only if it has a filename", func() {
+			file = utils.NewFileWithByteCountFromFile("testfile")
+			file.Close()
+			Expect(wasCalled).To(BeTrue())
+			defer testutils.ShouldPanicWithMessage("invalid memory address or nil pointer dereference")
+			file.MustPrintf("message")
+		})
+	})
 	Describe("CreateBackupLockFile", func() {
 		It("Does not panic if lock file does not exist for current timestamp", func() {
 			utils.System.OpenFileWrite = func(name string, flag int, perm os.FileMode) (io.WriteCloser, error) {

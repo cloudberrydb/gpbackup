@@ -1,6 +1,7 @@
 package utils_test
 
 import (
+	"io"
 	"os"
 
 	"github.com/blang/semver"
@@ -40,9 +41,14 @@ var _ = Describe("utils/report tests", func() {
 			BackupConfig: config,
 		}
 		objectCounts := map[string]int{"tables": 42, "sequences": 1, "types": 1000}
+		BeforeEach(func() {
+			utils.System.OpenFileWrite = func(name string, flag int, perm os.FileMode) (io.WriteCloser, error) {
+				return buffer, nil
+			}
+		})
 
 		It("writes a report for a successful backup", func() {
-			backupReport.WriteReportFile(buffer, timestamp, objectCounts, "")
+			backupReport.WriteReportFile("filename", timestamp, objectCounts, "")
 			Expect(buffer).To(gbytes.Say(`Greenplum Database Backup Report
 
 Timestamp Key: 20170101010101
@@ -61,7 +67,7 @@ tables                       42
 types                        1000`))
 		})
 		It("writes a report for a failed backup", func() {
-			backupReport.WriteReportFile(buffer, timestamp, objectCounts, "Cannot access /tmp/backups: Permission denied")
+			backupReport.WriteReportFile("filename", timestamp, objectCounts, "Cannot access /tmp/backups: Permission denied")
 			Expect(buffer).To(gbytes.Say(`Greenplum Database Backup Report
 
 Timestamp Key: 20170101010101

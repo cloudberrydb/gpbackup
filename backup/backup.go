@@ -304,10 +304,10 @@ func DoTeardown() {
 
 	// Only create a report file if we fail after the cluster is initialized
 	if globalCluster.Timestamp != "" {
-		reportFile := utils.MustOpenFileForWriting(globalCluster.GetReportFilePath())
-		configFile := utils.MustOpenFileForWriting(globalCluster.GetConfigFilePath())
-		backupReport.WriteReportFile(reportFile, globalCluster.Timestamp, objectCounts, errMsg)
-		backupReport.WriteConfigFile(configFile)
+		reportFilename := globalCluster.GetReportFilePath()
+		configFilename := globalCluster.GetConfigFilePath()
+		backupReport.WriteReportFile(reportFilename, globalCluster.Timestamp, objectCounts, errMsg)
+		backupReport.WriteConfigFile(configFilename)
 		utils.EmailReport(globalCluster)
 		// We sleep for 1 second to ensure multiple backups do not start within the same second.
 		time.Sleep(1000 * time.Millisecond)

@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"regexp"
@@ -85,13 +84,17 @@ func ReadConfigFile(filename string) *BackupConfig {
 	return config
 }
 
-func (report *Report) WriteConfigFile(configFile io.Writer) {
+func (report *Report) WriteConfigFile(configFilename string) {
+	configFile := MustOpenFileForWriting(configFilename)
+	defer System.Chmod(configFilename, 0444)
 	config := report.BackupConfig
 	configContents, _ := yaml.Marshal(config)
 	MustPrintBytes(configFile, configContents)
 }
 
-func (report *Report) WriteReportFile(reportFile io.Writer, timestamp string, objectCounts map[string]int, errMsg string) {
+func (report *Report) WriteReportFile(reportFilename string, timestamp string, objectCounts map[string]int, errMsg string) {
+	reportFile := MustOpenFileForWriting(reportFilename)
+	defer System.Chmod(reportFilename, 0444)
 	reportFileTemplate := `Greenplum Database Backup Report
 
 Timestamp Key: %s

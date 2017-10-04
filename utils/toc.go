@@ -42,6 +42,7 @@ func NewTOC(filename string) *TOC {
 }
 
 func (toc *TOC) WriteToFile(filename string) {
+	defer System.Chmod(filename, 0444)
 	tocFile := MustOpenFileForWriting(filename)
 	tocContents, _ := yaml.Marshal(toc)
 	MustPrintBytes(tocFile, tocContents)
