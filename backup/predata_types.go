@@ -27,7 +27,7 @@ func PrintCreateShellTypeStatements(predataFile *utils.FileWithByteCount, toc *u
 		if typ.Type == "b" || typ.Type == "p" {
 			typeFQN := utils.MakeFQN(typ.TypeSchema, typ.TypeName)
 			predataFile.MustPrintf("CREATE TYPE %s;\n", typeFQN)
-			toc.AddPredataEntry(typ.TypeSchema, typ.TypeName, "TYPE", start, predataFile.ByteCount)
+			toc.AddMetadataEntry(typ.TypeSchema, typ.TypeName, "TYPE", start, predataFile)
 			start = predataFile.ByteCount
 		}
 	}
@@ -48,7 +48,7 @@ func PrintCreateDomainStatement(predataFile *utils.FileWithByteCount, toc *utils
 	}
 	predataFile.MustPrintln(";")
 	PrintObjectMetadata(predataFile, typeMetadata, typeFQN, "DOMAIN")
-	toc.AddPredataEntry(domain.TypeSchema, domain.TypeName, "DOMAIN", start, predataFile.ByteCount)
+	toc.AddMetadataEntry(domain.TypeSchema, domain.TypeName, "DOMAIN", start, predataFile)
 }
 
 func PrintCreateBaseTypeStatement(predataFile *utils.FileWithByteCount, toc *utils.TOC, base Type, typeMetadata ObjectMetadata) {
@@ -111,7 +111,7 @@ func PrintCreateBaseTypeStatement(predataFile *utils.FileWithByteCount, toc *uti
 	}
 	predataFile.MustPrintln("\n);")
 	PrintObjectMetadata(predataFile, typeMetadata, typeFQN, "TYPE")
-	toc.AddPredataEntry(base.TypeSchema, base.TypeName, "TYPE", start, predataFile.ByteCount)
+	toc.AddMetadataEntry(base.TypeSchema, base.TypeName, "TYPE", start, predataFile)
 }
 
 type CompositeType struct {
@@ -169,7 +169,7 @@ func PrintCreateCompositeTypeStatement(predataFile *utils.FileWithByteCount, toc
 	predataFile.MustPrintln(strings.Join(atts, ",\n"))
 	predataFile.MustPrintf(");")
 	PrintObjectMetadata(predataFile, typeMetadata, typeFQN, "TYPE")
-	toc.AddPredataEntry(composite.TypeSchema, composite.TypeName, "TYPE", start, predataFile.ByteCount)
+	toc.AddMetadataEntry(composite.TypeSchema, composite.TypeName, "TYPE", start, predataFile)
 }
 
 func PrintCreateEnumTypeStatements(predataFile *utils.FileWithByteCount, toc *utils.TOC, enums []Type, typeMetadata MetadataMap) {
@@ -178,6 +178,6 @@ func PrintCreateEnumTypeStatements(predataFile *utils.FileWithByteCount, toc *ut
 		typeFQN := utils.MakeFQN(enum.TypeSchema, enum.TypeName)
 		predataFile.MustPrintf("\n\nCREATE TYPE %s AS ENUM (\n\t%s\n);\n", typeFQN, enum.EnumLabels)
 		PrintObjectMetadata(predataFile, typeMetadata[enum.Oid], typeFQN, "TYPE")
-		toc.AddPredataEntry(enum.TypeSchema, enum.TypeName, "TYPE", start, predataFile.ByteCount)
+		toc.AddMetadataEntry(enum.TypeSchema, enum.TypeName, "TYPE", start, predataFile)
 	}
 }

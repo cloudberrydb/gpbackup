@@ -3,18 +3,13 @@ package backup_test
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 )
 
 var _ = Describe("backup/predata_textsearch tests", func() {
-	var toc *utils.TOC
-	var backupfile *utils.FileWithByteCount
-
 	BeforeEach(func() {
-		toc = &utils.TOC{}
-		backupfile = utils.NewFileWithByteCount(buffer)
+		toc, backupfile = testutils.InitializeTestTOC(buffer, "predata")
 	})
 	Describe("PrintCreateTextSearchParserStatements", func() {
 		It("prints a basic text search parser", func() {

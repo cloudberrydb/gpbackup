@@ -57,7 +57,7 @@ CREATE OPERATOR %s (
 );`, operatorFQN, operator.ProcedureName, strings.Join(optionalFields, ",\n\t"))
 		operatorStr := fmt.Sprintf("%s (%s, %s)", operatorFQN, leftArg, rightArg)
 		PrintObjectMetadata(predataFile, operatorMetadata[operator.Oid], operatorStr, "OPERATOR")
-		toc.AddPredataEntry(operator.SchemaName, operator.Name, "OPERATOR", start, predataFile.ByteCount)
+		toc.AddMetadataEntry(operator.SchemaName, operator.Name, "OPERATOR", start, predataFile)
 	}
 }
 
@@ -72,7 +72,7 @@ func PrintCreateOperatorFamilyStatements(predataFile *utils.FileWithByteCount, t
 		operatorFamilyStr := fmt.Sprintf("%s USING %s", operatorFamilyFQN, utils.QuoteIdent(operatorFamily.IndexMethod))
 		predataFile.MustPrintf("\n\nCREATE OPERATOR FAMILY %s;", operatorFamilyStr)
 		PrintObjectMetadata(predataFile, operatorFamilyMetadata[operatorFamily.Oid], operatorFamilyStr, "OPERATOR FAMILY")
-		toc.AddPredataEntry(operatorFamily.SchemaName, operatorFamily.Name, "OPERATOR FAMILY", start, predataFile.ByteCount)
+		toc.AddMetadataEntry(operatorFamily.SchemaName, operatorFamily.Name, "OPERATOR FAMILY", start, predataFile)
 	}
 }
 
@@ -117,6 +117,6 @@ func PrintCreateOperatorClassStatements(predataFile *utils.FileWithByteCount, to
 
 		operatorClassStr := fmt.Sprintf("%s USING %s", operatorClassFQN, utils.QuoteIdent(operatorClass.IndexMethod))
 		PrintObjectMetadata(predataFile, operatorClassMetadata[operatorClass.Oid], operatorClassStr, "OPERATOR CLASS")
-		toc.AddPredataEntry(operatorClass.ClassSchema, operatorClass.ClassName, "OPERATOR CLASS", start, predataFile.ByteCount)
+		toc.AddMetadataEntry(operatorClass.ClassSchema, operatorClass.ClassName, "OPERATOR CLASS", start, predataFile)
 	}
 }

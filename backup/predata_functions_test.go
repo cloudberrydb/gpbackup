@@ -3,18 +3,14 @@ package backup_test
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("backup/predata_functions tests", func() {
-	var toc *utils.TOC
-	var backupfile *utils.FileWithByteCount
 	BeforeEach(func() {
-		toc = &utils.TOC{}
-		backupfile = utils.NewFileWithByteCount(buffer)
+		toc, backupfile = testutils.InitializeTestTOC(buffer, "predata")
 	})
 	Describe("Functions involved in printing CREATE FUNCTION statements", func() {
 		var funcDef backup.Function
@@ -436,7 +432,6 @@ COMMENT ON CAST (src AS dst) IS 'This is a cast comment.';`)
 		})
 	})
 	Describe("PrintCreateLanguageStatements", func() {
-
 		plUntrustedHandlerOnly := backup.ProceduralLanguage{Oid: 1, Name: "plpythonu", Owner: "testrole", IsPl: true, PlTrusted: false, Handler: 4, Inline: 0, Validator: 0}
 		plAllFields := backup.ProceduralLanguage{Oid: 1, Name: "plpgsql", Owner: "testrole", IsPl: true, PlTrusted: true, Handler: 1, Inline: 2, Validator: 3}
 		plComment := backup.ProceduralLanguage{Oid: 1, Name: "plpythonu", Owner: "testrole", IsPl: true, PlTrusted: false, Handler: 4, Inline: 0, Validator: 0}

@@ -16,7 +16,7 @@ import (
 func PrintStatisticsStatements(statisticsFile *utils.FileWithByteCount, toc *utils.TOC, tables []Relation, attStats map[uint32][]AttributeStatistic, tupleStats map[uint32]TupleStatistic) {
 	start := statisticsFile.ByteCount
 	statisticsFile.MustPrintf(`SET allow_system_table_mods="DML";`)
-	toc.AddStatisticsEntry("", "", "STATISTICS GUC", start, statisticsFile.ByteCount)
+	toc.AddMetadataEntry("", "", "STATISTICS GUC", start, statisticsFile)
 	for _, table := range tables {
 		PrintStatisticsStatementsForTable(statisticsFile, toc, table, attStats[table.RelationOid], tupleStats[table.RelationOid])
 	}
@@ -30,7 +30,7 @@ func PrintStatisticsStatementsForTable(statisticsFile *utils.FileWithByteCount, 
 		attributeQuery := GenerateAttributeStatisticsQuery(table, attStat)
 		statisticsFile.MustPrintf("\n\n%s\n", attributeQuery)
 	}
-	toc.AddStatisticsEntry(table.SchemaName, table.RelationName, "STATISTICS", start, statisticsFile.ByteCount)
+	toc.AddMetadataEntry(table.SchemaName, table.RelationName, "STATISTICS", start, statisticsFile)
 }
 
 func GenerateTupleStatisticsQuery(table Relation, tupleStat TupleStatistic) string {

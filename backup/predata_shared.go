@@ -74,7 +74,7 @@ func PrintConstraintStatements(predataFile *utils.FileWithByteCount, toc *utils.
 		conName := utils.QuoteIdent(constraint.ConName)
 		predataFile.MustPrintf(alterStr, objStr, constraint.OwningObject, conName, constraint.ConDef)
 		PrintObjectMetadata(predataFile, conMetadata[constraint.Oid], conName, "CONSTRAINT", constraint.OwningObject)
-		toc.AddPredataEntry("", constraint.ConName, "CONSTRAINT", start, predataFile.ByteCount)
+		toc.AddMetadataEntry("", constraint.ConName, "CONSTRAINT", start, predataFile)
 	}
 }
 
@@ -86,7 +86,7 @@ func PrintCreateSchemaStatements(backupfile *utils.FileWithByteCount, toc *utils
 			backupfile.MustPrintf("\nCREATE SCHEMA %s;", schema.ToString())
 		}
 		PrintObjectMetadata(backupfile, schemaMetadata[schema.Oid], schema.ToString(), "SCHEMA")
-		toc.AddPredataEntry("", schema.Name, "SCHEMA", start, backupfile.ByteCount)
+		toc.AddMetadataEntry("", schema.Name, "SCHEMA", start, backupfile)
 	}
 }
 

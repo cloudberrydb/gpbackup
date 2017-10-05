@@ -164,27 +164,9 @@ PARTITION BY RANGE (year)
 	})
 	Describe("GUC-printing functions", func() {
 		gucs := backup.SessionGUCs{ClientEncoding: "UTF8", DefaultWithOids: "off"}
-		Describe("PrintPredataSessionGUCs", func() {
+		Describe("PrintSessionGUCs", func() {
 			It("prints the default session GUCs", func() {
-				backup.PrintPredataSessionGUCs(backupfile, &toc, gucs)
-
-				//We just want to check that these queries run successfully, no setup required
-				testutils.AssertQueryRuns(connection, buffer.String())
-			})
-
-		})
-		Describe("PrintPostdataSessionGUCs", func() {
-			It("prints the default session GUCs", func() {
-				backup.PrintPostdataSessionGUCs(backupfile, &toc, gucs)
-
-				//We just want to check that these queries run successfully, no setup required
-				testutils.AssertQueryRuns(connection, buffer.String())
-			})
-
-		})
-		Describe("PrintGlobalSessionGUCs", func() {
-			It("prints the default session GUCs", func() {
-				backup.PrintGlobalSessionGUCs(backupfile, &toc, gucs)
+				backup.PrintSessionGUCs(backupfile, &toc, gucs)
 
 				//We just want to check that these queries run successfully, no setup required
 				testutils.AssertQueryRuns(connection, buffer.String())

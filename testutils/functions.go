@@ -366,3 +366,11 @@ func SkipIfNot4(dbconn *utils.DBConn) {
 		Skip("Test only applicable to GPDB4")
 	}
 }
+
+func InitializeTestTOC(buffer *gbytes.Buffer, which string) (*utils.TOC, *utils.FileWithByteCount) {
+	toc := &utils.TOC{}
+	toc.InitializeEntryMap("global", "predata", "postdata", "statistics")
+	backupfile := utils.NewFileWithByteCount(buffer)
+	backupfile.Filename = which
+	return toc, backupfile
+}

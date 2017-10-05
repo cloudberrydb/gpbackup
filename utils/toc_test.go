@@ -17,13 +17,18 @@ var _ = Describe("utils/toc tests", func() {
 	role1Len := uint64(len(role1.Statement))
 	role2 := utils.StatementWithType{"ROLE", "CREATE ROLE somerole2;\n"}
 	role2Len := uint64(len(role2.Statement))
+	var toc utils.TOC
+	var globalCount *utils.FileWithByteCount
+	BeforeEach(func() {
+		toc = utils.TOC{}
+		toc.InitializeEntryMap("buffer", "", "", "")
+		globalCount = utils.NewFileWithByteCount(buffer)
+		globalCount.Filename = "buffer"
+	})
 	Context("GetSqlStatementForObjectTypes", func() {
-		var toc utils.TOC
-		BeforeEach(func() {
-			toc = utils.TOC{}
-		})
 		It("returns statement for a single object type", func() {
-			toc.AddGlobalEntry("", "somedatabase", "DATABASE", commentLen, commentLen+createLen)
+			globalCount.ByteCount = commentLen + createLen
+			toc.AddMetadataEntry("", "somedatabase", "DATABASE", commentLen, globalCount)
 
 			globalFile := bytes.NewReader([]byte(comment.Statement + create.Statement))
 			statements := toc.GetSQLStatementForObjectTypes(toc.GlobalEntries, globalFile, "DATABASE")
@@ -31,9 +36,12 @@ var _ = Describe("utils/toc tests", func() {
 			Expect(statements).To(Equal([]utils.StatementWithType{create}))
 		})
 		It("returns statement for a multiple object types", func() {
-			toc.AddGlobalEntry("", "somedatabase", "DATABASE", commentLen, commentLen+createLen)
-			toc.AddGlobalEntry("", "somerole1", "ROLE", commentLen+createLen, commentLen+createLen+role1Len)
-			toc.AddGlobalEntry("", "somerole2", "ROLE", commentLen+createLen+role1Len, commentLen+createLen+role1Len+role2Len)
+			globalCount.ByteCount = commentLen + createLen
+			toc.AddMetadataEntry("", "somedatabase", "DATABASE", commentLen, globalCount)
+			globalCount.ByteCount += role1Len
+			toc.AddMetadataEntry("", "somerole1", "ROLE", commentLen+createLen, globalCount)
+			globalCount.ByteCount += role2Len
+			toc.AddMetadataEntry("", "somerole2", "ROLE", commentLen+createLen+role1Len, globalCount)
 
 			globalFile := bytes.NewReader([]byte(comment.Statement + create.Statement + role1.Statement + role2.Statement))
 			statements := toc.GetSQLStatementForObjectTypes(toc.GlobalEntries, globalFile, "DATABASE", "ROLE")
@@ -41,7 +49,8 @@ var _ = Describe("utils/toc tests", func() {
 			Expect(statements).To(Equal([]utils.StatementWithType{create, role1, role2}))
 		})
 		It("returns empty statement when no object types are found", func() {
-			toc.AddGlobalEntry("", "somedatabase", "DATABASE", commentLen, commentLen+createLen)
+			globalCount.ByteCount = commentLen + createLen
+			toc.AddMetadataEntry("", "somedatabase", "DATABASE", commentLen, globalCount)
 
 			globalFile := bytes.NewReader([]byte(comment.Statement + create.Statement))
 			statements := toc.GetSQLStatementForObjectTypes(toc.GlobalEntries, globalFile, "TABLE")
@@ -50,12 +59,9 @@ var _ = Describe("utils/toc tests", func() {
 		})
 	})
 	Context("GetAllSqlStatements", func() {
-		var toc utils.TOC
-		BeforeEach(func() {
-			toc = utils.TOC{}
-		})
 		It("returns statement for a single object type", func() {
-			toc.AddGlobalEntry("", "somedatabase", "DATABASE", 0, createLen)
+			globalCount.ByteCount = createLen
+			toc.AddMetadataEntry("", "somedatabase", "DATABASE", 0, globalCount)
 
 			globalFile := bytes.NewReader([]byte(create.Statement))
 			statements := toc.GetAllSQLStatements(toc.GlobalEntries, globalFile)
@@ -63,9 +69,12 @@ var _ = Describe("utils/toc tests", func() {
 			Expect(statements).To(Equal([]utils.StatementWithType{create}))
 		})
 		It("returns statement for a multiple object types", func() {
-			toc.AddGlobalEntry("", "somedatabase", "DATABASE", 0, createLen)
-			toc.AddGlobalEntry("", "somerole1", "ROLE", createLen, createLen+role1Len)
-			toc.AddGlobalEntry("", "somerole2", "ROLE", createLen+role1Len, createLen+role1Len+role2Len)
+			globalCount.ByteCount = createLen
+			toc.AddMetadataEntry("", "somedatabase", "DATABASE", 0, globalCount)
+			globalCount.ByteCount += role1Len
+			toc.AddMetadataEntry("", "somerole1", "ROLE", createLen, globalCount)
+			globalCount.ByteCount += role2Len
+			toc.AddMetadataEntry("", "somerole2", "ROLE", createLen+role1Len, globalCount)
 
 			globalFile := bytes.NewReader([]byte(create.Statement + role1.Statement + role2.Statement))
 			statements := toc.GetAllSQLStatements(toc.GlobalEntries, globalFile)

@@ -25,7 +25,7 @@ func PrintCreateFunctionStatement(predataFile *utils.FileWithByteCount, toc *uti
 	nameStr := fmt.Sprintf("%s(%s)", funcFQN, funcDef.IdentArgs)
 	nameWithArgs := fmt.Sprintf("%s(%s)", funcDef.FunctionName, funcDef.IdentArgs)
 	PrintObjectMetadata(predataFile, funcMetadata, nameStr, "FUNCTION")
-	toc.AddPredataEntry(funcDef.SchemaName, nameWithArgs, "FUNCTION", start, predataFile.ByteCount)
+	toc.AddMetadataEntry(funcDef.SchemaName, nameWithArgs, "FUNCTION", start, predataFile)
 }
 
 /*
@@ -120,7 +120,7 @@ func PrintCreateAggregateStatements(predataFile *utils.FileWithByteCount, toc *u
 		aggFQN = fmt.Sprintf("%s(%s)", aggFQN, identArgumentsStr)
 		aggWithArgs := fmt.Sprintf("%s(%s)", aggDef.AggregateName, identArgumentsStr)
 		PrintObjectMetadata(predataFile, aggMetadata[aggDef.Oid], aggFQN, "AGGREGATE")
-		toc.AddPredataEntry(aggDef.SchemaName, aggWithArgs, "AGGREGATE", start, predataFile.ByteCount)
+		toc.AddMetadataEntry(aggDef.SchemaName, aggWithArgs, "AGGREGATE", start, predataFile)
 	}
 }
 
@@ -144,7 +144,7 @@ func PrintCreateCastStatements(predataFile *utils.FileWithByteCount, toc *utils.
 		}
 		predataFile.MustPrintf(";")
 		PrintObjectMetadata(predataFile, castMetadata[castDef.Oid], castStr, "CAST")
-		toc.AddPredataEntry("pg_catalog", castStr, "CAST", start, predataFile.ByteCount)
+		toc.AddMetadataEntry("pg_catalog", castStr, "CAST", start, predataFile)
 	}
 }
 
@@ -208,7 +208,7 @@ func PrintCreateLanguageStatements(predataFile *utils.FileWithByteCount, toc *ut
 		}
 		PrintObjectMetadata(predataFile, procLangMetadata[procLang.Oid], utils.QuoteIdent(procLang.Name), "LANGUAGE")
 		predataFile.MustPrintln()
-		toc.AddPredataEntry("", procLang.Name, "PROCEDURAL LANGUAGE", start, predataFile.ByteCount)
+		toc.AddMetadataEntry("", procLang.Name, "PROCEDURAL LANGUAGE", start, predataFile)
 	}
 }
 
@@ -224,6 +224,6 @@ func PrintCreateConversionStatements(predataFile *utils.FileWithByteCount, toc *
 			defaultStr, convFQN, conversion.ForEncoding, conversion.ToEncoding, conversion.ConversionFunction)
 		PrintObjectMetadata(predataFile, conversionMetadata[conversion.Oid], convFQN, "CONVERSION")
 		predataFile.MustPrintln()
-		toc.AddPredataEntry(conversion.Schema, conversion.Name, "CONVERSION", start, predataFile.ByteCount)
+		toc.AddMetadataEntry(conversion.Schema, conversion.Name, "CONVERSION", start, predataFile)
 	}
 }

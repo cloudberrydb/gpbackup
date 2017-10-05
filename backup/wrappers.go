@@ -1,6 +1,8 @@
 package backup
 
-import "github.com/greenplum-db/gpbackup/utils"
+import (
+	"github.com/greenplum-db/gpbackup/utils"
+)
 
 /*
  * This file contains wrapper functions that group together functions relating
@@ -47,6 +49,15 @@ func InitializeBackupReport() {
 	}
 	utils.InitializeCompressionParameters(!*noCompression)
 	backupReport.SetBackupTypeFromFlags(*dataOnly, *metadataOnly, *noCompression, includeSchemas, *withStats)
+}
+
+func InitializeTOC() {
+	globalTOC = &utils.TOC{}
+	globalFilename := globalCluster.GetGlobalFilePath()
+	predataFilename := globalCluster.GetPredataFilePath()
+	postdataFilename := globalCluster.GetPostdataFilePath()
+	statisticsFilename := globalCluster.GetStatisticsFilePath()
+	globalTOC.InitializeEntryMap(globalFilename, predataFilename, postdataFilename, statisticsFilename)
 }
 
 func InitializeFilterLists() {
@@ -99,15 +110,14 @@ func LogBackupInfo() {
 	logger.Info("Backup Type = %s", backupReport.BackupType)
 }
 
+func BackupSessionGUCs(postdataFile *utils.FileWithByteCount) {
+	gucs := GetSessionGUCs(connection)
+	PrintSessionGUCs(postdataFile, globalTOC, gucs)
+}
+
 /*
  * Global metadata wrapper functions
  */
-
-func BackupGlobalSessionGUCs(globalFile *utils.FileWithByteCount) {
-	logger.Verbose("Writing session GUCs to global file")
-	gucs := GetSessionGUCs(connection)
-	PrintGlobalSessionGUCs(globalFile, globalTOC, gucs)
-}
 
 func BackupTablespaces(globalFile *utils.FileWithByteCount, objectCounts map[string]int) {
 	logger.Verbose("Writing CREATE TABLESPACE statements to global file")
@@ -156,12 +166,6 @@ func BackupRoleGrants(globalFile *utils.FileWithByteCount, objectCounts map[stri
 /*
  * Predata wrapper functions
  */
-
-func BackupPredataSessionGUCs(predataFile *utils.FileWithByteCount) {
-	logger.Verbose("Writing session GUCs to predata file")
-	gucs := GetSessionGUCs(connection)
-	PrintPredataSessionGUCs(predataFile, globalTOC, gucs)
-}
 
 func BackupSchemas(predataFile *utils.FileWithByteCount, objectCounts map[string]int) {
 	logger.Verbose("Writing CREATE SCHEMA statements to predata file")
@@ -343,12 +347,6 @@ func BackupConstraints(predataFile *utils.FileWithByteCount, objectCounts map[st
  * Postdata wrapper functions
  */
 
-func BackupPostdataSessionGUCs(postdataFile *utils.FileWithByteCount) {
-	logger.Verbose("Writing session GUCs to postdata file")
-	gucs := GetSessionGUCs(connection)
-	PrintPostdataSessionGUCs(postdataFile, globalTOC, gucs)
-}
-
 func BackupIndexes(postdataFile *utils.FileWithByteCount, objectCounts map[string]int) {
 	logger.Verbose("Writing CREATE INDEX statements to postdata file")
 	indexNameMap := ConstructImplicitIndexNames(connection)
@@ -404,12 +402,6 @@ func BackupStatistics(statisticsFile *utils.FileWithByteCount, tables []Relation
 	attStats := GetAttributeStatistics(connection, tables)
 	tupleStats := GetTupleStatistics(connection, tables)
 
-	BackupStatisticsSessionGUCs(statisticsFile)
+	BackupSessionGUCs(statisticsFile)
 	PrintStatisticsStatements(statisticsFile, globalTOC, tables, attStats, tupleStats)
-}
-
-func BackupStatisticsSessionGUCs(statisticsFile *utils.FileWithByteCount) {
-	logger.Verbose("Writing session GUCs to statistics file")
-	gucs := GetSessionGUCs(connection)
-	PrintStatisticsSessionGUCs(statisticsFile, globalTOC, gucs)
 }

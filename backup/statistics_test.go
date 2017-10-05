@@ -3,7 +3,6 @@ package backup_test
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
 	"github.com/lib/pq"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -11,15 +10,12 @@ import (
 
 var _ = Describe("backup/statistics tests", func() {
 	Describe("PrintStatisticsStatementsForTable", func() {
-		var toc *utils.TOC
-		var backupfile *utils.FileWithByteCount
 		var attStats []backup.AttributeStatistic
 		var tupleStats backup.TupleStatistic
 		BeforeEach(func() {
-			toc = &utils.TOC{}
-			backupfile = utils.NewFileWithByteCount(buffer)
 			attStats = []backup.AttributeStatistic{}
 			tupleStats = backup.TupleStatistic{}
+			toc, backupfile = testutils.InitializeTestTOC(buffer, "statistics")
 		})
 		It("prints tuple and attribute stats for single table with no stats", func() {
 			tableTestTable := backup.BasicRelation("testschema", "testtable")

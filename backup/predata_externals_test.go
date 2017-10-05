@@ -3,7 +3,6 @@ package backup_test
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/ginkgo/extensions/table"
@@ -11,12 +10,6 @@ import (
 )
 
 var _ = Describe("backup/predata_externals tests", func() {
-	var toc *utils.TOC
-	var backupfile *utils.FileWithByteCount
-	BeforeEach(func() {
-		toc = &utils.TOC{}
-		backupfile = utils.NewFileWithByteCount(buffer)
-	})
 	testTable := backup.BasicRelation("public", "tablename")
 
 	distRandom := "DISTRIBUTED RANDOMLY"
@@ -28,6 +21,9 @@ var _ = Describe("backup/predata_externals tests", func() {
 	colDefsEmpty := []backup.ColumnDefinition{}
 	extTableEmpty := backup.ExternalTableDefinition{Oid: 0, Type: -2, Protocol: -2, ExecLocation: "ALL_SEGMENTS", FormatType: "t", RejectLimit: 0, Encoding: "UTF-8", Writable: false, URIs: nil}
 
+	BeforeEach(func() {
+		toc, backupfile = testutils.InitializeTestTOC(buffer, "predata")
+	})
 	Describe("DetermineExternalTableCharacteristics", func() {
 		var extTableDef backup.ExternalTableDefinition
 		BeforeEach(func() {

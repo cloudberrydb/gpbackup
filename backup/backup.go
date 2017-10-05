@@ -127,7 +127,7 @@ func DoSetup() {
 	utils.CreateBackupLockFile(timestamp)
 	globalCluster = utils.NewCluster(segConfig, *backupDir, timestamp)
 	globalCluster.CreateBackupDirectoriesOnAllHosts()
-	globalTOC = &utils.TOC{}
+	InitializeTOC()
 }
 
 /*
@@ -178,7 +178,7 @@ func backupGlobal(objectCounts map[string]int) {
 	globalFile := utils.NewFileWithByteCountFromFile(globalFilename)
 	defer globalFile.Close()
 
-	BackupGlobalSessionGUCs(globalFile)
+	BackupSessionGUCs(globalFile)
 	BackupTablespaces(globalFile, objectCounts)
 	BackupCreateDatabase(globalFile, objectCounts)
 	BackupDatabaseGUCs(globalFile, objectCounts)
@@ -197,7 +197,7 @@ func backupPredata(tables []Relation, tableDefs map[uint32]TableDefinition, obje
 	predataFile := utils.NewFileWithByteCountFromFile(predataFilename)
 	defer predataFile.Close()
 
-	BackupPredataSessionGUCs(predataFile)
+	BackupSessionGUCs(predataFile)
 	BackupSchemas(predataFile, objectCounts)
 
 	procLangs := GetProceduralLanguages(connection)
@@ -252,7 +252,7 @@ func backupTablePredata(tables []Relation, tableDefs map[uint32]TableDefinition,
 	predataFile := utils.NewFileWithByteCountFromFile(predataFilename)
 	defer predataFile.Close()
 
-	BackupPredataSessionGUCs(predataFile)
+	BackupSessionGUCs(predataFile)
 
 	relationMetadata := GetMetadataForObjectType(connection, TYPE_RELATION)
 
@@ -276,7 +276,7 @@ func backupPostdata(objectCounts map[string]int) {
 	postdataFile := utils.NewFileWithByteCountFromFile(postdataFilename)
 	defer postdataFile.Close()
 
-	BackupPostdataSessionGUCs(postdataFile)
+	BackupSessionGUCs(postdataFile)
 	BackupIndexes(postdataFile, objectCounts)
 	BackupRules(postdataFile, objectCounts)
 	BackupTriggers(postdataFile, objectCounts)
@@ -294,7 +294,7 @@ func backupStatistics(tables []Relation) {
 func DoTeardown() {
 	errStr := ""
 	if err := recover(); err != nil {
-		errStr = err.(string)
+		errStr = fmt.Sprintf("%v", err)
 		fmt.Println(err)
 	}
 	errMsg, exitCode := utils.ParseErrorMessage(errStr)

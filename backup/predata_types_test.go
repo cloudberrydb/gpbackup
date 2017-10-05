@@ -3,24 +3,19 @@ package backup_test
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("backup/predata_types tests", func() {
-	var toc *utils.TOC
-	var backupfile *utils.FileWithByteCount
-
 	typeMetadata := backup.ObjectMetadata{}
 	typeMetadataMap := backup.MetadataMap{}
 
 	BeforeEach(func() {
 		typeMetadata = backup.ObjectMetadata{}
 		typeMetadataMap = backup.MetadataMap{}
-		toc = &utils.TOC{}
-		backupfile = utils.NewFileWithByteCount(buffer)
+		toc, backupfile = testutils.InitializeTestTOC(buffer, "predata")
 	})
 	Describe("PrintCreateEnumTypeStatements", func() {
 		enumOne := backup.Type{Oid: 1, TypeSchema: "public", TypeName: "enum_type", Type: "e", EnumLabels: "'bar',\n\t'baz',\n\t'foo'"}

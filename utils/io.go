@@ -169,7 +169,7 @@ func ReadLinesFromFile(filename string) []string {
 }
 
 type FileWithByteCount struct {
-	filename  string
+	Filename  string
 	writer    io.Writer
 	closer    io.WriteCloser
 	ByteCount uint64
@@ -187,8 +187,8 @@ func NewFileWithByteCountFromFile(filename string) *FileWithByteCount {
 func (file *FileWithByteCount) Close() {
 	if file.closer != nil {
 		file.closer.Close()
-		if file.filename != "" {
-			System.Chmod(file.filename, 0444)
+		if file.Filename != "" {
+			System.Chmod(file.Filename, 0444)
 		}
 	}
 }

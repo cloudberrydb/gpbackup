@@ -3,17 +3,13 @@ package backup_test
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 )
 
 var _ = Describe("backup/predata_operators tests", func() {
-	var toc *utils.TOC
-	var backupfile *utils.FileWithByteCount
 	BeforeEach(func() {
-		toc = &utils.TOC{}
-		backupfile = utils.NewFileWithByteCount(buffer)
+		toc, backupfile = testutils.InitializeTestTOC(buffer, "predata")
 	})
 	Describe("PrintCreateOperatorStatements", func() {
 		It("prints a basic operator", func() {

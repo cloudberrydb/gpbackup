@@ -18,28 +18,10 @@ import (
  * Session GUCs are printed to global, predata, and postdata files so we
  * will use the correct settings when the files are run during restore
  */
-func PrintPredataSessionGUCs(metadataFile *utils.FileWithByteCount, toc *utils.TOC, gucs SessionGUCs) {
+func PrintSessionGUCs(metadataFile *utils.FileWithByteCount, toc *utils.TOC, gucs SessionGUCs) {
 	start := metadataFile.ByteCount
 	printSessionGUCs(metadataFile, gucs)
-	toc.AddPredataEntry("", "", "SESSION GUCS", start, metadataFile.ByteCount)
-}
-
-func PrintPostdataSessionGUCs(metadataFile *utils.FileWithByteCount, toc *utils.TOC, gucs SessionGUCs) {
-	start := metadataFile.ByteCount
-	printSessionGUCs(metadataFile, gucs)
-	toc.AddPostdataEntry("", "", "SESSION GUCS", start, metadataFile.ByteCount)
-}
-
-func PrintGlobalSessionGUCs(metadataFile *utils.FileWithByteCount, toc *utils.TOC, gucs SessionGUCs) {
-	start := metadataFile.ByteCount
-	printSessionGUCs(metadataFile, gucs)
-	toc.AddGlobalEntry("", "", "SESSION GUCS", start, metadataFile.ByteCount)
-}
-
-func PrintStatisticsSessionGUCs(metadataFile *utils.FileWithByteCount, toc *utils.TOC, gucs SessionGUCs) {
-	start := metadataFile.ByteCount
-	printSessionGUCs(metadataFile, gucs)
-	toc.AddStatisticsEntry("", "", "SESSION GUCS", start, metadataFile.ByteCount)
+	toc.AddMetadataEntry("", "", "SESSION GUCS", start, metadataFile)
 }
 
 func printSessionGUCs(metadataFile *utils.FileWithByteCount, gucs SessionGUCs) {
@@ -62,11 +44,11 @@ func PrintCreateDatabaseStatement(globalFile *utils.FileWithByteCount, toc *util
 				globalFile.MustPrintf(" TABLESPACE %s", db.TablespaceName)
 			}
 			globalFile.MustPrintf(";")
-			toc.AddGlobalEntry("", dbname, "DATABASE", start, globalFile.ByteCount)
+			toc.AddMetadataEntry("", dbname, "DATABASE", start, globalFile)
 			start = globalFile.ByteCount
 			PrintObjectMetadata(globalFile, dbMetadata[db.Oid], dbname, "DATABASE")
 			if globalFile.ByteCount > start {
-				toc.AddGlobalEntry("", dbname, "DATABASE METADATA", start, globalFile.ByteCount)
+				toc.AddMetadataEntry("", dbname, "DATABASE METADATA", start, globalFile)
 			}
 			break
 		}
@@ -76,7 +58,7 @@ func PrintCreateDatabaseStatement(globalFile *utils.FileWithByteCount, toc *util
 			if db.DatabaseName != dbname {
 				start := globalFile.ByteCount
 				PrintObjectMetadata(globalFile, dbMetadata[db.Oid], db.DatabaseName, "DATABASE")
-				toc.AddGlobalEntry("", dbname, "DATABASE OTHER", start, globalFile.ByteCount)
+				toc.AddMetadataEntry("", dbname, "DATABASE OTHER", start, globalFile)
 			}
 		}
 	}
@@ -86,7 +68,7 @@ func PrintDatabaseGUCs(globalFile *utils.FileWithByteCount, toc *utils.TOC, gucs
 	for _, guc := range gucs {
 		start := globalFile.ByteCount
 		globalFile.MustPrintf("\nALTER DATABASE %s %s;", utils.QuoteIdent(dbname), guc)
-		toc.AddGlobalEntry("", dbname, "DATABASE GUC", start, globalFile.ByteCount)
+		toc.AddMetadataEntry("", dbname, "DATABASE GUC", start, globalFile)
 	}
 }
 
@@ -122,7 +104,7 @@ func PrintCreateResourceQueueStatements(globalFile *utils.FileWithByteCount, toc
 		}
 		globalFile.MustPrintf("\n\n%s RESOURCE QUEUE %s WITH (%s);", action, utils.QuoteIdent(resQueue.Name), strings.Join(attributes, ", "))
 		PrintObjectMetadata(globalFile, resQueueMetadata[resQueue.Oid], utils.QuoteIdent(resQueue.Name), "RESOURCE QUEUE")
-		toc.AddGlobalEntry("", resQueue.Name, "RESOURCE QUEUE", start, globalFile.ByteCount)
+		toc.AddMetadataEntry("", resQueue.Name, "RESOURCE QUEUE", start, globalFile)
 	}
 }
 
@@ -206,7 +188,7 @@ ALTER ROLE %s WITH %s;`, quotedName, quotedName, strings.Join(attrs, " "))
 			}
 		}
 		PrintObjectMetadata(globalFile, roleMetadata[role.Oid], quotedName, "ROLE")
-		toc.AddGlobalEntry("", role.Name, "ROLE", start, globalFile.ByteCount)
+		toc.AddMetadataEntry("", role.Name, "ROLE", start, globalFile)
 	}
 }
 
@@ -219,7 +201,7 @@ func PrintRoleMembershipStatements(globalFile *utils.FileWithByteCount, toc *uti
 			globalFile.MustPrintf(" WITH ADMIN OPTION")
 		}
 		globalFile.MustPrintf(" GRANTED BY %s;", roleMember.Grantor)
-		toc.AddGlobalEntry("", roleMember.Member, "ROLE GRANT", start, globalFile.ByteCount)
+		toc.AddMetadataEntry("", roleMember.Member, "ROLE GRANT", start, globalFile)
 	}
 }
 
@@ -228,6 +210,6 @@ func PrintCreateTablespaceStatements(globalFile *utils.FileWithByteCount, toc *u
 		start := globalFile.ByteCount
 		globalFile.MustPrintf("\n\nCREATE TABLESPACE %s FILESPACE %s;", tablespace.Tablespace, tablespace.Filespace)
 		PrintObjectMetadata(globalFile, tablespaceMetadata[tablespace.Oid], tablespace.Tablespace, "TABLESPACE")
-		toc.AddGlobalEntry("", tablespace.Tablespace, "TABLESPACE", start, globalFile.ByteCount)
+		toc.AddMetadataEntry("", tablespace.Tablespace, "TABLESPACE", start, globalFile)
 	}
 }

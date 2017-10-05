@@ -3,15 +3,12 @@ package backup_test
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("backup/predata_relations tests", func() {
-	var toc *utils.TOC
-	var backupfile *utils.FileWithByteCount
 	testTable := backup.BasicRelation("public", "tablename")
 
 	distRandom := "DISTRIBUTED RANDOMLY"
@@ -53,8 +50,7 @@ SET SUBPARTITION TEMPLATE
 	noMetadata := backup.ObjectMetadata{}
 
 	BeforeEach(func() {
-		toc = &utils.TOC{}
-		backupfile = utils.NewFileWithByteCount(buffer)
+		toc, backupfile = testutils.InitializeTestTOC(buffer, "predata")
 	})
 	Describe("Relation.ToString", func() {
 		It("remains unquoted if neither the schema nor the table name contains special characters", func() {

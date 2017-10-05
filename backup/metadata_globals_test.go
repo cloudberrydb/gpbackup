@@ -3,50 +3,19 @@ package backup_test
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 )
 
 var _ = Describe("backup/metadata_globals tests", func() {
-	var toc *utils.TOC
-	var backupfile *utils.FileWithByteCount
-
 	BeforeEach(func() {
-		toc = &utils.TOC{}
-		backupfile = utils.NewFileWithByteCount(buffer)
+		toc, backupfile = testutils.InitializeTestTOC(buffer, "global")
 	})
-	Describe("PrintPredataSessionGUCs", func() {
-		It("prints predata session GUCs", func() {
+	Describe("PrintSessionGUCs", func() {
+		It("prints session GUCs", func() {
 			gucs := backup.SessionGUCs{ClientEncoding: "UTF8", DefaultWithOids: "false"}
 
-			backup.PrintPredataSessionGUCs(backupfile, toc, gucs)
-			testutils.ExpectRegexp(buffer, `SET statement_timeout = 0;
-SET check_function_bodies = false;
-SET client_min_messages = error;
-SET client_encoding = 'UTF8';
-SET standard_conforming_strings = on;
-SET default_with_oids = false`)
-		})
-	})
-	Describe("PrintPostdataSessionGUCs", func() {
-		It("prints predata session GUCs", func() {
-			gucs := backup.SessionGUCs{ClientEncoding: "UTF8", DefaultWithOids: "false"}
-
-			backup.PrintPostdataSessionGUCs(backupfile, toc, gucs)
-			testutils.ExpectRegexp(buffer, `SET statement_timeout = 0;
-SET check_function_bodies = false;
-SET client_min_messages = error;
-SET client_encoding = 'UTF8';
-SET standard_conforming_strings = on;
-SET default_with_oids = false`)
-		})
-	})
-	Describe("PrintGlobalSessionGUCs", func() {
-		It("prints predata session GUCs", func() {
-			gucs := backup.SessionGUCs{ClientEncoding: "UTF8", DefaultWithOids: "false"}
-
-			backup.PrintGlobalSessionGUCs(backupfile, toc, gucs)
+			backup.PrintSessionGUCs(backupfile, toc, gucs)
 			testutils.ExpectRegexp(buffer, `SET statement_timeout = 0;
 SET check_function_bodies = false;
 SET client_min_messages = error;

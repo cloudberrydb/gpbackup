@@ -137,12 +137,12 @@ func PrintCreateTableStatement(predataFile *utils.FileWithByteCount, toc *utils.
 	start := predataFile.ByteCount
 	// We use an empty TOC below to keep count of the bytes for testing purposes.
 	if tableDef.IsExternal {
-		PrintExternalTableCreateStatement(predataFile, &utils.TOC{}, table, tableDef)
+		PrintExternalTableCreateStatement(predataFile, nil, table, tableDef)
 	} else {
-		PrintRegularTableCreateStatement(predataFile, &utils.TOC{}, table, tableDef)
+		PrintRegularTableCreateStatement(predataFile, nil, table, tableDef)
 	}
 	PrintPostCreateTableStatements(predataFile, table, tableDef, tableMetadata)
-	toc.AddPredataEntry(table.SchemaName, table.RelationName, "TABLE", start, predataFile.ByteCount)
+	toc.AddMetadataEntry(table.SchemaName, table.RelationName, "TABLE", start, predataFile)
 }
 
 func PrintRegularTableCreateStatement(predataFile *utils.FileWithByteCount, toc *utils.TOC, table Relation, tableDef TableDefinition) {
@@ -169,7 +169,9 @@ func PrintRegularTableCreateStatement(predataFile *utils.FileWithByteCount, toc 
 		predataFile.MustPrintf("%s;\n", strings.TrimSpace(tableDef.PartTemplateDef))
 	}
 	printAlterColumnStatements(predataFile, table, tableDef.ColumnDefs)
-	toc.AddPredataEntry(table.SchemaName, table.RelationName, "TABLE", start, predataFile.ByteCount)
+	if toc != nil {
+		toc.AddMetadataEntry(table.SchemaName, table.RelationName, "TABLE", start, predataFile)
+	}
 }
 
 func printColumnDefinitions(predataFile *utils.FileWithByteCount, columnDefs []ColumnDefinition) {
@@ -270,7 +272,7 @@ func PrintCreateSequenceStatements(predataFile *utils.FileWithByteCount, toc *ut
 		predataFile.MustPrintf("\n\nSELECT pg_catalog.setval('%s', %d, %v);\n", seqFQN, sequence.LastVal, sequence.IsCalled)
 
 		PrintObjectMetadata(predataFile, sequenceMetadata[sequence.RelationOid], seqFQN, "SEQUENCE")
-		toc.AddPredataEntry(sequence.Relation.SchemaName, sequence.Relation.RelationName, "SEQUENCE", start, predataFile.ByteCount)
+		toc.AddMetadataEntry(sequence.Relation.SchemaName, sequence.Relation.RelationName, "SEQUENCE", start, predataFile)
 	}
 }
 
@@ -281,7 +283,7 @@ func PrintAlterSequenceStatements(predataFile *utils.FileWithByteCount, toc *uti
 		if owningColumn, hasColumnOwner := sequenceColumnOwners[seqFQN]; hasColumnOwner {
 			start := predataFile.ByteCount
 			predataFile.MustPrintf("\n\nALTER SEQUENCE %s OWNED BY %s;\n", seqFQN, owningColumn)
-			toc.AddPredataEntry(sequence.Relation.SchemaName, sequence.Relation.RelationName, "SEQUENCE OWNER", start, predataFile.ByteCount)
+			toc.AddMetadataEntry(sequence.Relation.SchemaName, sequence.Relation.RelationName, "SEQUENCE OWNER", start, predataFile)
 		}
 	}
 }
@@ -292,6 +294,6 @@ func PrintCreateViewStatements(predataFile *utils.FileWithByteCount, toc *utils.
 		viewFQN := utils.MakeFQN(view.SchemaName, view.ViewName)
 		predataFile.MustPrintf("\n\nCREATE VIEW %s AS %s\n", viewFQN, view.Definition)
 		PrintObjectMetadata(predataFile, viewMetadata[view.Oid], viewFQN, "VIEW")
-		toc.AddPredataEntry(view.SchemaName, view.ViewName, "VIEW", start, predataFile.ByteCount)
+		toc.AddMetadataEntry(view.SchemaName, view.ViewName, "VIEW", start, predataFile)
 	}
 }

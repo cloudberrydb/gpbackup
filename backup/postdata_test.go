@@ -3,18 +3,13 @@ package backup_test
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 )
 
 var _ = Describe("backup/postdata tests", func() {
-	var toc *utils.TOC
-	var backupfile *utils.FileWithByteCount
-
 	BeforeEach(func() {
-		toc = &utils.TOC{}
-		backupfile = utils.NewFileWithByteCount(buffer)
+		toc, backupfile = testutils.InitializeTestTOC(buffer, "postdata")
 	})
 	Context("PrintCreateIndexStatements", func() {
 		It("can print a basic index", func() {

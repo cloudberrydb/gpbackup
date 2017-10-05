@@ -63,7 +63,9 @@ func PrintExternalTableCreateStatement(predataFile *utils.FileWithByteCount, toc
 		predataFile.MustPrintf("\n%s", tableDef.DistPolicy)
 	}
 	predataFile.MustPrintf(";")
-	toc.AddPredataEntry(table.SchemaName, table.RelationName, "TABLE", start, predataFile.ByteCount)
+	if toc != nil {
+		toc.AddMetadataEntry(table.SchemaName, table.RelationName, "TABLE", start, predataFile)
+	}
 }
 
 func DetermineExternalTableCharacteristics(extTableDef ExternalTableDefinition) (int, int) {
@@ -229,6 +231,6 @@ func PrintCreateExternalProtocolStatements(predataFile *utils.FileWithByteCount,
 		protoFQN := utils.QuoteIdent(protocol.Name)
 		predataFile.MustPrintf("PROTOCOL %s (%s);\n", protoFQN, strings.Join(protocolFunctions, ", "))
 		PrintObjectMetadata(predataFile, protoMetadata[protocol.Oid], protoFQN, "PROTOCOL")
-		toc.AddPredataEntry("", protocol.Name, "PROTOCOL", start, predataFile.ByteCount)
+		toc.AddMetadataEntry("", protocol.Name, "PROTOCOL", start, predataFile)
 	}
 }

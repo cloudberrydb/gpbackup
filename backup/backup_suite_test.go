@@ -28,6 +28,8 @@ var (
 	logfile      *gbytes.Buffer
 	buffer       = gbytes.NewBuffer()
 	gpbackupPath = ""
+	toc          *utils.TOC
+	backupfile   *utils.FileWithByteCount
 )
 
 /* This function is a helper function to execute gpbackup and return a session

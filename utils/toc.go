@@ -10,6 +10,7 @@ import (
 )
 
 type TOC struct {
+	metadataEntryMap  map[string]*[]MetadataEntry
 	GlobalEntries     []MetadataEntry
 	PredataEntries    []MetadataEntry
 	PostdataEntries   []MetadataEntry
@@ -94,22 +95,18 @@ func SubstituteRedirectDatabaseInStatements(statements []StatementWithType, oldN
 	return statements
 }
 
-func (toc *TOC) AddPredataEntry(schema string, name string, objectType string, start uint64, end uint64) {
-	toc.PredataEntries = append(toc.PredataEntries, MetadataEntry{schema, name, objectType, start, end})
+func (toc *TOC) InitializeEntryMap(global string, predata string, postdata string, statistics string) {
+	toc.metadataEntryMap = make(map[string]*[]MetadataEntry, 4)
+	toc.metadataEntryMap[global] = &toc.GlobalEntries
+	toc.metadataEntryMap[predata] = &toc.PredataEntries
+	toc.metadataEntryMap[postdata] = &toc.PostdataEntries
+	toc.metadataEntryMap[statistics] = &toc.StatisticsEntries
 }
 
-func (toc *TOC) AddPostdataEntry(schema string, name string, objectType string, start uint64, end uint64) {
-	toc.PostdataEntries = append(toc.PostdataEntries, MetadataEntry{schema, name, objectType, start, end})
-}
-
-func (toc *TOC) AddGlobalEntry(schema string, name string, objectType string, start uint64, end uint64) {
-	toc.GlobalEntries = append(toc.GlobalEntries, MetadataEntry{schema, name, objectType, start, end})
+func (toc *TOC) AddMetadataEntry(schema string, name string, objectType string, start uint64, file *FileWithByteCount) {
+	*toc.metadataEntryMap[file.Filename] = append(*toc.metadataEntryMap[file.Filename], MetadataEntry{schema, name, objectType, start, file.ByteCount})
 }
 
 func (toc *TOC) AddDataEntry(schema string, name string, oid uint32, attributeString string) {
 	toc.DataEntries = append(toc.DataEntries, DataEntry{schema, name, oid, attributeString})
-}
-
-func (toc *TOC) AddStatisticsEntry(schema string, name string, objectType string, start uint64, end uint64) {
-	toc.StatisticsEntries = append(toc.StatisticsEntries, MetadataEntry{schema, name, objectType, start, end})
 }
