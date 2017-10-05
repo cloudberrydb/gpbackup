@@ -3,10 +3,8 @@ package backup_test
 import (
 	"database/sql/driver"
 
-	"github.com/blang/semver"
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
 	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
 
 	. "github.com/onsi/ginkgo"
@@ -145,15 +143,8 @@ var _ = Describe("backup/dependencies tests", func() {
 		})
 	})
 	Describe("ConstructFunctionAndTypeDependencyLists", func() {
-		var oldVersion utils.GPDBVersion
-		BeforeEach(func() {
-			oldVersion = connection.Version
-		})
-		AfterEach(func() {
-			connection.Version = oldVersion
-		})
 		It("queries dependencies for functions and types in GPDB 5", func() {
-			connection.Version = utils.GPDBVersion{VersionString: "5.0.0", SemVer: semver.MustParse("5.0.0")}
+			testutils.SetDBVersion(connection, "5.0.0")
 			funcInfoMap := map[uint32]backup.FunctionInfo{}
 			header := []string{"oid", "referencedobject"}
 			functionRows := sqlmock.NewRows(header).AddRow([]driver.Value{"1", "public.type"}...)
@@ -185,7 +176,7 @@ var _ = Describe("backup/dependencies tests", func() {
 			Expect(types[2].DependsUpon).To(Equal([]string{"public.builtin"}))
 		})
 		It("queries dependencies for functions and types in GPDB 4.3", func() {
-			connection.Version = utils.GPDBVersion{VersionString: "4.3.0", SemVer: semver.MustParse("4.3.0")}
+			testutils.SetDBVersion(connection, "4.3.0")
 			funcInfoMap := map[uint32]backup.FunctionInfo{
 				5: {QualifiedName: "public.func", Arguments: "integer, integer"},
 			}

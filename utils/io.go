@@ -105,7 +105,7 @@ func ExecuteSQLFile(dbconn *DBConn, filename string) {
 		"-h", dbconn.Host,
 		"-p", fmt.Sprintf("%d", dbconn.Port),
 		"-f", fmt.Sprintf("%s", filename),
-		//"-v", "ON_ERROR_STOP=1",
+		"-v", "ON_ERROR_STOP=1",
 		"-q",
 	}
 	out, err := exec.Command("psql", connStr...).CombinedOutput()

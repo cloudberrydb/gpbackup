@@ -374,3 +374,7 @@ func InitializeTestTOC(buffer *gbytes.Buffer, which string) (*utils.TOC, *utils.
 	backupfile.Filename = which
 	return toc, backupfile
 }
+
+func SetDBVersion(dbconn *utils.DBConn, versionStr string) {
+	dbconn.Version = utils.GPDBVersion{VersionString: versionStr, SemVer: semver.MustParse(versionStr)}
+}

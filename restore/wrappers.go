@@ -49,7 +49,12 @@ func GetGlobalStatements(objectTypes ...string) []utils.StatementWithType {
 	globalFile := utils.MustOpenFileForReading(globalFilename)
 	var statements []utils.StatementWithType
 	if len(objectTypes) > 0 {
-		statements = globalTOC.GetSQLStatementForObjectTypes(globalTOC.GlobalEntries, globalFile, "SESSION GUCS", "DATABASE GUC", "DATABASE", "DATABASE METADATA")
+		types := []string{"SESSION GUCS"}
+		if connection.Version.Before("5") {
+			types = append(types, "GPDB4 SESSION GUCS")
+		}
+		types = append(types, "DATABASE GUC", "DATABASE", "DATABASE METADATA")
+		statements = globalTOC.GetSQLStatementForObjectTypes(globalTOC.GlobalEntries, globalFile, types...)
 	} else {
 		statements = globalTOC.GetAllSQLStatements(globalTOC.GlobalEntries, globalFile)
 	}
