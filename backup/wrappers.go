@@ -51,15 +51,6 @@ func InitializeBackupReport() {
 	backupReport.SetBackupTypeFromFlags(*dataOnly, *metadataOnly, *noCompression, includeSchemas, *withStats)
 }
 
-func InitializeTOC() {
-	globalTOC = &utils.TOC{}
-	globalFilename := globalCluster.GetGlobalFilePath()
-	predataFilename := globalCluster.GetPredataFilePath()
-	postdataFilename := globalCluster.GetPostdataFilePath()
-	statisticsFilename := globalCluster.GetStatisticsFilePath()
-	globalTOC.InitializeEntryMap(globalFilename, predataFilename, postdataFilename, statisticsFilename)
-}
-
 func InitializeFilterLists() {
 	if *excludeTableFile != "" {
 		excludeTables = utils.ReadLinesFromFile(*excludeTableFile)

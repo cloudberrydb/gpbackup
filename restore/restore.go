@@ -100,6 +100,7 @@ func DoSetup() {
 func DoRestore() {
 	tocFilename := globalCluster.GetTOCFilePath()
 	globalTOC = utils.NewTOC(tocFilename)
+	globalTOC.InitializeEntryMapFromCluster(globalCluster)
 	if *restoreGlobals {
 		restoreGlobal()
 	} else if *createdb {
@@ -136,24 +137,33 @@ func DoRestore() {
 }
 
 func createDatabase() {
+	objectTypes := []string{"SESSION GUCS", "GPDB4 SESSION GUCS", "DATABASE GUC", "DATABASE", "DATABASE METADATA"}
+	globalFilename := globalCluster.GetGlobalFilePath()
 	logger.Info("Creating database")
-	statements := GetGlobalStatements("SESSION GUCS", "DATABASE GUC", "DATABASE", "DATABASE METADATA")
-	connection.ExecuteAllStatements(statements)
+	statements := GetRestoreMetadataStatements(globalFilename, objectTypes...)
+	if *redirect != "" {
+		statements = utils.SubstituteRedirectDatabaseInStatements(statements, backupConfig.DatabaseName, *redirect)
+	}
+	ExecuteRestoreMetadataStatements(statements)
 	logger.Info("Database creation complete")
 }
 
 func restoreGlobal() {
 	globalFilename := globalCluster.GetGlobalFilePath()
-	logger.Info("Restoring global database metadata from %s", globalFilename)
-	statements := GetGlobalStatements()
-	connection.ExecuteAllStatements(statements)
+	logger.Info("Restoring global database metadata from %s", globalCluster.GetGlobalFilePath())
+	statements := GetRestoreMetadataStatements(globalFilename)
+	if *redirect != "" {
+		statements = utils.SubstituteRedirectDatabaseInStatements(statements, backupConfig.DatabaseName, *redirect)
+	}
+	ExecuteRestoreMetadataStatements(statements)
 	logger.Info("Global database metadata restore complete")
 }
 
 func restorePredata() {
 	predataFilename := globalCluster.GetPredataFilePath()
 	logger.Info("Restoring pre-data metadata from %s", predataFilename)
-	utils.ExecuteSQLFile(connection, predataFilename)
+	statements := GetRestoreMetadataStatements(predataFilename)
+	ExecuteRestoreMetadataStatements(statements)
 	logger.Info("Pre-data metadata restore complete")
 }
 
@@ -171,21 +181,23 @@ func restoreData(tableMap map[uint32]utils.DataEntry) {
 func restorePostdata() {
 	postdataFilename := globalCluster.GetPostdataFilePath()
 	logger.Info("Restoring post-data metadata from %s", postdataFilename)
-	utils.ExecuteSQLFile(connection, postdataFilename)
+	statements := GetRestoreMetadataStatements(postdataFilename)
+	ExecuteRestoreMetadataStatements(statements)
 	logger.Info("Post-data metadata restore complete")
 }
 
 func restoreStatistics() {
 	statisticsFilename := globalCluster.GetStatisticsFilePath()
 	logger.Info("Restoring query planner statistics from %s", statisticsFilename)
-	utils.ExecuteSQLFile(connection, statisticsFilename)
+	statements := GetRestoreMetadataStatements(statisticsFilename)
+	ExecuteRestoreMetadataStatements(statements)
 	logger.Info("Query planner statistics restore complete")
 }
 
 func DoTeardown() {
 	errStr := ""
 	if err := recover(); err != nil {
-		errStr := err.(string)
+		errStr = fmt.Sprintf("%v", err)
 		if strings.Contains(errStr, fmt.Sprintf(`Database "%s" does not exist`, connection.DBName)) {
 			errStr = fmt.Sprintf(`%s.  Use the --createdb flag to create "%s" as part of the restore process.`, errStr, connection.DBName)
 		}

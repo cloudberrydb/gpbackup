@@ -15,8 +15,17 @@ import (
 )
 
 var _ = Describe("utils/db tests", func() {
+	commentStr := "-- This is a comment."
+	createStr := "\nCREATE DATABASE foo;\n"
+	gucStr := "\nSET fsync TO off;\n"
+	var statements []utils.StatementWithType
 	BeforeEach(func() {
 		utils.System.Now = func() time.Time { return time.Date(2017, time.January, 1, 1, 1, 1, 1, time.Local) }
+		statements = []utils.StatementWithType{
+			{ObjectType: "COMMENT", Statement: commentStr},
+			{ObjectType: "DATABASE", Statement: createStr},
+			{ObjectType: "SESSION GUCS", Statement: gucStr},
+		}
 	})
 	AfterEach(func() {
 		connection, mock = testutils.CreateAndConnectMockDB()
@@ -254,6 +263,27 @@ var _ = Describe("utils/db tests", func() {
 			versionString := sqlmock.NewRows([]string{"versionstring"}).AddRow(" PostgreSQL 8.4.23 (Greenplum Database 6.0.0-beta.9+dev.129.g4bd4e41 build dev) on x86_64-apple-darwin14.5.0, compiled by GCC Apple LLVM version 6.0 (clang-600.0.57) (based on LLVM 3.5svn) compiled on Sep  1 2017 16:57:41")
 			mock.ExpectQuery("SELECT (.*)").WillReturnRows(versionString)
 			connection.SetDatabaseVersion()
+		})
+	})
+	Describe("Dbconn.ExecuteAllStatements", func() {
+		It("executes all statements in the list", func() {
+			mock.ExpectExec(commentStr).WillReturnResult(sqlmock.NewResult(0, 0))
+			mock.ExpectExec(createStr).WillReturnResult(sqlmock.NewResult(1, 0))
+			mock.ExpectExec(gucStr).WillReturnResult(sqlmock.NewResult(0, 1))
+			connection.ExecuteAllStatements(statements)
+		})
+	})
+	Describe("Dbconn.ExecuteAllStatementsMatching", func() {
+		It("executes all statements in the list that are of the specified object type", func() {
+			mock.ExpectExec(createStr).WillReturnResult(sqlmock.NewResult(1, 0))
+			connection.ExecuteAllStatementsMatching(statements, "DATABASE")
+		})
+	})
+	Describe("Dbconn.ExecuteAllStatementsExcept", func() {
+		It("executes all statements in the list that are not of the specified object type", func() {
+			mock.ExpectExec(commentStr).WillReturnResult(sqlmock.NewResult(0, 0))
+			mock.ExpectExec(gucStr).WillReturnResult(sqlmock.NewResult(0, 1))
+			connection.ExecuteAllStatementsExcept(statements, "DATABASE")
 		})
 	})
 })

@@ -174,3 +174,29 @@ func (dbconn *DBConn) ExecuteAllStatements(statements []StatementWithType) {
 		CheckError(err)
 	}
 }
+
+func (dbconn *DBConn) ExecuteAllStatementsMatching(statements []StatementWithType, objectTypes ...string) {
+	shouldExecute := make(map[string]bool, len(objectTypes))
+	for _, obj := range objectTypes {
+		shouldExecute[obj] = true
+	}
+	for _, statement := range statements {
+		if shouldExecute[statement.ObjectType] {
+			_, err := dbconn.Exec(statement.Statement)
+			CheckError(err)
+		}
+	}
+}
+
+func (dbconn *DBConn) ExecuteAllStatementsExcept(statements []StatementWithType, objectTypes ...string) {
+	shouldNotExecute := make(map[string]bool, len(objectTypes))
+	for _, obj := range objectTypes {
+		shouldNotExecute[obj] = true
+	}
+	for _, statement := range statements {
+		if !shouldNotExecute[statement.ObjectType] {
+			_, err := dbconn.Exec(statement.Statement)
+			CheckError(err)
+		}
+	}
+}

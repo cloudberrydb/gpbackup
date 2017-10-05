@@ -127,7 +127,8 @@ func DoSetup() {
 	utils.CreateBackupLockFile(timestamp)
 	globalCluster = utils.NewCluster(segConfig, *backupDir, timestamp)
 	globalCluster.CreateBackupDirectoriesOnAllHosts()
-	InitializeTOC()
+	globalTOC = &utils.TOC{}
+	globalTOC.InitializeEntryMapFromCluster(globalCluster)
 }
 
 /*

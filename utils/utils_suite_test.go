@@ -20,6 +20,8 @@ var (
 	stderr     *gbytes.Buffer
 	logfile    *gbytes.Buffer
 	buffer     *gbytes.Buffer
+	toc        *utils.TOC
+	backupfile *utils.FileWithByteCount
 )
 
 func TestUtils(t *testing.T) {

@@ -54,7 +54,8 @@ type StatementWithType struct {
 	Statement  string
 }
 
-func (toc *TOC) GetSQLStatementForObjectTypes(entries []MetadataEntry, metadataFile io.ReaderAt, objectTypes ...string) []StatementWithType {
+func (toc *TOC) GetSQLStatementForObjectTypes(filename string, metadataFile io.ReaderAt, objectTypes ...string) []StatementWithType {
+	entries := *toc.metadataEntryMap[filename]
 	objectHashes := make(map[string]bool, len(objectTypes))
 	for _, objectType := range objectTypes {
 		objectHashes[objectType] = true
@@ -71,7 +72,8 @@ func (toc *TOC) GetSQLStatementForObjectTypes(entries []MetadataEntry, metadataF
 	return statements
 }
 
-func (toc *TOC) GetAllSQLStatements(entries []MetadataEntry, metadataFile io.ReaderAt) []StatementWithType {
+func (toc *TOC) GetAllSQLStatements(filename string, metadataFile io.ReaderAt) []StatementWithType {
+	entries := *toc.metadataEntryMap[filename]
 	statements := make([]StatementWithType, 0)
 	for _, entry := range entries {
 		contents := make([]byte, entry.EndByte-entry.StartByte)
@@ -101,6 +103,14 @@ func (toc *TOC) InitializeEntryMap(global string, predata string, postdata strin
 	toc.metadataEntryMap[predata] = &toc.PredataEntries
 	toc.metadataEntryMap[postdata] = &toc.PostdataEntries
 	toc.metadataEntryMap[statistics] = &toc.StatisticsEntries
+}
+
+func (toc *TOC) InitializeEntryMapFromCluster(cluster Cluster) {
+	globalFilename := cluster.GetGlobalFilePath()
+	predataFilename := cluster.GetPredataFilePath()
+	postdataFilename := cluster.GetPostdataFilePath()
+	statisticsFilename := cluster.GetStatisticsFilePath()
+	toc.InitializeEntryMap(globalFilename, predataFilename, postdataFilename, statisticsFilename)
 }
 
 func (toc *TOC) AddMetadataEntry(schema string, name string, objectType string, start uint64, file *FileWithByteCount) {

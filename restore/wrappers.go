@@ -44,22 +44,21 @@ func InitializeBackupConfig() {
 	utils.EnsureDatabaseVersionCompatibility(backupConfig.DatabaseVersion, connection.Version)
 }
 
-func GetGlobalStatements(objectTypes ...string) []utils.StatementWithType {
-	globalFilename := globalCluster.GetGlobalFilePath()
-	globalFile := utils.MustOpenFileForReading(globalFilename)
+func GetRestoreMetadataStatements(filename string, objectTypes ...string) []utils.StatementWithType {
+	metadataFile := utils.MustOpenFileForReading(filename)
 	var statements []utils.StatementWithType
 	if len(objectTypes) > 0 {
-		types := []string{"SESSION GUCS"}
-		if connection.Version.Before("5") {
-			types = append(types, "GPDB4 SESSION GUCS")
-		}
-		types = append(types, "DATABASE GUC", "DATABASE", "DATABASE METADATA")
-		statements = globalTOC.GetSQLStatementForObjectTypes(globalTOC.GlobalEntries, globalFile, types...)
+		statements = globalTOC.GetSQLStatementForObjectTypes(filename, metadataFile, objectTypes...)
 	} else {
-		statements = globalTOC.GetAllSQLStatements(globalTOC.GlobalEntries, globalFile)
-	}
-	if *redirect != "" {
-		statements = utils.SubstituteRedirectDatabaseInStatements(statements, backupConfig.DatabaseName, *redirect)
+		statements = globalTOC.GetAllSQLStatements(filename, metadataFile)
 	}
 	return statements
+}
+
+func ExecuteRestoreMetadataStatements(statements []utils.StatementWithType) {
+	if connection.Version.AtLeast("5") {
+		connection.ExecuteAllStatementsExcept(statements, "GPDB4 SESSION GUCS")
+	} else {
+		connection.ExecuteAllStatements(statements)
+	}
 }
