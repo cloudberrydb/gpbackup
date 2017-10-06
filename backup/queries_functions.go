@@ -485,7 +485,7 @@ ORDER BY n.nspname, c.conname;`, SchemaFilterClause("n"))
  * of the backup and so do not need to consider those dependencies when sorting
  * functions and types.
  */
-func ConstructFunctionDependencies(connection *utils.DBConn, functions []Function) []Function {
+func ConstructFunctionDependencies(connection *utils.DBConn, functions []Function, excludeOIDs []string) []Function {
 	modStr := ""
 	if connection.Version.AtLeast("5") {
 		modStr = `
@@ -502,10 +502,11 @@ JOIN pg_proc p ON d.objid = p.oid
 JOIN pg_namespace n ON n.oid = p.pronamespace
 WHERE %s
 AND d.refclassid = 'pg_type'::regclass
+AND d.refobjid NOT IN (%s)
 AND t.typinput != p.oid
 AND t.typoutput != p.oid
 AND t.typreceive != p.oid
-AND t.typsend != p.oid%s;`, SchemaFilterClause("n"), modStr)
+AND t.typsend != p.oid%s;`, SchemaFilterClause("n"), utils.SliceToQuotedString(excludeOIDs), modStr)
 
 	results := make([]Dependency, 0)
 	dependencyMap := make(map[uint32][]string, 0)

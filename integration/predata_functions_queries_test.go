@@ -1,6 +1,8 @@
 package integration
 
 import (
+	"fmt"
+
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
 
@@ -394,7 +396,7 @@ LANGUAGE SQL`)
 			}
 			functions := []backup.Function{function}
 
-			functions = backup.ConstructFunctionDependencies(connection, functions)
+			functions = backup.ConstructFunctionDependencies(connection, functions, []string{"0"})
 
 			Expect(len(functions)).To(Equal(1))
 			Expect(len(functions[0].DependsUpon)).To(Equal(1))
@@ -414,11 +416,33 @@ LANGUAGE SQL`)
 			}
 			functions := []backup.Function{function}
 
-			functions = backup.ConstructFunctionDependencies(connection, functions)
+			functions = backup.ConstructFunctionDependencies(connection, functions, []string{"0"})
 
 			Expect(len(functions)).To(Equal(1))
 			Expect(len(functions[0].DependsUpon)).To(Equal(1))
 			Expect(functions[0].DependsUpon[0]).To(Equal("public.composite_ints"))
+		})
+		It("ignores dependencies if a user-defined type is in the oid exclusion list", func() {
+			testutils.SkipIf4(connection)
+			testutils.AssertQueryRuns(connection, "CREATE FUNCTION add(composite_ints[]) RETURNS integer STRICT IMMUTABLE LANGUAGE SQL AS 'SELECT ($1[0].one + $1[1].two);'")
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION add(composite_ints[])")
+
+			allFunctions := backup.GetFunctions(connection)
+			function := backup.Function{}
+			for _, funct := range allFunctions {
+				if funct.FunctionName == "add" {
+					function = funct
+					break
+				}
+			}
+			functions := []backup.Function{function}
+
+			oid := testutils.OidFromObjectName(connection, "public", "_composite_ints", backup.TYPE_TYPE)
+			excludeOIDs := []string{fmt.Sprintf("%d", oid)}
+			functions = backup.ConstructFunctionDependencies(connection, functions, excludeOIDs)
+
+			Expect(len(functions)).To(Equal(1))
+			Expect(len(functions[0].DependsUpon)).To(Equal(0))
 		})
 	})
 })

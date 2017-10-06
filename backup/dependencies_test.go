@@ -168,7 +168,7 @@ var _ = Describe("backup/dependencies tests", func() {
 			mock.ExpectQuery(`SELECT (.*)`).WillReturnRows(domainRows)
 			mock.ExpectQuery(`SELECT (.*)`).WillReturnRows(compTypeRows)
 
-			functions, types = backup.ConstructFunctionAndTypeDependencyLists(connection, functions, types, funcInfoMap)
+			functions, types = backup.ConstructFunctionAndTypeDependencyLists(connection, functions, types, funcInfoMap, []string{"0"})
 
 			Expect(functions[0].DependsUpon).To(Equal([]string{"public.type"}))
 			Expect(types[0].DependsUpon).To(Equal([]string{"public.func(integer, integer)"}))
@@ -203,7 +203,7 @@ var _ = Describe("backup/dependencies tests", func() {
 			mock.ExpectQuery(`SELECT (.*)`).WillReturnRows(domainRows)
 			mock.ExpectQuery(`SELECT (.*)`).WillReturnRows(compTypeRows)
 
-			functions, types = backup.ConstructFunctionAndTypeDependencyLists(connection, functions, types, funcInfoMap)
+			functions, types = backup.ConstructFunctionAndTypeDependencyLists(connection, functions, types, funcInfoMap, []string{"0"})
 
 			Expect(functions[0].DependsUpon).To(Equal([]string{"public.type"}))
 			Expect(types[0].DependsUpon).To(Equal([]string{"public.func(integer, integer)"}))
