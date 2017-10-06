@@ -3,24 +3,21 @@ package integration
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("backup integration create statement tests", func() {
-	var toc utils.TOC
-	var backupfile *utils.FileWithByteCount
 	BeforeEach(func() {
-		backupfile = utils.NewFileWithByteCount(buffer)
+		toc, backupfile = testutils.InitializeTestTOC(buffer, "predata")
 	})
 	Describe("PrintCreateSchemaStatements", func() {
 		It("creates a non public schema", func() {
 			schemas := []backup.Schema{{Oid: 0, Name: "test_schema"}}
 			schemaMetadata := testutils.DefaultMetadataMap("SCHEMA", true, true, true)
 
-			backup.PrintCreateSchemaStatements(backupfile, &toc, schemas, schemaMetadata)
+			backup.PrintCreateSchemaStatements(backupfile, toc, schemas, schemaMetadata)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA test_schema")
@@ -37,7 +34,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			schemas := []backup.Schema{{Oid: 2200, Name: "public"}}
 			schemaMetadata := testutils.DefaultMetadataMap("SCHEMA", true, true, true)
 
-			backup.PrintCreateSchemaStatements(backupfile, &toc, schemas, schemaMetadata)
+			backup.PrintCreateSchemaStatements(backupfile, toc, schemas, schemaMetadata)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "ALTER SCHEMA public OWNER TO anothertestrole")
@@ -72,7 +69,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 		It("creates a unique constraint", func() {
 			constraints := []backup.Constraint{uniqueConstraint}
-			backup.PrintConstraintStatements(backupfile, &toc, constraints, conMetadataMap)
+			backup.PrintConstraintStatements(backupfile, toc, constraints, conMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
@@ -83,7 +80,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 		It("creates a primary key constraint", func() {
 			constraints := []backup.Constraint{}
-			backup.PrintConstraintStatements(backupfile, &toc, constraints, conMetadataMap)
+			backup.PrintConstraintStatements(backupfile, toc, constraints, conMetadataMap)
 
 			testutils.AssertQueryRuns(connection, "CREATE TABLE constraints_other_table(b text PRIMARY KEY)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE constraints_other_table CASCADE")
@@ -96,7 +93,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 		It("creates a foreign key constraint", func() {
 			constraints := []backup.Constraint{fkConstraint}
-			backup.PrintConstraintStatements(backupfile, &toc, constraints, conMetadataMap)
+			backup.PrintConstraintStatements(backupfile, toc, constraints, conMetadataMap)
 
 			testutils.AssertQueryRuns(connection, "CREATE TABLE constraints_other_table(b text PRIMARY KEY)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE constraints_other_table CASCADE")
@@ -110,7 +107,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 		It("creates a check constraint", func() {
 			constraints := []backup.Constraint{checkConstraint}
-			backup.PrintConstraintStatements(backupfile, &toc, constraints, conMetadataMap)
+			backup.PrintConstraintStatements(backupfile, toc, constraints, conMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
@@ -121,7 +118,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 		It("creates multiple constraints on one table", func() {
 			constraints := []backup.Constraint{checkConstraint, uniqueConstraint, fkConstraint}
-			backup.PrintConstraintStatements(backupfile, &toc, constraints, conMetadataMap)
+			backup.PrintConstraintStatements(backupfile, toc, constraints, conMetadataMap)
 
 			testutils.AssertQueryRuns(connection, "CREATE TABLE constraints_other_table(b text PRIMARY KEY)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE constraints_other_table CASCADE")
@@ -140,13 +137,13 @@ var _ = Describe("backup integration create statement tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP DOMAIN domain1")
 			domainCheckConstraint := backup.Constraint{Oid: 0, ConName: "check1", ConType: "c", ConDef: "CHECK (VALUE <> 42::numeric)", OwningObject: "public.domain1", IsDomainConstraint: true, IsPartitionParent: false}
 			constraints := []backup.Constraint{domainCheckConstraint}
-			backup.PrintConstraintStatements(backupfile, &toc, constraints, conMetadataMap)
+			backup.PrintConstraintStatements(backupfile, toc, constraints, conMetadataMap)
 
 			Expect(buffer.String()).To(Equal(""))
 		})
 		It("creates a check constraint on a parent partition table", func() {
 			constraints := []backup.Constraint{partitionCheckConstraint}
-			backup.PrintConstraintStatements(backupfile, &toc, constraints, conMetadataMap)
+			backup.PrintConstraintStatements(backupfile, toc, constraints, conMetadataMap)
 
 			testutils.AssertQueryRuns(connection, `CREATE TABLE part (id int, year int)
 DISTRIBUTED BY (id)
@@ -166,7 +163,7 @@ PARTITION BY RANGE (year)
 		gucs := backup.SessionGUCs{ClientEncoding: "UTF8", DefaultWithOids: "off"}
 		Describe("PrintSessionGUCs", func() {
 			It("prints the default session GUCs", func() {
-				backup.PrintSessionGUCs(backupfile, &toc, gucs)
+				backup.PrintSessionGUCs(backupfile, toc, gucs)
 
 				//We just want to check that these queries run successfully, no setup required
 				testutils.AssertQueryRuns(connection, buffer.String())

@@ -5,17 +5,14 @@ import (
 
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("backup integration create statement tests", func() {
-	var toc utils.TOC
-	var backupfile *utils.FileWithByteCount
 	BeforeEach(func() {
-		backupfile = utils.NewFileWithByteCount(buffer)
+		toc, backupfile = testutils.InitializeTestTOC(buffer, "predata")
 	})
 	Describe("PrintExternalTableCreateStatement", func() {
 		var (
@@ -45,7 +42,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			extTable.RejectLimitType = "r"
 			tableDef.ExtTableDef = extTable
 
-			backup.PrintExternalTableCreateStatement(backupfile, &toc, testTable, tableDef)
+			backup.PrintExternalTableCreateStatement(backupfile, toc, testTable, tableDef)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
@@ -65,7 +62,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			extTable.RejectLimitType = "r"
 			tableDef.ExtTableDef = extTable
 
-			backup.PrintExternalTableCreateStatement(backupfile, &toc, testTable, tableDef)
+			backup.PrintExternalTableCreateStatement(backupfile, toc, testTable, tableDef)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
@@ -84,7 +81,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			extTable.Protocol = backup.GPFDIST
 			tableDef.ExtTableDef = extTable
 
-			backup.PrintExternalTableCreateStatement(backupfile, &toc, testTable, tableDef)
+			backup.PrintExternalTableCreateStatement(backupfile, toc, testTable, tableDef)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
@@ -110,7 +107,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			externalProtocols := []backup.ExternalProtocol{protocolReadOnly}
 			protoMetadataMap := testutils.DefaultMetadataMap("PROTOCOL", true, true, false)
 
-			backup.PrintCreateExternalProtocolStatements(backupfile, &toc, externalProtocols, funcInfoMap, protoMetadataMap)
+			backup.PrintCreateExternalProtocolStatements(backupfile, toc, externalProtocols, funcInfoMap, protoMetadataMap)
 
 			testutils.AssertQueryRuns(connection, "CREATE OR REPLACE FUNCTION read_from_s3() RETURNS integer AS '$libdir/gps3ext.so', 's3_import' LANGUAGE C STABLE;")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION read_from_s3()")
@@ -126,7 +123,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		It("creates a protocol with a write function", func() {
 			externalProtocols := []backup.ExternalProtocol{protocolWriteOnly}
 
-			backup.PrintCreateExternalProtocolStatements(backupfile, &toc, externalProtocols, funcInfoMap, emptyMetadataMap)
+			backup.PrintCreateExternalProtocolStatements(backupfile, toc, externalProtocols, funcInfoMap, emptyMetadataMap)
 
 			testutils.AssertQueryRuns(connection, "CREATE OR REPLACE FUNCTION write_to_s3() RETURNS integer AS '$libdir/gps3ext.so', 's3_export' LANGUAGE C STABLE;")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION write_to_s3()")
@@ -142,7 +139,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		It("creates a protocol with a read and write function", func() {
 			externalProtocols := []backup.ExternalProtocol{protocolReadWrite}
 
-			backup.PrintCreateExternalProtocolStatements(backupfile, &toc, externalProtocols, funcInfoMap, emptyMetadataMap)
+			backup.PrintCreateExternalProtocolStatements(backupfile, toc, externalProtocols, funcInfoMap, emptyMetadataMap)
 
 			testutils.AssertQueryRuns(connection, "CREATE OR REPLACE FUNCTION read_from_s3() RETURNS integer AS '$libdir/gps3ext.so', 's3_import' LANGUAGE C STABLE;")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION read_from_s3()")

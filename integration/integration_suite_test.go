@@ -19,6 +19,8 @@ import (
 var (
 	buffer     *bytes.Buffer
 	connection *utils.DBConn
+	toc        *utils.TOC
+	backupfile *utils.FileWithByteCount
 )
 
 func TestQueries(t *testing.T) {

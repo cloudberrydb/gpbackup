@@ -2,6 +2,7 @@ package testutils
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"strings"
@@ -367,7 +368,7 @@ func SkipIfNot4(dbconn *utils.DBConn) {
 	}
 }
 
-func InitializeTestTOC(buffer *gbytes.Buffer, which string) (*utils.TOC, *utils.FileWithByteCount) {
+func InitializeTestTOC(buffer io.Writer, which string) (*utils.TOC, *utils.FileWithByteCount) {
 	toc := &utils.TOC{}
 	toc.InitializeEntryMap("global", "predata", "postdata", "statistics")
 	backupfile := utils.NewFileWithByteCount(buffer)

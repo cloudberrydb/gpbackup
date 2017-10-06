@@ -3,18 +3,18 @@ package integration
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("backup integration tests", func() {
+	BeforeEach(func() {
+		toc, backupfile = testutils.InitializeTestTOC(buffer, "predata")
+	})
 	Describe("PrintStatisticsStatementsForTable", func() {
 		It("prints attribute and tuple statistics for a table", func() {
 			tables := []backup.Relation{backup.Relation{SchemaOid: 2200, SchemaName: "public", RelationName: "foo"}}
-			backupfile := utils.NewFileWithByteCount(buffer)
-			toc := &utils.TOC{}
 
 			// Create and ANALYZE a table to generate statistics
 			testutils.AssertQueryRuns(connection, "CREATE TABLE foo(i int, j text, k bool)")

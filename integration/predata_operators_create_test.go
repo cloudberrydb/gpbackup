@@ -3,17 +3,14 @@ package integration
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("backup integration create statement tests", func() {
-	var toc utils.TOC
-	var backupfile *utils.FileWithByteCount
 	BeforeEach(func() {
-		backupfile = utils.NewFileWithByteCount(buffer)
+		toc, backupfile = testutils.InitializeTestTOC(buffer, "predata")
 	})
 	Describe("PrintCreateOperatorStatements", func() {
 		It("creates operator", func() {
@@ -26,7 +23,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			operator := backup.Operator{Oid: 0, SchemaName: "testschema", Name: "##", ProcedureName: "testschema.\"testFunc\"", LeftArgType: "path", RightArgType: "path", CommutatorOp: "0", NegatorOp: "0", RestrictFunction: "-", JoinFunction: "-", CanHash: false, CanMerge: false}
 			operators := []backup.Operator{operator}
 
-			backup.PrintCreateOperatorStatements(backupfile, &toc, operators, backup.MetadataMap{})
+			backup.PrintCreateOperatorStatements(backupfile, toc, operators, backup.MetadataMap{})
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR testschema.##(path, path)")
@@ -47,7 +44,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			operator := backup.Operator{Oid: 1, SchemaName: "testschema", Name: "##", ProcedureName: "testschema.\"testFunc\"", LeftArgType: "path", RightArgType: "path", CommutatorOp: "0", NegatorOp: "0", RestrictFunction: "-", JoinFunction: "-", CanHash: false, CanMerge: false}
 			operators := []backup.Operator{operator}
 
-			backup.PrintCreateOperatorStatements(backupfile, &toc, operators, operatorMetadataMap)
+			backup.PrintCreateOperatorStatements(backupfile, toc, operators, operatorMetadataMap)
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR testschema.##(path, path)")
 
@@ -67,7 +64,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			operatorFamily := backup.OperatorFamily{Oid: 1, SchemaName: "public", Name: "testfam", IndexMethod: "hash"}
 			operatorFamilies := []backup.OperatorFamily{operatorFamily}
 
-			backup.PrintCreateOperatorFamilyStatements(backupfile, &toc, operatorFamilies, backup.MetadataMap{})
+			backup.PrintCreateOperatorFamilyStatements(backupfile, toc, operatorFamilies, backup.MetadataMap{})
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.testfam USING hash")
@@ -82,7 +79,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			operatorFamily := backup.OperatorFamily{Oid: 1, SchemaName: "public", Name: "testfam", IndexMethod: "hash"}
 			operatorFamilies := []backup.OperatorFamily{operatorFamily}
 
-			backup.PrintCreateOperatorFamilyStatements(backupfile, &toc, operatorFamilies, operatorFamilyMetadataMap)
+			backup.PrintCreateOperatorFamilyStatements(backupfile, toc, operatorFamilies, operatorFamilyMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.testfam USING hash")
@@ -103,7 +100,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				operatorClass.FamilyName = ""
 			}
 
-			backup.PrintCreateOperatorClassStatements(backupfile, &toc, []backup.OperatorClass{operatorClass}, nil)
+			backup.PrintCreateOperatorClassStatements(backupfile, toc, []backup.OperatorClass{operatorClass}, nil)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			if connection.Version.Before("5") {
@@ -128,7 +125,7 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			testutils.AssertQueryRuns(connection, "CREATE OPERATOR FAMILY public.testfam USING gist")
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.testfam USING gist CASCADE")
-			backup.PrintCreateOperatorClassStatements(backupfile, &toc, []backup.OperatorClass{operatorClass}, nil)
+			backup.PrintCreateOperatorClassStatements(backupfile, toc, []backup.OperatorClass{operatorClass}, nil)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 
@@ -146,7 +143,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				operatorClass.FamilyName = ""
 			}
 
-			backup.PrintCreateOperatorClassStatements(backupfile, &toc, []backup.OperatorClass{operatorClass}, operatorClassMetadataMap)
+			backup.PrintCreateOperatorClassStatements(backupfile, toc, []backup.OperatorClass{operatorClass}, operatorClassMetadataMap)
 
 			testutils.AssertQueryRuns(connection, buffer.String())
 			if connection.Version.Before("5") {
