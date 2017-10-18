@@ -171,7 +171,7 @@ func (dbconn *DBConn) validateGPDBVersionCompatibility() {
 func (dbconn *DBConn) ExecuteAllStatements(statements []StatementWithType) {
 	for _, statement := range statements {
 		_, err := dbconn.Exec(statement.Statement)
-		CheckError(err)
+		CheckErrorForQuery(err, statement.Statement)
 	}
 }
 
@@ -183,7 +183,7 @@ func (dbconn *DBConn) ExecuteAllStatementsMatching(statements []StatementWithTyp
 	for _, statement := range statements {
 		if shouldExecute[statement.ObjectType] {
 			_, err := dbconn.Exec(statement.Statement)
-			CheckError(err)
+			CheckErrorForQuery(err, statement.Statement)
 		}
 	}
 }
@@ -196,7 +196,14 @@ func (dbconn *DBConn) ExecuteAllStatementsExcept(statements []StatementWithType,
 	for _, statement := range statements {
 		if !shouldNotExecute[statement.ObjectType] {
 			_, err := dbconn.Exec(statement.Statement)
-			CheckError(err)
+			CheckErrorForQuery(err, statement.Statement)
 		}
+	}
+}
+
+func CheckErrorForQuery(err error, statement string) {
+	if err != nil {
+		logger.Verbose("Attempted to execute statement:\n%s\n", statement)
+		logger.Fatal(err, "Failed to execute statement; see log file %s for details.  Error was", logger.GetLogFilePath())
 	}
 }
