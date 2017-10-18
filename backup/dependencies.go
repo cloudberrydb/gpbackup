@@ -24,8 +24,8 @@ func SortFunctionsAndTypesAndTablesInDependencyOrder(functions []Function, types
 	return sorted
 }
 
-func ConstructFunctionAndTypeDependencyLists(connection *utils.DBConn, functions []Function, types []Type, funcInfoMap map[uint32]FunctionInfo, excludeOIDs []string) ([]Function, []Type) {
-	functions = ConstructFunctionDependencies(connection, functions, excludeOIDs)
+func ConstructFunctionAndTypeDependencyLists(connection *utils.DBConn, functions []Function, types []Type, funcInfoMap map[uint32]FunctionInfo) ([]Function, []Type) {
+	functions = ConstructFunctionDependencies(connection, functions)
 	types = CoalesceCompositeTypes(types)
 	/*
 	 * Each of the Construct[...]TypeDependencies functions adds dependency information
@@ -39,7 +39,7 @@ func ConstructFunctionAndTypeDependencyLists(connection *utils.DBConn, functions
 		types = ConstructBaseTypeDependencies5(connection, types)
 	}
 	types = ConstructDomainDependencies(connection, types)
-	types = ConstructCompositeTypeDependencies(connection, types, excludeOIDs)
+	types = ConstructCompositeTypeDependencies(connection, types)
 	return functions, types
 }
 

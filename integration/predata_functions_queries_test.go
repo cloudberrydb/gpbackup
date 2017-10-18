@@ -1,8 +1,6 @@
 package integration
 
 import (
-	"fmt"
-
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
 
@@ -396,7 +394,7 @@ LANGUAGE SQL`)
 			}
 			functions := []backup.Function{function}
 
-			functions = backup.ConstructFunctionDependencies(connection, functions, []string{"0"})
+			functions = backup.ConstructFunctionDependencies(connection, functions)
 
 			Expect(len(functions)).To(Equal(1))
 			Expect(len(functions[0].DependsUpon)).To(Equal(1))
@@ -416,33 +414,38 @@ LANGUAGE SQL`)
 			}
 			functions := []backup.Function{function}
 
-			functions = backup.ConstructFunctionDependencies(connection, functions, []string{"0"})
+			functions = backup.ConstructFunctionDependencies(connection, functions)
 
 			Expect(len(functions)).To(Equal(1))
 			Expect(len(functions[0].DependsUpon)).To(Equal(1))
 			Expect(functions[0].DependsUpon[0]).To(Equal("public.composite_ints"))
 		})
-		It("ignores dependencies if a user-defined type is in the oid exclusion list", func() {
-			testutils.SkipIf4(connection)
-			testutils.AssertQueryRuns(connection, "CREATE FUNCTION add(composite_ints[]) RETURNS integer STRICT IMMUTABLE LANGUAGE SQL AS 'SELECT ($1[0].one + $1[1].two);'")
-			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION add(composite_ints[])")
+		It("constructs dependencies correctly for a function dependent on an implicit array type", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TYPE base_type")
+			defer testutils.AssertQueryRuns(connection, "DROP TYPE base_type CASCADE")
+			testutils.AssertQueryRuns(connection, "CREATE FUNCTION base_fn_in(cstring) RETURNS base_type AS 'boolin' LANGUAGE internal")
+			testutils.AssertQueryRuns(connection, "CREATE FUNCTION base_fn_out(base_type) RETURNS cstring AS 'boolout' LANGUAGE internal")
+			testutils.AssertQueryRuns(connection, "CREATE TYPE base_type(INPUT=base_fn_in, OUTPUT=base_fn_out)")
+			testutils.AssertQueryRuns(connection, "CREATE FUNCTION compose(base_type[], composite_ints) RETURNS composite_ints STRICT IMMUTABLE LANGUAGE PLPGSQL AS 'DECLARE comp composite_ints; BEGIN SELECT $1[0].one+$2.one, $1[0].two+$2.two INTO comp; RETURN comp; END;';")
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION compose(base_type[], composite_ints)")
 
 			allFunctions := backup.GetFunctions(connection)
 			function := backup.Function{}
 			for _, funct := range allFunctions {
-				if funct.FunctionName == "add" {
+				if funct.FunctionName == "compose" {
 					function = funct
 					break
 				}
 			}
 			functions := []backup.Function{function}
 
-			oid := testutils.OidFromObjectName(connection, "public", "_composite_ints", backup.TYPE_TYPE)
-			excludeOIDs := []string{fmt.Sprintf("%d", oid)}
-			functions = backup.ConstructFunctionDependencies(connection, functions, excludeOIDs)
+			functions = backup.ConstructFunctionDependencies(connection, functions)
 
 			Expect(len(functions)).To(Equal(1))
-			Expect(len(functions[0].DependsUpon)).To(Equal(0))
+			Expect(len(functions[0].DependsUpon)).To(Equal(3))
+			Expect(functions[0].DependsUpon[0]).To(Equal("public.composite_ints"))
+			Expect(functions[0].DependsUpon[1]).To(Equal("public.base_type"))
+			Expect(functions[0].DependsUpon[2]).To(Equal("public.composite_ints"))
 		})
 	})
 })

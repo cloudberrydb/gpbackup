@@ -299,21 +299,21 @@ AND bt.typnamespace != (
 	return types
 }
 
-func ConstructCompositeTypeDependencies(connection *utils.DBConn, types []Type, excludeOIDs []string) []Type {
+func ConstructCompositeTypeDependencies(connection *utils.DBConn, types []Type) []Type {
 	query := fmt.Sprintf(`
 SELECT DISTINCT
 	tc.oid,
-	quote_ident(n.nspname) || '.' || quote_ident(t.typname) AS referencedobject
+	coalesce((SELECT quote_ident(n.nspname) || '.' || quote_ident(typname) FROM pg_type WHERE t.typelem = oid), quote_ident(n.nspname) || '.' || quote_ident(t.typname)) AS referencedobject
 FROM pg_depend d
 JOIN pg_type t
-	ON (d.refobjid = t.oid AND d.refobjid NOT IN (%s) AND t.typtype != 'p' AND t.typtype != 'e' AND t.typnamespace != (SELECT oid FROM pg_namespace WHERE nspname = 'pg_catalog'))
+	ON (d.refobjid = t.oid AND t.typtype != 'p' AND t.typtype != 'e' AND t.typnamespace != (SELECT oid FROM pg_namespace WHERE nspname = 'pg_catalog'))
 JOIN pg_class c ON (d.objid = c.oid AND c.relkind = 'c')
 JOIN pg_type tc ON (tc.typrelid = c.oid AND tc.typtype = 'c')
 JOIN pg_namespace n ON n.oid = c.relnamespace
 WHERE %s
 AND d.refclassid = 'pg_type'::regclass
 AND c.reltype != t.oid
-AND d.deptype = 'n';`, utils.SliceToQuotedString(excludeOIDs), SchemaFilterClause("n"))
+AND d.deptype = 'n';`, SchemaFilterClause("n"))
 
 	results := make([]Dependency, 0)
 	dependencyMap := make(map[uint32][]string, 0)

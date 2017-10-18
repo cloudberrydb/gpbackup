@@ -485,7 +485,7 @@ ORDER BY n.nspname, c.conname;`, SchemaFilterClause("n"))
  * of the backup and so do not need to consider those dependencies when sorting
  * functions and types.
  */
-func ConstructFunctionDependencies(connection *utils.DBConn, functions []Function, excludeOIDs []string) []Function {
+func ConstructFunctionDependencies(connection *utils.DBConn, functions []Function) []Function {
 	modStr := ""
 	if connection.Version.AtLeast("5") {
 		modStr = `
@@ -495,18 +495,17 @@ func ConstructFunctionDependencies(connection *utils.DBConn, functions []Functio
 	query := fmt.Sprintf(`
 SELECT
 p.oid,
-quote_ident(n.nspname) || '.' || quote_ident(t.typname) AS referencedobject
+coalesce((SELECT quote_ident(n.nspname) || '.' || quote_ident(typname) FROM pg_type WHERE t.typelem = oid), quote_ident(n.nspname) || '.' || quote_ident(t.typname)) AS referencedobject
 FROM pg_depend d
 JOIN pg_type t ON (d.refobjid = t.oid AND t.typtype != 'e' AND t.typtype != 'p')
 JOIN pg_proc p ON d.objid = p.oid
 JOIN pg_namespace n ON n.oid = p.pronamespace
 WHERE %s
 AND d.refclassid = 'pg_type'::regclass
-AND d.refobjid NOT IN (%s)
 AND t.typinput != p.oid
 AND t.typoutput != p.oid
 AND t.typreceive != p.oid
-AND t.typsend != p.oid%s;`, SchemaFilterClause("n"), utils.SliceToQuotedString(excludeOIDs), modStr)
+AND t.typsend != p.oid%s;`, SchemaFilterClause("n"), modStr)
 
 	results := make([]Dependency, 0)
 	dependencyMap := make(map[uint32][]string, 0)
