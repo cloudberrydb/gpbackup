@@ -1,6 +1,8 @@
 package integration
 
 import (
+	"sort"
+
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
 	. "github.com/onsi/ginkgo"
@@ -42,7 +44,7 @@ var _ = Describe("backup integration tests", func() {
 				Operator2: 0, Numbers1: []string{"0.5", "0.5"}, Values1: []string{"a", "b"}}
 			expectedStats4K := backup.AttributeStatistic{Oid: tableOid, SchemaName: "public", TableName: "foo", AttName: "k",
 				TypeName: "bool", Relid: tableOid, AttNumber: 3, Width: 1, Distinct: 2, Kind1: 1, Kind2: 0, Operator1: 91,
-				Operator2: 0, Numbers1: []string{"0.5", "0.5"}, Values1: []string{"t", "f"}}
+				Operator2: 0, Numbers1: []string{"0.5", "0.5"}, Values1: []string{"f", "t"}}
 			expectedStats5I := backup.AttributeStatistic{Oid: tableOid, SchemaName: "public", TableName: "foo", AttName: "i",
 				TypeName: "int4", Relid: tableOid, AttNumber: 1, Width: 4, Distinct: -1, Kind1: 2, Kind2: 3, Operator1: 97,
 				Operator2: 97, Numbers2: []string{"1"}, Values1: []string{"1", "2"}}
@@ -53,6 +55,10 @@ var _ = Describe("backup integration tests", func() {
 				TypeName: "bool", Relid: tableOid, AttNumber: 3, Width: 1, Distinct: -1, Kind1: 2, Kind2: 3, Operator1: 58,
 				Operator2: 58, Numbers2: []string{"-1"}, Values1: []string{"f", "t"}}
 
+			// The order in which the stavalues1 values is returned is not guaranteed to be deterministic
+			sort.Strings(tableAttStatsI.Values1)
+			sort.Strings(tableAttStatsJ.Values1)
+			sort.Strings(tableAttStatsK.Values1)
 			if connection.Version.Before("5") {
 				testutils.ExpectStructsToMatchExcluding(&expectedStats4I, &tableAttStatsI, "Numbers2")
 				testutils.ExpectStructsToMatchExcluding(&expectedStats4J, &tableAttStatsJ, "Numbers2")
