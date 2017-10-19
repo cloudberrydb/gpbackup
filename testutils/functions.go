@@ -23,8 +23,8 @@ import (
  */
 
 func SetupTestEnvironment() (*utils.DBConn, sqlmock.Sqlmock, *utils.Logger, *gbytes.Buffer, *gbytes.Buffer, *gbytes.Buffer) {
-	connection, mock := CreateAndConnectMockDB()
 	testLogger, testStdout, testStderr, testLogfile := SetupTestLogger()
+	connection, mock := CreateAndConnectMockDB()
 	SetupTestCluster()
 	utils.System = utils.InitializeSystemFunctions()
 	backup.SetVersion("0.1.0")
@@ -37,7 +37,7 @@ func CreateAndConnectMockDB() (*utils.DBConn, sqlmock.Sqlmock) {
 	connection := utils.NewDBConn("testdb")
 	connection.Driver = driver
 	connection.Connect()
-	connection.Version = utils.GPDBVersion{VersionString: "5.0.0", SemVer: semver.MustParse("5.0.0")}
+	SetDBVersion(connection, "5.1.0")
 	backup.SetConnection(connection)
 	backup.InitializeMetadataParams(connection)
 	return connection, mock

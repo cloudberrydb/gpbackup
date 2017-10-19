@@ -16,8 +16,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-const MINIMUM_GPDB4_VERSION = "4.3.16"
-const MINIMUM_GPDB5_VERSION = "5.0.0"
+const MINIMUM_GPDB4_VERSION = "4.3.17"
+const MINIMUM_GPDB5_VERSION = "5.1.0"
 
 type DBConn struct {
 	Conn    *sqlx.DB

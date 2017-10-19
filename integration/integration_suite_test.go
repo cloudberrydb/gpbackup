@@ -35,6 +35,7 @@ var _ = BeforeSuite(func() {
 		Fail("Cannot create database testdb; is GPDB running?")
 	}
 	Expect(err).To(BeNil())
+	testutils.SetupTestLogger()
 	connection = utils.NewDBConn("testdb")
 	connection.Connect()
 	// We can't use AssertQueryRuns since if a role already exists it will error
@@ -48,7 +49,6 @@ var _ = BeforeSuite(func() {
 	testutils.AssertQueryRuns(connection, "ALTER SCHEMA public OWNER TO anothertestrole")
 	testutils.AssertQueryRuns(connection, "DROP PROTOCOL IF EXISTS gphdfs")
 	testutils.AssertQueryRuns(connection, `SET standard_conforming_strings TO "on"`)
-	testutils.SetupTestLogger()
 	segConfig := utils.GetSegmentConfiguration(connection)
 	cluster := utils.NewCluster(segConfig, "/tmp/test_filespace", "20170101010101")
 	setupTestFilespace(cluster)
