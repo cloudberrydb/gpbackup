@@ -116,6 +116,7 @@ func DoFlagValidation() {
 // This function handles setup that must be done after parsing flags.
 func DoSetup() {
 	SetLoggerVerbosity()
+	logger.Info("Starting backup of database %s", *dbname)
 	InitializeConnection()
 	InitializeBackupReport()
 
@@ -319,5 +320,8 @@ func DoTeardown() {
 		}
 	}
 
+	if exitCode == 0 {
+		logger.Info("Backup completed successfully")
+	}
 	os.Exit(exitCode)
 }

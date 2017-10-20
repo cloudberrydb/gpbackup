@@ -103,14 +103,20 @@ type TableDefinition struct {
 func ConstructDefinitionsForTables(connection *utils.DBConn, tables []Relation) map[uint32]TableDefinition {
 	tableDefinitionMap := make(map[uint32]TableDefinition, 0)
 
+	logger.Info("Gathering table metadata")
+	logger.Verbose("Retrieving column information")
 	columnDefs := GetColumnDefinitions(connection)
 	distributionPolicies := GetDistributionPolicies(connection, tables)
+	logger.Verbose("Retrieving partition information")
 	partitionDefs := GetPartitionDefinitions(connection)
 	partTemplateDefs := GetPartitionTemplates(connection)
+	logger.Verbose("Retrieving storage information")
 	storageOptions := GetStorageOptions(connection)
 	tablespaceNames := GetTablespaceNames(connection)
+	logger.Verbose("Retrieving external table information")
 	extTableDefs := GetExternalTableDefinitions(connection)
 
+	logger.Verbose("Constructing table definition map")
 	for _, table := range tables {
 		oid := table.RelationOid
 		tableDefinitionMap[oid] = TableDefinition{

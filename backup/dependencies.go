@@ -154,7 +154,7 @@ func TopologicalSort(slice []Sortable) []Sortable {
 				logger.Verbose("Object: %s; Dependencies: %s", item.Name(), item.Dependencies())
 			}
 		}
-		logger.Fatal(errors.Errorf("Dependency resolution failed. This is a bug, please report."), "")
+		logger.Fatal(errors.Errorf("Dependency resolution failed; see log file %s for details. This is a bug, please report.", logger.GetLogFilePath()), "")
 	}
 	return sorted
 }
