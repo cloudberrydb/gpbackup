@@ -36,7 +36,7 @@ func GetDatabaseNames(connection *utils.DBConn) []DatabaseName {
 	query := `
 SELECT
 	d.oid,
-	d.datname,
+	quote_ident(d.datname) as datname,
 	t.spcname
 FROM pg_database d
 JOIN pg_tablespace t

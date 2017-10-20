@@ -38,20 +38,26 @@ var _ = Describe("backup integration tests", func() {
 		It("returns a slice of database names", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLESPACE test_tablespace FILESPACE test_filespace")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")
-			testutils.AssertQueryRuns(connection, `CREATE DATABASE other_testdb TABLESPACE test_tablespace`)
-			defer testutils.AssertQueryRuns(connection, `DROP DATABASE other_testdb`)
+			testutils.AssertQueryRuns(connection, `CREATE DATABASE "Other_testdb" TABLESPACE test_tablespace`)
+			defer testutils.AssertQueryRuns(connection, `DROP DATABASE "Other_testdb"`)
 
 			results := backup.GetDatabaseNames(connection)
 
 			testdbExpected := backup.DatabaseName{Oid: 0, DatabaseName: "testdb", TablespaceName: "pg_default"}
-			othertestdbExpected := backup.DatabaseName{Oid: 0, DatabaseName: "other_testdb", TablespaceName: "test_tablespace"}
+			othertestdbExpected := backup.DatabaseName{Oid: 0, DatabaseName: `"Other_testdb"`, TablespaceName: "test_tablespace"}
+			var foundTestdb, foundOtherTestdb bool
 			for _, dbname := range results {
 				if dbname.DatabaseName == "testdb" {
 					testutils.ExpectStructsToMatchExcluding(&testdbExpected, &dbname, "Oid")
+					foundTestdb = true
 				}
-				if dbname.DatabaseName == "other_testdb" {
+				if dbname.DatabaseName == `"Other_testdb"` {
 					testutils.ExpectStructsToMatchExcluding(&othertestdbExpected, &dbname, "Oid")
+					foundOtherTestdb = true
 				}
+			}
+			if !foundTestdb || !foundOtherTestdb {
+				Fail("Expected database was not found")
 			}
 		})
 	})
