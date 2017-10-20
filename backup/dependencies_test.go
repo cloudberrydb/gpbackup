@@ -99,14 +99,14 @@ var _ = Describe("backup/dependencies tests", func() {
 			type3.DependsUpon = []string{"public.type2"}
 			sortable := []backup.Sortable{type1, type2, type3}
 
-			defer testutils.ShouldPanicWithMessage("Dependency resolution failed. This is a bug, please report.")
+			defer testutils.ShouldPanicWithMessage("Dependency resolution failed; see log file gbytes.Buffer for details. This is a bug, please report.")
 			sortable = backup.TopologicalSort(sortable)
 		})
 		It("aborts if dependencies are not met", func() {
 			type1.DependsUpon = []string{"missing_thing", "public.type2"}
 			sortable := []backup.Sortable{type1, type2}
 
-			defer testutils.ShouldPanicWithMessage("Dependency resolution failed. This is a bug, please report.")
+			defer testutils.ShouldPanicWithMessage("Dependency resolution failed; see log file gbytes.Buffer for details. This is a bug, please report.")
 			sortable = backup.TopologicalSort(sortable)
 		})
 	})

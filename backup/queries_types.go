@@ -243,7 +243,7 @@ SELECT DISTINCT
 FROM pg_depend d
 JOIN pg_proc p ON (d.refobjid = p.oid AND p.pronamespace != (SELECT oid FROM pg_namespace WHERE nspname = 'pg_catalog'))
 JOIN pg_type t ON (d.objid = t.oid AND t.typtype = 'b')
-JOIN pg_namespace n ON n.oid = t.typnamespace
+JOIN pg_namespace n ON n.oid = p.pronamespace
 WHERE %s
 AND d.refclassid = 'pg_proc'::regclass
 AND d.deptype = 'n';`, SchemaFilterClause("n"))
@@ -274,8 +274,8 @@ SELECT
 	t.oid,
 	quote_ident(n.nspname) || '.' || quote_ident(bt.typname) AS referencedobject
 FROM pg_type t
-JOIN pg_namespace n ON t.typnamespace = n.oid
 JOIN pg_type bt ON t.typbasetype = bt.oid
+JOIN pg_namespace n ON bt.typnamespace = n.oid
 WHERE %s
 AND bt.typnamespace != (
 	SELECT
@@ -309,7 +309,7 @@ JOIN pg_type t
 	ON (d.refobjid = t.oid AND t.typtype != 'p' AND t.typtype != 'e' AND t.typnamespace != (SELECT oid FROM pg_namespace WHERE nspname = 'pg_catalog'))
 JOIN pg_class c ON (d.objid = c.oid AND c.relkind = 'c')
 JOIN pg_type tc ON (tc.typrelid = c.oid AND tc.typtype = 'c')
-JOIN pg_namespace n ON n.oid = c.relnamespace
+JOIN pg_namespace n ON n.oid = t.typnamespace
 WHERE %s
 AND d.refclassid = 'pg_type'::regclass
 AND c.reltype != t.oid
