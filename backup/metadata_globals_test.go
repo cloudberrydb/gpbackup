@@ -46,6 +46,13 @@ SET default_with_oids = false;`)
 			testutils.ExpectEntry(toc.GlobalEntries, 0, "", "testdb", "DATABASE")
 			testutils.AssertBufferContents(toc.GlobalEntries, buffer, `CREATE DATABASE testdb;`)
 		})
+		It("prints a CREATE DATABASE statement for a reserved keyword named database", func() {
+			dbs := []backup.DatabaseName{{Oid: 1, DatabaseName: `"table"`, TablespaceName: "pg_default"}}
+			emptyMetadataMap := backup.MetadataMap{}
+			backup.PrintCreateDatabaseStatement(backupfile, toc, "table", dbs, emptyMetadataMap, false)
+			testutils.ExpectEntry(toc.GlobalEntries, 0, "", `"table"`, "DATABASE")
+			testutils.AssertBufferContents(toc.GlobalEntries, buffer, `CREATE DATABASE "table";`)
+		})
 		It("prints a CREATE DATABASE statement with privileges, an owner, and a comment", func() {
 			dbMetadataMap := testutils.DefaultMetadataMap("DATABASE", true, true, true)
 			dbMetadata := dbMetadataMap[1]

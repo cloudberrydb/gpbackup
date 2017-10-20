@@ -55,7 +55,8 @@ func print4OnlySessionGUCs(metadataFile *utils.FileWithByteCount, toc *utils.TOC
 func PrintCreateDatabaseStatement(globalFile *utils.FileWithByteCount, toc *utils.TOC, dbname string, allDBs []DatabaseName, dbMetadata MetadataMap, backupGlobals bool) {
 	dbname = utils.QuoteIdent(dbname)
 	for _, db := range allDBs {
-		if db.DatabaseName == dbname {
+		if db.DatabaseName == dbname || db.DatabaseName == fmt.Sprintf(`"%s"`, dbname) {
+			dbname = db.DatabaseName
 			start := globalFile.ByteCount
 			globalFile.MustPrintf("\n\nCREATE DATABASE %s", dbname)
 			if db.TablespaceName != "pg_default" {
