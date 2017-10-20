@@ -494,12 +494,12 @@ func ConstructFunctionDependencies(connection *utils.DBConn, functions []Functio
 	}
 	query := fmt.Sprintf(`
 SELECT
-p.oid,
-coalesce((SELECT quote_ident(n.nspname) || '.' || quote_ident(typname) FROM pg_type WHERE t.typelem = oid), quote_ident(n.nspname) || '.' || quote_ident(t.typname)) AS referencedobject
+	p.oid,
+	coalesce((SELECT quote_ident(n.nspname) || '.' || quote_ident(typname) FROM pg_type WHERE t.typelem = oid), quote_ident(n.nspname) || '.' || quote_ident(t.typname)) AS referencedobject
 FROM pg_depend d
 JOIN pg_type t ON (d.refobjid = t.oid AND t.typtype != 'e' AND t.typtype != 'p')
 JOIN pg_proc p ON d.objid = p.oid
-JOIN pg_namespace n ON n.oid = p.pronamespace
+JOIN pg_namespace n ON n.oid = t.typnamespace
 WHERE %s
 AND d.refclassid = 'pg_type'::regclass
 AND t.typinput != p.oid
