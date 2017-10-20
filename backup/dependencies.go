@@ -147,7 +147,13 @@ func TopologicalSort(slice []Sortable) []Sortable {
 		}
 	}
 	if len(slice) != len(sorted) {
-		logger.Verbose("Failed to sort %+v", slice)
+		logger.Verbose("Failed to sort dependencies.")
+		logger.Verbose("Not yet visited:")
+		for _, item := range slice {
+			if notVisited[item.Name()] {
+				logger.Verbose("Object: %s; Dependencies: %s", item.Name(), item.Dependencies())
+			}
+		}
 		logger.Fatal(errors.Errorf("Dependency resolution failed. This is a bug, please report."), "")
 	}
 	return sorted
