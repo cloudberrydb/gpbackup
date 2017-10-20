@@ -81,7 +81,7 @@ resources:
       secret_access_key: {{tf-machine-secret-access-key}}
       region_name: {{aws-region}}
       bucket: gpdb5-pipeline-dynamic-terraform
-      bucket_path: {{tf-bucket-path}}
+      bucket_path: prod/gpbackup/
 
 jobs:
 - name: units
