@@ -23,8 +23,8 @@ var _ = Describe("backup integration tests", func() {
 			tableTestTable := backup.BasicRelation("testschema", "testtable")
 
 			Expect(len(tables)).To(Equal(2))
-			testutils.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "RelationOid")
-			testutils.ExpectStructsToMatchExcluding(&tableTestTable, &tables[1], "SchemaOid", "RelationOid")
+			testutils.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "Oid")
+			testutils.ExpectStructsToMatchExcluding(&tableTestTable, &tables[1], "SchemaOid", "Oid")
 		})
 		It("only returns the parent partition table for partition tables", func() {
 			createStmt := `CREATE TABLE rank (id int, rank int, year int, gender
@@ -42,7 +42,7 @@ PARTITION BY LIST (gender)
 			tableRank := backup.BasicRelation("public", "rank")
 
 			Expect(len(tables)).To(Equal(1))
-			testutils.ExpectStructsToMatchExcluding(&tableRank, &tables[0], "SchemaOid", "RelationOid")
+			testutils.ExpectStructsToMatchExcluding(&tableRank, &tables[0], "SchemaOid", "Oid")
 		})
 		It("returns user table information for table in specific schema", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE foo(i int)")
@@ -58,7 +58,7 @@ PARTITION BY LIST (gender)
 			tableFoo := backup.BasicRelation("testschema", "foo")
 
 			Expect(len(tables)).To(Equal(1))
-			testutils.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "RelationOid")
+			testutils.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "Oid")
 		})
 		It("returns user table information for tables in includeTables", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE foo(i int)")
@@ -74,7 +74,7 @@ PARTITION BY LIST (gender)
 			tableFoo := backup.BasicRelation("testschema", "foo")
 
 			Expect(len(tables)).To(Equal(1))
-			testutils.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "RelationOid")
+			testutils.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "Oid")
 		})
 		It("returns user table information for tables not in excludeTables", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE foo(i int)")
@@ -90,7 +90,7 @@ PARTITION BY LIST (gender)
 			tableFoo := backup.BasicRelation("public", "foo")
 
 			Expect(len(tables)).To(Equal(1))
-			testutils.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "RelationOid")
+			testutils.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "Oid")
 		})
 		It("returns user table information for tables in includeSchema but not in excludeTables", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE foo(i int)")
@@ -109,7 +109,7 @@ PARTITION BY LIST (gender)
 			tableFoo := backup.BasicRelation("testschema", "bar")
 
 			Expect(len(tables)).To(Equal(1))
-			testutils.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "RelationOid")
+			testutils.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "Oid")
 		})
 	})
 	Describe("GetColumnDefinitions", func() {
@@ -123,10 +123,10 @@ PARTITION BY LIST (gender)
 
 			tableAtts := backup.GetColumnDefinitions(connection)[oid]
 
-			columnA := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "a", NotNull: false, HasDefault: false, IsDropped: false, TypeName: "double precision", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "att comment"}
-			columnC := backup.ColumnDefinition{Oid: 0, Num: 3, Name: "c", NotNull: true, HasDefault: false, IsDropped: false, TypeName: "text", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: ""}
-			columnD := backup.ColumnDefinition{Oid: 0, Num: 4, Name: "d", NotNull: false, HasDefault: true, IsDropped: false, TypeName: "integer", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "5", Comment: ""}
-			columnE := backup.ColumnDefinition{Oid: 0, Num: 5, Name: "e", NotNull: false, HasDefault: false, IsDropped: false, TypeName: "text", Encoding: "", StatTarget: -1, StorageType: "PLAIN", DefaultVal: "", Comment: ""}
+			columnA := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "a", NotNull: false, HasDefault: false, IsDropped: false, Type: "double precision", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "att comment"}
+			columnC := backup.ColumnDefinition{Oid: 0, Num: 3, Name: "c", NotNull: true, HasDefault: false, IsDropped: false, Type: "text", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: ""}
+			columnD := backup.ColumnDefinition{Oid: 0, Num: 4, Name: "d", NotNull: false, HasDefault: true, IsDropped: false, Type: "integer", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "5", Comment: ""}
+			columnE := backup.ColumnDefinition{Oid: 0, Num: 5, Name: "e", NotNull: false, HasDefault: false, IsDropped: false, Type: "text", Encoding: "", StatTarget: -1, StorageType: "PLAIN", DefaultVal: "", Comment: ""}
 
 			Expect(len(tableAtts)).To(Equal(4))
 
@@ -142,8 +142,8 @@ PARTITION BY LIST (gender)
 
 			tableAtts := backup.GetColumnDefinitions(connection)[oid]
 
-			columnA := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "a", NotNull: false, HasDefault: false, IsDropped: false, TypeName: "double precision", Encoding: "compresstype=none,blocksize=32768,compresslevel=0", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: ""}
-			columnB := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "b", NotNull: false, HasDefault: false, IsDropped: false, TypeName: "text", Encoding: "blocksize=65536,compresstype=none,compresslevel=0", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: ""}
+			columnA := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "a", NotNull: false, HasDefault: false, IsDropped: false, Type: "double precision", Encoding: "compresstype=none,blocksize=32768,compresslevel=0", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: ""}
+			columnB := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "b", NotNull: false, HasDefault: false, IsDropped: false, Type: "text", Encoding: "blocksize=65536,compresstype=none,compresslevel=0", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: ""}
 
 			Expect(len(tableAtts)).To(Equal(2))
 
@@ -166,7 +166,7 @@ PARTITION BY LIST (gender)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE dist_random")
 			oid := testutils.OidFromObjectName(connection, "public", "dist_random", backup.TYPE_RELATION)
 
-			tables := []backup.Relation{{RelationOid: oid}}
+			tables := []backup.Relation{{Oid: oid}}
 			distPolicies := backup.GetDistributionPolicies(connection, tables)[oid]
 
 			Expect(distPolicies).To(Equal("DISTRIBUTED RANDOMLY"))
@@ -176,7 +176,7 @@ PARTITION BY LIST (gender)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE dist_one")
 			oid := testutils.OidFromObjectName(connection, "public", "dist_one", backup.TYPE_RELATION)
 
-			tables := []backup.Relation{{RelationOid: oid}}
+			tables := []backup.Relation{{Oid: oid}}
 			distPolicies := backup.GetDistributionPolicies(connection, tables)[oid]
 
 			Expect(distPolicies).To(Equal("DISTRIBUTED BY (a)"))
@@ -186,7 +186,7 @@ PARTITION BY LIST (gender)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE dist_two")
 			oid := testutils.OidFromObjectName(connection, "public", "dist_two", backup.TYPE_RELATION)
 
-			tables := []backup.Relation{{RelationOid: oid}}
+			tables := []backup.Relation{{Oid: oid}}
 			distPolicies := backup.GetDistributionPolicies(connection, tables)[oid]
 
 			Expect(distPolicies).To(Equal("DISTRIBUTED BY (a, b)"))
@@ -304,8 +304,8 @@ SET SUBPARTITION TEMPLATE
 			mySequence2 := backup.BasicRelation("testschema", "my_sequence2")
 
 			Expect(len(sequences)).To(Equal(2))
-			testutils.ExpectStructsToMatchExcluding(&mySequence, &sequences[0], "SchemaOid", "RelationOid")
-			testutils.ExpectStructsToMatchExcluding(&mySequence2, &sequences[1], "SchemaOid", "RelationOid")
+			testutils.ExpectStructsToMatchExcluding(&mySequence, &sequences[0], "SchemaOid", "Oid")
+			testutils.ExpectStructsToMatchExcluding(&mySequence2, &sequences[1], "SchemaOid", "Oid")
 		})
 		It("returns a slice of all sequences in a specific schema", func() {
 			testutils.AssertQueryRuns(connection, "CREATE SEQUENCE my_sequence START 10")
@@ -320,7 +320,7 @@ SET SUBPARTITION TEMPLATE
 			sequences := backup.GetAllSequenceRelations(connection)
 
 			Expect(len(sequences)).To(Equal(1))
-			testutils.ExpectStructsToMatchExcluding(&mySequence, &sequences[0], "SchemaOid", "RelationOid")
+			testutils.ExpectStructsToMatchExcluding(&mySequence, &sequences[0], "SchemaOid", "Oid")
 		})
 	})
 	Describe("GetSequenceDefinition", func() {
@@ -393,9 +393,9 @@ SET SUBPARTITION TEMPLATE
 
 			results := backup.GetAllSequences(connection)
 
-			testutils.ExpectStructsToMatchExcluding(&seqOneRelation, &results[0].Relation, "SchemaOid", "RelationOid")
+			testutils.ExpectStructsToMatchExcluding(&seqOneRelation, &results[0].Relation, "SchemaOid", "Oid")
 			testutils.ExpectStructsToMatchExcluding(&seqOneDef, &results[0].SequenceDefinition)
-			testutils.ExpectStructsToMatchExcluding(&seqTwoRelation, &results[1].Relation, "SchemaOid", "RelationOid")
+			testutils.ExpectStructsToMatchExcluding(&seqTwoRelation, &results[1].Relation, "SchemaOid", "Oid")
 			testutils.ExpectStructsToMatchExcluding(&seqTwoDef, &results[1].SequenceDefinition)
 		})
 	})
@@ -406,7 +406,7 @@ SET SUBPARTITION TEMPLATE
 
 			results := backup.GetViews(connection)
 
-			viewDef := backup.View{Oid: 1, SchemaName: "public", ViewName: "simpleview", Definition: "SELECT pg_roles.rolname FROM pg_roles;", DependsUpon: nil}
+			viewDef := backup.View{Oid: 1, Schema: "public", Name: "simpleview", Definition: "SELECT pg_roles.rolname FROM pg_roles;", DependsUpon: nil}
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&viewDef, &results[0], "Oid")
@@ -422,7 +422,7 @@ SET SUBPARTITION TEMPLATE
 
 			results := backup.GetViews(connection)
 
-			viewDef := backup.View{Oid: 1, SchemaName: "testschema", ViewName: "simpleview", Definition: "SELECT pg_roles.rolname FROM pg_roles;", DependsUpon: nil}
+			viewDef := backup.View{Oid: 1, Schema: "testschema", Name: "simpleview", Definition: "SELECT pg_roles.rolname FROM pg_roles;", DependsUpon: nil}
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&viewDef, &results[0], "Oid")
@@ -438,7 +438,7 @@ SET SUBPARTITION TEMPLATE
 			testutils.AssertQueryRuns(connection, "CREATE TABLE child() INHERITS (parent)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE child")
 
-			child.RelationOid = testutils.OidFromObjectName(connection, "public", "child", backup.TYPE_RELATION)
+			child.Oid = testutils.OidFromObjectName(connection, "public", "child", backup.TYPE_RELATION)
 			tables := []backup.Relation{child}
 
 			tables = backup.ConstructTableDependencies(connection, tables, false)
@@ -457,8 +457,8 @@ SET SUBPARTITION TEMPLATE
 			testutils.AssertQueryRuns(connection, "CREATE TABLE child_two() INHERITS (parent)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE child_two")
 
-			childOne.RelationOid = testutils.OidFromObjectName(connection, "public", "child_one", backup.TYPE_RELATION)
-			childTwo.RelationOid = testutils.OidFromObjectName(connection, "public", "child_two", backup.TYPE_RELATION)
+			childOne.Oid = testutils.OidFromObjectName(connection, "public", "child_one", backup.TYPE_RELATION)
+			childTwo.Oid = testutils.OidFromObjectName(connection, "public", "child_two", backup.TYPE_RELATION)
 			tables := []backup.Relation{childOne, childTwo}
 
 			tables = backup.ConstructTableDependencies(connection, tables, false)
@@ -481,7 +481,7 @@ SET SUBPARTITION TEMPLATE
 			testutils.AssertQueryRuns(connection, "CREATE TABLE child() INHERITS (parent_one, parent_two)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE child")
 
-			child.RelationOid = testutils.OidFromObjectName(connection, "public", "child", backup.TYPE_RELATION)
+			child.Oid = testutils.OidFromObjectName(connection, "public", "child", backup.TYPE_RELATION)
 			tables := []backup.Relation{child}
 
 			tables = backup.ConstructTableDependencies(connection, tables, false)
@@ -507,7 +507,7 @@ SET SUBPARTITION TEMPLATE
 			testutils.AssertQueryRuns(connection, "CREATE TABLE child_two() INHERITS (parent)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE child_two")
 
-			childOne.RelationOid = testutils.OidFromObjectName(connection, "public", "child_one", backup.TYPE_RELATION)
+			childOne.Oid = testutils.OidFromObjectName(connection, "public", "child_one", backup.TYPE_RELATION)
 			tables := []backup.Relation{childOne}
 
 			tables = backup.ConstructTableDependencies(connection, tables, true)

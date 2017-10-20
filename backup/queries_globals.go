@@ -26,27 +26,28 @@ func GetSessionGUCs(connection *utils.DBConn) SessionGUCs {
 	return result
 }
 
-type DatabaseName struct {
-	Oid            uint32
-	DatabaseName   string `db:"datname"`
-	TablespaceName string `db:"spcname"`
+type Database struct {
+	Oid        uint32
+	Name       string
+	Tablespace string
 }
 
-func GetDatabaseNames(connection *utils.DBConn) []DatabaseName {
+func GetDatabaseNames(connection *utils.DBConn) []Database {
 	query := `
 SELECT
 	d.oid,
-	quote_ident(d.datname) as datname,
-	t.spcname
+	quote_ident(d.datname) AS name,
+	quote_ident(t.spcname) AS tablespace
 FROM pg_database d
 JOIN pg_tablespace t
 ON d.dattablespace = t.oid;`
 
-	results := make([]DatabaseName, 0)
+	results := make([]Database, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results
 }
+
 func GetDatabaseGUCs(connection *utils.DBConn) []string {
 	//We do not want to quote list type config settings such as search_path and DateStyle
 	query := fmt.Sprintf(`
@@ -80,7 +81,7 @@ func GetResourceQueues(connection *utils.DBConn) []ResourceQueue {
 	query := `
 SELECT
 	r.oid,
-	rsqname AS name,
+	quote_ident(rsqname) AS name,
 	rsqcountlimit AS activestatements,
 	ROUND(rsqcostlimit::numeric, 2)::text AS maxcost,
 	rsqovercommit AS costovercommit,
@@ -112,13 +113,13 @@ type TimeConstraint struct {
 
 type Role struct {
 	Oid             uint32
-	Name            string `db:"rolname"`
-	Super           bool   `db:"rolsuper"`
-	Inherit         bool   `db:"rolinherit"`
-	CreateRole      bool   `db:"rolcreaterole"`
-	CreateDB        bool   `db:"rolcreatedb"`
-	CanLogin        bool   `db:"rolcanlogin"`
-	ConnectionLimit int    `db:"rolconnlimit"`
+	Name            string
+	Super           bool `db:"rolsuper"`
+	Inherit         bool `db:"rolinherit"`
+	CreateRole      bool `db:"rolcreaterole"`
+	CreateDB        bool `db:"rolcreatedb"`
+	CanLogin        bool `db:"rolcanlogin"`
+	ConnectionLimit int  `db:"rolconnlimit"`
 	Password        string
 	ValidUntil      string
 	ResQueue        string
@@ -139,7 +140,7 @@ func GetRoles(connection *utils.DBConn) []Role {
 	query := `
 SELECT
 	oid,
-	rolname,
+	quote_ident(rolname) AS name,
 	rolsuper,
 	rolinherit,
 	rolcreaterole,

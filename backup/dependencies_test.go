@@ -28,18 +28,18 @@ var _ = Describe("backup/dependencies tests", func() {
 	)
 
 	BeforeEach(func() {
-		function1 = backup.Function{SchemaName: "public", FunctionName: "function1", Arguments: "integer, integer", DependsUpon: []string{}}
-		function2 = backup.Function{SchemaName: "public", FunctionName: "function1", Arguments: "numeric, text", DependsUpon: []string{}}
-		function3 = backup.Function{SchemaName: "public", FunctionName: "function2", Arguments: "integer, integer", DependsUpon: []string{}}
-		relation1 = backup.Relation{SchemaName: "public", RelationName: "relation1", DependsUpon: []string{}}
-		relation2 = backup.Relation{SchemaName: "public", RelationName: "relation2", DependsUpon: []string{}}
-		relation3 = backup.Relation{SchemaName: "public", RelationName: "relation3", DependsUpon: []string{}}
-		type1 = backup.Type{TypeSchema: "public", TypeName: "type1", DependsUpon: []string{}}
-		type2 = backup.Type{TypeSchema: "public", TypeName: "type2", DependsUpon: []string{}}
-		type3 = backup.Type{TypeSchema: "public", TypeName: "type3", DependsUpon: []string{}}
-		view1 = backup.View{SchemaName: "public", ViewName: "view1", DependsUpon: []string{}}
-		view2 = backup.View{SchemaName: "public", ViewName: "view2", DependsUpon: []string{}}
-		view3 = backup.View{SchemaName: "public", ViewName: "view3", DependsUpon: []string{}}
+		function1 = backup.Function{Schema: "public", Name: "function1", Arguments: "integer, integer", DependsUpon: []string{}}
+		function2 = backup.Function{Schema: "public", Name: "function1", Arguments: "numeric, text", DependsUpon: []string{}}
+		function3 = backup.Function{Schema: "public", Name: "function2", Arguments: "integer, integer", DependsUpon: []string{}}
+		relation1 = backup.Relation{Schema: "public", Name: "relation1", DependsUpon: []string{}}
+		relation2 = backup.Relation{Schema: "public", Name: "relation2", DependsUpon: []string{}}
+		relation3 = backup.Relation{Schema: "public", Name: "relation3", DependsUpon: []string{}}
+		type1 = backup.Type{Schema: "public", Name: "type1", DependsUpon: []string{}}
+		type2 = backup.Type{Schema: "public", Name: "type2", DependsUpon: []string{}}
+		type3 = backup.Type{Schema: "public", Name: "type3", DependsUpon: []string{}}
+		view1 = backup.View{Schema: "public", Name: "view1", DependsUpon: []string{}}
+		view2 = backup.View{Schema: "public", Name: "view2", DependsUpon: []string{}}
+		view3 = backup.View{Schema: "public", Name: "view3", DependsUpon: []string{}}
 	})
 	Describe("TopologicalSort", func() {
 		It("returns the original slice if there are no dependencies among objects", func() {
@@ -47,9 +47,9 @@ var _ = Describe("backup/dependencies tests", func() {
 
 			relations = backup.TopologicalSort(relations)
 
-			Expect(relations[0].Name()).To(Equal("public.relation1"))
-			Expect(relations[1].Name()).To(Equal("public.relation2"))
-			Expect(relations[2].Name()).To(Equal("public.relation3"))
+			Expect(relations[0].FQN()).To(Equal("public.relation1"))
+			Expect(relations[1].FQN()).To(Equal("public.relation2"))
+			Expect(relations[2].FQN()).To(Equal("public.relation3"))
 		})
 		It("sorts the slice correctly if there is an object dependent on one other object", func() {
 			relation1.DependsUpon = []string{"public.relation3"}
@@ -57,9 +57,9 @@ var _ = Describe("backup/dependencies tests", func() {
 
 			relations = backup.TopologicalSort(relations)
 
-			Expect(relations[0].Name()).To(Equal("public.relation2"))
-			Expect(relations[1].Name()).To(Equal("public.relation3"))
-			Expect(relations[2].Name()).To(Equal("public.relation1"))
+			Expect(relations[0].FQN()).To(Equal("public.relation2"))
+			Expect(relations[1].FQN()).To(Equal("public.relation3"))
+			Expect(relations[2].FQN()).To(Equal("public.relation1"))
 		})
 		It("sorts the slice correctly if there are two objects dependent on one other object", func() {
 			view1.DependsUpon = []string{"public.view2"}
@@ -68,9 +68,9 @@ var _ = Describe("backup/dependencies tests", func() {
 
 			views = backup.TopologicalSort(views)
 
-			Expect(views[0].Name()).To(Equal("public.view2"))
-			Expect(views[1].Name()).To(Equal("public.view1"))
-			Expect(views[2].Name()).To(Equal("public.view3"))
+			Expect(views[0].FQN()).To(Equal("public.view2"))
+			Expect(views[1].FQN()).To(Equal("public.view1"))
+			Expect(views[2].FQN()).To(Equal("public.view3"))
 		})
 		It("sorts the slice correctly if there is one object dependent on two other objects", func() {
 			type2.DependsUpon = []string{"public.type1", "public.type3"}
@@ -78,9 +78,9 @@ var _ = Describe("backup/dependencies tests", func() {
 
 			types = backup.TopologicalSort(types)
 
-			Expect(types[0].Name()).To(Equal("public.type1"))
-			Expect(types[1].Name()).To(Equal("public.type3"))
-			Expect(types[2].Name()).To(Equal("public.type2"))
+			Expect(types[0].FQN()).To(Equal("public.type1"))
+			Expect(types[1].FQN()).To(Equal("public.type3"))
+			Expect(types[2].FQN()).To(Equal("public.type2"))
 		})
 		It("sorts the slice correctly if there are complex dependencies", func() {
 			type2.DependsUpon = []string{"public.type1", "public.function2(integer, integer)"}
@@ -89,9 +89,9 @@ var _ = Describe("backup/dependencies tests", func() {
 
 			sortable = backup.TopologicalSort(sortable)
 
-			Expect(sortable[0].Name()).To(Equal("public.type1"))
-			Expect(sortable[1].Name()).To(Equal("public.function2(integer, integer)"))
-			Expect(sortable[2].Name()).To(Equal("public.type2"))
+			Expect(sortable[0].FQN()).To(Equal("public.type1"))
+			Expect(sortable[1].FQN()).To(Equal("public.function2(integer, integer)"))
+			Expect(sortable[2].FQN()).To(Equal("public.type2"))
 		})
 		It("aborts if dependency loop (this shouldn't be possible)", func() {
 			type1.DependsUpon = []string{"public.type3"}
@@ -233,9 +233,9 @@ var _ = Describe("backup/dependencies tests", func() {
 
 			views = backup.SortViews(views)
 
-			Expect(views[0].Name()).To(Equal("public.view2"))
-			Expect(views[1].Name()).To(Equal("public.view1"))
-			Expect(views[2].Name()).To(Equal("public.view3"))
+			Expect(views[0].FQN()).To(Equal("public.view2"))
+			Expect(views[1].FQN()).To(Equal("public.view1"))
+			Expect(views[2].FQN()).To(Equal("public.view3"))
 		})
 	})
 })

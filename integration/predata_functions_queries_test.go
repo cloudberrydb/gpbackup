@@ -36,12 +36,12 @@ MODIFIES SQL DATA
 			results := backup.GetFunctions5(connection)
 
 			addFunction := backup.Function{
-				SchemaName: "public", FunctionName: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
+				Schema: "public", Name: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
 				BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "integer",
 				Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 0, DataAccess: "c",
 				Language: "sql"}
 			appendFunction := backup.Function{
-				SchemaName: "public", FunctionName: "append", ReturnsSet: true, FunctionBody: "SELECT ($1, $2)",
+				Schema: "public", Name: "append", ReturnsSet: true, FunctionBody: "SELECT ($1, $2)",
 				BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "SETOF record",
 				Volatility: "s", IsStrict: true, IsSecurityDefiner: true, Config: "SET search_path TO pg_temp", Cost: 200,
 				NumRows: 200, DataAccess: "m", Language: "sql"}
@@ -63,7 +63,7 @@ LANGUAGE SQL`)
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION testschema.add(integer, integer)")
 
 			addFunction := backup.Function{
-				SchemaName: "testschema", FunctionName: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
+				Schema: "testschema", Name: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
 				BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "integer",
 				Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 0, DataAccess: "c",
 				Language: "sql"}
@@ -97,11 +97,11 @@ STABLE
 			results := backup.GetFunctions4(connection)
 
 			addFunction := backup.Function{
-				SchemaName: "public", FunctionName: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
+				Schema: "public", Name: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
 				BinaryPath: "", Arguments: "", IdentArgs: "", ResultType: "",
 				Volatility: "v", IsStrict: false, IsSecurityDefiner: false, NumRows: 0, Language: "sql"}
 			appendFunction := backup.Function{
-				SchemaName: "public", FunctionName: "append", ReturnsSet: true, FunctionBody: "SELECT ($1, $2)",
+				Schema: "public", Name: "append", ReturnsSet: true, FunctionBody: "SELECT ($1, $2)",
 				BinaryPath: "", Arguments: "", IdentArgs: "", ResultType: "",
 				Volatility: "s", IsStrict: true, IsSecurityDefiner: true, Language: "sql"}
 
@@ -122,7 +122,7 @@ LANGUAGE SQL`)
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION testschema.add(float, integer)")
 
 			addFunction := backup.Function{
-				SchemaName: "testschema", FunctionName: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
+				Schema: "testschema", Name: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
 				BinaryPath: "", Arguments: "", IdentArgs: "", ResultType: "",
 				Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Language: "sql"}
 			backup.SetIncludeSchemas([]string{"testschema"})
@@ -167,7 +167,7 @@ CREATE AGGREGATE agg_prefunc(numeric, numeric) (
 			result := backup.GetAggregates(connection)
 
 			aggregateDef := backup.Aggregate{
-				SchemaName: "public", AggregateName: "agg_prefunc", Arguments: "numeric, numeric",
+				Schema: "public", Name: "agg_prefunc", Arguments: "numeric, numeric",
 				IdentArgs: "numeric, numeric", TransitionFunction: transitionOid, PreliminaryFunction: prelimOid,
 				FinalFunction: 0, SortOperator: 0, TransitionDataType: "numeric", InitialValue: "0", IsOrdered: false,
 			}
@@ -216,7 +216,7 @@ CREATE AGGREGATE testschema.agg_prefunc(numeric, numeric) (
 			transitionOid := testutils.OidFromObjectName(connection, "public", "mysfunc_accum", backup.TYPE_FUNCTION)
 			prelimOid := testutils.OidFromObjectName(connection, "public", "mypre_accum", backup.TYPE_FUNCTION)
 			aggregateDef := backup.Aggregate{
-				SchemaName: "testschema", AggregateName: "agg_prefunc", Arguments: "numeric, numeric",
+				Schema: "testschema", Name: "agg_prefunc", Arguments: "numeric, numeric",
 				IdentArgs: "numeric, numeric", TransitionFunction: transitionOid, PreliminaryFunction: prelimOid,
 				FinalFunction: 0, SortOperator: 0, TransitionDataType: "numeric", InitialValue: "0", IsOrdered: false,
 			}
@@ -387,7 +387,7 @@ LANGUAGE SQL`)
 			allFunctions := backup.GetFunctions(connection)
 			function := backup.Function{}
 			for _, funct := range allFunctions {
-				if funct.FunctionName == "add" {
+				if funct.Name == "add" {
 					function = funct
 					break
 				}
@@ -407,7 +407,7 @@ LANGUAGE SQL`)
 			allFunctions := backup.GetFunctions(connection)
 			function := backup.Function{}
 			for _, funct := range allFunctions {
-				if funct.FunctionName == "compose" {
+				if funct.Name == "compose" {
 					function = funct
 					break
 				}
@@ -432,7 +432,7 @@ LANGUAGE SQL`)
 			allFunctions := backup.GetFunctions(connection)
 			function := backup.Function{}
 			for _, funct := range allFunctions {
-				if funct.FunctionName == "compose" {
+				if funct.Name == "compose" {
 					function = funct
 					break
 				}

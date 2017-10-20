@@ -13,9 +13,9 @@ import (
 
 type Operator struct {
 	Oid              uint32
-	SchemaName       string
+	Schema           string
 	Name             string
-	ProcedureName    string
+	Procedure        string
 	LeftArgType      string
 	RightArgType     string
 	CommutatorOp     string
@@ -31,9 +31,9 @@ func GetOperators(connection *utils.DBConn) []Operator {
 	version4query := fmt.Sprintf(`
 SELECT
 	o.oid,
-	n.nspname AS schemaname,
+	quote_ident(n.nspname) AS schema,
 	oprname AS name,
-	oprcode AS procedurename,
+	oprcode::regproc AS procedure,
 	oprleft::regtype AS leftargtype,
 	oprright::regtype AS rightargtype,
 	oprcom::regoper AS commutatorop,
@@ -48,9 +48,9 @@ WHERE %s AND oprcode != 0`, SchemaFilterClause("n"))
 	query := fmt.Sprintf(`
 SELECT
 	o.oid,
-	n.nspname AS schemaname,
+	quote_ident(n.nspname) AS schema,
 	oprname AS name,
-	oprcode AS procedurename,
+	oprcode::regproc AS procedure,
 	oprleft::regtype AS leftargtype,
 	oprright::regtype AS rightargtype,
 	oprcom::regoper AS commutatorop,
@@ -80,7 +80,7 @@ WHERE %s AND oprcode != 0`, SchemaFilterClause("n"))
 
 type OperatorFamily struct {
 	Oid         uint32
-	SchemaName  string
+	Schema      string
 	Name        string
 	IndexMethod string
 }
@@ -90,9 +90,9 @@ func GetOperatorFamilies(connection *utils.DBConn) []OperatorFamily {
 	query := fmt.Sprintf(`
 SELECT
 	o.oid,
-	n.nspname AS schemaname,
-	opfname AS name,
-	(SELECT amname FROM pg_am WHERE oid = opfmethod) AS indexMethod
+	quote_ident(n.nspname) AS schema,
+	quote_ident(opfname) AS name,
+	(SELECT quote_ident(amname) FROM pg_am WHERE oid = opfmethod) AS indexMethod
 FROM pg_opfamily o
 JOIN pg_namespace n on n.oid = o.opfnamespace
 WHERE %s`, SchemaFilterClause("n"))
@@ -103,8 +103,8 @@ WHERE %s`, SchemaFilterClause("n"))
 
 type OperatorClass struct {
 	Oid          uint32
-	ClassSchema  string
-	ClassName    string
+	Schema       string
+	Name         string
 	FamilySchema string
 	FamilyName   string
 	IndexMethod  string
@@ -126,8 +126,8 @@ func GetOperatorClasses(connection *utils.DBConn) []OperatorClass {
 	version4query := fmt.Sprintf(`
 SELECT
 	c.oid,
-	cls_ns.nspname AS classschema,
-	opcname AS classname,
+	quote_ident(cls_ns.nspname) AS schema,
+	quote_ident(opcname) AS name,
 	'' AS familyschema,
 	'' AS familyname,
 	(SELECT amname FROM pg_catalog.pg_am WHERE oid = opcamid) AS indexmethod,
@@ -141,10 +141,10 @@ WHERE %s`, SchemaFilterClause("cls_ns"))
 	query := fmt.Sprintf(`
 SELECT
 	c.oid,
-	cls_ns.nspname AS classschema,
-	opcname AS classname,
-	fam_ns.nspname AS familyschema,
-	opfname AS familyname,
+	quote_ident(cls_ns.nspname) AS schema,
+	quote_ident(opcname) AS name,
+	quote_ident(fam_ns.nspname) AS familyschema,
+	quote_ident(opfname) AS familyname,
 	(SELECT amname FROM pg_catalog.pg_am WHERE oid = opcmethod) AS indexmethod,
 	opcintype::pg_catalog.regtype AS type,
 	opcdefault AS default,
@@ -233,7 +233,7 @@ func GetOperatorClassFunctions(connection *utils.DBConn) map[uint32][]OperatorCl
 SELECT
 	amopclaid AS classoid,
 	amprocnum AS supportnumber,
-	amproc::pg_catalog.regprocedure AS functionname
+	amproc::regprocedure AS functionname
 FROM pg_catalog.pg_amproc
 ORDER BY amprocnum
 `)
@@ -242,7 +242,7 @@ ORDER BY amprocnum
 SELECT
 	refobjid AS classoid,
 	amprocnum AS supportnumber,
-	amproc::pg_catalog.regprocedure AS functionname
+	amproc::regprocedure::text AS functionname
 FROM pg_catalog.pg_amproc ap, pg_catalog.pg_depend
 WHERE refclassid = 'pg_catalog.pg_opclass'::pg_catalog.regclass
 AND classid = 'pg_catalog.pg_amproc'::pg_catalog.regclass

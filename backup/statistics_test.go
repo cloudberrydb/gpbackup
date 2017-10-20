@@ -19,7 +19,7 @@ var _ = Describe("backup/statistics tests", func() {
 		})
 		It("prints tuple and attribute stats for single table with no stats", func() {
 			tableTestTable := backup.BasicRelation("testschema", "testtable")
-			tupleStats = backup.TupleStatistic{SchemaName: "testschema", TableName: "testtable"}
+			tupleStats = backup.TupleStatistic{Schema: "testschema", Table: "testtable"}
 			attStats = []backup.AttributeStatistic{}
 			backup.PrintStatisticsStatementsForTable(backupfile, toc, tableTestTable, attStats, tupleStats)
 			testutils.ExpectEntry(toc.StatisticsEntries, 0, "testschema", "testtable", "STATISTICS")
@@ -32,10 +32,10 @@ AND relnamespace = 0;`)
 		})
 		It("prints tuple and attribute stats for single table with stats", func() {
 			tableTestTable := backup.BasicRelation("testschema", "testtable")
-			tupleStats = backup.TupleStatistic{SchemaName: "testschema", TableName: "testtable"}
+			tupleStats = backup.TupleStatistic{Schema: "testschema", Table: "testtable"}
 			attStats = []backup.AttributeStatistic{
-				{SchemaName: "testschema", TableName: "testtable", AttName: "testattWithArray", TypeName: "_array"},
-				{SchemaName: "testschema", TableName: "testtable", AttName: "testatt", TypeName: "_array", Relid: 2, AttNumber: 3, NullFraction: .4,
+				{Schema: "testschema", Table: "testtable", AttName: "testattWithArray", Type: "_array"},
+				{Schema: "testschema", Table: "testtable", AttName: "testatt", Type: "_array", Relid: 2, AttNumber: 3, NullFraction: .4,
 					Width: 10, Distinct: .5, Kind1: 20, Operator1: 10, Numbers1: pq.StringArray([]string{"1", "2", "3"}), Values1: pq.StringArray([]string{"4", "5", "6"})},
 			}
 			backup.PrintStatisticsStatementsForTable(backupfile, toc, tableTestTable, attStats, tupleStats)
@@ -104,8 +104,8 @@ INSERT INTO pg_statistic VALUES (
 	})
 	Describe("GenerateTupleStatisticsQuery", func() {
 		It("generates tuple statistics query with a single quote in the table name", func() {
-			tableTestTable := backup.BasicRelation("testschema", "test'table")
-			tupleStats := backup.TupleStatistic{SchemaName: "testschema", TableName: "test'table"}
+			tableTestTable := backup.BasicRelation("testschema", `"test'table"`)
+			tupleStats := backup.TupleStatistic{Schema: "testschema", Table: `"test'table"`}
 			tupleQuery := backup.GenerateTupleStatisticsQuery(tableTestTable, tupleStats)
 			Expect(tupleQuery).To(Equal(`UPDATE pg_class
 SET
@@ -117,12 +117,12 @@ AND relnamespace = 0;`))
 
 	})
 	Describe("GenerateAttributeStatisticsQuery", func() {
-		tableTestTable := backup.BasicRelation("testschema", "test'table")
-		attStats := backup.AttributeStatistic{SchemaName: "testschema", TableName: "testtable", AttName: "testatt", TypeName: "", Relid: 2,
+		tableTestTable := backup.BasicRelation("testschema", `"test'table"`)
+		attStats := backup.AttributeStatistic{Schema: "testschema", Table: "testtable", AttName: "testatt", Type: "", Relid: 2,
 			AttNumber: 3, NullFraction: .4, Width: 10, Distinct: .5, Kind1: 20, Operator1: 10,
 			Numbers1: pq.StringArray([]string{"1", "2", "3"}), Values1: pq.StringArray([]string{"4", "5", "6"})}
 		It("generates attribute statistics query for array type", func() {
-			attStats.TypeName = "_array"
+			attStats.Type = "_array"
 			attStatsQuery := backup.GenerateAttributeStatisticsQuery(tableTestTable, attStats)
 			Expect(attStatsQuery).To(Equal(`DELETE FROM pg_statistic WHERE starelid = 'testschema."test''table"'::regclass::oid AND staattnum = 3;
 
@@ -151,7 +151,7 @@ INSERT INTO pg_statistic VALUES (
 );`))
 		})
 		It("generates attribute statistics query for non-array type", func() {
-			attStats.TypeName = "testtype"
+			attStats.Type = "testtype"
 			attStatsQuery := backup.GenerateAttributeStatisticsQuery(tableTestTable, attStats)
 			Expect(attStatsQuery).To(Equal(`DELETE FROM pg_statistic WHERE starelid = 'testschema."test''table"'::regclass::oid AND staattnum = 3;
 

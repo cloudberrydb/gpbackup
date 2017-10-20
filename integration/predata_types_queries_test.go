@@ -22,31 +22,31 @@ var _ = Describe("backup integration tests", func() {
 			enumType          backup.Type
 		)
 		BeforeEach(func() {
-			shellType = backup.Type{Type: "p", TypeSchema: "public", TypeName: "shell_type"}
+			shellType = backup.Type{Type: "p", Schema: "public", Name: "shell_type"}
 			baseTypeDefault = backup.Type{
-				Oid: 1, Type: "b", TypeSchema: "public", TypeName: "base_type", Input: "base_fn_in", Output: "base_fn_out", Receive: "",
+				Oid: 1, Type: "b", Schema: "public", Name: "base_type", Input: "base_fn_in", Output: "base_fn_out", Receive: "",
 				Send: "", ModIn: "", ModOut: "", InternalLength: -1, IsPassedByValue: false, Alignment: "i", Storage: "p",
 				DefaultVal: "", Element: "", Delimiter: ",",
 			}
 			baseTypeCustom = backup.Type{
-				Oid: 1, Type: "b", TypeSchema: "public", TypeName: "base_type", Input: "base_fn_in", Output: "base_fn_out", Receive: "",
+				Oid: 1, Type: "b", Schema: "public", Name: "base_type", Input: "base_fn_in", Output: "base_fn_out", Receive: "",
 				Send: "", ModIn: "", ModOut: "", InternalLength: 8, IsPassedByValue: true, Alignment: "c", Storage: "p",
 				DefaultVal: "0", Element: "integer", Delimiter: ";",
 			}
 			compositeTypeAtt1 = backup.Type{
-				Oid: 1, Type: "c", TypeSchema: "public", TypeName: "composite_type",
+				Oid: 1, Type: "c", Schema: "public", Name: "composite_type",
 				AttName: "name", AttType: "integer",
 			}
 			compositeTypeAtt2 = backup.Type{
-				Oid: 1, Type: "c", TypeSchema: "public", TypeName: "composite_type",
+				Oid: 1, Type: "c", Schema: "public", Name: "composite_type",
 				AttName: "name1", AttType: "integer",
 			}
 			compositeTypeAtt3 = backup.Type{
-				Oid: 1, Type: "c", TypeSchema: "public", TypeName: "composite_type",
+				Oid: 1, Type: "c", Schema: "public", Name: "composite_type",
 				AttName: "name2", AttType: "text",
 			}
 			enumType = backup.Type{
-				Oid: 1, Type: "e", TypeSchema: "public", TypeName: "enum_type", EnumLabels: "'label1',\n\t'label2',\n\t'label3'",
+				Oid: 1, Type: "e", Schema: "public", Name: "enum_type", EnumLabels: "'label1',\n\t'label2',\n\t'label3'",
 			}
 		})
 		It("returns a slice for a shell type", func() {
@@ -57,7 +57,7 @@ var _ = Describe("backup integration tests", func() {
 			results := backup.GetNonEnumTypes(connection, excludeOIDs)
 
 			Expect(len(results)).To(Equal(1))
-			testutils.ExpectStructsToMatchIncluding(&shellType, &results[0], "TypeSchema", "TypeName", "Type")
+			testutils.ExpectStructsToMatchIncluding(&shellType, &results[0], "Schema", "Name", "Type")
 		})
 		It("returns a slice of composite types", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TYPE composite_type AS (name int4, name1 int, name2 text);")
@@ -67,9 +67,9 @@ var _ = Describe("backup integration tests", func() {
 			results := backup.GetNonEnumTypes(connection, excludeOIDs)
 
 			Expect(len(results)).To(Equal(3))
-			testutils.ExpectStructsToMatchIncluding(&compositeTypeAtt1, &results[0], "Type", "TypeSchema", "TypeName", "AttName", "AttType")
-			testutils.ExpectStructsToMatchIncluding(&compositeTypeAtt2, &results[1], "Type", "TypeSchema", "TypeName", "AttName", "AttType")
-			testutils.ExpectStructsToMatchIncluding(&compositeTypeAtt3, &results[2], "Type", "TypeSchema", "TypeName", "AttName", "AttType")
+			testutils.ExpectStructsToMatchIncluding(&compositeTypeAtt1, &results[0], "Type", "Schema", "Name", "AttName", "AttType")
+			testutils.ExpectStructsToMatchIncluding(&compositeTypeAtt2, &results[1], "Type", "Schema", "Name", "AttName", "AttType")
+			testutils.ExpectStructsToMatchIncluding(&compositeTypeAtt3, &results[2], "Type", "Schema", "Name", "AttName", "AttType")
 		})
 		It("returns a slice for a base type with default values", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TYPE base_type")
@@ -139,10 +139,10 @@ var _ = Describe("backup integration tests", func() {
 			} else {
 				testutils.ExpectStructsToMatchExcluding(&resultTypes[0], &baseTypeCustom, "Oid")
 			}
-			testutils.ExpectStructsToMatchIncluding(&resultTypes[1], &compositeTypeAtt1, "Type", "TypeSchema", "TypeName", "AttName", "AttType")
-			testutils.ExpectStructsToMatchIncluding(&resultTypes[2], &compositeTypeAtt2, "Type", "TypeSchema", "TypeName", "AttName", "AttType")
-			testutils.ExpectStructsToMatchIncluding(&resultTypes[3], &compositeTypeAtt3, "Type", "TypeSchema", "TypeName", "AttName", "AttType")
-			testutils.ExpectStructsToMatchIncluding(&resultTypes[4], &shellType, "TypeSchema", "TypeName", "Type")
+			testutils.ExpectStructsToMatchIncluding(&resultTypes[1], &compositeTypeAtt1, "Type", "Schema", "Name", "AttName", "AttType")
+			testutils.ExpectStructsToMatchIncluding(&resultTypes[2], &compositeTypeAtt2, "Type", "Schema", "Name", "AttName", "AttType")
+			testutils.ExpectStructsToMatchIncluding(&resultTypes[3], &compositeTypeAtt3, "Type", "Schema", "Name", "AttName", "AttType")
+			testutils.ExpectStructsToMatchIncluding(&resultTypes[4], &shellType, "Schema", "Name", "Type")
 		})
 		It("does not return types for sequences or views", func() {
 			testutils.AssertQueryRuns(connection, "CREATE SEQUENCE my_sequence START 10")
@@ -167,9 +167,9 @@ var _ = Describe("backup integration tests", func() {
 		})
 		It("returns a slice for a domain type", func() {
 			domainType := backup.Type{
-				Oid: 1, Type: "d", TypeSchema: "public", TypeName: "domain1", AttName: "", AttType: "", Input: "domain_in", Output: "numeric_out",
+				Oid: 1, Type: "d", Schema: "public", Name: "domain1", AttName: "", AttType: "", Input: "domain_in", Output: "numeric_out",
 				Receive: "domain_recv", Send: "numeric_send", ModIn: "", ModOut: "", InternalLength: -1, IsPassedByValue: false,
-				Alignment: "i", Storage: "m", DefaultVal: "4", Element: "", Delimiter: ",", EnumLabels: "", BaseType: "numeric",
+				Alignment: "i", Storage: "m", DefaultVal: "4", Element: "", Delimiter: ",", EnumLabels: "", BaseType: `"numeric"`,
 			}
 			testutils.AssertQueryRuns(connection, "CREATE DOMAIN domain1 AS numeric DEFAULT 4")
 			defer testutils.AssertQueryRuns(connection, "DROP DOMAIN domain1")
@@ -195,10 +195,10 @@ var _ = Describe("backup integration tests", func() {
 
 			excludeOIDs := backup.GetAutogeneratedTypeList(connection)
 			results := backup.GetNonEnumTypes(connection, excludeOIDs)
-			shellTypeOtherSchema := backup.Type{Type: "p", TypeSchema: "testschema", TypeName: "shell_type"}
+			shellTypeOtherSchema := backup.Type{Type: "p", Schema: "testschema", Name: "shell_type"}
 
 			Expect(len(results)).To(Equal(1))
-			testutils.ExpectStructsToMatchIncluding(&shellTypeOtherSchema, &results[0], "TypeSchema", "TypeName", "Type")
+			testutils.ExpectStructsToMatchIncluding(&shellTypeOtherSchema, &results[0], "Schema", "Name", "Type")
 		})
 	})
 	Describe("ConstructCompositeTypeDependencies", func() {
@@ -222,7 +222,7 @@ var _ = Describe("backup integration tests", func() {
 			allTypes := backup.GetNonEnumTypes(connection, excludeOIDs)
 			compType := backup.Type{}
 			for _, typ := range allTypes {
-				if typ.TypeName == "comp_type" {
+				if typ.Name == "comp_type" {
 					compType = typ
 					break
 				}
@@ -243,7 +243,7 @@ var _ = Describe("backup integration tests", func() {
 			allTypes := backup.GetNonEnumTypes(connection, excludeOIDs)
 			compType := backup.Type{}
 			for _, typ := range allTypes {
-				if typ.TypeName == "comp_type" {
+				if typ.Name == "comp_type" {
 					compType = typ
 					break
 				}
@@ -265,7 +265,7 @@ var _ = Describe("backup integration tests", func() {
 			allTypes := backup.GetNonEnumTypes(connection, excludeOIDs)
 			compType := backup.Type{}
 			for _, typ := range allTypes {
-				if typ.TypeName == "base_type" {
+				if typ.Name == "base_type" {
 					compType = typ
 					return
 				}
@@ -300,7 +300,7 @@ var _ = Describe("backup integration tests", func() {
 			allTypes := backup.GetNonEnumTypes(connection, excludeOIDs)
 			baseType := backup.Type{}
 			for _, typ := range allTypes {
-				if typ.TypeName == "base_type" {
+				if typ.Name == "base_type" {
 					baseType = typ
 					break
 				}
@@ -322,7 +322,7 @@ var _ = Describe("backup integration tests", func() {
 			allTypes := backup.GetNonEnumTypes(connection, excludeOIDs)
 			baseType := backup.Type{}
 			for _, typ := range allTypes {
-				if typ.TypeName == "base_type" {
+				if typ.Name == "base_type" {
 					baseType = typ
 					break
 				}
@@ -354,7 +354,7 @@ var _ = Describe("backup integration tests", func() {
 			allTypes := backup.GetNonEnumTypes(connection, excludeOIDs)
 			baseType := backup.Type{}
 			for _, typ := range allTypes {
-				if typ.TypeName == "base_type" {
+				if typ.Name == "base_type" {
 					baseType = typ
 					break
 				}
@@ -376,7 +376,7 @@ var _ = Describe("backup integration tests", func() {
 			allTypes := backup.GetNonEnumTypes(connection, excludeOIDs)
 			baseType := backup.Type{}
 			for _, typ := range allTypes {
-				if typ.TypeName == "base_type" {
+				if typ.Name == "base_type" {
 					baseType = typ
 					break
 				}
@@ -403,7 +403,7 @@ var _ = Describe("backup integration tests", func() {
 			allTypes := backup.GetNonEnumTypes(connection, excludeOIDs)
 			domain := backup.Type{}
 			for _, typ := range allTypes {
-				if typ.TypeName == "domain_type" {
+				if typ.Name == "domain_type" {
 					domain = typ
 					break
 				}
@@ -424,7 +424,7 @@ var _ = Describe("backup integration tests", func() {
 			allTypes := backup.GetNonEnumTypes(connection, excludeOIDs)
 			domain := backup.Type{}
 			for _, typ := range allTypes {
-				if typ.TypeName == "base_type" {
+				if typ.Name == "base_type" {
 					domain = typ
 					break
 				}

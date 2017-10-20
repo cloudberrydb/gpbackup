@@ -86,8 +86,8 @@ func (toc *TOC) GetAllSQLStatements(filename string, metadataFile io.ReaderAt) [
 
 func SubstituteRedirectDatabaseInStatements(statements []StatementWithType, oldName string, newName string) []StatementWithType {
 	shouldReplace := map[string]bool{"DATABASE GUC": true, "DATABASE": true, "DATABASE METADATA": true}
-	originalDatabase := regexp.QuoteMeta(QuoteIdent(oldName))
-	newDatabase := QuoteIdent(newName)
+	originalDatabase := regexp.QuoteMeta(oldName)
+	newDatabase := newName
 	pattern := regexp.MustCompile(fmt.Sprintf("DATABASE %s(;| OWNER| SET)", originalDatabase))
 	for i := range statements {
 		if shouldReplace[statements[i].ObjectType] {

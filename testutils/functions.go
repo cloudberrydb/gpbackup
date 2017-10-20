@@ -207,7 +207,7 @@ func DefaultACLWithGrantWithout(grantee string, objType string, revoke ...string
 }
 
 func DefaultTypeDefinition(typeType string, typeName string) backup.Type {
-	return backup.Type{Oid: 1, TypeSchema: "public", TypeName: typeName, Type: typeType, AttName: "", AttType: "", Input: "", Output: "", Receive: "", Send: "", ModIn: "", ModOut: "", InternalLength: -1, IsPassedByValue: false, Alignment: "c", Storage: "p", DefaultVal: "", Element: "", Delimiter: "", EnumLabels: "", BaseType: "", NotNull: false, CompositeAtts: nil, DependsUpon: nil}
+	return backup.Type{Oid: 1, Schema: "public", Name: typeName, Type: typeType, AttName: "", AttType: "", Input: "", Output: "", Receive: "", Send: "", ModIn: "", ModOut: "", InternalLength: -1, IsPassedByValue: false, Alignment: "c", Storage: "p", DefaultVal: "", Element: "", Delimiter: "", EnumLabels: "", BaseType: "", NotNull: false, CompositeAtts: nil, DependsUpon: nil}
 }
 
 /*

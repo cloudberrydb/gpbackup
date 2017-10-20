@@ -14,7 +14,7 @@ var _ = Describe("backup/predata_functions tests", func() {
 	})
 	Describe("Functions involved in printing CREATE FUNCTION statements", func() {
 		var funcDef backup.Function
-		funcDefault := backup.Function{Oid: 1, SchemaName: "public", FunctionName: "func_name", ReturnsSet: false, FunctionBody: "add_two_ints", BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "integer", Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: float32(1), NumRows: float32(0), DataAccess: "", Language: "internal", DependsUpon: nil}
+		funcDefault := backup.Function{Oid: 1, Schema: "public", Name: "func_name", ReturnsSet: false, FunctionBody: "add_two_ints", BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "integer", Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: float32(1), NumRows: float32(0), DataAccess: "", Language: "internal", DependsUpon: nil}
 		BeforeEach(func() {
 			funcDef = funcDefault
 		})
@@ -234,7 +234,7 @@ $_$`)
 	})
 	Describe("PrintCreateAggregateStatements", func() {
 		aggDefs := make([]backup.Aggregate, 1)
-		aggDefault := backup.Aggregate{Oid: 1, SchemaName: "public", AggregateName: "agg_name", Arguments: "integer, integer", IdentArgs: "integer, integer", TransitionFunction: 1, PreliminaryFunction: 0, FinalFunction: 0, SortOperator: 0, TransitionDataType: "integer", InitialValue: "", IsOrdered: false}
+		aggDefault := backup.Aggregate{Oid: 1, Schema: "public", Name: "agg_name", Arguments: "integer, integer", IdentArgs: "integer, integer", TransitionFunction: 1, PreliminaryFunction: 0, FinalFunction: 0, SortOperator: 0, TransitionDataType: "integer", InitialValue: "", IsOrdered: false}
 		funcInfoMap := map[uint32]backup.FunctionInfo{
 			1: {QualifiedName: "public.mysfunc", Arguments: "integer"},
 			2: {QualifiedName: "public.mypfunc", Arguments: "numeric, numeric"},
@@ -406,29 +406,29 @@ COMMENT ON CAST (src AS dst) IS 'This is a cast comment.';`)
 	Describe("ExtractLanguageFunctions", func() {
 		customLang := backup.ProceduralLanguage{Oid: 1, Name: "custom_language", Owner: "testrole", IsPl: true, PlTrusted: true, Handler: 3, Inline: 4, Validator: 5}
 		procLangs := []backup.ProceduralLanguage{customLang}
-		langFunc := backup.Function{Oid: 3, FunctionName: "custom_handler"}
-		nonLangFunc := backup.Function{Oid: 2, FunctionName: "random_function"}
+		langFunc := backup.Function{Oid: 3, Name: "custom_handler"}
+		nonLangFunc := backup.Function{Oid: 2, Name: "random_function"}
 		It("handles a case where all functions are language-associated functions", func() {
 			funcDefs := []backup.Function{langFunc}
 			langFuncs, otherFuncs := backup.ExtractLanguageFunctions(funcDefs, procLangs)
 			Expect(len(langFuncs)).To(Equal(1))
 			Expect(len(otherFuncs)).To(Equal(0))
-			Expect(langFuncs[0].FunctionName).To(Equal("custom_handler"))
+			Expect(langFuncs[0].Name).To(Equal("custom_handler"))
 		})
 		It("handles a case where no functions are language-associated functions", func() {
 			funcDefs := []backup.Function{nonLangFunc}
 			langFuncs, otherFuncs := backup.ExtractLanguageFunctions(funcDefs, procLangs)
 			Expect(len(langFuncs)).To(Equal(0))
 			Expect(len(otherFuncs)).To(Equal(1))
-			Expect(otherFuncs[0].FunctionName).To(Equal("random_function"))
+			Expect(otherFuncs[0].Name).To(Equal("random_function"))
 		})
 		It("handles a case where some functions are language-associated functions", func() {
 			funcDefs := []backup.Function{langFunc, nonLangFunc}
 			langFuncs, otherFuncs := backup.ExtractLanguageFunctions(funcDefs, procLangs)
 			Expect(len(langFuncs)).To(Equal(1))
 			Expect(len(otherFuncs)).To(Equal(1))
-			Expect(langFuncs[0].FunctionName).To(Equal("custom_handler"))
-			Expect(otherFuncs[0].FunctionName).To(Equal("random_function"))
+			Expect(langFuncs[0].Name).To(Equal("custom_handler"))
+			Expect(otherFuncs[0].Name).To(Equal("random_function"))
 		})
 	})
 	Describe("PrintCreateLanguageStatements", func() {

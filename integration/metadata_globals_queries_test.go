@@ -43,15 +43,15 @@ var _ = Describe("backup integration tests", func() {
 
 			results := backup.GetDatabaseNames(connection)
 
-			testdbExpected := backup.DatabaseName{Oid: 0, DatabaseName: "testdb", TablespaceName: "pg_default"}
-			othertestdbExpected := backup.DatabaseName{Oid: 0, DatabaseName: `"Other_testdb"`, TablespaceName: "test_tablespace"}
+			testdbExpected := backup.Database{Oid: 0, Name: "testdb", Tablespace: "pg_default"}
+			othertestdbExpected := backup.Database{Oid: 0, Name: `"Other_testdb"`, Tablespace: "test_tablespace"}
 			var foundTestdb, foundOtherTestdb bool
 			for _, dbname := range results {
-				if dbname.DatabaseName == "testdb" {
+				if dbname.Name == "testdb" {
 					testutils.ExpectStructsToMatchExcluding(&testdbExpected, &dbname, "Oid")
 					foundTestdb = true
 				}
-				if dbname.DatabaseName == `"Other_testdb"` {
+				if dbname.Name == `"Other_testdb"` {
 					testutils.ExpectStructsToMatchExcluding(&othertestdbExpected, &dbname, "Oid")
 					foundOtherTestdb = true
 				}
@@ -68,11 +68,11 @@ var _ = Describe("backup integration tests", func() {
 
 			results := backup.GetResourceQueues(connection)
 
-			statementsQueue := backup.ResourceQueue{Oid: 1, Name: "statementsQueue", ActiveStatements: 7, MaxCost: "-1.00", CostOvercommit: false, MinCost: "0.00", Priority: "medium", MemoryLimit: "-1"}
+			statementsQueue := backup.ResourceQueue{Oid: 1, Name: `"statementsQueue"`, ActiveStatements: 7, MaxCost: "-1.00", CostOvercommit: false, MinCost: "0.00", Priority: "medium", MemoryLimit: "-1"}
 
 			//Since resource queues are global, we can't be sure this is the only one
 			for _, resultQueue := range results {
-				if resultQueue.Name == "statementsQueue" {
+				if resultQueue.Name == `"statementsQueue"` {
 					testutils.ExpectStructsToMatchExcluding(&statementsQueue, &resultQueue, "Oid")
 					return
 				}
@@ -85,10 +85,10 @@ var _ = Describe("backup integration tests", func() {
 
 			results := backup.GetResourceQueues(connection)
 
-			maxCostQueue := backup.ResourceQueue{Oid: 1, Name: "maxCostQueue", ActiveStatements: -1, MaxCost: "32.80", CostOvercommit: false, MinCost: "0.00", Priority: "medium", MemoryLimit: "-1"}
+			maxCostQueue := backup.ResourceQueue{Oid: 1, Name: `"maxCostQueue"`, ActiveStatements: -1, MaxCost: "32.80", CostOvercommit: false, MinCost: "0.00", Priority: "medium", MemoryLimit: "-1"}
 
 			for _, resultQueue := range results {
-				if resultQueue.Name == "maxCostQueue" {
+				if resultQueue.Name == `"maxCostQueue"` {
 					testutils.ExpectStructsToMatchExcluding(&maxCostQueue, &resultQueue, "Oid")
 					return
 				}
@@ -101,10 +101,10 @@ var _ = Describe("backup integration tests", func() {
 
 			results := backup.GetResourceQueues(connection)
 
-			everyQueue := backup.ResourceQueue{Oid: 1, Name: "everyQueue", ActiveStatements: 7, MaxCost: "30000.00", CostOvercommit: true, MinCost: "22.53", Priority: "low", MemoryLimit: "2GB"}
+			everyQueue := backup.ResourceQueue{Oid: 1, Name: `"everyQueue"`, ActiveStatements: 7, MaxCost: "30000.00", CostOvercommit: true, MinCost: "22.53", Priority: "low", MemoryLimit: "2GB"}
 
 			for _, resultQueue := range results {
-				if resultQueue.Name == "everyQueue" {
+				if resultQueue.Name == `"everyQueue"` {
 					testutils.ExpectStructsToMatchExcluding(&everyQueue, &resultQueue, "Oid")
 					return
 				}

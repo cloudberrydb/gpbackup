@@ -14,7 +14,7 @@ var _ = Describe("backup integration tests", func() {
 	})
 	Describe("PrintStatisticsStatementsForTable", func() {
 		It("prints attribute and tuple statistics for a table", func() {
-			tables := []backup.Relation{backup.Relation{SchemaOid: 2200, SchemaName: "public", RelationName: "foo"}}
+			tables := []backup.Relation{backup.Relation{SchemaOid: 2200, Schema: "public", Name: "foo"}}
 
 			// Create and ANALYZE a table to generate statistics
 			testutils.AssertQueryRuns(connection, "CREATE TABLE foo(i int, j text, k bool)")
@@ -24,7 +24,7 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "ANALYZE foo")
 
 			oldTableOid := testutils.OidFromObjectName(connection, "public", "foo", backup.TYPE_RELATION)
-			tables[0].RelationOid = oldTableOid
+			tables[0].Oid = oldTableOid
 
 			beforeAttStats := backup.GetAttributeStatistics(connection, tables)
 			beforeTupleStats := backup.GetTupleStatistics(connection, tables)
@@ -39,7 +39,7 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, buffer.String())
 
 			newTableOid := testutils.OidFromObjectName(connection, "public", "foo", backup.TYPE_RELATION)
-			tables[0].RelationOid = newTableOid
+			tables[0].Oid = newTableOid
 			afterAttStats := backup.GetAttributeStatistics(connection, tables)
 			afterTupleStats := backup.GetTupleStatistics(connection, tables)
 			afterTupleStat := afterTupleStats[newTableOid]

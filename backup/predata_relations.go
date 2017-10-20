@@ -14,12 +14,12 @@ import (
 )
 
 type Relation struct {
-	SchemaOid    uint32
-	RelationOid  uint32
-	SchemaName   string
-	RelationName string
-	DependsUpon  []string // Used for dependency sorting
-	Inherits     []string // Only used for printing INHERITS statement
+	SchemaOid   uint32
+	Oid         uint32
+	Schema      string
+	Name        string
+	DependsUpon []string // Used for dependency sorting
+	Inherits    []string // Only used for printing INHERITS statement
 }
 
 /*
@@ -27,7 +27,7 @@ type Relation struct {
  * everything quoted and escaped appropriately.
  */
 func (t Relation) ToString() string {
-	return utils.MakeFQN(t.SchemaName, t.RelationName)
+	return utils.MakeFQN(t.Schema, t.Name)
 }
 
 /* Parse an appropriately-escaped schema.table string into a Relation.  The Relation's
@@ -56,10 +56,10 @@ func RelationFromString(name string) Relation {
 
 func BasicRelation(schema string, relation string) Relation {
 	return Relation{
-		SchemaOid:    0,
-		SchemaName:   schema,
-		RelationOid:  0,
-		RelationName: relation,
+		SchemaOid: 0,
+		Schema:    schema,
+		Oid:       0,
+		Name:      relation,
 	}
 }
 
@@ -118,7 +118,7 @@ func ConstructDefinitionsForTables(connection *utils.DBConn, tables []Relation) 
 
 	logger.Verbose("Constructing table definition map")
 	for _, table := range tables {
-		oid := table.RelationOid
+		oid := table.Oid
 		tableDefinitionMap[oid] = TableDefinition{
 			distributionPolicies[oid],
 			partitionDefs[oid],
@@ -148,7 +148,7 @@ func PrintCreateTableStatement(predataFile *utils.FileWithByteCount, toc *utils.
 		PrintRegularTableCreateStatement(predataFile, nil, table, tableDef)
 	}
 	PrintPostCreateTableStatements(predataFile, table, tableDef, tableMetadata)
-	toc.AddMetadataEntry(table.SchemaName, table.RelationName, "TABLE", start, predataFile)
+	toc.AddMetadataEntry(table.Schema, table.Name, "TABLE", start, predataFile)
 }
 
 func PrintRegularTableCreateStatement(predataFile *utils.FileWithByteCount, toc *utils.TOC, table Relation, tableDef TableDefinition) {
@@ -176,7 +176,7 @@ func PrintRegularTableCreateStatement(predataFile *utils.FileWithByteCount, toc 
 	}
 	printAlterColumnStatements(predataFile, table, tableDef.ColumnDefs)
 	if toc != nil {
-		toc.AddMetadataEntry(table.SchemaName, table.RelationName, "TABLE", start, predataFile)
+		toc.AddMetadataEntry(table.Schema, table.Name, "TABLE", start, predataFile)
 	}
 }
 
@@ -184,7 +184,7 @@ func printColumnDefinitions(predataFile *utils.FileWithByteCount, columnDefs []C
 	lines := make([]string, 0)
 	for _, column := range columnDefs {
 		if !column.IsDropped {
-			line := fmt.Sprintf("\t%s %s", utils.QuoteIdent(column.Name), column.TypeName)
+			line := fmt.Sprintf("\t%s %s", column.Name, column.Type)
 			if column.HasDefault {
 				line += fmt.Sprintf(" DEFAULT %s", column.DefaultVal)
 			}
@@ -222,7 +222,7 @@ func PrintPostCreateTableStatements(predataFile *utils.FileWithByteCount, table 
 
 	for _, att := range tableDef.ColumnDefs {
 		if att.Comment != "" {
-			predataFile.MustPrintf("\n\nCOMMENT ON COLUMN %s.%s IS '%s';\n", table.ToString(), utils.QuoteIdent(att.Name), att.Comment)
+			predataFile.MustPrintf("\n\nCOMMENT ON COLUMN %s.%s IS '%s';\n", table.ToString(), att.Name, att.Comment)
 		}
 	}
 }
@@ -277,8 +277,8 @@ func PrintCreateSequenceStatements(predataFile *utils.FileWithByteCount, toc *ut
 
 		predataFile.MustPrintf("\n\nSELECT pg_catalog.setval('%s', %d, %v);\n", seqFQN, sequence.LastVal, sequence.IsCalled)
 
-		PrintObjectMetadata(predataFile, sequenceMetadata[sequence.RelationOid], seqFQN, "SEQUENCE")
-		toc.AddMetadataEntry(sequence.Relation.SchemaName, sequence.Relation.RelationName, "SEQUENCE", start, predataFile)
+		PrintObjectMetadata(predataFile, sequenceMetadata[sequence.Oid], seqFQN, "SEQUENCE")
+		toc.AddMetadataEntry(sequence.Relation.Schema, sequence.Relation.Name, "SEQUENCE", start, predataFile)
 	}
 }
 
@@ -289,7 +289,7 @@ func PrintAlterSequenceStatements(predataFile *utils.FileWithByteCount, toc *uti
 		if owningColumn, hasColumnOwner := sequenceColumnOwners[seqFQN]; hasColumnOwner {
 			start := predataFile.ByteCount
 			predataFile.MustPrintf("\n\nALTER SEQUENCE %s OWNED BY %s;\n", seqFQN, owningColumn)
-			toc.AddMetadataEntry(sequence.Relation.SchemaName, sequence.Relation.RelationName, "SEQUENCE OWNER", start, predataFile)
+			toc.AddMetadataEntry(sequence.Relation.Schema, sequence.Relation.Name, "SEQUENCE OWNER", start, predataFile)
 		}
 	}
 }
@@ -297,9 +297,9 @@ func PrintAlterSequenceStatements(predataFile *utils.FileWithByteCount, toc *uti
 func PrintCreateViewStatements(predataFile *utils.FileWithByteCount, toc *utils.TOC, views []View, viewMetadata MetadataMap) {
 	for _, view := range views {
 		start := predataFile.ByteCount
-		viewFQN := utils.MakeFQN(view.SchemaName, view.ViewName)
+		viewFQN := utils.MakeFQN(view.Schema, view.Name)
 		predataFile.MustPrintf("\n\nCREATE VIEW %s AS %s\n", viewFQN, view.Definition)
 		PrintObjectMetadata(predataFile, viewMetadata[view.Oid], viewFQN, "VIEW")
-		toc.AddMetadataEntry(view.SchemaName, view.ViewName, "VIEW", start, predataFile)
+		toc.AddMetadataEntry(view.Schema, view.Name, "VIEW", start, predataFile)
 	}
 }

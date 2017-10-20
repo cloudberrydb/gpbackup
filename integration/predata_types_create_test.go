@@ -28,29 +28,29 @@ var _ = Describe("backup integration create statement tests", func() {
 			typeMetadataMap   backup.MetadataMap
 		)
 		BeforeEach(func() {
-			shellType = backup.Type{Type: "p", TypeSchema: "public", TypeName: "shell_type"}
+			shellType = backup.Type{Type: "p", Schema: "public", Name: "shell_type"}
 			baseType = backup.Type{
-				Type: "b", TypeSchema: "public", TypeName: "base_type", Input: "base_fn_in", Output: "base_fn_out", Receive: "",
+				Type: "b", Schema: "public", Name: "base_type", Input: "base_fn_in", Output: "base_fn_out", Receive: "",
 				Send: "", ModIn: "", ModOut: "", InternalLength: 4, IsPassedByValue: true, Alignment: "i", Storage: "p",
 				DefaultVal: "default", Element: "text", Delimiter: ";",
 			}
 			atts := []backup.CompositeTypeAttribute{{AttName: "att1", AttType: "text"}, {AttName: "att2", AttType: "integer"}}
 			compositeType = backup.Type{
-				Type: "c", TypeSchema: "public", TypeName: "composite_type",
+				Type: "c", Schema: "public", Name: "composite_type",
 				CompositeAtts: atts,
 			}
 			compositeTypeAtt1 = backup.Type{
-				Type: "c", TypeSchema: "public", TypeName: "composite_type",
+				Type: "c", Schema: "public", Name: "composite_type",
 				AttName: "att1", AttType: "text",
 			}
 			compositeTypeAtt2 = backup.Type{
-				Type: "c", TypeSchema: "public", TypeName: "composite_type",
+				Type: "c", Schema: "public", Name: "composite_type",
 				AttName: "att2", AttType: "integer",
 			}
 			enumType = backup.Type{
-				Type: "e", TypeSchema: "public", TypeName: "enum_type", EnumLabels: "'enum_labels'"}
+				Type: "e", Schema: "public", Name: "enum_type", EnumLabels: "'enum_labels'"}
 			domainType = testutils.DefaultTypeDefinition("d", "domain_type")
-			domainType.BaseType = "numeric"
+			domainType.BaseType = `"numeric"`
 			domainType.Alignment = "i"
 			domainType.Storage = "m"
 			domainType.Delimiter = ","
@@ -74,8 +74,8 @@ var _ = Describe("backup integration create statement tests", func() {
 			resultTypes := backup.GetNonEnumTypes(connection, []string{"0"})
 
 			Expect(len(resultTypes)).To(Equal(2))
-			Expect(resultTypes[0].TypeName).To(Equal("base_type"))
-			Expect(resultTypes[1].TypeName).To(Equal("shell_type"))
+			Expect(resultTypes[0].Name).To(Equal("base_type"))
+			Expect(resultTypes[1].Name).To(Equal("shell_type"))
 		})
 
 		It("creates composite types", func() {
@@ -94,8 +94,8 @@ var _ = Describe("backup integration create statement tests", func() {
 			resultTypes := backup.GetNonEnumTypes(connection, excludeOIDs)
 
 			Expect(len(resultTypes)).To(Equal(2))
-			testutils.ExpectStructsToMatchIncluding(&compositeTypeAtt1, &resultTypes[0], "Type", "TypeSchema", "TypeName", "Comment", "Owner", "AttName", "AttType")
-			testutils.ExpectStructsToMatchIncluding(&compositeTypeAtt2, &resultTypes[1], "Type", "TypeSchema", "TypeName", "Comment", "Owner", "AttName", "AttType")
+			testutils.ExpectStructsToMatchIncluding(&compositeTypeAtt1, &resultTypes[0], "Type", "Schema", "Name", "Comment", "Owner", "AttName", "AttType")
+			testutils.ExpectStructsToMatchIncluding(&compositeTypeAtt2, &resultTypes[1], "Type", "Schema", "Name", "Comment", "Owner", "AttName", "AttType")
 		})
 
 		It("creates enum types", func() {
@@ -109,7 +109,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			resultTypes := backup.GetEnumTypes(connection)
 
 			Expect(len(resultTypes)).To(Equal(1))
-			testutils.ExpectStructsToMatchIncluding(&resultTypes[0], &enumType, "Type", "TypeSchema", "TypeName", "Comment", "Owner", "EnumLabels")
+			testutils.ExpectStructsToMatchIncluding(&resultTypes[0], &enumType, "Type", "Schema", "Name", "Comment", "Owner", "EnumLabels")
 		})
 
 		It("creates base types", func() {

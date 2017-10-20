@@ -28,9 +28,9 @@ func GetAllUserTables(connection *utils.DBConn) []Relation {
 	query := fmt.Sprintf(`
 SELECT
 	n.oid AS schemaoid,
-	c.oid AS relationoid,
-	n.nspname AS schemaname,
-	c.relname AS relationname
+	c.oid AS oid,
+	quote_ident(n.nspname) AS schema,
+	quote_ident(c.relname) AS name
 FROM pg_class c
 LEFT JOIN pg_partition_rule pr
 	ON c.oid = pr.parchildrelid
@@ -47,7 +47,7 @@ LEFT
 JOIN pg_exttable e
 	ON p.parchildrelid = e.reloid
 WHERE e.reloid IS NULL)
-ORDER BY schemaname, relationname;`, tableAndSchemaFilterClause())
+ORDER BY n.nspname, c.relname;`, tableAndSchemaFilterClause())
 
 	results := make([]Relation, 0)
 
@@ -59,11 +59,11 @@ ORDER BY schemaname, relationname;`, tableAndSchemaFilterClause())
 type ColumnDefinition struct {
 	Oid         uint32 `db:"attrelid"`
 	Num         int    `db:"attnum"`
-	Name        string `db:"attname"`
-	NotNull     bool   `db:"attnotnull"`
-	HasDefault  bool   `db:"atthasdef"`
-	IsDropped   bool   `db:"attisdropped"`
-	TypeName    string
+	Name        string
+	NotNull     bool `db:"attnotnull"`
+	HasDefault  bool `db:"atthasdef"`
+	IsDropped   bool `db:"attisdropped"`
+	Type        string
 	Encoding    string
 	StatTarget  int `db:"attstattarget"`
 	StorageType string
@@ -84,11 +84,11 @@ func GetColumnDefinitions(connection *utils.DBConn) map[uint32][]ColumnDefinitio
 SELECT
 	a.attrelid,
 	a.attnum,
-	a.attname,
+	quote_ident(a.attname) AS name,
 	a.attnotnull,
 	a.atthasdef,
 	a.attisdropped,
-	pg_catalog.format_type(t.oid,a.atttypmod) AS typename,
+	pg_catalog.format_type(t.oid,a.atttypmod) AS type,
 	coalesce(pg_catalog.array_to_string(e.attoptions, ','), '') AS encoding,
 	a.attstattarget,
 	CASE WHEN a.attstorage != t.typstorage THEN a.attstorage ELSE '' END AS storagetype,
@@ -153,10 +153,10 @@ GROUP BY a.attrelid ORDER BY a.attrelid;`
 
 	resultMap := SelectAsOidToStringMap(connection, query)
 	for _, table := range tables {
-		if resultMap[table.RelationOid] != "" {
-			resultMap[table.RelationOid] = fmt.Sprintf("DISTRIBUTED BY %s", resultMap[table.RelationOid])
+		if resultMap[table.Oid] != "" {
+			resultMap[table.Oid] = fmt.Sprintf("DISTRIBUTED BY %s", resultMap[table.Oid])
 		} else {
-			resultMap[table.RelationOid] = "DISTRIBUTED RANDOMLY"
+			resultMap[table.Oid] = "DISTRIBUTED RANDOMLY"
 		}
 	}
 	return resultMap
@@ -178,7 +178,7 @@ func GetStorageOptions(connection *utils.DBConn) map[uint32]string {
 }
 
 func GetTablespaceNames(connection *utils.DBConn) map[uint32]string {
-	query := `SELECT c.oid, t.spcname AS value FROM pg_class c JOIN pg_tablespace t ON t.oid = c.reltablespace`
+	query := `SELECT c.oid, quote_ident(t.spcname) AS value FROM pg_class c JOIN pg_tablespace t ON t.oid = c.reltablespace`
 	return SelectAsOidToStringMap(connection, query)
 }
 
@@ -195,7 +195,7 @@ func ConstructTableDependencies(connection *utils.DBConn, tables []Relation, isT
 		tableOidList = make([]string, len(tables))
 		for i, table := range tables {
 			tableNameMap[table.ToString()] = true
-			tableOidList[i] = fmt.Sprintf("%d", table.RelationOid)
+			tableOidList[i] = fmt.Sprintf("%d", table.Oid)
 		}
 	}
 	nonTableQuery := fmt.Sprintf(`
@@ -244,8 +244,8 @@ JOIN pg_class c ON d.objid = c.oid AND c.relkind = 'r'`
 		dependencyMap[dependency.Oid] = append(dependencyMap[dependency.Oid], dependency.ReferencedObject)
 	}
 	for i := 0; i < len(tables); i++ {
-		tables[i].DependsUpon = dependencyMap[tables[i].RelationOid]
-		tables[i].Inherits = inheritanceMap[tables[i].RelationOid]
+		tables[i].DependsUpon = dependencyMap[tables[i].Oid]
+		tables[i].Inherits = inheritanceMap[tables[i].Oid]
 	}
 	return tables
 }
@@ -253,15 +253,15 @@ JOIN pg_class c ON d.objid = c.oid AND c.relkind = 'r'`
 func GetAllSequenceRelations(connection *utils.DBConn) []Relation {
 	query := fmt.Sprintf(`SELECT
 	n.oid AS schemaoid,
-	c.oid AS relationoid,
-	n.nspname AS schemaname,
-	c.relname AS relationname
+	c.oid AS oid,
+	quote_ident(n.nspname) AS schema,
+	quote_ident(c.relname) AS name
 FROM pg_class c
 LEFT JOIN pg_namespace n
 	ON c.relnamespace = n.oid
 WHERE relkind = 'S'
 AND %s
-ORDER BY schemaname, relationname;`, SchemaFilterClause("n"))
+ORDER BY n.nspname, c.relname;`, SchemaFilterClause("n"))
 
 	results := make([]Relation, 0)
 	err := connection.Select(&results, query)
@@ -291,10 +291,10 @@ func GetSequenceDefinition(connection *utils.DBConn, seqName string) SequenceDef
 
 func GetSequenceColumnOwnerMap(connection *utils.DBConn) map[string]string {
 	query := `SELECT
-	n.nspname,
-	s.relname AS sequencename,
-	t.relname AS tablename,
-	a.attname
+	quote_ident(n.nspname) AS schema,
+	quote_ident(s.relname) AS name,
+	quote_ident(t.relname) AS tablename,
+	quote_ident(a.attname) AS columnname
 FROM pg_depend d
 JOIN pg_attribute a
 	ON a.attrelid = d.refobjid AND a.attnum = d.refobjsubid
@@ -307,17 +307,17 @@ JOIN pg_namespace n
 WHERE s.relkind = 'S';`
 
 	results := make([]struct {
-		SchemaName   string `db:"nspname"`
-		SequenceName string
-		TableName    string
-		ColumnName   string `db:"attname"`
+		Schema     string
+		Name       string
+		TableName  string
+		ColumnName string
 	}, 0)
 	sequenceOwners := make(map[string]string, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	for _, seqOwner := range results {
-		seqFQN := utils.MakeFQN(seqOwner.SchemaName, seqOwner.SequenceName)
-		columnFQN := fmt.Sprintf("%s.%s", utils.MakeFQN(seqOwner.SchemaName, seqOwner.TableName), utils.QuoteIdent(seqOwner.ColumnName))
+		seqFQN := utils.MakeFQN(seqOwner.Schema, seqOwner.Name)
+		columnFQN := fmt.Sprintf("%s.%s.%s", seqOwner.Schema, seqOwner.TableName, seqOwner.ColumnName)
 		sequenceOwners[seqFQN] = columnFQN
 	}
 	return sequenceOwners
@@ -325,14 +325,14 @@ WHERE s.relkind = 'S';`
 
 type View struct {
 	Oid         uint32
-	SchemaName  string
-	ViewName    string
+	Schema      string
+	Name        string
 	Definition  string
 	DependsUpon []string
 }
 
 func (v View) ToString() string {
-	return utils.MakeFQN(v.SchemaName, v.ViewName)
+	return utils.MakeFQN(v.Schema, v.Name)
 }
 
 func GetViews(connection *utils.DBConn) []View {
@@ -341,8 +341,8 @@ func GetViews(connection *utils.DBConn) []View {
 	query := fmt.Sprintf(`
 SELECT
 	c.oid,
-	n.nspname AS schemaname,
-	c.relname AS viewname,
+	quote_ident(n.nspname) AS schema,
+	quote_ident(c.relname) AS name,
 	pg_get_viewdef(c.oid) AS definition
 FROM pg_class c
 LEFT JOIN pg_namespace n ON n.oid = c.relnamespace

@@ -18,8 +18,8 @@ type CompositeTypeAttribute struct {
 
 type Type struct {
 	Oid             uint32
-	TypeSchema      string `db:"nspname"`
-	TypeName        string `db:"typname"`
+	Schema          string
+	Name            string
 	Type            string `db:"typtype"`
 	AttName         string `db:"attname"`
 	AttType         string
@@ -57,10 +57,10 @@ func GetNonEnumTypes(connection *utils.DBConn, excludeOIDs []string) []Type {
 	query := fmt.Sprintf(`
 SELECT
 	t.oid,
-	n.nspname,
-	t.typname,
+	quote_ident(n.nspname) AS schema,
+	quote_ident(t.typname) AS name,
 	t.typtype,
-	coalesce(a.attname, '') AS attname,
+	coalesce(quote_ident(a.attname), '') AS attname,
 	coalesce(pg_catalog.format_type(a.atttypid, NULL), '') AS atttype,
 	t.typinput,
 	t.typoutput,
@@ -72,7 +72,7 @@ SELECT
 	coalesce(t.typdefault, '') AS defaultval,
 	CASE WHEN t.typelem != 0::regproc THEN pg_catalog.format_type(t.typelem, NULL) ELSE '' END AS element,
 	t.typdelim,
-	coalesce(b.typname, '') AS basetype,
+	coalesce(quote_ident(b.typname), '') AS basetype,
 	t.typnotnull
 FROM pg_type t
 LEFT JOIN pg_attribute a ON t.typrelid = a.attrelid
@@ -108,8 +108,8 @@ func GetEnumTypes(connection *utils.DBConn) []Type {
 	query := fmt.Sprintf(`
 SELECT
 	t.oid,
-	n.nspname,
-	t.typname,
+	quote_ident(n.nspname) AS schema,
+	quote_ident(t.typname) AS name,
 	t.typtype,
 	enumlabels
 FROM pg_type t

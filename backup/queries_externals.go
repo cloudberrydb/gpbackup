@@ -72,7 +72,7 @@ FROM pg_exttable;`
 
 type ExternalProtocol struct {
 	Oid           uint32
-	Name          string `db:"ptcname"`
+	Name          string
 	Owner         string
 	Trusted       bool   `db:"ptctrusted"`
 	ReadFunction  uint32 `db:"ptcreadfn"`
@@ -85,7 +85,7 @@ func GetExternalProtocols(connection *utils.DBConn) []ExternalProtocol {
 	query := `
 SELECT
 	p.oid,
-	p.ptcname,
+	quote_ident(p.ptcname) AS name,
 	pg_get_userbyid(p.ptcowner) as owner,
 	p.ptctrusted,
 	p.ptcreadfn,

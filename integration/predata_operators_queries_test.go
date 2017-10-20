@@ -14,7 +14,7 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE OPERATOR ## (LEFTARG = bigint, PROCEDURE = numeric_fac)")
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR ## (bigint, NONE)")
 
-			expectedOperator := backup.Operator{Oid: 0, SchemaName: "public", Name: "##", ProcedureName: "numeric_fac", LeftArgType: "bigint", RightArgType: "-", CommutatorOp: "0", NegatorOp: "0", RestrictFunction: "-", JoinFunction: "-", CanHash: false, CanMerge: false}
+			expectedOperator := backup.Operator{Oid: 0, Schema: "public", Name: "##", Procedure: "numeric_fac", LeftArgType: "bigint", RightArgType: "-", CommutatorOp: "0", NegatorOp: "0", RestrictFunction: "-", JoinFunction: "-", CanHash: false, CanMerge: false}
 
 			results := backup.GetOperators(connection)
 
@@ -43,8 +43,8 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR testschema.## (path, path)")
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR ### (path, path)")
 
-			version4expectedOperator := backup.Operator{Oid: 0, SchemaName: "testschema", Name: "##", ProcedureName: `testschema."testFunc"`, LeftArgType: "path", RightArgType: "path", CommutatorOp: "testschema.##", NegatorOp: "###", RestrictFunction: "eqsel", JoinFunction: "eqjoinsel", CanHash: true, CanMerge: false}
-			expectedOperator := backup.Operator{Oid: 0, SchemaName: "testschema", Name: "##", ProcedureName: `testschema."testFunc"`, LeftArgType: "path", RightArgType: "path", CommutatorOp: "testschema.##", NegatorOp: "###", RestrictFunction: "eqsel", JoinFunction: "eqjoinsel", CanHash: true, CanMerge: true}
+			version4expectedOperator := backup.Operator{Oid: 0, Schema: "testschema", Name: "##", Procedure: `testschema."testFunc"`, LeftArgType: "path", RightArgType: "path", CommutatorOp: "testschema.##", NegatorOp: "###", RestrictFunction: "eqsel", JoinFunction: "eqjoinsel", CanHash: true, CanMerge: false}
+			expectedOperator := backup.Operator{Oid: 0, Schema: "testschema", Name: "##", Procedure: `testschema."testFunc"`, LeftArgType: "path", RightArgType: "path", CommutatorOp: "testschema.##", NegatorOp: "###", RestrictFunction: "eqsel", JoinFunction: "eqjoinsel", CanHash: true, CanMerge: true}
 
 			results := backup.GetOperators(connection)
 
@@ -64,7 +64,7 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR testschema.## (bigint, NONE)")
 			backup.SetIncludeSchemas([]string{"testschema"})
 
-			expectedOperator := backup.Operator{Oid: 0, SchemaName: "testschema", Name: "##", ProcedureName: "numeric_fac", LeftArgType: "bigint", RightArgType: "-", CommutatorOp: "0", NegatorOp: "0", RestrictFunction: "-", JoinFunction: "-", CanHash: false, CanMerge: false}
+			expectedOperator := backup.Operator{Oid: 0, Schema: "testschema", Name: "##", Procedure: "numeric_fac", LeftArgType: "bigint", RightArgType: "-", CommutatorOp: "0", NegatorOp: "0", RestrictFunction: "-", JoinFunction: "-", CanHash: false, CanMerge: false}
 
 			results := backup.GetOperators(connection)
 
@@ -80,7 +80,7 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE OPERATOR FAMILY testfam USING hash;")
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testfam USING hash")
 
-			expectedOperator := backup.OperatorFamily{Oid: 0, SchemaName: "public", Name: "testfam", IndexMethod: "hash"}
+			expectedOperator := backup.OperatorFamily{Oid: 0, Schema: "public", Name: "testfam", IndexMethod: "hash"}
 
 			results := backup.GetOperatorFamilies(connection)
 
@@ -96,7 +96,7 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testschema.testfam USING hash")
 			backup.SetIncludeSchemas([]string{"testschema"})
 
-			expectedOperator := backup.OperatorFamily{Oid: 0, SchemaName: "testschema", Name: "testfam", IndexMethod: "hash"}
+			expectedOperator := backup.OperatorFamily{Oid: 0, Schema: "testschema", Name: "testfam", IndexMethod: "hash"}
 
 			results := backup.GetOperatorFamilies(connection)
 
@@ -113,8 +113,8 @@ var _ = Describe("backup integration tests", func() {
 				defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testclass USING hash")
 			}
 
-			version4expected := backup.OperatorClass{Oid: 0, ClassSchema: "public", ClassName: "testclass", FamilySchema: "", FamilyName: "", IndexMethod: "hash", Type: "integer", Default: false, StorageType: "-", Operators: nil, Functions: nil}
-			expected := backup.OperatorClass{Oid: 0, ClassSchema: "public", ClassName: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "hash", Type: "integer", Default: false, StorageType: "-", Operators: nil, Functions: nil}
+			version4expected := backup.OperatorClass{Oid: 0, Schema: "public", Name: "testclass", FamilySchema: "", FamilyName: "", IndexMethod: "hash", Type: "integer", Default: false, StorageType: "-", Operators: nil, Functions: nil}
+			expected := backup.OperatorClass{Oid: 0, Schema: "public", Name: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "hash", Type: "integer", Default: false, StorageType: "-", Operators: nil, Functions: nil}
 
 			results := backup.GetOperatorClasses(connection)
 
@@ -134,7 +134,7 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testschema.testfam USING gist CASCADE")
 			testutils.AssertQueryRuns(connection, "CREATE OPERATOR CLASS testclass FOR TYPE int USING gist FAMILY testschema.testfam AS STORAGE int")
 
-			expected := backup.OperatorClass{Oid: 0, ClassSchema: "public", ClassName: "testclass", FamilySchema: "testschema", FamilyName: "testfam", IndexMethod: "gist", Type: "integer", Default: false, StorageType: "-", Operators: nil, Functions: nil}
+			expected := backup.OperatorClass{Oid: 0, Schema: "public", Name: "testclass", FamilySchema: "testschema", FamilyName: "testfam", IndexMethod: "gist", Type: "integer", Default: false, StorageType: "-", Operators: nil, Functions: nil}
 
 			results := backup.GetOperatorClasses(connection)
 
@@ -152,8 +152,8 @@ var _ = Describe("backup integration tests", func() {
 				defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testclass USING gist")
 			}
 
-			version4expected := backup.OperatorClass{Oid: 0, ClassSchema: "public", ClassName: "testclass", FamilySchema: "", FamilyName: "", IndexMethod: "gist", Type: "integer", Default: true, StorageType: "text", Operators: nil, Functions: nil}
-			expected := backup.OperatorClass{Oid: 0, ClassSchema: "public", ClassName: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "gist", Type: "integer", Default: true, StorageType: "text", Operators: nil, Functions: nil}
+			version4expected := backup.OperatorClass{Oid: 0, Schema: "public", Name: "testclass", FamilySchema: "", FamilyName: "", IndexMethod: "gist", Type: "integer", Default: true, StorageType: "text", Operators: nil, Functions: nil}
+			expected := backup.OperatorClass{Oid: 0, Schema: "public", Name: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "gist", Type: "integer", Default: true, StorageType: "text", Operators: nil, Functions: nil}
 
 			results := backup.GetOperatorClasses(connection)
 
@@ -174,8 +174,8 @@ var _ = Describe("backup integration tests", func() {
 
 			expectedOperators := []backup.OperatorClassOperator{{ClassOid: 0, StrategyNumber: 1, Operator: "=(integer,integer)", Recheck: true}, {ClassOid: 0, StrategyNumber: 2, Operator: "<(integer,integer)", Recheck: false}}
 			expectedFunctions := []backup.OperatorClassFunction{{ClassOid: 0, SupportNumber: 1, FunctionName: "abs(integer)"}, {ClassOid: 0, SupportNumber: 2, FunctionName: "int4out(integer)"}}
-			version4expected := backup.OperatorClass{Oid: 0, ClassSchema: "public", ClassName: "testclass", FamilySchema: "", FamilyName: "", IndexMethod: "gist", Type: "integer", Default: false, StorageType: "-", Operators: expectedOperators, Functions: expectedFunctions}
-			expected := backup.OperatorClass{Oid: 0, ClassSchema: "public", ClassName: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "gist", Type: "integer", Default: false, StorageType: "-", Operators: expectedOperators, Functions: expectedFunctions}
+			version4expected := backup.OperatorClass{Oid: 0, Schema: "public", Name: "testclass", FamilySchema: "", FamilyName: "", IndexMethod: "gist", Type: "integer", Default: false, StorageType: "-", Operators: expectedOperators, Functions: expectedFunctions}
+			expected := backup.OperatorClass{Oid: 0, Schema: "public", Name: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "gist", Type: "integer", Default: false, StorageType: "-", Operators: expectedOperators, Functions: expectedFunctions}
 
 			results := backup.GetOperatorClasses(connection)
 
@@ -203,8 +203,8 @@ var _ = Describe("backup integration tests", func() {
 			}
 			backup.SetIncludeSchemas([]string{"testschema"})
 
-			version4expected := backup.OperatorClass{Oid: 0, ClassSchema: "testschema", ClassName: "testclass", FamilySchema: "", FamilyName: "", IndexMethod: "hash", Type: "integer", Default: false, StorageType: "-", Operators: nil, Functions: nil}
-			expected := backup.OperatorClass{Oid: 0, ClassSchema: "testschema", ClassName: "testclass", FamilySchema: "testschema", FamilyName: "testclass", IndexMethod: "hash", Type: "integer", Default: false, StorageType: "-", Operators: nil, Functions: nil}
+			version4expected := backup.OperatorClass{Oid: 0, Schema: "testschema", Name: "testclass", FamilySchema: "", FamilyName: "", IndexMethod: "hash", Type: "integer", Default: false, StorageType: "-", Operators: nil, Functions: nil}
+			expected := backup.OperatorClass{Oid: 0, Schema: "testschema", Name: "testclass", FamilySchema: "testschema", FamilyName: "testclass", IndexMethod: "hash", Type: "integer", Default: false, StorageType: "-", Operators: nil, Functions: nil}
 
 			results := backup.GetOperatorClasses(connection)
 

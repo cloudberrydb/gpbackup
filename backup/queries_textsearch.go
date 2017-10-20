@@ -16,12 +16,12 @@ import (
 
 type TextSearchParser struct {
 	Oid          uint32
-	Schema       string `db:"nspname"`
-	Name         string `db:"prsname"`
-	StartFunc    string `db:"prsstart"`
-	TokenFunc    string `db:"prstoken"`
-	EndFunc      string `db:"prsend"`
-	LexTypesFunc string `db:"prslextype"`
+	Schema       string
+	Name         string
+	StartFunc    string
+	TokenFunc    string
+	EndFunc      string
+	LexTypesFunc string
 	HeadlineFunc string
 }
 
@@ -29,12 +29,12 @@ func GetTextSearchParsers(connection *utils.DBConn) []TextSearchParser {
 	query := fmt.Sprintf(`
 SELECT
 	p.oid,
-	nspname,
-	prsname,
-	prsstart,
-	prstoken,
-	prsend,
-	prslextype,
+	quote_ident(nspname) AS schema,
+	quote_ident(prsname) AS name,
+	prsstart::regproc::text AS startfunc,
+	prstoken::regproc::text AS tokenfunc,
+	prsend::regproc::text AS endfunc,
+	prslextype::regproc::text AS lextypesfunc,
 	CASE WHEN prsheadline::regproc::text = '-' THEN '' ELSE prsheadline::regproc::text END AS headlinefunc 
 FROM pg_ts_parser p
 JOIN pg_namespace n ON n.oid = p.prsnamespace
@@ -59,8 +59,8 @@ func GetTextSearchTemplates(connection *utils.DBConn) []TextSearchTemplate {
 	query := fmt.Sprintf(`
 SELECT
 	p.oid,
-	nspname as schema,
-	tmplname AS name,
+	quote_ident(nspname) as schema,
+	quote_ident(tmplname) AS name,
 	CASE WHEN tmplinit::regproc::text = '-' THEN '' ELSE tmplinit::regproc::text END AS initfunc,
 	tmpllexize::regproc::text AS lexizefunc
 FROM pg_ts_template p
@@ -86,8 +86,8 @@ func GetTextSearchDictionaries(connection *utils.DBConn) []TextSearchDictionary 
 	query := fmt.Sprintf(`
 SELECT
 	d.oid,
-	dict_ns.nspname as schema,
-	dictname AS name,
+	quote_ident(dict_ns.nspname) as schema,
+	quote_ident(dictname) AS name,
 	quote_ident(tmpl_ns.nspname) || '.' || quote_ident(t.tmplname) AS template,
 	COALESCE(dictinitoption, '') AS initoption
 FROM pg_ts_dict d
@@ -115,8 +115,8 @@ func GetTextSearchConfigurations(connection *utils.DBConn) []TextSearchConfigura
 	query := fmt.Sprintf(`
 SELECT
 	c.oid AS configoid,
-	cfg_ns.nspname AS schema,
-	cfgname AS name,
+	quote_ident(cfg_ns.nspname) AS schema,
+	quote_ident(cfgname) AS name,
 	cfgparser AS parseroid,
 	quote_ident(prs_ns.nspname) || '.' || quote_ident(prsname) AS parserfqn
 FROM pg_ts_config c
@@ -148,8 +148,8 @@ ORDER BY cfgname;`, SchemaFilterClause("cfg_ns"))
 		config.Parser = row.ParserFQN
 		config.TokenToDicts = make(map[string][]string, 0)
 		for _, mapping := range typeMappings[row.ConfigOid] {
-			tokenTypeName := parserTokens.TokenTypeName(connection, row.ParserOid, mapping.TokenType)
-			config.TokenToDicts[tokenTypeName] = append(config.TokenToDicts[tokenTypeName], mapping.Dictionary)
+			tokenName := parserTokens.TokenName(connection, row.ParserOid, mapping.TokenType)
+			config.TokenToDicts[tokenName] = append(config.TokenToDicts[tokenName], mapping.Dictionary)
 		}
 
 		configurations = append(configurations, config)
@@ -171,7 +171,7 @@ func NewParserTokenTypes() *ParserTokenTypes {
 	return &ParserTokenTypes{map[uint32][]ParserTokenType{}}
 }
 
-func (tokenTypes *ParserTokenTypes) TokenTypeName(connection *utils.DBConn, parserOid uint32, tokenTypeID uint32) string {
+func (tokenTypes *ParserTokenTypes) TokenName(connection *utils.DBConn, parserOid uint32, tokenTypeID uint32) string {
 	typesForParser, ok := tokenTypes.forParser[parserOid]
 	if !ok {
 		typesForParser = make([]ParserTokenType, 0)

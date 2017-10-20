@@ -14,10 +14,10 @@ import (
 
 type AttributeStatistic struct {
 	Oid          uint32
-	SchemaName   string `db:"nspname"`
-	TableName    string `db:"relname"`
+	Schema       string
+	Table        string
 	AttName      string
-	TypeName     string         `db:"typname"`
+	Type         string
 	Relid        uint32         `db:"starelid"`
 	AttNumber    int            `db:"staattnum"`
 	NullFraction float64        `db:"stanullfrac"`
@@ -49,10 +49,10 @@ func GetAttributeStatistics(connection *utils.DBConn, tables []Relation) map[uin
 	query := fmt.Sprintf(`
 SELECT
 	c.oid,
-	n.nspname,
-	c.relname,
-	a.attname,
-	t.typname,
+	quote_ident(n.nspname) AS schema,
+	quote_ident(c.relname) AS table,
+	quote_ident(a.attname) AS attname,
+	quote_ident(t.typname) AS type,
 	s.starelid,
 	s.staattnum,
 	s.stanullfrac,
@@ -94,11 +94,11 @@ ORDER BY n.nspname, c.relname, a.attnum;`, SchemaFilterClause("n"), utils.SliceT
 }
 
 type TupleStatistic struct {
-	Oid        uint32
-	SchemaName string `db:"nspname"`
-	TableName  string `db:"relname"`
-	RelPages   int
-	RelTuples  float64
+	Oid       uint32
+	Schema    string
+	Table     string
+	RelPages  int
+	RelTuples float64
 }
 
 func GetTupleStatistics(connection *utils.DBConn, tables []Relation) map[uint32]TupleStatistic {
@@ -109,8 +109,8 @@ func GetTupleStatistics(connection *utils.DBConn, tables []Relation) map[uint32]
 	query := fmt.Sprintf(`
 SELECT
 	c.oid,
-	n.nspname,
-	c.relname,
+	quote_ident(n.nspname) AS schema,
+	quote_ident(c.relname) AS table,
 	c.relpages,
 	c.reltuples
 FROM pg_class c

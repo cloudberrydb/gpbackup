@@ -14,7 +14,7 @@ import (
 
 func PrintCreateFunctionStatement(predataFile *utils.FileWithByteCount, toc *utils.TOC, funcDef Function, funcMetadata ObjectMetadata) {
 	start := predataFile.ByteCount
-	funcFQN := utils.MakeFQN(funcDef.SchemaName, funcDef.FunctionName)
+	funcFQN := utils.MakeFQN(funcDef.Schema, funcDef.Name)
 	predataFile.MustPrintf("\n\nCREATE FUNCTION %s(%s) RETURNS ", funcFQN, funcDef.Arguments)
 	predataFile.MustPrintf("%s AS", funcDef.ResultType)
 	PrintFunctionBodyOrPath(predataFile, funcDef)
@@ -23,9 +23,9 @@ func PrintCreateFunctionStatement(predataFile *utils.FileWithByteCount, toc *uti
 	predataFile.MustPrintln(";")
 
 	nameStr := fmt.Sprintf("%s(%s)", funcFQN, funcDef.IdentArgs)
-	nameWithArgs := fmt.Sprintf("%s(%s)", funcDef.FunctionName, funcDef.IdentArgs)
+	nameWithArgs := fmt.Sprintf("%s(%s)", funcDef.Name, funcDef.IdentArgs)
 	PrintObjectMetadata(predataFile, funcMetadata, nameStr, "FUNCTION")
-	toc.AddMetadataEntry(funcDef.SchemaName, nameWithArgs, "FUNCTION", start, predataFile)
+	toc.AddMetadataEntry(funcDef.Schema, nameWithArgs, "FUNCTION", start, predataFile)
 }
 
 /*
@@ -85,7 +85,7 @@ func PrintFunctionModifiers(predataFile *utils.FileWithByteCount, funcDef Functi
 func PrintCreateAggregateStatements(predataFile *utils.FileWithByteCount, toc *utils.TOC, aggDefs []Aggregate, funcInfoMap map[uint32]FunctionInfo, aggMetadata MetadataMap) {
 	for _, aggDef := range aggDefs {
 		start := predataFile.ByteCount
-		aggFQN := utils.MakeFQN(aggDef.SchemaName, aggDef.AggregateName)
+		aggFQN := utils.MakeFQN(aggDef.Schema, aggDef.Name)
 		orderedStr := ""
 		if aggDef.IsOrdered {
 			orderedStr = "ORDERED "
@@ -118,9 +118,9 @@ func PrintCreateAggregateStatements(predataFile *utils.FileWithByteCount, toc *u
 			identArgumentsStr = aggDef.IdentArgs
 		}
 		aggFQN = fmt.Sprintf("%s(%s)", aggFQN, identArgumentsStr)
-		aggWithArgs := fmt.Sprintf("%s(%s)", aggDef.AggregateName, identArgumentsStr)
+		aggWithArgs := fmt.Sprintf("%s(%s)", aggDef.Name, identArgumentsStr)
 		PrintObjectMetadata(predataFile, aggMetadata[aggDef.Oid], aggFQN, "AGGREGATE")
-		toc.AddMetadataEntry(aggDef.SchemaName, aggWithArgs, "AGGREGATE", start, predataFile)
+		toc.AddMetadataEntry(aggDef.Schema, aggWithArgs, "AGGREGATE", start, predataFile)
 	}
 }
 
@@ -130,7 +130,7 @@ func PrintCreateCastStatements(predataFile *utils.FileWithByteCount, toc *utils.
 		castStr := fmt.Sprintf("(%s AS %s)", castDef.SourceTypeFQN, castDef.TargetTypeFQN)
 		predataFile.MustPrintf("\n\nCREATE CAST %s\n", castStr)
 		if castDef.FunctionSchema != "" {
-			funcFQN := fmt.Sprintf("%s.%s", utils.QuoteIdent(castDef.FunctionSchema), utils.QuoteIdent(castDef.FunctionName))
+			funcFQN := utils.MakeFQN(castDef.FunctionSchema, castDef.FunctionName)
 			predataFile.MustPrintf("\tWITH FUNCTION %s(%s)", funcFQN, castDef.FunctionArgs)
 		} else {
 			predataFile.MustPrintf("\tWITHOUT FUNCTION")
@@ -179,13 +179,11 @@ func PrintCreateLanguageStatements(predataFile *utils.FileWithByteCount, toc *ut
 	funcInfoMap map[uint32]FunctionInfo, procLangMetadata MetadataMap) {
 	for _, procLang := range procLangs {
 		start := predataFile.ByteCount
-		quotedOwner := utils.QuoteIdent(procLang.Owner)
-		quotedLanguage := utils.QuoteIdent(procLang.Name)
 		predataFile.MustPrintf("\n\nCREATE ")
 		if procLang.PlTrusted {
 			predataFile.MustPrintf("TRUSTED ")
 		}
-		predataFile.MustPrintf("PROCEDURAL LANGUAGE %s;", quotedLanguage)
+		predataFile.MustPrintf("PROCEDURAL LANGUAGE %s;", procLang.Name)
 		/*
 		 * If the handler, validator, and inline functions are in pg_pltemplate, we can
 		 * back up a CREATE LANGUAGE command without specifying them individually.
@@ -196,17 +194,17 @@ func PrintCreateLanguageStatements(predataFile *utils.FileWithByteCount, toc *ut
 
 		if procLang.Handler != 0 {
 			handlerInfo := funcInfoMap[procLang.Handler]
-			predataFile.MustPrintf("\nALTER FUNCTION %s(%s) OWNER TO %s;", handlerInfo.QualifiedName, handlerInfo.Arguments, quotedOwner)
+			predataFile.MustPrintf("\nALTER FUNCTION %s(%s) OWNER TO %s;", handlerInfo.QualifiedName, handlerInfo.Arguments, procLang.Owner)
 		}
 		if procLang.Inline != 0 {
 			inlineInfo := funcInfoMap[procLang.Inline]
-			predataFile.MustPrintf("\nALTER FUNCTION %s(%s) OWNER TO %s;", inlineInfo.QualifiedName, inlineInfo.Arguments, quotedOwner)
+			predataFile.MustPrintf("\nALTER FUNCTION %s(%s) OWNER TO %s;", inlineInfo.QualifiedName, inlineInfo.Arguments, procLang.Owner)
 		}
 		if procLang.Validator != 0 {
 			validatorInfo := funcInfoMap[procLang.Validator]
-			predataFile.MustPrintf("\nALTER FUNCTION %s(%s) OWNER TO %s;", validatorInfo.QualifiedName, validatorInfo.Arguments, quotedOwner)
+			predataFile.MustPrintf("\nALTER FUNCTION %s(%s) OWNER TO %s;", validatorInfo.QualifiedName, validatorInfo.Arguments, procLang.Owner)
 		}
-		PrintObjectMetadata(predataFile, procLangMetadata[procLang.Oid], utils.QuoteIdent(procLang.Name), "LANGUAGE")
+		PrintObjectMetadata(predataFile, procLangMetadata[procLang.Oid], procLang.Name, "LANGUAGE")
 		predataFile.MustPrintln()
 		toc.AddMetadataEntry("", procLang.Name, "PROCEDURAL LANGUAGE", start, predataFile)
 	}

@@ -112,11 +112,11 @@ var _ = Describe("utils/toc tests", func() {
 			Expect(statements[0].Statement).To(Equal("CREATE DATABASE somedatabase;\n"))
 		})
 		It("can substitute a database name if the old name contained special characters", func() {
-			statements := utils.SubstituteRedirectDatabaseInStatements([]utils.StatementWithType{oldSpecial}, "db-special-chär$", "newdatabase")
+			statements := utils.SubstituteRedirectDatabaseInStatements([]utils.StatementWithType{oldSpecial}, `"db-special-chär$"`, "newdatabase")
 			Expect(statements[0].Statement).To(Equal("CREATE DATABASE newdatabase;\n"))
 		})
 		It("can substitute a database name if the new name contained special characters", func() {
-			statements := utils.SubstituteRedirectDatabaseInStatements([]utils.StatementWithType{create}, "somedatabase", "db-special-chär$")
+			statements := utils.SubstituteRedirectDatabaseInStatements([]utils.StatementWithType{create}, "somedatabase", `"db-special-chär$"`)
 			Expect(statements[0].Statement).To(Equal(`CREATE DATABASE "db-special-chär$";
 `))
 		})

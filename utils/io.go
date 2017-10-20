@@ -101,7 +101,7 @@ func GetUserAndHostInfo() (string, string, string) {
 func ExecuteSQLFile(dbconn *DBConn, filename string) {
 	connStr := []string{
 		"-U", dbconn.User,
-		"-d", fmt.Sprintf("%s", QuoteIdent(dbconn.DBName)),
+		"-d", fmt.Sprintf("%s", dbconn.DBName),
 		"-h", dbconn.Host,
 		"-p", fmt.Sprintf("%d", dbconn.Port),
 		"-f", fmt.Sprintf("%s", filename),

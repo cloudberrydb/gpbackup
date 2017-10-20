@@ -38,7 +38,7 @@ func GetAllUserSchemas(connection *utils.DBConn) []Schema {
 	query := fmt.Sprintf(`
 SELECT
 	oid,
-	nspname AS name
+	quote_ident(nspname) AS name
 FROM pg_namespace n
 WHERE %s
 ORDER BY name;`, SchemaFilterClause("n"))
@@ -52,7 +52,7 @@ ORDER BY name;`, SchemaFilterClause("n"))
 
 type Constraint struct {
 	Oid                uint32
-	ConName            string
+	Name               string
 	ConType            string
 	ConDef             string
 	OwningObject       string
@@ -65,7 +65,7 @@ func GetConstraints(connection *utils.DBConn, tables ...Relation) []Constraint {
 	tableQuery := `
 SELECT
 	c.oid,
-	conname,
+	quote_ident(conname) AS name,
 	contype,
 	pg_get_constraintdef(c.oid, TRUE) AS condef,
 	quote_ident(n.nspname) || '.' || quote_ident(r.relname) AS owningobject,
@@ -83,9 +83,10 @@ AND r.relname IS NOT NULL
 AND conrelid NOT IN (SELECT parchildrelid FROM pg_partition_rule)
 AND (conrelid, conname) NOT IN (SELECT i.inhrelid, c.conname FROM pg_inherits i JOIN pg_constraint c ON i.inhrelid = c.conrelid JOIN pg_constraint p ON i.inhparent = p.conrelid WHERE c.conname = p.conname)
 GROUP BY c.oid, conname, contype, r.relname, n.nspname, pt.parrelid`
+
 	nonTableQuery := fmt.Sprintf(`SELECT
 	c.oid,
-	conname,
+	quote_ident(conname) AS name,
 	contype,
 	pg_get_constraintdef(c.oid, TRUE) AS condef,
 	quote_ident(n.nspname) || '.' || quote_ident(t.typname) AS owningobject,
@@ -97,13 +98,15 @@ JOIN pg_namespace n ON n.oid = c.connamespace
 WHERE %s
 AND t.typname IS NOT NULL
 GROUP BY c.oid, conname, contype, n.nspname, t.typname
-ORDER BY conname;`, SchemaFilterClause("n"))
+ORDER BY name;
+
+`, SchemaFilterClause("n"))
 
 	query := ""
 	if len(tables) > 0 {
 		oidList := make([]string, 0)
 		for _, table := range tables {
-			oidList = append(oidList, fmt.Sprintf("%d", table.RelationOid))
+			oidList = append(oidList, fmt.Sprintf("%d", table.Oid))
 		}
 		filterClause := fmt.Sprintf("%s\nAND r.oid IN (%s)", SchemaFilterClause("n"), strings.Join(oidList, ","))
 		query = fmt.Sprintf(tableQuery, filterClause)

@@ -19,7 +19,7 @@ func ConstructTableAttributesList(columnDefs []ColumnDefinition) string {
 	names := make([]string, 0)
 	for _, col := range columnDefs {
 		if !col.IsDropped {
-			names = append(names, utils.QuoteIdent(col.Name))
+			names = append(names, col.Name)
 		}
 	}
 	if len(names) > 0 {
@@ -30,9 +30,9 @@ func ConstructTableAttributesList(columnDefs []ColumnDefinition) string {
 
 func AddTableDataEntriesToTOC(tables []Relation, tableDefs map[uint32]TableDefinition) {
 	for _, table := range tables {
-		if !tableDefs[table.RelationOid].IsExternal {
-			attributes := ConstructTableAttributesList(tableDefs[table.RelationOid].ColumnDefs)
-			globalTOC.AddDataEntry(table.SchemaName, table.RelationName, table.RelationOid, attributes)
+		if !tableDefs[table.Oid].IsExternal {
+			attributes := ConstructTableAttributesList(tableDefs[table.Oid].ColumnDefs)
+			globalTOC.AddDataEntry(table.Schema, table.Name, table.Oid, attributes)
 		}
 	}
 }

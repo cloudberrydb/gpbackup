@@ -18,7 +18,7 @@ func PrintStatisticsStatements(statisticsFile *utils.FileWithByteCount, toc *uti
 	statisticsFile.MustPrintf(`SET allow_system_table_mods="DML";`)
 	toc.AddMetadataEntry("", "", "STATISTICS GUC", start, statisticsFile)
 	for _, table := range tables {
-		PrintStatisticsStatementsForTable(statisticsFile, toc, table, attStats[table.RelationOid], tupleStats[table.RelationOid])
+		PrintStatisticsStatementsForTable(statisticsFile, toc, table, attStats[table.Oid], tupleStats[table.Oid])
 	}
 }
 
@@ -30,7 +30,7 @@ func PrintStatisticsStatementsForTable(statisticsFile *utils.FileWithByteCount, 
 		attributeQuery := GenerateAttributeStatisticsQuery(table, attStat)
 		statisticsFile.MustPrintf("\n\n%s\n", attributeQuery)
 	}
-	toc.AddMetadataEntry(table.SchemaName, table.RelationName, "STATISTICS", start, statisticsFile)
+	toc.AddMetadataEntry(table.Schema, table.Name, "STATISTICS", start, statisticsFile)
 }
 
 func GenerateTupleStatisticsQuery(table Relation, tupleStat TupleStatistic) string {
@@ -44,7 +44,7 @@ AND relnamespace = %d;`
 		tupleQuery,
 		tupleStat.RelPages,
 		tupleStat.RelTuples,
-		utils.QuoteIdent(strings.Replace(tupleStat.TableName, "'", "''", -1)),
+		strings.Replace(tupleStat.Table, "'", "''", -1),
 		table.SchemaOid)
 }
 
@@ -71,7 +71,7 @@ INSERT INTO pg_statistic VALUES (
 	 * type.  We can't restore statistics of array columns, so we'll zero and
 	 * NULL everything out.
 	 */
-	if len(attStat.TypeName) > 1 && attStat.TypeName[0] == '_' && attStat.TypeName[1] != '_' {
+	if len(attStat.Type) > 1 && attStat.Type[0] == '_' && attStat.Type[1] != '_' {
 		attributeQuery += `
 	0::smallint,
 	0::smallint,
@@ -118,10 +118,10 @@ INSERT INTO pg_statistic VALUES (
 			RealValues(attStat.Numbers2),
 			RealValues(attStat.Numbers3),
 			RealValues(attStat.Numbers4),
-			AnyValues(attStat.Values1, attStat.TypeName),
-			AnyValues(attStat.Values2, attStat.TypeName),
-			AnyValues(attStat.Values3, attStat.TypeName),
-			AnyValues(attStat.Values4, attStat.TypeName))
+			AnyValues(attStat.Values1, attStat.Type),
+			AnyValues(attStat.Values2, attStat.Type),
+			AnyValues(attStat.Values3, attStat.Type),
+			AnyValues(attStat.Values4, attStat.Type))
 	}
 	attributeQuery += `
 );`

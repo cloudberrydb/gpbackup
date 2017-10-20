@@ -53,22 +53,22 @@ AND i.indisprimary = 'f';
  * statements can require it.
  */
 type QuerySimpleDefinition struct {
-	Oid            uint32
-	Name           string
-	OwningSchema   string
-	OwningTable    string
-	TablespaceName string
-	Def            string
+	Oid          uint32
+	Name         string
+	OwningSchema string
+	OwningTable  string
+	Tablespace   string
+	Def          string
 }
 
 func GetIndexes(connection *utils.DBConn, indexNameMap map[string]bool) []QuerySimpleDefinition {
 	query := fmt.Sprintf(`
 SELECT DISTINCT
 	i.indexrelid AS oid,
-	c.relname AS name,
-	n.nspname AS owningschema,
-	t.relname AS owningtable,
-	coalesce(s.spcname, '') AS tablespacename,
+	quote_ident(c.relname) AS name,
+	quote_ident(n.nspname) AS owningschema,
+	quote_ident(t.relname) AS owningtable,
+	coalesce(quote_ident(s.spcname), '') AS tablespace,
 	pg_get_indexdef(i.indexrelid) AS def
 FROM pg_index i
 JOIN pg_class c
@@ -109,10 +109,10 @@ func GetRules(connection *utils.DBConn) []QuerySimpleDefinition {
 	query := fmt.Sprintf(`
 SELECT
 	r.oid,
-	r.rulename AS name,
-	n.nspname AS owningschema,
-	c.relname AS owningtable,
-	'' AS tablespacename,
+	quote_ident(r.rulename) AS name,
+	quote_ident(n.nspname) AS owningschema,
+	quote_ident(c.relname) AS owningtable,
+	'' AS tablespace,
 	pg_get_ruledef(r.oid) AS def
 FROM pg_rewrite r
 JOIN pg_class c
@@ -134,10 +134,10 @@ func GetTriggers(connection *utils.DBConn) []QuerySimpleDefinition {
 	query := fmt.Sprintf(`
 SELECT
 	t.oid,
-	t.tgname AS name,
-	n.nspname AS owningschema,
-	c.relname AS owningtable,
-	'' AS tablespacename,
+	quote_ident(t.tgname) AS name,
+	quote_ident(n.nspname) AS owningschema,
+	quote_ident(c.relname) AS owningtable,
+	'' AS tablespace,
 	pg_get_triggerdef(t.oid) AS def
 FROM pg_trigger t
 JOIN pg_class c

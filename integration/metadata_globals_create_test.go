@@ -16,7 +16,7 @@ var _ = Describe("backup integration create statement tests", func() {
 	})
 	Describe("PrintCreateResourceQueueStatements", func() {
 		It("creates a basic resource queue with a comment", func() {
-			basicQueue := backup.ResourceQueue{Oid: 1, Name: "basicQueue", ActiveStatements: -1, MaxCost: "32.80", CostOvercommit: false, MinCost: "0.00", Priority: "medium", MemoryLimit: "-1"}
+			basicQueue := backup.ResourceQueue{Oid: 1, Name: `"basicQueue"`, ActiveStatements: -1, MaxCost: "32.80", CostOvercommit: false, MinCost: "0.00", Priority: "medium", MemoryLimit: "-1"}
 			resQueueMetadataMap := testutils.DefaultMetadataMap("RESOURCE QUEUE", false, false, true)
 			resQueueMetadata := resQueueMetadataMap[1]
 
@@ -36,14 +36,14 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatch(&resultMetadata, &resQueueMetadata)
 
 			for _, resultQueue := range resultResourceQueues {
-				if resultQueue.Name == "basicQueue" {
+				if resultQueue.Name == `"basicQueue"` {
 					testutils.ExpectStructsToMatchExcluding(&basicQueue, &resultQueue, "Oid")
 					return
 				}
 			}
 		})
 		It("creates a resource queue with all attributes", func() {
-			everythingQueue := backup.ResourceQueue{Oid: 1, Name: "everythingQueue", ActiveStatements: 7, MaxCost: "32.80", CostOvercommit: true, MinCost: "22.80", Priority: "low", MemoryLimit: "2GB"}
+			everythingQueue := backup.ResourceQueue{Oid: 1, Name: `"everythingQueue"`, ActiveStatements: 7, MaxCost: "32.80", CostOvercommit: true, MinCost: "22.80", Priority: "low", MemoryLimit: "2GB"}
 			emptyMetadataMap := map[uint32]backup.ObjectMetadata{}
 
 			backup.PrintCreateResourceQueueStatements(backupfile, toc, []backup.ResourceQueue{everythingQueue}, emptyMetadataMap)
@@ -54,12 +54,12 @@ var _ = Describe("backup integration create statement tests", func() {
 			resultResourceQueues := backup.GetResourceQueues(connection)
 
 			for _, resultQueue := range resultResourceQueues {
-				if resultQueue.Name == "everythingQueue" {
+				if resultQueue.Name == `"everythingQueue"` {
 					testutils.ExpectStructsToMatchExcluding(&everythingQueue, &resultQueue, "Oid")
 					return
 				}
 			}
-			Fail("didn't find everythingQueue :(")
+			Fail("Could not find everythingQueue")
 		})
 	})
 	Describe("PrintCreateRoleStatements", func() {

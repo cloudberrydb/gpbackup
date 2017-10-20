@@ -66,8 +66,7 @@ func DollarQuoteString(literal string) string {
 	return quoteStr + literal + quoteStr
 }
 
+// This function assumes that all identifiers are already appropriately quoted
 func MakeFQN(schema string, object string) string {
-	schema = QuoteIdent(schema)
-	object = QuoteIdent(object)
 	return fmt.Sprintf("%s.%s", schema, object)
 }

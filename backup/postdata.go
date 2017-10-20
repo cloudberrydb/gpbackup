@@ -14,8 +14,8 @@ func PrintCreateIndexStatements(postdataFile *utils.FileWithByteCount, toc *util
 	for _, index := range indexes {
 		start := postdataFile.ByteCount
 		postdataFile.MustPrintf("\n\n%s;", index.Def)
-		if index.TablespaceName != "" {
-			postdataFile.MustPrintf("\nALTER INDEX %s SET TABLESPACE %s;", index.Name, index.TablespaceName)
+		if index.Tablespace != "" {
+			postdataFile.MustPrintf("\nALTER INDEX %s SET TABLESPACE %s;", index.Name, index.Tablespace)
 		}
 		PrintObjectMetadata(postdataFile, indexMetadata[index.Oid], index.Name, "INDEX")
 		toc.AddMetadataEntry(index.OwningSchema, index.Name, "INDEX", start, postdataFile)

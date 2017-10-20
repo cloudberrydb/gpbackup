@@ -65,7 +65,7 @@ func PrintExternalTableCreateStatement(predataFile *utils.FileWithByteCount, toc
 	}
 	predataFile.MustPrintf(";")
 	if toc != nil {
-		toc.AddMetadataEntry(table.SchemaName, table.RelationName, "TABLE", start, predataFile)
+		toc.AddMetadataEntry(table.Schema, table.Name, "TABLE", start, predataFile)
 	}
 }
 
@@ -189,7 +189,7 @@ func PrintExternalTableStatements(predataFile *utils.FileWithByteCount, table Re
 		 * If an external table is created using LOG ERRORS instead of LOG ERRORS INTO [tablename],
 		 * the value of pg_exttable.fmterrtbl will match the table's own name.
 		 */
-		if extTableDef.ErrTable == table.RelationName {
+		if extTableDef.ErrTable == table.Name {
 			predataFile.MustPrintf("\nLOG ERRORS")
 		} else if extTableDef.ErrTable != "" {
 			predataFile.MustPrintf("\nLOG ERRORS INTO %s", extTableDef.ErrTable)
@@ -239,9 +239,8 @@ func PrintCreateExternalProtocolStatements(predataFile *utils.FileWithByteCount,
 		if protocol.Trusted {
 			predataFile.MustPrintf("TRUSTED ")
 		}
-		protoFQN := utils.QuoteIdent(protocol.Name)
-		predataFile.MustPrintf("PROTOCOL %s (%s);\n", protoFQN, strings.Join(protocolFunctions, ", "))
-		PrintObjectMetadata(predataFile, protoMetadata[protocol.Oid], protoFQN, "PROTOCOL")
+		predataFile.MustPrintf("PROTOCOL %s (%s);\n", protocol.Name, strings.Join(protocolFunctions, ", "))
+		PrintObjectMetadata(predataFile, protoMetadata[protocol.Oid], protocol.Name, "PROTOCOL")
 		toc.AddMetadataEntry("", protocol.Name, "PROTOCOL", start, predataFile)
 	}
 }

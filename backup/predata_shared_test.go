@@ -23,12 +23,12 @@ var _ = Describe("backup/predata_shared tests", func() {
 			emptyMetadataMap backup.MetadataMap
 		)
 		BeforeEach(func() {
-			uniqueOne = backup.Constraint{Oid: 1, ConName: "tablename_i_key", ConType: "u", ConDef: "UNIQUE (i)", OwningObject: "public.tablename", IsDomainConstraint: false, IsPartitionParent: false}
-			uniqueTwo = backup.Constraint{Oid: 0, ConName: "tablename_j_key", ConType: "u", ConDef: "UNIQUE (j)", OwningObject: "public.tablename", IsDomainConstraint: false, IsPartitionParent: false}
-			primarySingle = backup.Constraint{Oid: 0, ConName: "tablename_pkey", ConType: "p", ConDef: "PRIMARY KEY (i)", OwningObject: "public.tablename", IsDomainConstraint: false, IsPartitionParent: false}
-			primaryComposite = backup.Constraint{Oid: 0, ConName: "tablename_pkey", ConType: "p", ConDef: "PRIMARY KEY (i, j)", OwningObject: "public.tablename", IsDomainConstraint: false, IsPartitionParent: false}
-			foreignOne = backup.Constraint{Oid: 0, ConName: "tablename_i_fkey", ConType: "f", ConDef: "FOREIGN KEY (i) REFERENCES other_tablename(a)", OwningObject: "public.tablename", IsDomainConstraint: false, IsPartitionParent: false}
-			foreignTwo = backup.Constraint{Oid: 0, ConName: "tablename_j_fkey", ConType: "f", ConDef: "FOREIGN KEY (j) REFERENCES other_tablename(b)", OwningObject: "public.tablename", IsDomainConstraint: false, IsPartitionParent: false}
+			uniqueOne = backup.Constraint{Oid: 1, Name: "tablename_i_key", ConType: "u", ConDef: "UNIQUE (i)", OwningObject: "public.tablename", IsDomainConstraint: false, IsPartitionParent: false}
+			uniqueTwo = backup.Constraint{Oid: 0, Name: "tablename_j_key", ConType: "u", ConDef: "UNIQUE (j)", OwningObject: "public.tablename", IsDomainConstraint: false, IsPartitionParent: false}
+			primarySingle = backup.Constraint{Oid: 0, Name: "tablename_pkey", ConType: "p", ConDef: "PRIMARY KEY (i)", OwningObject: "public.tablename", IsDomainConstraint: false, IsPartitionParent: false}
+			primaryComposite = backup.Constraint{Oid: 0, Name: "tablename_pkey", ConType: "p", ConDef: "PRIMARY KEY (i, j)", OwningObject: "public.tablename", IsDomainConstraint: false, IsPartitionParent: false}
+			foreignOne = backup.Constraint{Oid: 0, Name: "tablename_i_fkey", ConType: "f", ConDef: "FOREIGN KEY (i) REFERENCES other_tablename(a)", OwningObject: "public.tablename", IsDomainConstraint: false, IsPartitionParent: false}
+			foreignTwo = backup.Constraint{Oid: 0, Name: "tablename_j_fkey", ConType: "f", ConDef: "FOREIGN KEY (j) REFERENCES other_tablename(b)", OwningObject: "public.tablename", IsDomainConstraint: false, IsPartitionParent: false}
 			emptyMetadataMap = backup.MetadataMap{}
 		})
 
@@ -129,7 +129,7 @@ COMMENT ON CONSTRAINT tablename_i_key ON public.tablename IS 'This is a constrai
 					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_fkey FOREIGN KEY (i) REFERENCES other_tablename(a);`)
 			})
 			It("doesn't print an ADD CONSTRAINT statement for domain check constraint", func() {
-				domainCheckConstraint := backup.Constraint{Oid: 0, ConName: "check1", ConType: "c", ConDef: "CHECK (VALUE <> 42::numeric)", OwningObject: "public.domain1", IsDomainConstraint: true, IsPartitionParent: false}
+				domainCheckConstraint := backup.Constraint{Oid: 0, Name: "check1", ConType: "c", ConDef: "CHECK (VALUE <> 42::numeric)", OwningObject: "public.domain1", IsDomainConstraint: true, IsPartitionParent: false}
 				constraints := []backup.Constraint{domainCheckConstraint}
 				backup.PrintConstraintStatements(backupfile, toc, constraints, emptyMetadataMap)
 				testutils.NotExpectRegexp(buffer, `ALTER DOMAIN`)
@@ -169,18 +169,6 @@ REVOKE ALL ON SCHEMA schemaname FROM testrole;
 GRANT ALL ON SCHEMA schemaname TO testrole;`)
 		})
 	})
-	Describe("Schema.ToString", func() {
-		It("remains unquoted if it contains no special characters", func() {
-			testSchema := backup.Schema{Oid: 0, Name: `schemaname`}
-			expected := `schemaname`
-			Expect(testSchema.ToString()).To(Equal(expected))
-		})
-		It("is quoted if it contains special characters", func() {
-			testSchema := backup.Schema{Oid: 0, Name: `schema,name`}
-			expected := `"schema,name"`
-			Expect(testSchema.ToString()).To(Equal(expected))
-		})
-	})
 	Describe("SchemaFromString", func() {
 		It("can parse an unquoted string", func() {
 			testString := `schemaname`
@@ -201,11 +189,11 @@ GRANT ALL ON SCHEMA schemaname TO testrole;`)
 		})
 	})
 	Describe("GetUniqueSchemas", func() {
-		alphabeticalAFoo := backup.Relation{SchemaOid: 1, RelationOid: 0, SchemaName: "otherschema", RelationName: "foo", DependsUpon: nil, Inherits: nil}
-		alphabeticalABar := backup.Relation{SchemaOid: 1, RelationOid: 0, SchemaName: "otherschema", RelationName: "bar", DependsUpon: nil, Inherits: nil}
+		alphabeticalAFoo := backup.Relation{SchemaOid: 1, Oid: 0, Schema: "otherschema", Name: "foo", DependsUpon: nil, Inherits: nil}
+		alphabeticalABar := backup.Relation{SchemaOid: 1, Oid: 0, Schema: "otherschema", Name: "bar", DependsUpon: nil, Inherits: nil}
 		schemaOther := backup.Schema{Oid: 2, Name: "otherschema"}
-		alphabeticalBFoo := backup.Relation{SchemaOid: 2, RelationOid: 0, SchemaName: "public", RelationName: "foo", DependsUpon: nil, Inherits: nil}
-		alphabeticalBBar := backup.Relation{SchemaOid: 2, RelationOid: 0, SchemaName: "public", RelationName: "bar", DependsUpon: nil, Inherits: nil}
+		alphabeticalBFoo := backup.Relation{SchemaOid: 2, Oid: 0, Schema: "public", Name: "foo", DependsUpon: nil, Inherits: nil}
+		alphabeticalBBar := backup.Relation{SchemaOid: 2, Oid: 0, Schema: "public", Name: "bar", DependsUpon: nil, Inherits: nil}
 		schemaPublic := backup.Schema{Oid: 1, Name: "public"}
 		schemas := []backup.Schema{schemaOther, schemaPublic}
 
@@ -393,12 +381,12 @@ GRANT TRIGGER ON TABLE public.tablename TO PUBLIC;`)
 		)
 		BeforeEach(func() {
 			objects = []backup.Sortable{
-				backup.Function{Oid: 1, SchemaName: "public", FunctionName: "function", FunctionBody: "SELECT $1 + $2",
+				backup.Function{Oid: 1, Schema: "public", Name: "function", FunctionBody: "SELECT $1 + $2",
 					Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "integer", Language: "sql"},
-				backup.Type{Oid: 2, TypeSchema: "public", TypeName: "base", Type: "b", Input: "typin", Output: "typout"},
-				backup.Type{Oid: 3, TypeSchema: "public", TypeName: "composite", AttName: "foo", AttType: "integer", Type: "c"},
-				backup.Type{Oid: 4, TypeSchema: "public", TypeName: "domain", Type: "d", BaseType: "numeric"},
-				backup.Relation{RelationOid: 5, SchemaName: "public", RelationName: "relation"},
+				backup.Type{Oid: 2, Schema: "public", Name: "base", Type: "b", Input: "typin", Output: "typout"},
+				backup.Type{Oid: 3, Schema: "public", Name: "composite", AttName: "foo", AttType: "integer", Type: "c"},
+				backup.Type{Oid: 4, Schema: "public", Name: "domain", Type: "d", BaseType: "numeric"},
+				backup.Relation{Oid: 5, Schema: "public", Name: "relation"},
 			}
 			metadataMap = backup.MetadataMap{
 				1: backup.ObjectMetadata{Comment: "function"},
@@ -413,7 +401,7 @@ GRANT TRIGGER ON TABLE public.tablename TO PUBLIC;`)
 		})
 		It("prints create statements for dependent types, functions, and tables (domain has a constraint)", func() {
 			constraints := []backup.Constraint{
-				{ConName: "check_constraint", ConDef: "CHECK (VALUE > 2)", OwningObject: "public.domain"},
+				{Name: "check_constraint", ConDef: "CHECK (VALUE > 2)", OwningObject: "public.domain"},
 			}
 			backup.PrintCreateDependentTypeAndFunctionAndTablesStatements(backupfile, toc, objects, metadataMap, tableDefsMap, constraints)
 			testutils.ExpectRegexp(buffer, `

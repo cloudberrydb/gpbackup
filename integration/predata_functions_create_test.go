@@ -20,7 +20,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			funcMetadata := backup.ObjectMetadata{}
 			It("creates a function with a simple return type", func() {
 				addFunction := backup.Function{
-					SchemaName: "public", FunctionName: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
+					Schema: "public", Name: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
 					BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "integer",
 					Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", NumRows: 0, Language: "sql",
 				}
@@ -37,7 +37,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			})
 			It("creates a function that returns a set", func() {
 				appendFunction := backup.Function{
-					SchemaName: "public", FunctionName: "append", ReturnsSet: true, FunctionBody: "SELECT ($1, $2)",
+					Schema: "public", Name: "append", ReturnsSet: true, FunctionBody: "SELECT ($1, $2)",
 					BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "SETOF record",
 					Volatility: "s", IsStrict: true, IsSecurityDefiner: true, Language: "sql",
 				}
@@ -54,7 +54,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			})
 			It("creates a function that returns a table", func() {
 				dupFunction := backup.Function{
-					SchemaName: "public", FunctionName: "dup", ReturnsSet: true, FunctionBody: "SELECT $1, CAST($1 AS text) || ' is text'",
+					Schema: "public", Name: "dup", ReturnsSet: true, FunctionBody: "SELECT $1, CAST($1 AS text) || ' is text'",
 					BinaryPath: "", Arguments: "integer", IdentArgs: "integer", ResultType: "TABLE(f1 integer, f2 text)",
 					Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Language: "sql",
 				}
@@ -77,7 +77,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			funcMetadata := backup.ObjectMetadata{}
 			It("creates a function with a simple return type", func() {
 				addFunction := backup.Function{
-					SchemaName: "public", FunctionName: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
+					Schema: "public", Name: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
 					BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "integer",
 					Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 0, DataAccess: "c",
 					Language: "sql",
@@ -95,7 +95,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			})
 			It("creates a function that returns a set", func() {
 				appendFunction := backup.Function{
-					SchemaName: "public", FunctionName: "append", ReturnsSet: true, FunctionBody: "SELECT ($1, $2)",
+					Schema: "public", Name: "append", ReturnsSet: true, FunctionBody: "SELECT ($1, $2)",
 					BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "SETOF record",
 					Volatility: "s", IsStrict: true, IsSecurityDefiner: true, Config: "SET search_path TO pg_temp", Cost: 200,
 					NumRows: 200, DataAccess: "m", Language: "sql",
@@ -113,7 +113,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			})
 			It("creates a function that returns a table", func() {
 				dupFunction := backup.Function{
-					SchemaName: "public", FunctionName: "dup", ReturnsSet: true, FunctionBody: "SELECT $1, CAST($1 AS text) || ' is text'",
+					Schema: "public", Name: "dup", ReturnsSet: true, FunctionBody: "SELECT $1, CAST($1 AS text) || ' is text'",
 					BinaryPath: "", Arguments: "integer", IdentArgs: "integer", ResultType: "TABLE(f1 integer, f2 text)",
 					Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 1000, DataAccess: "c",
 					Language: "sql",
@@ -133,7 +133,7 @@ var _ = Describe("backup integration create statement tests", func() {
 	})
 	Describe("PrintCreateAggregateStatements", func() {
 		aggregateDef := backup.Aggregate{
-			Oid: 1, SchemaName: "public", AggregateName: "agg_prefunc", Arguments: "numeric, numeric",
+			Oid: 1, Schema: "public", Name: "agg_prefunc", Arguments: "numeric, numeric",
 			IdentArgs: "numeric, numeric", TransitionFunction: 1, PreliminaryFunction: 2, FinalFunction: 0,
 			SortOperator: 0, TransitionDataType: "numeric", InitialValue: "0", IsOrdered: false,
 		}

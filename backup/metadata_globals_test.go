@@ -40,14 +40,14 @@ SET default_with_oids = false;`)
 	})
 	Describe("PrintCreateDatabaseStatement", func() {
 		It("prints a basic CREATE DATABASE statement", func() {
-			dbs := []backup.DatabaseName{{Oid: 1, DatabaseName: "testdb", TablespaceName: "pg_default"}}
+			dbs := []backup.Database{{Oid: 1, Name: "testdb", Tablespace: "pg_default"}}
 			emptyMetadataMap := backup.MetadataMap{}
 			backup.PrintCreateDatabaseStatement(backupfile, toc, "testdb", dbs, emptyMetadataMap, false)
 			testutils.ExpectEntry(toc.GlobalEntries, 0, "", "testdb", "DATABASE")
 			testutils.AssertBufferContents(toc.GlobalEntries, buffer, `CREATE DATABASE testdb;`)
 		})
 		It("prints a CREATE DATABASE statement for a reserved keyword named database", func() {
-			dbs := []backup.DatabaseName{{Oid: 1, DatabaseName: `"table"`, TablespaceName: "pg_default"}}
+			dbs := []backup.Database{{Oid: 1, Name: `"table"`, Tablespace: "pg_default"}}
 			emptyMetadataMap := backup.MetadataMap{}
 			backup.PrintCreateDatabaseStatement(backupfile, toc, "table", dbs, emptyMetadataMap, false)
 			testutils.ExpectEntry(toc.GlobalEntries, 0, "", `"table"`, "DATABASE")
@@ -58,7 +58,7 @@ SET default_with_oids = false;`)
 			dbMetadata := dbMetadataMap[1]
 			dbMetadata.Privileges[0].Create = false
 			dbMetadataMap[1] = dbMetadata
-			dbs := []backup.DatabaseName{{Oid: 1, DatabaseName: "testdb", TablespaceName: "pg_default"}, {Oid: 2, DatabaseName: "otherdb", TablespaceName: "pg_default"}}
+			dbs := []backup.Database{{Oid: 1, Name: "testdb", Tablespace: "pg_default"}, {Oid: 2, Name: "otherdb", Tablespace: "pg_default"}}
 			backup.PrintCreateDatabaseStatement(backupfile, toc, "testdb", dbs, dbMetadataMap, false)
 			testutils.AssertBufferContents(toc.GlobalEntries, buffer, `CREATE DATABASE testdb;`,
 				`COMMENT ON DATABASE testdb IS 'This is a database comment.';
@@ -80,7 +80,7 @@ GRANT TEMPORARY,CONNECT ON DATABASE testdb TO testrole;`)
 				2: backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "testrole", Create: true}}},
 				3: backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "testrole", CreateWithGrant: true}}},
 			}
-			dbs := []backup.DatabaseName{{Oid: 1, DatabaseName: "testdb", TablespaceName: "pg_default"}, {Oid: 2, DatabaseName: "otherdb", TablespaceName: "pg_default"}, {Oid: 3, DatabaseName: "anotherdb", TablespaceName: "pg_default"}}
+			dbs := []backup.Database{{Oid: 1, Name: "testdb", Tablespace: "pg_default"}, {Oid: 2, Name: "otherdb", Tablespace: "pg_default"}, {Oid: 3, Name: "anotherdb", Tablespace: "pg_default"}}
 			backup.PrintCreateDatabaseStatement(backupfile, toc, "testdb", dbs, dbMetadataMap, true)
 			testutils.AssertBufferContents(toc.GlobalEntries, buffer, `CREATE DATABASE testdb;`,
 				`COMMENT ON DATABASE testdb IS 'This is a database comment.';
@@ -100,7 +100,7 @@ GRANT CREATE ON DATABASE otherdb TO testrole;`,
 GRANT CREATE ON DATABASE anotherdb TO testrole WITH GRANT OPTION;`)
 		})
 		It("prints a CREATE DATABASE statement with a TABLESPACE", func() {
-			dbs := []backup.DatabaseName{{Oid: 1, DatabaseName: "testdb", TablespaceName: "test_tablespace"}}
+			dbs := []backup.Database{{Oid: 1, Name: "testdb", Tablespace: "test_tablespace"}}
 			emptyMetadataMap := backup.MetadataMap{}
 			backup.PrintCreateDatabaseStatement(backupfile, toc, "testdb", dbs, emptyMetadataMap, false)
 			testutils.AssertBufferContents(toc.GlobalEntries, buffer, `CREATE DATABASE testdb TABLESPACE test_tablespace;`)
@@ -133,7 +133,7 @@ GRANT CREATE ON DATABASE anotherdb TO testrole WITH GRANT OPTION;`)
 		var emptyResQueueMetadata = map[uint32]backup.ObjectMetadata{}
 		It("prints resource queues", func() {
 			someQueue := backup.ResourceQueue{Oid: 1, Name: "some_queue", ActiveStatements: 1, MaxCost: "-1.00", CostOvercommit: false, MinCost: "0.00", Priority: "medium", MemoryLimit: "-1"}
-			maxCostQueue := backup.ResourceQueue{Oid: 1, Name: "someMaxCostQueue", ActiveStatements: -1, MaxCost: "99.9", CostOvercommit: true, MinCost: "0.00", Priority: "medium", MemoryLimit: "-1"}
+			maxCostQueue := backup.ResourceQueue{Oid: 1, Name: `"someMaxCostQueue"`, ActiveStatements: -1, MaxCost: "99.9", CostOvercommit: true, MinCost: "0.00", Priority: "medium", MemoryLimit: "-1"}
 			resQueues := []backup.ResourceQueue{someQueue, maxCostQueue}
 
 			backup.PrintCreateResourceQueueStatements(backupfile, toc, resQueues, emptyResQueueMetadata)
@@ -143,21 +143,21 @@ GRANT CREATE ON DATABASE anotherdb TO testrole WITH GRANT OPTION;`)
 				`CREATE RESOURCE QUEUE "someMaxCostQueue" WITH (MAX_COST=99.9, COST_OVERCOMMIT=TRUE);`)
 		})
 		It("prints a resource queue with active statements and max cost", func() {
-			someActiveMaxCostQueue := backup.ResourceQueue{Oid: 1, Name: "someActiveMaxCostQueue", ActiveStatements: 5, MaxCost: "62.03", CostOvercommit: false, MinCost: "0.00", Priority: "medium", MemoryLimit: "-1"}
+			someActiveMaxCostQueue := backup.ResourceQueue{Oid: 1, Name: `"someActiveMaxCostQueue"`, ActiveStatements: 5, MaxCost: "62.03", CostOvercommit: false, MinCost: "0.00", Priority: "medium", MemoryLimit: "-1"}
 			resQueues := []backup.ResourceQueue{someActiveMaxCostQueue}
 
 			backup.PrintCreateResourceQueueStatements(backupfile, toc, resQueues, emptyResQueueMetadata)
 			testutils.AssertBufferContents(toc.GlobalEntries, buffer, `CREATE RESOURCE QUEUE "someActiveMaxCostQueue" WITH (ACTIVE_STATEMENTS=5, MAX_COST=62.03);`)
 		})
 		It("prints a resource queue with active statements and max cost", func() {
-			everythingQueue := backup.ResourceQueue{Oid: 1, Name: "everythingQueue", ActiveStatements: 7, MaxCost: "32.80", CostOvercommit: true, MinCost: "1.34", Priority: "low", MemoryLimit: "2GB"}
+			everythingQueue := backup.ResourceQueue{Oid: 1, Name: `"everythingQueue"`, ActiveStatements: 7, MaxCost: "32.80", CostOvercommit: true, MinCost: "1.34", Priority: "low", MemoryLimit: "2GB"}
 			resQueues := []backup.ResourceQueue{everythingQueue}
 
 			backup.PrintCreateResourceQueueStatements(backupfile, toc, resQueues, emptyResQueueMetadata)
 			testutils.AssertBufferContents(toc.GlobalEntries, buffer, `CREATE RESOURCE QUEUE "everythingQueue" WITH (ACTIVE_STATEMENTS=7, MAX_COST=32.80, COST_OVERCOMMIT=TRUE, MIN_COST=1.34, PRIORITY=LOW, MEMORY_LIMIT='2GB');`)
 		})
 		It("prints a resource queue with a comment", func() {
-			commentQueue := backup.ResourceQueue{Oid: 1, Name: "commentQueue", ActiveStatements: 1, MaxCost: "-1.00", CostOvercommit: false, MinCost: "0.00", Priority: "medium", MemoryLimit: "-1"}
+			commentQueue := backup.ResourceQueue{Oid: 1, Name: `"commentQueue"`, ActiveStatements: 1, MaxCost: "-1.00", CostOvercommit: false, MinCost: "0.00", Priority: "medium", MemoryLimit: "-1"}
 			resQueues := []backup.ResourceQueue{commentQueue}
 			resQueueMetadata := testutils.DefaultMetadataMap("RESOURCE QUEUE", false, false, true)
 
@@ -197,7 +197,7 @@ COMMENT ON RESOURCE QUEUE "commentQueue" IS 'This is a resource queue comment.';
 
 		testrole2 := backup.Role{
 			Oid:             1,
-			Name:            "testRole2",
+			Name:            `"testRole2"`,
 			Super:           true,
 			Inherit:         true,
 			CreateRole:      true,
@@ -206,7 +206,7 @@ COMMENT ON RESOURCE QUEUE "commentQueue" IS 'This is a resource queue comment.';
 			ConnectionLimit: 4,
 			Password:        "md5a8b2c77dfeba4705f29c094592eb3369",
 			ValidUntil:      "2099-01-01 00:00:00-08",
-			ResQueue:        "testQueue",
+			ResQueue:        `"testQueue"`,
 			Createrexthttp:  true,
 			Createrextgpfd:  true,
 			Createwextgpfd:  true,

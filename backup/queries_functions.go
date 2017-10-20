@@ -14,9 +14,9 @@ import (
 
 type Function struct {
 	Oid               uint32
-	SchemaName        string `db:"nspname"`
-	FunctionName      string `db:"proname"`
-	ReturnsSet        bool   `db:"proretset"`
+	Schema            string
+	Name              string
+	ReturnsSet        bool `db:"proretset"`
 	FunctionBody      string
 	BinaryPath        string
 	Arguments         string
@@ -65,8 +65,8 @@ func GetFunctions5(connection *utils.DBConn) []Function {
 	query := fmt.Sprintf(`
 SELECT
 	p.oid,
-	nspname,
-	proname,
+	quote_ident(nspname) AS schema,
+	quote_ident(proname) AS name,
 	proretset,
 	coalesce(prosrc, '') AS functionbody,
 	coalesce(probin, '') AS binarypath,
@@ -105,8 +105,8 @@ func GetFunctions4(connection *utils.DBConn) []Function {
 	query := fmt.Sprintf(`
 SELECT
 	p.oid,
-	nspname,
-	proname,
+	quote_ident(nspname) AS schema,
+	quote_ident(proname) AS name,
 	proretset,
 	coalesce(prosrc, '') AS functionbody,
 	CASE
@@ -228,8 +228,8 @@ WHERE %s`, SchemaFilterClause("n"))
 
 type Aggregate struct {
 	Oid                 uint32
-	SchemaName          string `db:"nspname"`
-	AggregateName       string `db:"proname"`
+	Schema              string
+	Name                string
 	Arguments           string
 	IdentArgs           string
 	TransitionFunction  uint32 `db:"aggtransfn"`
@@ -253,8 +253,8 @@ func GetAggregates(connection *utils.DBConn) []Aggregate {
 	query := fmt.Sprintf(`
 SELECT
 	p.oid,
-	n.nspname,
-	p.proname,
+	quote_ident(n.nspname) AS schema,
+	p.proname AS name,
 	%s
 	a.aggtransfn::regproc::oid,
 	a.aggprelimfn::regproc::oid,
@@ -293,26 +293,26 @@ func GetFunctionOidToInfoMap(connection *utils.DBConn) map[uint32]FunctionInfo {
 	version4query := `
 SELECT
 	p.oid,
-	n.nspname,
-	p.proname
+	quote_ident(n.nspname) AS schema,
+	quote_ident(p.proname) AS name
 FROM pg_proc p
 LEFT JOIN pg_namespace n ON p.pronamespace = n.oid;
 `
 	query := `
 SELECT
 	p.oid,
-	n.nspname,
-	p.proname,
+	quote_ident(n.nspname) AS schema,
+	quote_ident(p.proname) AS name,
 	pg_catalog.pg_get_function_arguments(p.oid) AS arguments
 FROM pg_proc p
 LEFT JOIN pg_namespace n ON p.pronamespace = n.oid;
 `
 
 	results := make([]struct {
-		Oid            uint32
-		FunctionSchema string `db:"nspname"`
-		FunctionName   string `db:"proname"`
-		Arguments      string
+		Oid       uint32
+		Schema    string
+		Name      string
+		Arguments string
 	}, 0)
 	funcMap := make(map[uint32]FunctionInfo, 0)
 	var err error
@@ -327,10 +327,10 @@ LEFT JOIN pg_namespace n ON p.pronamespace = n.oid;
 	}
 	utils.CheckError(err)
 	for _, function := range results {
-		fqn := utils.MakeFQN(function.FunctionSchema, function.FunctionName)
+		fqn := utils.MakeFQN(function.Schema, function.Name)
 
 		isInternal := false
-		if function.FunctionSchema == "pg_catalog" {
+		if function.Schema == "pg_catalog" {
 			isInternal = true
 		}
 		funcInfo := FunctionInfo{QualifiedName: fqn, Arguments: function.Arguments, IsInternal: isInternal}
@@ -366,8 +366,8 @@ SELECT
 	c.oid,
 	quote_ident(sn.nspname) || '.' || quote_ident(st.typname) AS sourcetypefqn,
 	quote_ident(tn.nspname) || '.' || quote_ident(tt.typname) AS targettypefqn,
-	coalesce(n.nspname, '') AS functionschema,
-	coalesce(p.proname, '') AS functionname,
+	coalesce(quote_ident(n.nspname), '') AS functionschema,
+	coalesce(quote_ident(p.proname), '') AS functionname,
 	%s
 	c.castcontext
 FROM pg_cast c
@@ -397,7 +397,7 @@ ORDER BY 1, 2;
 
 type ProceduralLanguage struct {
 	Oid       uint32
-	Name      string `db:"lanname"`
+	Name      string
 	Owner     string
 	IsPl      bool   `db:"lanispl"`
 	PlTrusted bool   `db:"lanpltrusted"`
@@ -412,7 +412,7 @@ func GetProceduralLanguages(connection *utils.DBConn) []ProceduralLanguage {
 	version4query := `
 SELECT
 	oid,
-	l.lanname,
+	quote_ident(l.lanname) AS name,
 	pg_get_userbyid(10) as owner, 
 	l.lanispl,
 	l.lanpltrusted,
@@ -425,7 +425,7 @@ WHERE l.lanispl='t';
 	query := `
 SELECT
 	oid,
-	l.lanname,
+	quote_ident(l.lanname) AS name,
 	pg_get_userbyid(l.lanowner) as owner,
 	l.lanispl,
 	l.lanpltrusted,
@@ -447,8 +447,8 @@ WHERE l.lanispl='t';
 
 type Conversion struct {
 	Oid                uint32
-	Schema             string `db:"nspname"`
-	Name               string `db:"conname"`
+	Schema             string
+	Name               string
 	ForEncoding        string
 	ToEncoding         string
 	ConversionFunction string
@@ -460,8 +460,8 @@ func GetConversions(connection *utils.DBConn) []Conversion {
 	query := fmt.Sprintf(`
 SELECT
 	c.oid,
-	n.nspname,
-	c.conname,
+	quote_ident(n.nspname) AS schema,
+	quote_ident(c.conname) AS name,
 	pg_encoding_to_char(c.conforencoding) AS forencoding,
 	pg_encoding_to_char(c.contoencoding) AS toencoding,
 	quote_ident(fn.nspname) || '.' || quote_ident(p.proname) AS conversionfunction,

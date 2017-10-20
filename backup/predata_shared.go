@@ -23,10 +23,6 @@ type Schema struct {
 	Name string
 }
 
-func (s Schema) ToString() string {
-	return utils.QuoteIdent(s.Name)
-}
-
 func SchemaFromString(name string) Schema {
 	var schema string
 	var matches []string
@@ -71,10 +67,9 @@ func PrintConstraintStatements(predataFile *utils.FileWithByteCount, toc *utils.
 		if constraint.IsPartitionParent {
 			objStr = "TABLE"
 		}
-		conName := utils.QuoteIdent(constraint.ConName)
-		predataFile.MustPrintf(alterStr, objStr, constraint.OwningObject, conName, constraint.ConDef)
-		PrintObjectMetadata(predataFile, conMetadata[constraint.Oid], conName, "CONSTRAINT", constraint.OwningObject)
-		toc.AddMetadataEntry("", constraint.ConName, "CONSTRAINT", start, predataFile)
+		predataFile.MustPrintf(alterStr, objStr, constraint.OwningObject, constraint.Name, constraint.ConDef)
+		PrintObjectMetadata(predataFile, conMetadata[constraint.Oid], constraint.Name, "CONSTRAINT", constraint.OwningObject)
+		toc.AddMetadataEntry("", constraint.Name, "CONSTRAINT", start, predataFile)
 	}
 }
 
@@ -83,9 +78,9 @@ func PrintCreateSchemaStatements(backupfile *utils.FileWithByteCount, toc *utils
 		start := backupfile.ByteCount
 		backupfile.MustPrintln()
 		if schema.Name != "public" {
-			backupfile.MustPrintf("\nCREATE SCHEMA %s;", schema.ToString())
+			backupfile.MustPrintf("\nCREATE SCHEMA %s;", schema.Name)
 		}
-		PrintObjectMetadata(backupfile, schemaMetadata[schema.Oid], schema.ToString(), "SCHEMA")
+		PrintObjectMetadata(backupfile, schemaMetadata[schema.Oid], schema.Name, "SCHEMA")
 		toc.AddMetadataEntry("", schema.Name, "SCHEMA", start, backupfile)
 	}
 }
@@ -242,7 +237,7 @@ func (obj ObjectMetadata) GetPrivilegesStatements(objectName string, objectType 
 	if len(obj.Privileges) != 0 {
 		statements = append(statements, fmt.Sprintf("REVOKE ALL ON %s%s FROM PUBLIC;", typeStr, objectName))
 		if obj.Owner != "" {
-			statements = append(statements, fmt.Sprintf("REVOKE ALL ON %s%s FROM %s;", typeStr, objectName, utils.QuoteIdent(obj.Owner)))
+			statements = append(statements, fmt.Sprintf("REVOKE ALL ON %s%s FROM %s;", typeStr, objectName, obj.Owner))
 		}
 		for _, acl := range obj.Privileges {
 			/*
@@ -258,7 +253,7 @@ func (obj ObjectMetadata) GetPrivilegesStatements(objectName string, objectType 
 			if acl.Grantee == "" {
 				grantee = "PUBLIC"
 			} else {
-				grantee = utils.QuoteIdent(acl.Grantee)
+				grantee = acl.Grantee
 			}
 			switch objectType {
 			case "DATABASE":
@@ -398,7 +393,7 @@ func (obj ObjectMetadata) GetOwnerStatement(objectName string, objectType string
 	}
 	ownerStr := ""
 	if obj.Owner != "" {
-		ownerStr = fmt.Sprintf("\n\nALTER %s %s OWNER TO %s;", typeStr, objectName, utils.QuoteIdent(obj.Owner))
+		ownerStr = fmt.Sprintf("\n\nALTER %s %s OWNER TO %s;", typeStr, objectName, obj.Owner)
 	}
 	return ownerStr
 }
@@ -429,13 +424,13 @@ func PrintCreateDependentTypeAndFunctionAndTablesStatements(predataFile *utils.F
 			case "c":
 				PrintCreateCompositeTypeStatement(predataFile, toc, obj, metadataMap[obj.Oid])
 			case "d":
-				domainName := utils.MakeFQN(obj.TypeSchema, obj.TypeName)
+				domainName := utils.MakeFQN(obj.Schema, obj.Name)
 				PrintCreateDomainStatement(predataFile, toc, obj, metadataMap[obj.Oid], conMap[domainName])
 			}
 		case Function:
 			PrintCreateFunctionStatement(predataFile, toc, obj, metadataMap[obj.Oid])
 		case Relation:
-			PrintCreateTableStatement(predataFile, toc, obj, tableDefsMap[obj.RelationOid], metadataMap[obj.RelationOid])
+			PrintCreateTableStatement(predataFile, toc, obj, tableDefsMap[obj.Oid], metadataMap[obj.Oid])
 		}
 	}
 }

@@ -15,8 +15,8 @@ var _ = Describe("backup/predata_relations tests", func() {
 	distSingle := "DISTRIBUTED BY (i)"
 	distComposite := "DISTRIBUTED BY (i, j)"
 
-	rowOne := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", TypeName: "integer", StatTarget: -1}
-	rowTwo := backup.ColumnDefinition{Oid: 1, Num: 2, Name: "j", TypeName: "character varying(20)", StatTarget: -1}
+	rowOne := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", Type: "integer", StatTarget: -1}
+	rowTwo := backup.ColumnDefinition{Oid: 1, Num: 2, Name: "j", Type: "character varying(20)", StatTarget: -1}
 
 	heapOpts := ""
 	aoOpts := "appendonly=true"
@@ -52,60 +52,38 @@ SET SUBPARTITION TEMPLATE
 	BeforeEach(func() {
 		toc, backupfile = testutils.InitializeTestTOC(buffer, "predata")
 	})
-	Describe("Relation.ToString", func() {
-		It("remains unquoted if neither the schema nor the table name contains special characters", func() {
-			testTable := backup.BasicRelation(`schemaname`, `tablename`)
-			expected := `schemaname.tablename`
-			Expect(testTable.ToString()).To(Equal(expected))
-		})
-		It("is quoted if the schema name contains special characters", func() {
-			testTable := backup.BasicRelation(`schema,name`, `tablename`)
-			expected := `"schema,name".tablename`
-			Expect(testTable.ToString()).To(Equal(expected))
-		})
-		It("is quoted if the table name contains special characters", func() {
-			testTable := backup.BasicRelation(`schemaname`, `table,name`)
-			expected := `schemaname."table,name"`
-			Expect(testTable.ToString()).To(Equal(expected))
-		})
-		It("is quoted if both the schema and the table name contain special characters", func() {
-			testTable := backup.BasicRelation(`schema,name`, `table,name`)
-			expected := `"schema,name"."table,name"`
-			Expect(testTable.ToString()).To(Equal(expected))
-		})
-	})
 	Describe("RelationFromString", func() {
 		It("can parse an unquoted string", func() {
 			testString := `schemaname.tablename`
 			newTable := backup.RelationFromString(testString)
 			Expect(newTable.SchemaOid).To(Equal(uint32(0)))
-			Expect(newTable.RelationOid).To(Equal(uint32(0)))
-			Expect(newTable.SchemaName).To(Equal(`schemaname`))
-			Expect(newTable.RelationName).To(Equal(`tablename`))
+			Expect(newTable.Oid).To(Equal(uint32(0)))
+			Expect(newTable.Schema).To(Equal(`schemaname`))
+			Expect(newTable.Name).To(Equal(`tablename`))
 		})
 		It("can parse a string with a quoted schema", func() {
 			testString := `"schema,name".tablename`
 			newTable := backup.RelationFromString(testString)
 			Expect(newTable.SchemaOid).To(Equal(uint32(0)))
-			Expect(newTable.RelationOid).To(Equal(uint32(0)))
-			Expect(newTable.SchemaName).To(Equal(`schema,name`))
-			Expect(newTable.RelationName).To(Equal(`tablename`))
+			Expect(newTable.Oid).To(Equal(uint32(0)))
+			Expect(newTable.Schema).To(Equal(`schema,name`))
+			Expect(newTable.Name).To(Equal(`tablename`))
 		})
 		It("can parse a string with a quoted table", func() {
 			testString := `schemaname."table,name"`
 			newTable := backup.RelationFromString(testString)
 			Expect(newTable.SchemaOid).To(Equal(uint32(0)))
-			Expect(newTable.RelationOid).To(Equal(uint32(0)))
-			Expect(newTable.SchemaName).To(Equal(`schemaname`))
-			Expect(newTable.RelationName).To(Equal(`table,name`))
+			Expect(newTable.Oid).To(Equal(uint32(0)))
+			Expect(newTable.Schema).To(Equal(`schemaname`))
+			Expect(newTable.Name).To(Equal(`table,name`))
 		})
 		It("can parse a string with both schema and table quoted", func() {
 			testString := `"schema,name"."table,name"`
 			newTable := backup.RelationFromString(testString)
 			Expect(newTable.SchemaOid).To(Equal(uint32(0)))
-			Expect(newTable.RelationOid).To(Equal(uint32(0)))
-			Expect(newTable.SchemaName).To(Equal(`schema,name`))
-			Expect(newTable.RelationName).To(Equal(`table,name`))
+			Expect(newTable.Oid).To(Equal(uint32(0)))
+			Expect(newTable.Schema).To(Equal(`schema,name`))
+			Expect(newTable.Name).To(Equal(`table,name`))
 		})
 		It("panics if given an invalid string", func() {
 			testString := `schema.name.table.name`
@@ -137,18 +115,18 @@ ENCODING 'UTF-8';`)
 		})
 	})
 	Describe("PrintRegularTableCreateStatement", func() {
-		rowDropped := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", IsDropped: true, TypeName: "character varying(20)", StatTarget: -1}
-		rowOneEncoding := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", TypeName: "integer", Encoding: "compresstype=none,blocksize=32768,compresslevel=0", StatTarget: -1}
-		rowTwoEncoding := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", TypeName: "character varying(20)", Encoding: "compresstype=zlib,blocksize=65536,compresslevel=1", StatTarget: -1}
-		rowNotNull := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", NotNull: true, TypeName: "character varying(20)", StatTarget: -1}
-		rowEncodingNotNull := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", NotNull: true, TypeName: "character varying(20)", Encoding: "compresstype=zlib,blocksize=65536,compresslevel=1", StatTarget: -1}
-		rowOneDef := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", HasDefault: true, TypeName: "integer", StatTarget: -1, DefaultVal: "42"}
-		rowTwoDef := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", HasDefault: true, TypeName: "character varying(20)", StatTarget: -1, DefaultVal: "'bar'::text"}
-		rowTwoEncodingDef := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", HasDefault: true, TypeName: "character varying(20)", Encoding: "compresstype=zlib,blocksize=65536,compresslevel=1", StatTarget: -1, DefaultVal: "'bar'::text"}
-		rowNotNullDef := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", NotNull: true, HasDefault: true, TypeName: "character varying(20)", StatTarget: -1, DefaultVal: "'bar'::text"}
-		rowEncodingNotNullDef := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", NotNull: true, HasDefault: true, TypeName: "character varying(20)", Encoding: "compresstype=zlib,blocksize=65536,compresslevel=1", StatTarget: -1, DefaultVal: "'bar'::text"}
-		rowStats := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", TypeName: "integer", StatTarget: 3}
-		colStorageType := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", TypeName: "integer", StatTarget: -1, StorageType: "PLAIN"}
+		rowDropped := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", IsDropped: true, Type: "character varying(20)", StatTarget: -1}
+		rowOneEncoding := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", Type: "integer", Encoding: "compresstype=none,blocksize=32768,compresslevel=0", StatTarget: -1}
+		rowTwoEncoding := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", Type: "character varying(20)", Encoding: "compresstype=zlib,blocksize=65536,compresslevel=1", StatTarget: -1}
+		rowNotNull := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", NotNull: true, Type: "character varying(20)", StatTarget: -1}
+		rowEncodingNotNull := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", NotNull: true, Type: "character varying(20)", Encoding: "compresstype=zlib,blocksize=65536,compresslevel=1", StatTarget: -1}
+		rowOneDef := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", HasDefault: true, Type: "integer", StatTarget: -1, DefaultVal: "42"}
+		rowTwoDef := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", HasDefault: true, Type: "character varying(20)", StatTarget: -1, DefaultVal: "'bar'::text"}
+		rowTwoEncodingDef := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", HasDefault: true, Type: "character varying(20)", Encoding: "compresstype=zlib,blocksize=65536,compresslevel=1", StatTarget: -1, DefaultVal: "'bar'::text"}
+		rowNotNullDef := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", NotNull: true, HasDefault: true, Type: "character varying(20)", StatTarget: -1, DefaultVal: "'bar'::text"}
+		rowEncodingNotNullDef := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", NotNull: true, HasDefault: true, Type: "character varying(20)", Encoding: "compresstype=zlib,blocksize=65536,compresslevel=1", StatTarget: -1, DefaultVal: "'bar'::text"}
+		rowStats := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", Type: "integer", StatTarget: 3}
+		colStorageType := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", Type: "integer", StatTarget: -1, StorageType: "PLAIN"}
 
 		Context("No special table attributes", func() {
 			tableDef := backup.TableDefinition{DistPolicy: distRandom, PartDef: partDefEmpty, PartTemplateDef: partTemplateDefEmpty, StorageOpts: heapOpts, ExtTableDef: extTableEmpty}
@@ -489,8 +467,8 @@ SET SUBPARTITION TEMPLATE
 	})
 	Describe("PrintPostCreateTableStatements", func() {
 		testTable := backup.BasicRelation("public", "tablename")
-		rowCommentOne := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", TypeName: "integer", StatTarget: -1, Comment: "This is a column comment."}
-		rowCommentTwo := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", TypeName: "integer", StatTarget: -1, Comment: "This is another column comment."}
+		rowCommentOne := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", Type: "integer", StatTarget: -1, Comment: "This is a column comment."}
+		rowCommentTwo := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", Type: "integer", StatTarget: -1, Comment: "This is another column comment."}
 		tableDef := backup.TableDefinition{}
 		BeforeEach(func() {
 			tableDef = backup.TableDefinition{DistPolicy: distRandom, PartDef: partDefEmpty, PartTemplateDef: partTemplateDefEmpty, StorageOpts: heapOpts, ExtTableDef: extTableEmpty}
@@ -553,7 +531,7 @@ COMMENT ON COLUMN public.tablename.j IS 'This is another column comment.';`)
 		})
 	})
 	Describe("PrintCreateSequenceStatements", func() {
-		baseSequence := backup.Relation{SchemaOid: 0, RelationOid: 1, SchemaName: "public", RelationName: "seq_name", DependsUpon: nil, Inherits: nil}
+		baseSequence := backup.Relation{SchemaOid: 0, Oid: 1, Schema: "public", Name: "seq_name", DependsUpon: nil, Inherits: nil}
 		seqDefault := backup.Sequence{Relation: baseSequence, SequenceDefinition: backup.SequenceDefinition{Name: "seq_name", LastVal: 7, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 5, LogCnt: 42, IsCycled: false, IsCalled: true}}
 		seqNegIncr := backup.Sequence{Relation: baseSequence, SequenceDefinition: backup.SequenceDefinition{Name: "seq_name", LastVal: 7, Increment: -1, MaxVal: -1, MinVal: -9223372036854775807, CacheVal: 5, LogCnt: 42, IsCycled: false, IsCalled: true}}
 		seqMaxPos := backup.Sequence{Relation: baseSequence, SequenceDefinition: backup.SequenceDefinition{Name: "seq_name", LastVal: 7, Increment: 1, MaxVal: 100, MinVal: 1, CacheVal: 5, LogCnt: 42, IsCycled: false, IsCalled: true}}
@@ -704,18 +682,18 @@ GRANT SELECT,USAGE ON SEQUENCE public.seq_name TO testrole WITH GRANT OPTION;`)
 	})
 	Describe("PrintCreateViewStatements", func() {
 		It("can print a basic view", func() {
-			viewOne := backup.View{Oid: 0, SchemaName: "public", ViewName: "WowZa", Definition: "SELECT rolname FROM pg_role;", DependsUpon: []string{}}
-			viewTwo := backup.View{Oid: 1, SchemaName: "shamwow", ViewName: "shazam", Definition: "SELECT count(*) FROM pg_tables;", DependsUpon: []string{}}
+			viewOne := backup.View{Oid: 0, Schema: "public", Name: `"WowZa"`, Definition: "SELECT rolname FROM pg_role;", DependsUpon: []string{}}
+			viewTwo := backup.View{Oid: 1, Schema: "shamwow", Name: "shazam", Definition: "SELECT count(*) FROM pg_tables;", DependsUpon: []string{}}
 			viewMetadataMap := backup.MetadataMap{}
 			backup.PrintCreateViewStatements(backupfile, toc, []backup.View{viewOne, viewTwo}, viewMetadataMap)
-			testutils.ExpectEntry(toc.PredataEntries, 0, "public", "WowZa", "VIEW")
+			testutils.ExpectEntry(toc.PredataEntries, 0, "public", `"WowZa"`, "VIEW")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer,
 				`CREATE VIEW public."WowZa" AS SELECT rolname FROM pg_role;`,
 				`CREATE VIEW shamwow.shazam AS SELECT count(*) FROM pg_tables;`)
 		})
 		It("can print a view with privileges, an owner, and a comment", func() {
-			viewOne := backup.View{Oid: 0, SchemaName: "public", ViewName: "WowZa", Definition: "SELECT rolname FROM pg_role;", DependsUpon: []string{}}
-			viewTwo := backup.View{Oid: 1, SchemaName: "shamwow", ViewName: "shazam", Definition: "SELECT count(*) FROM pg_tables;", DependsUpon: []string{}}
+			viewOne := backup.View{Oid: 0, Schema: "public", Name: `"WowZa"`, Definition: "SELECT rolname FROM pg_role;", DependsUpon: []string{}}
+			viewTwo := backup.View{Oid: 1, Schema: "shamwow", Name: "shazam", Definition: "SELECT count(*) FROM pg_tables;", DependsUpon: []string{}}
 			viewMetadataMap := testutils.DefaultMetadataMap("VIEW", true, true, true)
 			backup.PrintCreateViewStatements(backupfile, toc, []backup.View{viewOne, viewTwo}, viewMetadataMap)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer,
