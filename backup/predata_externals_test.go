@@ -192,7 +192,7 @@ ENCODING 'UTF-8'`)
 				testutils.ExpectRegexp(buffer, `LOCATION (
 	'file://host:port/path/file'
 )
-FORMAT 'csv' (delimiter ',' null '' escape '"' quote '"')
+FORMAT 'csv' (delimiter = ',', null = '', escape = '"', quote = '"')
 ENCODING 'UTF-8'`)
 			})
 			It("prints a CREATE block for a table in text format, some options provided", func() {
@@ -202,7 +202,7 @@ ENCODING 'UTF-8'`)
 				testutils.ExpectRegexp(buffer, `LOCATION (
 	'file://host:port/path/file'
 )
-FORMAT 'text' (delimiter '  ' null '\N' escape '\')
+FORMAT 'text' (delimiter = '  ', null = '\N', escape = '\')
 ENCODING 'UTF-8'`)
 			})
 			It("prints a CREATE block for a table in custom format, formatter provided", func() {
@@ -212,7 +212,7 @@ ENCODING 'UTF-8'`)
 				testutils.ExpectRegexp(buffer, `LOCATION (
 	'file://host:port/path/file'
 )
-FORMAT 'custom' (formatter=gphdfs_import)
+FORMAT 'custom' (formatter = gphdfs_import)
 ENCODING 'UTF-8'`)
 			})
 		})
@@ -263,6 +263,13 @@ ENCODING 'UTF-8'`)
 				extTableDef.ExecLocation = "SEGMENT_ID:0"
 				backup.PrintExternalTableStatements(backupfile, testTable, extTableDef)
 				testutils.ExpectRegexp(buffer, `EXECUTE 'hostname' ON SEGMENT 0
+FORMAT 'text'
+ENCODING 'UTF-8'`)
+			})
+			It("prints a CREATE block for a table with single quotes in its EXECUTE clause", func() {
+				extTableDef.Command = "fake'command"
+				backup.PrintExternalTableStatements(backupfile, testTable, extTableDef)
+				testutils.ExpectRegexp(buffer, `EXECUTE 'fake''command'
 FORMAT 'text'
 ENCODING 'UTF-8'`)
 			})
