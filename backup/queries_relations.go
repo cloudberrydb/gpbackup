@@ -12,8 +12,7 @@ import (
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
-func GetAllUserTables(connection *utils.DBConn) []Relation {
-	// This query is adapted from the getTables() function in pg_dump.c.
+func tableAndSchemaFilterClause() string {
 	filterClause := SchemaFilterClause("n")
 	if len(excludeTables) > 0 {
 		filterClause += fmt.Sprintf("\nAND quote_ident(n.nspname) || '.' || quote_ident(c.relname) NOT IN (%s)", utils.SliceToQuotedString(excludeTables))
@@ -21,6 +20,11 @@ func GetAllUserTables(connection *utils.DBConn) []Relation {
 	if len(includeTables) > 0 {
 		filterClause += fmt.Sprintf("\nAND quote_ident(n.nspname) || '.' || quote_ident(c.relname) IN (%s)", utils.SliceToQuotedString(includeTables))
 	}
+	return filterClause
+}
+
+func GetAllUserTables(connection *utils.DBConn) []Relation {
+	// This query is adapted from the getTables() function in pg_dump.c.
 	query := fmt.Sprintf(`
 SELECT
 	n.oid AS schemaoid,
@@ -43,7 +47,7 @@ LEFT
 JOIN pg_exttable e
 	ON p.parchildrelid = e.reloid
 WHERE e.reloid IS NULL)
-ORDER BY schemaname, relationname;`, filterClause)
+ORDER BY schemaname, relationname;`, tableAndSchemaFilterClause())
 
 	results := make([]Relation, 0)
 
@@ -99,7 +103,7 @@ LEFT OUTER JOIN pg_catalog.pg_attribute_encoding e ON e.attrelid = a.attrelid AN
 WHERE %s
 AND a.attnum > 0::pg_catalog.int2
 AND a.attisdropped = 'f'
-ORDER BY a.attrelid, a.attnum;`, SchemaFilterClause("n"))
+ORDER BY a.attrelid, a.attnum;`, tableAndSchemaFilterClause())
 
 	results := make([]ColumnDefinition, 0)
 	err := connection.Select(&results, query)
