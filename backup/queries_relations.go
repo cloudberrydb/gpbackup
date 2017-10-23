@@ -140,7 +140,7 @@ func GetDistributionPolicies(connection *utils.DBConn, tables []Relation) map[ui
 	query := `
 SELECT
 	a.attrelid AS oid,
-	'(' || array_to_string(array_agg(a.attname), ', ') || ')' AS value
+	'(' || array_to_string(array_agg(quote_ident(a.attname)), ', ') || ')' AS value
 FROM pg_attribute a
 JOIN (
 	SELECT
