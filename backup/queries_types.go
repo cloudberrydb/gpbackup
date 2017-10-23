@@ -81,7 +81,7 @@ LEFT JOIN pg_type b ON t.typbasetype = b.oid
 WHERE %s
 AND t.typtype != 'e'
 AND t.oid NOT IN (%s)
-ORDER BY n.nspname, t.typname, a.attname;`, typModClause, SchemaFilterClause("n"), utils.SliceToQuotedString(excludeOIDs))
+ORDER BY n.nspname, t.typname, a.attnum;`, typModClause, SchemaFilterClause("n"), utils.SliceToQuotedString(excludeOIDs))
 
 	results := make([]Type, 0)
 	err := connection.Select(&results, query)
