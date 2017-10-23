@@ -192,7 +192,7 @@ ENCODING 'UTF-8'`)
 				testutils.ExpectRegexp(buffer, `LOCATION (
 	'file://host:port/path/file'
 )
-FORMAT 'csv' (delimiter = ',', null = '', escape = '"', quote = '"')
+FORMAT 'csv' (delimiter ',' null '' escape '"' quote '"')
 ENCODING 'UTF-8'`)
 			})
 			It("prints a CREATE block for a table in text format, some options provided", func() {
@@ -202,17 +202,17 @@ ENCODING 'UTF-8'`)
 				testutils.ExpectRegexp(buffer, `LOCATION (
 	'file://host:port/path/file'
 )
-FORMAT 'text' (delimiter = '  ', null = '\N', escape = '\')
+FORMAT 'text' (delimiter '  ' null '\N' escape '\')
 ENCODING 'UTF-8'`)
 			})
 			It("prints a CREATE block for a table in custom format, formatter provided", func() {
 				extTableDef.FormatType = "b"
-				extTableDef.FormatOpts = `formatter gphdfs_import`
+				extTableDef.FormatOpts = `formatter gphdfs_import other_opt 'foo'`
 				backup.PrintExternalTableStatements(backupfile, testTable, extTableDef)
 				testutils.ExpectRegexp(buffer, `LOCATION (
 	'file://host:port/path/file'
 )
-FORMAT 'custom' (formatter = gphdfs_import)
+FORMAT 'custom' (formatter = gphdfs_import, other_opt = 'foo')
 ENCODING 'UTF-8'`)
 			})
 		})

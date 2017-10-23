@@ -162,21 +162,23 @@ func PrintExternalTableStatements(predataFile *utils.FileWithByteCount, table Re
 		formatType = "text"
 	}
 	predataFile.MustPrintf("FORMAT '%s'", formatType)
-	/*
-	 * The options for the custom formatter are stored in an invalid format, so we
-	 * need to reformat them before printing.
-	 *
-	 * The below regular expression performs a single-line non-greedy match on tokens
-	 * in the format "key 'value'", so we don't need to manually escape single quotes.
-	 */
 	if extTableDef.FormatOpts != "" {
-		reformat := regexp.MustCompile(`(\w+) ((?sU:'.*')) ?`)
-		formatStr := reformat.ReplaceAllString(extTableDef.FormatOpts, `$1 = $2, `)
-		fLen := len(formatStr)
-		if formatStr[fLen-2:fLen] == ", " {
-			formatStr = formatStr[:fLen-2]
+		formatStr := extTableDef.FormatOpts
+		if formatType == "custom" {
+			/*
+			 * The options for the custom format are stored in an invalid format, so we
+			 * need to reformat them before printing.
+			 *
+			 * The below regular expression performs a single-line non-greedy match on tokens
+			 * in the format "key 'value'", so we don't need to manually escape single quotes.
+			 */
+			reformat := regexp.MustCompile(`(\w+) ((?sU:'.*')|(?s:[^ ]+)) ?`)
+			formatStr = reformat.ReplaceAllString(formatStr, `$1 = $2, `)
+			fLen := len(formatStr)
+			if formatStr[fLen-2:fLen] == ", " {
+				formatStr = formatStr[:fLen-2]
+			}
 		}
-		formatStr = strings.Replace(formatStr, "formatter ", "formatter = ", 1)
 		predataFile.MustPrintf(" (%s)", formatStr)
 	}
 	predataFile.MustPrintln()
