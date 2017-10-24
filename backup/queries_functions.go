@@ -260,12 +260,11 @@ SELECT
 	a.aggprelimfn::regproc::oid,
 	a.aggfinalfn::regproc::oid,
 	a.aggsortop::regproc::oid,
-	t.typname as transitiondatatype,
+	format_type(a.aggtranstype, NULL) as transitiondatatype,
 	coalesce(a.agginitval, '') AS initialvalue,
 	a.aggordered
 FROM pg_aggregate a
 LEFT JOIN pg_proc p ON a.aggfnoid = p.oid
-LEFT JOIN pg_type t ON a.aggtranstype = t.oid
 LEFT JOIN pg_namespace n ON p.pronamespace = n.oid
 WHERE %s;`, argStr, SchemaFilterClause("n"))
 
