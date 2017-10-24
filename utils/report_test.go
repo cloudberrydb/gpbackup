@@ -92,36 +92,48 @@ types                        1000`))
 		BeforeEach(func() {
 			backupReport = &utils.Report{}
 		})
-		DescribeTable("Backup type classification", func(dataOnly bool, ddlOnly bool, noCompression bool, schemaInclude utils.ArrayFlags, withStats bool, expectedType string) {
-			backupReport.SetBackupTypeFromFlags(dataOnly, ddlOnly, noCompression, schemaInclude, withStats)
+		DescribeTable("Backup type classification", func(dataOnly bool, ddlOnly bool, noCompression bool, isSchemaFiltered bool, isTableFiltered bool, withStats bool, expectedType string) {
+			backupReport.SetBackupTypeFromFlags(dataOnly, ddlOnly, noCompression, isSchemaFiltered, isTableFiltered, withStats)
 			Expect(backupReport.BackupType).To(Equal(expectedType))
 		},
 			Entry("classifies a default backup",
-				false, false, false, utils.ArrayFlags{}, false, "Unfiltered Compressed Full Backup"),
+				false, false, false, false, false, false, "Unfiltered Compressed Full Backup"),
 			Entry("classifies a default backup with stats",
-				false, false, false, utils.ArrayFlags{}, true, "Unfiltered Compressed Full Backup With Statistics"),
+				false, false, false, false, false, true, "Unfiltered Compressed Full Backup With Statistics"),
 			Entry("classifies a metadata-only backup",
-				false, true, false, utils.ArrayFlags{}, false, "Unfiltered Compressed Full Metadata-Only Backup"),
+				false, true, false, false, false, false, "Unfiltered Compressed Full Metadata-Only Backup"),
 			Entry("classifies a data-only backup",
-				true, false, false, utils.ArrayFlags{}, false, "Unfiltered Compressed Full Data-Only Backup"),
+				true, false, false, false, false, false, "Unfiltered Compressed Full Data-Only Backup"),
 			Entry("classifies an uncompressed backup",
-				false, false, true, utils.ArrayFlags{}, false, "Unfiltered Uncompressed Full Backup"),
+				false, false, true, false, false, false, "Unfiltered Uncompressed Full Backup"),
 			Entry("classifies an uncompressed metadata-only backup",
-				false, true, true, utils.ArrayFlags{}, false, "Unfiltered Uncompressed Full Metadata-Only Backup"),
+				false, true, true, false, false, false, "Unfiltered Uncompressed Full Metadata-Only Backup"),
 			Entry("classifies an uncompressed data-only backup",
-				true, false, true, utils.ArrayFlags{}, false, "Unfiltered Uncompressed Full Data-Only Backup"),
+				true, false, true, false, false, false, "Unfiltered Uncompressed Full Data-Only Backup"),
 			Entry("classifies a schema-filtered backup",
-				false, false, false, utils.ArrayFlags{"someSchema"}, false, "Schema-Filtered Compressed Full Backup"),
+				false, false, false, true, false, false, "Schema-Filtered Compressed Full Backup"),
 			Entry("classifies a schema-filtered metadata-only backup",
-				false, true, false, utils.ArrayFlags{"someSchema"}, false, "Schema-Filtered Compressed Full Metadata-Only Backup"),
+				false, true, false, true, false, false, "Schema-Filtered Compressed Full Metadata-Only Backup"),
 			Entry("classifies a schema-filtered data-only backup",
-				true, false, false, utils.ArrayFlags{"someSchema"}, false, "Schema-Filtered Compressed Full Data-Only Backup"),
+				true, false, false, true, false, false, "Schema-Filtered Compressed Full Data-Only Backup"),
 			Entry("classifies an uncompressed schema-filtered backup",
-				false, false, true, utils.ArrayFlags{"someSchema"}, false, "Schema-Filtered Uncompressed Full Backup"),
+				false, false, true, true, false, false, "Schema-Filtered Uncompressed Full Backup"),
 			Entry("classifies an uncompressed schema-filtered metadata-only backup",
-				false, true, true, utils.ArrayFlags{"someSchema"}, false, "Schema-Filtered Uncompressed Full Metadata-Only Backup"),
+				false, true, true, true, false, false, "Schema-Filtered Uncompressed Full Metadata-Only Backup"),
 			Entry("classifies an uncompressed schema-filtered data-only backup",
-				true, false, true, utils.ArrayFlags{"someSchema"}, false, "Schema-Filtered Uncompressed Full Data-Only Backup"),
+				true, false, true, true, false, false, "Schema-Filtered Uncompressed Full Data-Only Backup"),
+			Entry("classifies a table-filtered backup",
+				false, false, false, false, true, false, "Table-Filtered Compressed Full Backup"),
+			Entry("classifies a table-filtered metadata-only backup",
+				false, true, false, false, true, false, "Table-Filtered Compressed Full Metadata-Only Backup"),
+			Entry("classifies a table-filtered data-only backup",
+				true, false, false, false, true, false, "Table-Filtered Compressed Full Data-Only Backup"),
+			Entry("classifies an uncompressed table-filtered backup",
+				false, false, true, false, true, false, "Table-Filtered Uncompressed Full Backup"),
+			Entry("classifies an uncompressed table-filtered metadata-only backup",
+				false, true, true, false, true, false, "Table-Filtered Uncompressed Full Metadata-Only Backup"),
+			Entry("classifies an uncompressed table-filtered data-only backup",
+				true, false, true, false, true, false, "Table-Filtered Uncompressed Full Data-Only Backup"),
 		)
 	})
 	Describe("EnsureBackupVersionCompatibility", func() {
