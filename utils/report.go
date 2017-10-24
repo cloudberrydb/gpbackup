@@ -21,6 +21,7 @@ type BackupConfig struct {
 	Compressed      bool
 	DataOnly        bool
 	SchemaFiltered  bool
+	TableFiltered   bool
 	MetadataOnly    bool
 	WithStatistics  bool
 }
@@ -47,11 +48,14 @@ func ParseErrorMessage(errStr string) (string, int) {
 	return errMsg, exitCode
 }
 
-func (report *Report) SetBackupTypeFromFlags(dataOnly bool, ddlOnly bool, noCompression bool, schemaInclude ArrayFlags, withStats bool) {
+func (report *Report) SetBackupTypeFromFlags(dataOnly bool, ddlOnly bool, noCompression bool, isSchemaFiltered bool, isTableFiltered bool, withStats bool) {
 	filterStr := "Unfiltered"
-	if len(schemaInclude) > 0 {
+	if isSchemaFiltered {
 		report.SchemaFiltered = true
 		filterStr = "Schema-Filtered"
+	} else if isTableFiltered {
+		report.TableFiltered = true
+		filterStr = "Table-Filtered"
 	}
 	compressStr := "Compressed"
 	if noCompression {

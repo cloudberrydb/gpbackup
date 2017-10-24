@@ -284,10 +284,14 @@ func (cluster *Cluster) GetConfigFilePath() string {
 	return cluster.GetBackupFilePath("config")
 }
 
-func (cluster *Cluster) VerifyMetadataFilePaths(dataOnly bool, withStats bool) {
+func (cluster *Cluster) VerifyMetadataFilePaths(dataOnly bool, withStats bool, tableFiltered bool) {
 	filetypes := []string{"config", "table of contents"}
 	if !dataOnly {
-		filetypes = append(filetypes, []string{"global", "predata", "postdata"}...)
+		if !tableFiltered {
+			filetypes = append(filetypes, []string{"global", "predata", "postdata"}...)
+		} else {
+			filetypes = append(filetypes, []string{"predata"}...)
+		}
 	}
 	missing := false
 	for _, filetype := range filetypes {

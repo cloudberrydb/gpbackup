@@ -98,7 +98,7 @@ func DoSetup() {
 	globalCluster.VerifyBackupDirectoriesExistOnAllHosts()
 
 	InitializeBackupConfig()
-	globalCluster.VerifyMetadataFilePaths(backupConfig.DataOnly, *withStats)
+	globalCluster.VerifyMetadataFilePaths(backupConfig.DataOnly, *withStats, backupConfig.TableFiltered)
 }
 
 func DoRestore() {
@@ -131,7 +131,7 @@ func DoRestore() {
 		restoreData(tableMap)
 	}
 
-	if !backupConfig.DataOnly {
+	if !backupConfig.DataOnly && !backupConfig.TableFiltered {
 		restorePostdata()
 	}
 

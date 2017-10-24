@@ -118,9 +118,9 @@ func DoSetup() {
 	SetLoggerVerbosity()
 	logger.Info("Starting backup of database %s", *dbname)
 	InitializeConnection()
-	InitializeBackupReport()
 
 	InitializeFilterLists()
+	InitializeBackupReport()
 	validateSetup()
 
 	segConfig := utils.GetSegmentConfiguration(connection)
