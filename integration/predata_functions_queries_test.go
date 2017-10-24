@@ -93,6 +93,8 @@ STABLE
 `)
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION append(float, integer)")
 			testutils.AssertQueryRuns(connection, "COMMENT ON FUNCTION append(float, integer) IS 'this is a function comment'")
+			testutils.AssertQueryRuns(connection, `CREATE FUNCTION "specChar"(t text, "precision" double precision) RETURNS double precision AS $$BEGIN RETURN precision + 1; END;$$ LANGUAGE PLPGSQL;`)
+			defer testutils.AssertQueryRuns(connection, `DROP FUNCTION "specChar"(text, double precision)`)
 
 			results := backup.GetFunctions4(connection)
 
@@ -104,10 +106,15 @@ STABLE
 				Schema: "public", Name: "append", ReturnsSet: true, FunctionBody: "SELECT ($1, $2)",
 				BinaryPath: "", Arguments: "", IdentArgs: "", ResultType: "",
 				Volatility: "s", IsStrict: true, IsSecurityDefiner: true, Language: "sql"}
+			specCharFunction := backup.Function{
+				Schema: "public", Name: `"specChar"`, ReturnsSet: false, FunctionBody: "BEGIN RETURN precision + 1; END;",
+				BinaryPath: "", Arguments: "", IdentArgs: "", ResultType: "",
+				Volatility: "v", IsStrict: false, IsSecurityDefiner: false, NumRows: 0, Language: "plpgsql"}
 
-			Expect(len(results)).To(Equal(2))
+			Expect(len(results)).To(Equal(3))
 			testutils.ExpectStructsToMatchExcluding(&results[0], &addFunction, "Oid")
 			testutils.ExpectStructsToMatchExcluding(&results[1], &appendFunction, "Oid")
+			testutils.ExpectStructsToMatchExcluding(&results[2], &specCharFunction, "Oid")
 		})
 		It("returns a slice of functions in a specific schema", func() {
 			testutils.AssertQueryRuns(connection, `CREATE FUNCTION add(numeric, integer) RETURNS numeric

@@ -144,7 +144,7 @@ SELECT
         ELSE format_type(unnest(proargtypes), NULL)
         END AS type,
     CASE
-        WHEN proargnames IS NOT NULL THEN unnest(proargnames)
+        WHEN proargnames IS NOT NULL THEN quote_ident(unnest(proargnames))
         ELSE ''
         END AS name,
     CASE
@@ -170,6 +170,9 @@ ON p.pronamespace = n.oid;`
 	arguments := make([]string, 0)
 	tableArguments := make([]string, 0)
 	for _, funcArgs := range results {
+		if funcArgs.Name == `""` {
+			funcArgs.Name = ""
+		}
 		modeStr := ""
 		switch funcArgs.Mode {
 		case "b":
