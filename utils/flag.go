@@ -24,7 +24,7 @@ func FlagIsSet(f *flag.Flag) bool {
 func CheckMandatoryFlags(flagNames ...string) {
 	for _, name := range flagNames {
 		f := flag.Lookup(name)
-		if !FlagIsSet(f) {
+		if f == nil || !FlagIsSet(f) {
 			logger.Fatal(errors.Errorf("Flag %s must be set", name), "")
 		}
 	}
@@ -35,7 +35,7 @@ func CheckExclusiveFlags(flagNames ...string) {
 	numSet := 0
 	for _, name := range flagNames {
 		f := flag.Lookup(name)
-		if FlagIsSet(f) {
+		if f != nil && FlagIsSet(f) {
 			numSet++
 		}
 	}

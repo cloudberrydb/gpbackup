@@ -75,12 +75,16 @@ func DoValidation() {
 		fmt.Printf("gprestore %s\n", version)
 		os.Exit(0)
 	}
-	utils.CheckExclusiveFlags("debug", "quiet", "verbose")
-	utils.CheckMandatoryFlags("timestamp")
+	ValidateFlagCombinations()
 	if !utils.IsValidTimestamp(*timestamp) {
 		logger.Fatal(errors.Errorf("Timestamp %s is invalid.  Timestamps must be in the format YYYYMMDDHHMMSS.", *timestamp), "")
 	}
 	logger.Info("Restore Key = %s", *timestamp)
+}
+
+func ValidateFlagCombinations() {
+	utils.CheckMandatoryFlags("timestamp")
+	utils.CheckExclusiveFlags("debug", "quiet", "verbose")
 }
 
 // This function handles setup that must be done after parsing flags.
@@ -198,8 +202,12 @@ func DoTeardown() {
 	errStr := ""
 	if err := recover(); err != nil {
 		errStr = fmt.Sprintf("%v", err)
-		if strings.Contains(errStr, fmt.Sprintf(`Database "%s" does not exist`, connection.DBName)) {
-			errStr = fmt.Sprintf(`%s.  Use the --createdb flag to create "%s" as part of the restore process.`, errStr, connection.DBName)
+		if connection != nil {
+			if strings.Contains(errStr, fmt.Sprintf(`Database "%s" does not exist`, connection.DBName)) {
+				errStr = fmt.Sprintf(`%s.  Use the --createdb flag to create "%s" as part of the restore process.`, errStr, connection.DBName)
+			} else if strings.Contains(errStr, fmt.Sprintf(`Database "%s" already exists`, connection.DBName)) {
+				errStr = fmt.Sprintf(`%s.  Run gprestore again without the --createdb flag.`, errStr, connection.DBName)
+			}
 		}
 		fmt.Println(errStr)
 	}
