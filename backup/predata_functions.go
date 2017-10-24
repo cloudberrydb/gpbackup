@@ -105,7 +105,7 @@ func PrintCreateAggregateStatements(predataFile *utils.FileWithByteCount, toc *u
 		if aggDef.FinalFunction != 0 {
 			predataFile.MustPrintf(",\n\tFINALFUNC = %s", funcInfoMap[aggDef.FinalFunction].QualifiedName)
 		}
-		if aggDef.InitialValue != "" {
+		if !aggDef.InitValIsNull {
 			predataFile.MustPrintf(",\n\tINITCOND = '%s'", aggDef.InitialValue)
 		}
 		if aggDef.SortOperator != 0 {

@@ -234,7 +234,7 @@ $_$`)
 	})
 	Describe("PrintCreateAggregateStatements", func() {
 		aggDefs := make([]backup.Aggregate, 1)
-		aggDefault := backup.Aggregate{Oid: 1, Schema: "public", Name: "agg_name", Arguments: "integer, integer", IdentArgs: "integer, integer", TransitionFunction: 1, PreliminaryFunction: 0, FinalFunction: 0, SortOperator: 0, TransitionDataType: "integer", InitialValue: "", IsOrdered: false}
+		aggDefault := backup.Aggregate{Oid: 1, Schema: "public", Name: "agg_name", Arguments: "integer, integer", IdentArgs: "integer, integer", TransitionFunction: 1, PreliminaryFunction: 0, FinalFunction: 0, SortOperator: 0, TransitionDataType: "integer", InitialValue: "", InitValIsNull: true, IsOrdered: false}
 		funcInfoMap := map[uint32]backup.FunctionInfo{
 			1: {QualifiedName: "public.mysfunc", Arguments: "integer"},
 			2: {QualifiedName: "public.mypfunc", Arguments: "numeric, numeric"},
@@ -292,6 +292,7 @@ $_$`)
 		})
 		It("prints an aggregate with an initial condition", func() {
 			aggDefs[0].InitialValue = "0"
+			aggDefs[0].InitValIsNull = false
 			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefs, funcInfoMap, aggMetadataMap)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,

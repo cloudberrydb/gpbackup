@@ -241,6 +241,7 @@ type Aggregate struct {
 	SortOperator        uint32 `db:"aggsortop"`
 	TransitionDataType  string
 	InitialValue        string
+	InitValIsNull       bool
 	IsOrdered           bool `db:"aggordered"`
 }
 
@@ -265,6 +266,7 @@ SELECT
 	a.aggsortop::regproc::oid,
 	format_type(a.aggtranstype, NULL) as transitiondatatype,
 	coalesce(a.agginitval, '') AS initialvalue,
+	(a.agginitval IS NULL) AS initvalisnull,
 	a.aggordered
 FROM pg_aggregate a
 LEFT JOIN pg_proc p ON a.aggfnoid = p.oid
