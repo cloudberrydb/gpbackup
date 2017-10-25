@@ -9,11 +9,80 @@ import (
 	"fmt"
 
 	"github.com/greenplum-db/gpbackup/utils"
+	"github.com/lib/pq"
 )
 
-type CompositeTypeAttribute struct {
-	AttName string
-	AttType string
+/*
+ * We don't want to back up the array types that are automatically generated when
+ * creating a base type or the base and composite types that are generated when
+ * creating a table, so we construct queries to retrieve those types and use them
+ * in an EXCEPT clause to exclude them in larger base and composite type retrieval
+ * queries that are constructed in their respective functions.
+ */
+func getTypeQuery(connection *utils.DBConn, selectClause string, groupBy string, typeType string) string {
+	arrayTypesClause := ""
+	if connection.Version.Before("5") {
+		/*
+		 * In GPDB 4, all automatically-generated array types are guaranteed to be
+		 * the name of the corresponding base type prepended with an underscore.
+		 */
+		arrayTypesClause = fmt.Sprintf(`
+%s
+WHERE t.typelem != 0
+AND length(t.typname) > 1
+AND t.typname[0] = '_'
+AND substring(t.typname FROM 2) = (
+	SELECT
+		it.typname
+	FROM pg_type it
+	WHERE it.oid = t.typelem
+)
+GROUP BY %s`, selectClause, groupBy)
+		/*
+		 * In GPDB 5, automatically-generated array types are NOT guaranteed to be
+		 * the name of the corresponding base type prepended with an underscore, as
+		 * the array name may differ due to length issues, collisions, or the like.
+		 * However, pg_type now has a typarray field giving the OID of the array
+		 * type corresponding to a given base type, so that can be used instead.
+		 */
+	} else {
+		arrayTypesClause = fmt.Sprintf(`
+%s
+WHERE t.typelem != 0
+AND t.oid = (
+	SELECT
+		it.typarray
+	FROM pg_type it
+	WHERE it.oid = t.typelem
+)
+GROUP BY %s`, selectClause, groupBy)
+	}
+	/*
+	 * In both GPDB 4 and GPDB 5, we can get the list of base and composite types
+	 * created along with a table by joining typrelid in pg_type with pg_class
+	 * and checking whether it refers to an actual relation or just a dummy entry
+	 * for use with pg_attribute.
+	 */
+	tableTypesClause := fmt.Sprintf(`
+%s
+JOIN pg_class c ON t.typrelid = c.oid AND c.relkind IN ('r', 'S', 'v')
+GROUP BY %s
+UNION ALL
+%s
+JOIN pg_type it ON t.typelem = it.oid
+JOIN pg_class c ON it.typrelid = c.oid AND c.relkind IN ('r', 'S', 'v')
+GROUP BY %s`, selectClause, groupBy, selectClause, groupBy)
+	return fmt.Sprintf(`
+%s
+WHERE %s
+AND t.typtype = '%s'
+GROUP BY %s
+EXCEPT (
+%s
+UNION ALL
+%s
+)
+ORDER BY schema, name;`, selectClause, SchemaFilterClause("n"), typeType, groupBy, arrayTypesClause, tableTypesClause)
 }
 
 type Type struct {
@@ -21,8 +90,6 @@ type Type struct {
 	Schema          string
 	Name            string
 	Type            string `db:"typtype"`
-	AttName         string `db:"attname"`
-	AttType         string
 	Input           string `db:"typinput"`
 	Output          string `db:"typoutput"`
 	Receive         string
@@ -39,11 +106,11 @@ type Type struct {
 	EnumLabels      string
 	BaseType        string
 	NotNull         bool `db:"typnotnull"`
-	CompositeAtts   []CompositeTypeAttribute
+	Attributes      pq.StringArray
 	DependsUpon     []string
 }
 
-func GetNonEnumTypes(connection *utils.DBConn, excludeOIDs []string) []Type {
+func GetBaseTypes(connection *utils.DBConn) []Type {
 	typModClause := ""
 	if connection.Version.Before("5") {
 		typModClause = `t.typreceive AS receive,
@@ -54,14 +121,12 @@ func GetNonEnumTypes(connection *utils.DBConn, excludeOIDs []string) []Type {
 	CASE WHEN t.typmodin = '-'::regproc THEN '' ELSE t.typmodin::regproc::text END AS modin,
 	CASE WHEN t.typmodout = '-'::regproc THEN '' ELSE t.typmodout::regproc::text END AS modout,`
 	}
-	query := fmt.Sprintf(`
+	selectClause := fmt.Sprintf(`
 SELECT
 	t.oid,
 	quote_ident(n.nspname) AS schema,
 	quote_ident(t.typname) AS name,
 	t.typtype,
-	coalesce(quote_ident(a.attname), '') AS attname,
-	coalesce(pg_catalog.format_type(a.atttypid, NULL), '') AS atttype,
 	t.typinput,
 	t.typoutput,
 	%s
@@ -71,17 +136,16 @@ SELECT
 	t.typstorage,
 	coalesce(t.typdefault, '') AS defaultval,
 	CASE WHEN t.typelem != 0::regproc THEN pg_catalog.format_type(t.typelem, NULL) ELSE '' END AS element,
-	t.typdelim,
-	coalesce(quote_ident(b.typname), '') AS basetype,
-	t.typnotnull
+	t.typdelim
 FROM pg_type t
-LEFT JOIN pg_attribute a ON t.typrelid = a.attrelid
-LEFT JOIN pg_namespace n ON t.typnamespace = n.oid
-LEFT JOIN pg_type b ON t.typbasetype = b.oid
-WHERE %s
-AND t.typtype != 'e'
-AND t.oid NOT IN (%s)
-ORDER BY n.nspname, t.typname, a.attnum;`, typModClause, SchemaFilterClause("n"), utils.SliceToQuotedString(excludeOIDs))
+JOIN pg_namespace n ON t.typnamespace = n.oid`, typModClause)
+	groupBy := "t.oid, schema, name, t.typtype, t.typinput, t.typoutput, receive, send,%st.typlen, t.typbyval, alignment, t.typstorage, defaultval, element, t.typdelim"
+	if connection.Version.Before("5") {
+		groupBy = fmt.Sprintf(groupBy, " ")
+	} else {
+		groupBy = fmt.Sprintf(groupBy, " modin, modout, ")
+	}
+	query := getTypeQuery(connection, selectClause, groupBy, "b")
 
 	results := make([]Type, 0)
 	err := connection.Select(&results, query)
@@ -101,6 +165,49 @@ ORDER BY n.nspname, t.typname, a.attnum;`, typModClause, SchemaFilterClause("n")
 			}
 		}
 	}
+	return results
+}
+
+func GetCompositeTypes(connection *utils.DBConn) []Type {
+	selectClause := `
+SELECT
+	t.oid,
+	quote_ident(n.nspname) AS schema,
+	quote_ident(t.typname) AS name,
+	t.typtype,
+	array_agg('\t' || quote_ident(a.attname) || ' ' || pg_catalog.format_type(a.atttypid, NULL) ORDER BY a.attnum) AS attributes
+FROM pg_type t
+JOIN pg_attribute a ON t.typrelid = a.attrelid
+JOIN pg_namespace n ON t.typnamespace = n.oid`
+	groupBy := "t.oid, schema, name, t.typtype"
+	query := getTypeQuery(connection, selectClause, groupBy, "c")
+
+	results := make([]Type, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
+}
+
+func GetDomainTypes(connection *utils.DBConn) []Type {
+	query := fmt.Sprintf(`
+SELECT
+	t.oid,
+	quote_ident(n.nspname) AS schema,
+	quote_ident(t.typname) AS name,
+	t.typtype,
+	coalesce(t.typdefault, '') AS defaultval,
+	coalesce(quote_ident(b.typname), '') AS basetype,
+	t.typnotnull
+FROM pg_type t
+JOIN pg_namespace n ON t.typnamespace = n.oid
+JOIN pg_type b ON t.typbasetype = b.oid
+WHERE %s
+AND t.typtype = 'd'
+ORDER BY n.nspname, t.typname;`, SchemaFilterClause("n"))
+
+	results := make([]Type, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
 	return results
 }
 
@@ -127,73 +234,23 @@ ORDER BY n.nspname, t.typname;`, SchemaFilterClause("n"))
 	return results
 }
 
-/*
- * We don't want to back up the array types that are automatically generated when
- * creating a base type or the base and composite types that are generated when
- * creating a table, so we get a list of their OIDs up front and exclude those in
- * later queries.
- */
-func GetAutogeneratedTypeList(connection *utils.DBConn) []string {
-	/*
-	 * In GPDB 4, all automatically-generated array types are guaranteed to be
-	 * the name of the corresponding base type prepended with an underscore.
-	 */
-	version4ArrayQuery := `
+func GetShellTypes(connection *utils.DBConn) []Type {
+	query := fmt.Sprintf(`
 SELECT
-	ot.oid AS string
-FROM pg_type ot
-WHERE ot.typelem != 0
-AND length(ot.typname) > 1
-AND ot.typname[0] = '_'
-AND substring(ot.typname FROM 2) = (
-	SELECT
-		it.typname
-	FROM pg_type it
-	WHERE it.oid = ot.typelem
-)`
-	/*
-	 * In GPDB 5, automatically-generated array types are NOT guaranteed to be
-	 * the name of the corresponding base type prepended with an underscore, as
-	 * the array name may differ due to length issues, collisions, or the like.
-	 * However, pg_type now has a typarray field giving the OID of the array
-	 * type corresponding to a given base type, so that can be used instead.
-	 */
-	arrayQuery := `
-SELECT
-	ot.oid AS string
-FROM pg_type ot
-WHERE ot.typelem != 0
-AND ot.oid = (
-	SELECT
-		it.typarray
-	FROM pg_type it
-	WHERE it.oid = ot.typelem
-)`
-	/*
-	 * In both GPDB 4 and GPDB 5, we can get the list of base and composite types
-	 * created along with a table by joining typrelid in pg_type with pg_class
-	 * and checking whether it refers to an actual relation or just a dummy entry
-	 * for use with pg_attribute.
-	 */
-	tableTypesQuery := `
-SELECT
-	t.oid AS string
+	t.oid,
+	quote_ident(n.nspname) AS schema,
+	quote_ident(t.typname) AS name,
+	t.typtype
 FROM pg_type t
-JOIN pg_class c ON t.typrelid = c.oid AND c.relkind IN ('r', 'S', 'v')
-UNION
-SELECT
-	ot.oid AS string
-FROM pg_type ot
-JOIN pg_type it ON ot.typelem = it.oid
-JOIN pg_class c ON it.typrelid = c.oid AND c.relkind IN ('r', 'S', 'v'); `
-	query := ""
-	if connection.Version.Before("5") {
-		query = version4ArrayQuery
-	} else {
-		query = arrayQuery
-	}
-	query = fmt.Sprintf("%s\nUNION\n%s", query, tableTypesQuery)
-	return SelectStringSlice(connection, query)
+JOIN pg_namespace n ON t.typnamespace = n.oid
+WHERE %s
+AND t.typtype = 'p'
+ORDER BY n.nspname, t.typname;`, SchemaFilterClause("n"))
+
+	results := make([]Type, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
 }
 
 /*

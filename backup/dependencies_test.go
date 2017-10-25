@@ -142,73 +142,127 @@ var _ = Describe("backup/dependencies tests", func() {
 			Expect(results).To(Equal(expected))
 		})
 	})
-	Describe("ConstructFunctionAndTypeDependencyLists", func() {
-		It("queries dependencies for functions and types in GPDB 5", func() {
+	Describe("ConstructFunctionDependencies", func() {
+		It("queries function dependencies in GPDB 5", func() {
 			testutils.SetDBVersion(connection, "5.0.0")
-			funcInfoMap := map[uint32]backup.FunctionInfo{}
 			header := []string{"oid", "referencedobject"}
 			functionRows := sqlmock.NewRows(header).AddRow([]driver.Value{"1", "public.type"}...)
-			baseTypeRows := sqlmock.NewRows(header).AddRow([]driver.Value{"2", "public.func(integer, integer)"}...)
-			compTypeRows := sqlmock.NewRows(header).AddRow([]driver.Value{"3", "public.othertype"}...)
-			domainRows := sqlmock.NewRows(header).AddRow([]driver.Value{"4", "public.builtin"}...)
 
 			function1.Oid = 1
-			type1.Oid = 2
-			type1.Type = "b"
-			type2.Oid = 3
-			type2.Type = "c"
-			type3.Oid = 4
-			type3.Type = "d"
-
 			functions := []backup.Function{function1}
-			types := []backup.Type{type1, type2, type3}
 
 			mock.ExpectQuery(`SELECT (.*)`).WillReturnRows(functionRows)
-			mock.ExpectQuery(`SELECT (.*)`).WillReturnRows(baseTypeRows)
-			mock.ExpectQuery(`SELECT (.*)`).WillReturnRows(domainRows)
-			mock.ExpectQuery(`SELECT (.*)`).WillReturnRows(compTypeRows)
-
-			functions, types = backup.ConstructFunctionAndTypeDependencyLists(connection, functions, types, funcInfoMap)
+			functions = backup.ConstructFunctionDependencies(connection, functions)
 
 			Expect(functions[0].DependsUpon).To(Equal([]string{"public.type"}))
-			Expect(types[0].DependsUpon).To(Equal([]string{"public.func(integer, integer)"}))
-			Expect(types[1].DependsUpon).To(Equal([]string{"public.othertype"}))
-			Expect(types[2].DependsUpon).To(Equal([]string{"public.builtin"}))
 		})
-		It("queries dependencies for functions and types in GPDB 4.3", func() {
+		It("queries function dependencies in GPDB 4.3", func() {
+			testutils.SetDBVersion(connection, "4.3.0")
+			header := []string{"oid", "referencedobject"}
+			functionRows := sqlmock.NewRows(header).AddRow([]driver.Value{"1", "public.type"}...)
+
+			function1.Oid = 1
+			functions := []backup.Function{function1}
+
+			mock.ExpectQuery(`SELECT (.*)`).WillReturnRows(functionRows)
+			functions = backup.ConstructFunctionDependencies(connection, functions)
+
+			Expect(functions[0].DependsUpon).To(Equal([]string{"public.type"}))
+		})
+	})
+	Describe("ConstructBaseTypeDependencies", func() {
+		It("queries base type dependencies in GPDB 5", func() {
+			testutils.SetDBVersion(connection, "5.0.0")
+			header := []string{"oid", "referencedobject"}
+			baseTypeRows := sqlmock.NewRows(header).AddRow([]driver.Value{"2", "public.func(integer, integer)"}...)
+
+			type1.Oid = 2
+			type1.Type = "b"
+			types := []backup.Type{type1}
+
+			mock.ExpectQuery(`SELECT (.*)`).WillReturnRows(baseTypeRows)
+			types = backup.ConstructBaseTypeDependencies5(connection, types)
+
+			Expect(types[0].DependsUpon).To(Equal([]string{"public.func(integer, integer)"}))
+		})
+		It("queries base type dependencies in GPDB 4.3", func() {
 			testutils.SetDBVersion(connection, "4.3.0")
 			funcInfoMap := map[uint32]backup.FunctionInfo{
 				5: {QualifiedName: "public.func", Arguments: "integer, integer"},
 			}
-			header := []string{"oid", "referencedobject"}
-			functionRows := sqlmock.NewRows(header).AddRow([]driver.Value{"1", "public.type"}...)
-			baseTypeHeader := []string{"oid", "referencedoid"}
-			baseTypeRows := sqlmock.NewRows(baseTypeHeader).AddRow([]driver.Value{"2", "5"}...)
-			compTypeRows := sqlmock.NewRows(header).AddRow([]driver.Value{"3", "public.othertype"}...)
-			domainRows := sqlmock.NewRows(header).AddRow([]driver.Value{"4", "public.builtin"}...)
+			header := []string{"oid", "referencedoid"}
+			baseTypeRows := sqlmock.NewRows(header).AddRow([]driver.Value{"2", "5"}...)
 
-			function1.Oid = 1
 			type1.Oid = 2
 			type1.Type = "b"
+			types := []backup.Type{type1}
+
+			mock.ExpectQuery(`SELECT (.*)`).WillReturnRows(baseTypeRows)
+			types = backup.ConstructBaseTypeDependencies4(connection, types, funcInfoMap)
+
+			Expect(types[0].DependsUpon).To(Equal([]string{"public.func(integer, integer)"}))
+		})
+	})
+	Describe("ConstructCompositeTypeDependencies", func() {
+		It("queries composite type dependencies in GPDB 5", func() {
+			testutils.SetDBVersion(connection, "5.0.0")
+			header := []string{"oid", "referencedobject"}
+			compTypeRows := sqlmock.NewRows(header).AddRow([]driver.Value{"3", "public.othertype"}...)
+
 			type2.Oid = 3
 			type2.Type = "c"
+			types := []backup.Type{type2}
+
+			mock.ExpectQuery(`SELECT (.*)`).WillReturnRows(compTypeRows)
+			types = backup.ConstructCompositeTypeDependencies(connection, types)
+
+			Expect(types[0].DependsUpon).To(Equal([]string{"public.othertype"}))
+		})
+		It("queries composite type dependencies in GPDB 4.3", func() {
+			testutils.SetDBVersion(connection, "4.3.0")
+			header := []string{"oid", "referencedobject"}
+			compTypeRows := sqlmock.NewRows(header).AddRow([]driver.Value{"3", "public.othertype"}...)
+
+			type2.Oid = 3
+			type2.Type = "c"
+			types := []backup.Type{type2}
+
+			mock.ExpectQuery(`SELECT (.*)`).WillReturnRows(compTypeRows)
+
+			types = backup.ConstructCompositeTypeDependencies(connection, types)
+
+			Expect(types[0].DependsUpon).To(Equal([]string{"public.othertype"}))
+		})
+	})
+	Describe("ConstructDomainDependencies", func() {
+		It("queries domain dependencies in GPDB 5", func() {
+			testutils.SetDBVersion(connection, "5.0.0")
+			header := []string{"oid", "referencedobject"}
+			domainRows := sqlmock.NewRows(header).AddRow([]driver.Value{"4", "public.builtin"}...)
+
 			type3.Oid = 4
 			type3.Type = "d"
 
-			functions := []backup.Function{function1}
-			types := []backup.Type{type1, type2, type3}
+			types := []backup.Type{type3}
 
-			mock.ExpectQuery(`SELECT (.*)`).WillReturnRows(functionRows)
-			mock.ExpectQuery(`SELECT (.*)`).WillReturnRows(baseTypeRows)
 			mock.ExpectQuery(`SELECT (.*)`).WillReturnRows(domainRows)
-			mock.ExpectQuery(`SELECT (.*)`).WillReturnRows(compTypeRows)
+			types = backup.ConstructDomainDependencies(connection, types)
 
-			functions, types = backup.ConstructFunctionAndTypeDependencyLists(connection, functions, types, funcInfoMap)
+			Expect(types[0].DependsUpon).To(Equal([]string{"public.builtin"}))
+		})
+		It("queries domain dependencies in GPDB 4.3", func() {
+			testutils.SetDBVersion(connection, "4.3.0")
+			header := []string{"oid", "referencedobject"}
+			domainRows := sqlmock.NewRows(header).AddRow([]driver.Value{"4", "public.builtin"}...)
 
-			Expect(functions[0].DependsUpon).To(Equal([]string{"public.type"}))
-			Expect(types[0].DependsUpon).To(Equal([]string{"public.func(integer, integer)"}))
-			Expect(types[1].DependsUpon).To(Equal([]string{"public.othertype"}))
-			Expect(types[2].DependsUpon).To(Equal([]string{"public.builtin"}))
+			type3.Oid = 4
+			type3.Type = "d"
+			types := []backup.Type{type3}
+
+			mock.ExpectQuery(`SELECT (.*)`).WillReturnRows(domainRows)
+			types = backup.ConstructDomainDependencies(connection, types)
+
+			Expect(types[0].DependsUpon).To(Equal([]string{"public.builtin"}))
 		})
 	})
 	Describe("ConstructFunctionAndTypeAndTableMetadataMap", func() {

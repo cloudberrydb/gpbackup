@@ -6,7 +6,6 @@ package backup
  */
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/greenplum-db/gpbackup/utils"
@@ -114,59 +113,11 @@ func PrintCreateBaseTypeStatement(predataFile *utils.FileWithByteCount, toc *uti
 	toc.AddMetadataEntry(base.Schema, base.Name, "TYPE", start, predataFile)
 }
 
-type CompositeType struct {
-	AttName string
-	AttType string
-}
-
-func CoalesceCompositeTypes(types []Type) []Type {
-	i := 0
-	coalescedTypes := make([]Type, 0)
-	for i < len(types) {
-		typ := types[i]
-		if typ.Type == "c" {
-			compositeTypes := make([]Type, 0)
-			/*
-			 * Since types is sorted by schema then by type, all TypeDefinitions
-			 * for the same composite type are grouped together.  Collect them in
-			 * one list to use for printing
-			 */
-			for {
-				if i < len(types) && typ.Schema == types[i].Schema && typ.Name == types[i].Name {
-					compositeTypes = append(compositeTypes, types[i])
-					i++
-				} else {
-					break
-				}
-			}
-			/*
-			 * All values except AttName and AttType will be the same for each TypeDefinition,
-			 * so we can grab all other values from the first TypeDefinition in the list.
-			 */
-			composite := compositeTypes[0]
-			atts := make([]CompositeTypeAttribute, 0)
-			for _, composite := range compositeTypes {
-				atts = append(atts, CompositeTypeAttribute{composite.AttName, composite.AttType})
-			}
-			composite.CompositeAtts = atts
-			coalescedTypes = append(coalescedTypes, composite)
-		} else {
-			coalescedTypes = append(coalescedTypes, typ)
-			i++
-		}
-	}
-	return coalescedTypes
-}
-
 func PrintCreateCompositeTypeStatement(predataFile *utils.FileWithByteCount, toc *utils.TOC, composite Type, typeMetadata ObjectMetadata) {
 	start := predataFile.ByteCount
 	typeFQN := utils.MakeFQN(composite.Schema, composite.Name)
 	predataFile.MustPrintf("\n\nCREATE TYPE %s AS (\n", typeFQN)
-	atts := make([]string, 0)
-	for _, att := range composite.CompositeAtts {
-		atts = append(atts, fmt.Sprintf("\t%s %s", att.AttName, att.AttType))
-	}
-	predataFile.MustPrintln(strings.Join(atts, ",\n"))
+	predataFile.MustPrintln(strings.Join(composite.Attributes, ",\n"))
 	predataFile.MustPrintf(");")
 	PrintObjectMetadata(predataFile, typeMetadata, typeFQN, "TYPE")
 	toc.AddMetadataEntry(composite.Schema, composite.Name, "TYPE", start, predataFile)

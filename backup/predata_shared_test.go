@@ -3,6 +3,7 @@ package backup_test
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
+	"github.com/lib/pq"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -384,7 +385,7 @@ GRANT TRIGGER ON TABLE public.tablename TO PUBLIC;`)
 				backup.Function{Oid: 1, Schema: "public", Name: "function", FunctionBody: "SELECT $1 + $2",
 					Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "integer", Language: "sql"},
 				backup.Type{Oid: 2, Schema: "public", Name: "base", Type: "b", Input: "typin", Output: "typout"},
-				backup.Type{Oid: 3, Schema: "public", Name: "composite", AttName: "foo", AttType: "integer", Type: "c"},
+				backup.Type{Oid: 3, Schema: "public", Name: "composite", Type: "c", Attributes: pq.StringArray{"\tfoo integer"}},
 				backup.Type{Oid: 4, Schema: "public", Name: "domain", Type: "d", BaseType: "numeric"},
 				backup.Relation{Oid: 5, Schema: "public", Name: "relation"},
 			}
@@ -423,7 +424,7 @@ COMMENT ON TYPE public.base IS 'base type';
 
 
 CREATE TYPE public.composite AS (
-
+	foo integer
 );
 
 COMMENT ON TYPE public.composite IS 'composite type';
@@ -464,7 +465,7 @@ COMMENT ON TYPE public.base IS 'base type';
 
 
 CREATE TYPE public.composite AS (
-
+	foo integer
 );
 
 COMMENT ON TYPE public.composite IS 'composite type';

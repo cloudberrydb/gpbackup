@@ -206,7 +206,8 @@ func backupPredata(tables []Relation, tableDefs map[uint32]TableDefinition, obje
 	BackupSchemas(predataFile, objectCounts)
 
 	procLangs := GetProceduralLanguages(connection)
-	langFuncs, otherFuncs, types, functionMetadata, typeMetadata, funcInfoMap := RetrieveFunctionsAndTypes(objectCounts, procLangs)
+	langFuncs, otherFuncs, functionMetadata := RetrieveFunctions(objectCounts, procLangs)
+	types, typeMetadata, funcInfoMap := RetrieveTypes(objectCounts)
 
 	if len(includeSchemas) == 0 {
 		BackupProceduralLanguages(predataFile, objectCounts, procLangs, langFuncs, functionMetadata, funcInfoMap)

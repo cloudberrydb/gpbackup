@@ -3,6 +3,7 @@ package backup_test
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
+	"github.com/lib/pq"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -46,58 +47,13 @@ COMMENT ON TYPE public.enum_type IS 'This is a type comment.';
 ALTER TYPE public.enum_type OWNER TO testrole;`)
 		})
 	})
-	Describe("CoalesceCompositeTypes", func() {
-		var (
-			baseType  backup.Type
-			compOne   backup.Type
-			compTwo   backup.Type
-			compThree backup.Type
-		)
-		BeforeEach(func() {
-			baseType = backup.Type{Oid: 0, Schema: "public", Name: "base_type", Type: "b"}
-			compOne = backup.Type{Oid: 0, Schema: "public", Name: "composite_one", AttName: "foo", AttType: "integer", Type: "c"}
-			compTwo = backup.Type{Oid: 0, Schema: "public", Name: "composite_one", AttName: "bar", AttType: "text", Type: "c"}
-			compThree = backup.Type{Oid: 0, Schema: "public", Name: "composite_two", AttName: "baz", AttType: "character varying(20)", Type: "c"}
-		})
-		It("coalesces a composite type with one attribute", func() {
-			inputTypes := []backup.Type{compOne}
-			resultTypes := backup.CoalesceCompositeTypes(inputTypes)
-			Expect(len(resultTypes)).To(Equal(1))
-			compOne.CompositeAtts = []backup.CompositeTypeAttribute{{AttName: "foo", AttType: "integer"}}
-			testutils.ExpectStructsToMatch(&compOne, &resultTypes[0])
-		})
-		It("coalesces a composite type with two attributes", func() {
-			inputTypes := []backup.Type{compOne, compTwo}
-			resultTypes := backup.CoalesceCompositeTypes(inputTypes)
-			Expect(len(resultTypes)).To(Equal(1))
-			compOne.CompositeAtts = []backup.CompositeTypeAttribute{{AttName: "foo", AttType: "integer"}, {AttName: "bar", AttType: "text"}}
-			testutils.ExpectStructsToMatch(&compOne, &resultTypes[0])
-		})
-		It("coalesces two composite types", func() {
-			inputTypes := []backup.Type{compOne, compTwo, compThree}
-			resultTypes := backup.CoalesceCompositeTypes(inputTypes)
-			Expect(len(resultTypes)).To(Equal(2))
-			compOne.CompositeAtts = []backup.CompositeTypeAttribute{{AttName: "foo", AttType: "integer"}, {AttName: "bar", AttType: "text"}}
-			compThree.CompositeAtts = []backup.CompositeTypeAttribute{{AttName: "baz", AttType: "character varying(20)"}}
-			testutils.ExpectStructsToMatch(&compOne, &resultTypes[0])
-			testutils.ExpectStructsToMatch(&compThree, &resultTypes[1])
-		})
-		It("coalesces composite types and leaves other types alone", func() {
-			inputTypes := []backup.Type{baseType, compOne, compTwo}
-			resultTypes := backup.CoalesceCompositeTypes(inputTypes)
-			Expect(len(resultTypes)).To(Equal(2))
-			compOne.CompositeAtts = []backup.CompositeTypeAttribute{{AttName: "foo", AttType: "integer"}, {AttName: "bar", AttType: "text"}}
-			testutils.ExpectStructsToMatch(&baseType, &resultTypes[0])
-			testutils.ExpectStructsToMatch(&compOne, &resultTypes[1])
-		})
-	})
 	Describe("PrintCreateCompositeTypeStatement", func() {
-		oneAtt := []backup.CompositeTypeAttribute{{AttName: "foo", AttType: "integer"}}
-		twoAtts := []backup.CompositeTypeAttribute{{AttName: "foo", AttType: "integer"}, {AttName: "bar", AttType: "text"}}
+		oneAtt := pq.StringArray{"\tfoo integer"}
+		twoAtts := pq.StringArray{"\tfoo integer", "\tbar text"}
 		compType := backup.Type{Oid: 1, Schema: "public", Name: "composite_type", Type: "c"}
 
 		It("prints a composite type with one attribute", func() {
-			compType.CompositeAtts = oneAtt
+			compType.Attributes = oneAtt
 			backup.PrintCreateCompositeTypeStatement(backupfile, toc, compType, typeMetadata)
 			testutils.ExpectEntry(toc.PredataEntries, 0, "public", "composite_type", "TYPE")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE TYPE public.composite_type AS (
@@ -105,7 +61,7 @@ ALTER TYPE public.enum_type OWNER TO testrole;`)
 );`)
 		})
 		It("prints a composite type with multiple attributes", func() {
-			compType.CompositeAtts = twoAtts
+			compType.Attributes = twoAtts
 			backup.PrintCreateCompositeTypeStatement(backupfile, toc, compType, typeMetadata)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE TYPE public.composite_type AS (
 	foo integer,
@@ -113,7 +69,7 @@ ALTER TYPE public.enum_type OWNER TO testrole;`)
 );`)
 		})
 		It("prints a composite type with comment and owner", func() {
-			compType.CompositeAtts = twoAtts
+			compType.Attributes = twoAtts
 			typeMetadata = testutils.DefaultMetadataMap("TYPE", false, true, true)[1]
 			backup.PrintCreateCompositeTypeStatement(backupfile, toc, compType, typeMetadata)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE TYPE public.composite_type AS (
@@ -128,12 +84,12 @@ ALTER TYPE public.composite_type OWNER TO testrole;`)
 		})
 	})
 	Describe("PrintCreateBaseTypeStatement", func() {
-		baseSimple := backup.Type{Oid: 1, Schema: "public", Name: "base_type", Type: "b", AttName: "", AttType: "", Input: "input_fn", Output: "output_fn", Receive: "", Send: "", ModIn: "", ModOut: "", InternalLength: -1, IsPassedByValue: false, Alignment: "c", Storage: "p", DefaultVal: "", Element: "", Delimiter: "", EnumLabels: "", BaseType: "", NotNull: false, CompositeAtts: nil, DependsUpon: nil}
-		basePartial := backup.Type{Oid: 1, Schema: "public", Name: "base_type", Type: "b", AttName: "", AttType: "", Input: "input_fn", Output: "output_fn", Receive: "receive_fn", Send: "send_fn", ModIn: "modin_fn", ModOut: "modout_fn", InternalLength: -1, IsPassedByValue: false, Alignment: "c", Storage: "p", DefaultVal: "42", Element: "int4", Delimiter: ",", EnumLabels: "", BaseType: "", NotNull: false, CompositeAtts: nil, DependsUpon: nil}
-		baseFull := backup.Type{Oid: 1, Schema: "public", Name: "base_type", Type: "b", AttName: "", AttType: "", Input: "input_fn", Output: "output_fn", Receive: "receive_fn", Send: "send_fn", ModIn: "modin_fn", ModOut: "modout_fn", InternalLength: 16, IsPassedByValue: true, Alignment: "s", Storage: "e", DefaultVal: "42", Element: "int4", Delimiter: ",", EnumLabels: "", BaseType: "", NotNull: false, CompositeAtts: nil, DependsUpon: nil}
-		basePermOne := backup.Type{Oid: 1, Schema: "public", Name: "base_type", Type: "b", AttName: "", AttType: "", Input: "input_fn", Output: "output_fn", Receive: "", Send: "", ModIn: "", ModOut: "", InternalLength: -1, IsPassedByValue: false, Alignment: "d", Storage: "m", DefaultVal: "", Element: "", Delimiter: "", EnumLabels: "", BaseType: "", NotNull: false, CompositeAtts: nil, DependsUpon: nil}
-		basePermTwo := backup.Type{Oid: 1, Schema: "public", Name: "base_type", Type: "b", AttName: "", AttType: "", Input: "input_fn", Output: "output_fn", Receive: "", Send: "", ModIn: "", ModOut: "", InternalLength: -1, IsPassedByValue: false, Alignment: "i", Storage: "x", DefaultVal: "", Element: "", Delimiter: "", EnumLabels: "", BaseType: "", NotNull: false, CompositeAtts: nil, DependsUpon: nil}
-		baseCommentOwner := backup.Type{Oid: 1, Schema: "public", Name: "base_type", Type: "b", AttName: "", AttType: "", Input: "input_fn", Output: "output_fn", Receive: "", Send: "", ModIn: "", ModOut: "", InternalLength: -1, IsPassedByValue: false, Alignment: "c", Storage: "p", DefaultVal: "", Element: "", Delimiter: "", EnumLabels: "", BaseType: "", NotNull: false, CompositeAtts: nil, DependsUpon: nil}
+		baseSimple := backup.Type{Oid: 1, Schema: "public", Name: "base_type", Type: "b", Input: "input_fn", Output: "output_fn", Receive: "", Send: "", ModIn: "", ModOut: "", InternalLength: -1, IsPassedByValue: false, Alignment: "c", Storage: "p", DefaultVal: "", Element: "", Delimiter: "", EnumLabels: "", BaseType: "", NotNull: false, Attributes: nil, DependsUpon: nil}
+		basePartial := backup.Type{Oid: 1, Schema: "public", Name: "base_type", Type: "b", Input: "input_fn", Output: "output_fn", Receive: "receive_fn", Send: "send_fn", ModIn: "modin_fn", ModOut: "modout_fn", InternalLength: -1, IsPassedByValue: false, Alignment: "c", Storage: "p", DefaultVal: "42", Element: "int4", Delimiter: ",", EnumLabels: "", BaseType: "", NotNull: false, Attributes: nil, DependsUpon: nil}
+		baseFull := backup.Type{Oid: 1, Schema: "public", Name: "base_type", Type: "b", Input: "input_fn", Output: "output_fn", Receive: "receive_fn", Send: "send_fn", ModIn: "modin_fn", ModOut: "modout_fn", InternalLength: 16, IsPassedByValue: true, Alignment: "s", Storage: "e", DefaultVal: "42", Element: "int4", Delimiter: ",", EnumLabels: "", BaseType: "", NotNull: false, Attributes: nil, DependsUpon: nil}
+		basePermOne := backup.Type{Oid: 1, Schema: "public", Name: "base_type", Type: "b", Input: "input_fn", Output: "output_fn", Receive: "", Send: "", ModIn: "", ModOut: "", InternalLength: -1, IsPassedByValue: false, Alignment: "d", Storage: "m", DefaultVal: "", Element: "", Delimiter: "", EnumLabels: "", BaseType: "", NotNull: false, Attributes: nil, DependsUpon: nil}
+		basePermTwo := backup.Type{Oid: 1, Schema: "public", Name: "base_type", Type: "b", Input: "input_fn", Output: "output_fn", Receive: "", Send: "", ModIn: "", ModOut: "", InternalLength: -1, IsPassedByValue: false, Alignment: "i", Storage: "x", DefaultVal: "", Element: "", Delimiter: "", EnumLabels: "", BaseType: "", NotNull: false, Attributes: nil, DependsUpon: nil}
+		baseCommentOwner := backup.Type{Oid: 1, Schema: "public", Name: "base_type", Type: "b", Input: "input_fn", Output: "output_fn", Receive: "", Send: "", ModIn: "", ModOut: "", InternalLength: -1, IsPassedByValue: false, Alignment: "c", Storage: "p", DefaultVal: "", Element: "", Delimiter: "", EnumLabels: "", BaseType: "", NotNull: false, Attributes: nil, DependsUpon: nil}
 
 		It("prints a base type with no optional arguments", func() {
 			backup.PrintCreateBaseTypeStatement(backupfile, toc, baseSimple, typeMetadata)
@@ -202,10 +158,10 @@ ALTER TYPE public.composite_type OWNER TO testrole;`)
 		})
 	})
 	Describe("PrintCreateShellTypeStatements", func() {
-		baseOne := backup.Type{Oid: 1, Schema: "public", Name: "base_type1", Type: "b", AttName: "", AttType: "", Input: "input_fn", Output: "output_fn", Receive: "", Send: "", ModIn: "", ModOut: "", InternalLength: -1, IsPassedByValue: false, Alignment: "c", Storage: "p", DefaultVal: "", Element: "", Delimiter: "", EnumLabels: "", BaseType: "", NotNull: false, CompositeAtts: nil, DependsUpon: nil}
-		baseTwo := backup.Type{Oid: 1, Schema: "public", Name: "base_type2", Type: "b", AttName: "", AttType: "", Input: "input_fn", Output: "output_fn", Receive: "", Send: "", ModIn: "", ModOut: "", InternalLength: -1, IsPassedByValue: false, Alignment: "c", Storage: "p", DefaultVal: "", Element: "", Delimiter: "", EnumLabels: "", BaseType: "", NotNull: false, CompositeAtts: nil, DependsUpon: nil}
-		compOne := backup.Type{Oid: 1, Schema: "public", Name: "composite_type1", Type: "c", AttName: "bar", AttType: "integer"}
-		compTwo := backup.Type{Oid: 1, Schema: "public", Name: "composite_type2", Type: "c", AttName: "bar", AttType: "integer"}
+		baseOne := backup.Type{Oid: 1, Schema: "public", Name: "base_type1", Type: "b", Input: "input_fn", Output: "output_fn", Receive: "", Send: "", ModIn: "", ModOut: "", InternalLength: -1, IsPassedByValue: false, Alignment: "c", Storage: "p", DefaultVal: "", Element: "", Delimiter: "", EnumLabels: "", BaseType: "", NotNull: false, Attributes: nil, DependsUpon: nil}
+		baseTwo := backup.Type{Oid: 1, Schema: "public", Name: "base_type2", Type: "b", Input: "input_fn", Output: "output_fn", Receive: "", Send: "", ModIn: "", ModOut: "", InternalLength: -1, IsPassedByValue: false, Alignment: "c", Storage: "p", DefaultVal: "", Element: "", Delimiter: "", EnumLabels: "", BaseType: "", NotNull: false, Attributes: nil, DependsUpon: nil}
+		compOne := backup.Type{Oid: 1, Schema: "public", Name: "composite_type1", Type: "c"}
+		compTwo := backup.Type{Oid: 1, Schema: "public", Name: "composite_type2", Type: "c"}
 		enumOne := backup.Type{Oid: 1, Schema: "public", Name: "enum_type", Type: "e", EnumLabels: "'bar',\n\t'baz',\n\t'foo'"}
 		It("prints shell type for only a base type", func() {
 			backup.PrintCreateShellTypeStatements(backupfile, toc, []backup.Type{baseOne, baseTwo, compOne, compTwo, enumOne})

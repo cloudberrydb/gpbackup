@@ -24,25 +24,6 @@ func SortFunctionsAndTypesAndTablesInDependencyOrder(functions []Function, types
 	return sorted
 }
 
-func ConstructFunctionAndTypeDependencyLists(connection *utils.DBConn, functions []Function, types []Type, funcInfoMap map[uint32]FunctionInfo) ([]Function, []Type) {
-	functions = ConstructFunctionDependencies(connection, functions)
-	types = CoalesceCompositeTypes(types)
-	/*
-	 * Each of the Construct[...]TypeDependencies functions adds dependency information
-	 * to the appropriate types in-place, without modifying the slice or the order of
-	 * elements, so we re-use the same slice for each call and after all three calls
-	 * all of the types will have their dependencies set.
-	 */
-	if connection.Version.Before("5") {
-		types = ConstructBaseTypeDependencies4(connection, types, funcInfoMap)
-	} else {
-		types = ConstructBaseTypeDependencies5(connection, types)
-	}
-	types = ConstructDomainDependencies(connection, types)
-	types = ConstructCompositeTypeDependencies(connection, types)
-	return functions, types
-}
-
 func ConstructFunctionAndTypeAndTableMetadataMap(functions MetadataMap, types MetadataMap, tables MetadataMap) MetadataMap {
 	metadataMap := make(MetadataMap, 0)
 	for k, v := range functions {
