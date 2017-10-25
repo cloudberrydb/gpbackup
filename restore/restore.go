@@ -206,7 +206,7 @@ func DoTeardown() {
 			if strings.Contains(errStr, fmt.Sprintf(`Database "%s" does not exist`, connection.DBName)) {
 				errStr = fmt.Sprintf(`%s.  Use the --createdb flag to create "%s" as part of the restore process.`, errStr, connection.DBName)
 			} else if strings.Contains(errStr, fmt.Sprintf(`Database "%s" already exists`, connection.DBName)) {
-				errStr = fmt.Sprintf(`%s.  Run gprestore again without the --createdb flag.`, errStr, connection.DBName)
+				errStr = fmt.Sprintf(`%s.  Run gprestore again without the --createdb flag.`, errStr)
 			}
 		}
 		fmt.Println(errStr)
