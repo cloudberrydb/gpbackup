@@ -113,6 +113,24 @@ var _ = Describe("backup integration tests", func() {
 		})
 
 	})
+	Describe("GetResourceGroups", func() {
+		It("returns a slice for a resource group with everything", func() {
+			testutils.AssertQueryRuns(connection, `CREATE RESOURCE GROUP "someGroup" WITH (CPU_RATE_LIMIT=10, MEMORY_LIMIT=20, MEMORY_SHARED_QUOTA=25, MEMORY_SPILL_RATIO=30, CONCURRENCY=15);`)
+			defer testutils.AssertQueryRuns(connection, `DROP RESOURCE GROUP "someGroup"`)
+
+			results := backup.GetResourceGroups(connection)
+
+			someGroup := backup.ResourceGroup{Oid: 1, Name: `"someGroup"`, CPURateLimit: 10, MemoryLimit: 20, Concurrency: 15, MemorySharedQuota: 25, MemorySpillRatio: 30}
+
+			for _, resultGroup := range results {
+				if resultGroup.Name == `"someGroup"` {
+					testutils.ExpectStructsToMatchExcluding(&someGroup, &resultGroup, "Oid")
+					return
+				}
+			}
+			Fail("Resource group 'someGroup' was not found.")
+		})
+	})
 	Describe("GetDatabaseRoles", func() {
 		It("returns a role with default properties", func() {
 			testutils.AssertQueryRuns(connection, "CREATE ROLE role1 SUPERUSER NOINHERIT")
@@ -133,6 +151,7 @@ var _ = Describe("backup integration tests", func() {
 				Password:        "",
 				ValidUntil:      "",
 				ResQueue:        "pg_default",
+				ResGroup:        "admin_group",
 				Createrexthttp:  false,
 				Createrextgpfd:  false,
 				Createwextgpfd:  false,
@@ -179,6 +198,7 @@ CREATEEXTTABLE (protocol='gphdfs', type='writable')`)
 				Password:        "md5a8b2c77dfeba4705f29c094592eb3369",
 				ValidUntil:      "2099-01-01 08:00:00-00",
 				ResQueue:        "pg_default",
+				ResGroup:        "default_group",
 				Createrexthttp:  true,
 				Createrextgpfd:  true,
 				Createwextgpfd:  true,

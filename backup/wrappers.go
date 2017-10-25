@@ -143,6 +143,14 @@ func BackupResourceQueues(globalFile *utils.FileWithByteCount, objectCounts map[
 	PrintCreateResourceQueueStatements(globalFile, globalTOC, resQueues, resQueueMetadata)
 }
 
+func BackupResourceGroups(globalFile *utils.FileWithByteCount, objectCounts map[string]int) {
+	logger.Verbose("Writing CREATE RESOURCE GROUP statements to global file")
+	resGroups := GetResourceGroups(connection)
+	objectCounts["Resource Groups"] = len(resGroups)
+	resGroupMetadata := GetCommentsForObjectType(connection, TYPE_RESOURCEGROUP)
+	PrintCreateResourceGroupStatements(globalFile, globalTOC, resGroups, resGroupMetadata)
+}
+
 func BackupRoles(globalFile *utils.FileWithByteCount, objectCounts map[string]int) {
 	logger.Verbose("Writing CREATE ROLE statements to global file")
 	roles := GetRoles(connection)

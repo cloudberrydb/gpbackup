@@ -103,6 +103,48 @@ FROM
 	return results
 }
 
+type ResourceGroup struct {
+	Oid               uint32
+	Name              string
+	Concurrency       int
+	CPURateLimit      int
+	MemoryLimit       int
+	MemorySharedQuota int
+	MemorySpillRatio  int
+}
+
+func GetResourceGroups(connection *utils.DBConn) []ResourceGroup {
+	query := `
+SELECT g.oid,
+	quote_ident(g.rsgname) AS name,
+	t1.proposed AS concurrency,
+	t2.value AS cpuratelimit,
+	t3.proposed AS memorylimit,
+	t4.proposed AS memorysharedquota,
+	t5.proposed AS memoryspillratio
+FROM pg_resgroup g,
+	pg_resgroupcapability t1,
+	pg_resgroupcapability t2,
+	pg_resgroupcapability t3,
+	pg_resgroupcapability t4,
+	pg_resgroupcapability t5
+WHERE g.oid = t1.resgroupid AND
+	g.oid = t2.resgroupid AND
+	g.oid = t3.resgroupid AND
+	g.oid = t4.resgroupid AND
+	g.oid = t5.resgroupid AND
+	t1.reslimittype = 1 AND
+	t2.reslimittype = 2 AND
+	t3.reslimittype = 3 AND
+	t4.reslimittype = 4 AND
+	t5.reslimittype = 5;`
+
+	results := make([]ResourceGroup, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
+}
+
 type TimeConstraint struct {
 	Oid       uint32
 	StartDay  int
@@ -123,6 +165,7 @@ type Role struct {
 	Password        string
 	ValidUntil      string
 	ResQueue        string
+	ResGroup        string
 	Createrextgpfd  bool `db:"rolcreaterexthttp"`
 	Createrexthttp  bool `db:"rolcreaterextgpfd"`
 	Createwextgpfd  bool `db:"rolcreatewextgpfd"`
@@ -137,7 +180,11 @@ type Role struct {
  * in the timestamp.
  */
 func GetRoles(connection *utils.DBConn) []Role {
-	query := `
+	resgroupQuery := ""
+	if connection.Version.AtLeast("5") {
+		resgroupQuery = "(SELECT quote_ident(rsgname) FROM pg_resgroup WHERE pg_resgroup.oid = rolresgroup) AS resgroup,"
+	}
+	query := fmt.Sprintf(`
 SELECT
 	oid,
 	quote_ident(rolname) AS name,
@@ -149,14 +196,15 @@ SELECT
 	rolconnlimit,
 	coalesce(rolpassword, '') AS password,
 	coalesce(timezone('UTC', rolvaliduntil) || '-00', '') AS validuntil,
-	(SELECT rsqname FROM pg_resqueue WHERE pg_resqueue.oid = rolresqueue) AS resqueue,
+	(SELECT quote_ident(rsqname) FROM pg_resqueue WHERE pg_resqueue.oid = rolresqueue) AS resqueue,
+	%s
 	rolcreaterexthttp,
 	rolcreaterextgpfd,
 	rolcreatewextgpfd,
 	rolcreaterexthdfs,
 	rolcreatewexthdfs
 FROM
-	pg_authid`
+	pg_authid`, resgroupQuery)
 
 	roles := make([]Role, 0)
 	err := connection.Select(&roles, query)

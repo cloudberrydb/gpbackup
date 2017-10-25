@@ -2,10 +2,9 @@ package backup
 
 import (
 	"fmt"
+	"github.com/greenplum-db/gpbackup/utils"
 	"strconv"
 	"strings"
-
-	"github.com/greenplum-db/gpbackup/utils"
 )
 
 /*
@@ -126,6 +125,44 @@ func PrintCreateResourceQueueStatements(globalFile *utils.FileWithByteCount, toc
 	}
 }
 
+type resGroupStruct struct {
+	setting string
+	value   int
+}
+
+func PrintCreateResourceGroupStatements(globalFile *utils.FileWithByteCount, toc *utils.TOC, resGroups []ResourceGroup, resGroupMetadata MetadataMap) {
+	for _, resGroup := range resGroups {
+		start := uint64(0)
+
+		if resGroup.Name == "default_group" || resGroup.Name == "admin_group" {
+			resGroupList := []resGroupStruct{
+				{"CPU_RATE_LIMIT", resGroup.CPURateLimit},
+				{"MEMORY_LIMIT", resGroup.MemoryLimit},
+				{"MEMORY_SHARED_QUOTA", resGroup.MemorySharedQuota},
+				{"MEMORY_SPILL_RATIO", resGroup.MemorySpillRatio},
+				{"CONCURRENCY", resGroup.Concurrency},
+			}
+			for _, property := range resGroupList {
+				start = globalFile.ByteCount
+				globalFile.MustPrintf("\n\nALTER RESOURCE GROUP %s SET %s %d;", resGroup.Name, property.setting, property.value)
+				PrintObjectMetadata(globalFile, resGroupMetadata[resGroup.Oid], resGroup.Name, "RESOURCE GROUP")
+				toc.AddMetadataEntry("", resGroup.Name, "RESOURCE GROUP", start, globalFile)
+			}
+		} else {
+			start = globalFile.ByteCount
+			attributes := []string{}
+			attributes = append(attributes, fmt.Sprintf("CPU_RATE_LIMIT=%d", resGroup.CPURateLimit))
+			attributes = append(attributes, fmt.Sprintf("MEMORY_LIMIT=%d", resGroup.MemoryLimit))
+			attributes = append(attributes, fmt.Sprintf("MEMORY_SHARED_QUOTA=%d", resGroup.MemorySharedQuota))
+			attributes = append(attributes, fmt.Sprintf("MEMORY_SPILL_RATIO=%d", resGroup.MemorySpillRatio))
+			attributes = append(attributes, fmt.Sprintf("CONCURRENCY=%d", resGroup.Concurrency))
+			globalFile.MustPrintf("\n\nCREATE RESOURCE GROUP %s WITH (%s);", resGroup.Name, strings.Join(attributes, ", "))
+			PrintObjectMetadata(globalFile, resGroupMetadata[resGroup.Oid], resGroup.Name, "RESOURCE GROUP")
+			toc.AddMetadataEntry("", resGroup.Name, "RESOURCE GROUP", start, globalFile)
+		}
+	}
+}
+
 func PrintCreateRoleStatements(globalFile *utils.FileWithByteCount, toc *utils.TOC, roles []Role, roleMetadata MetadataMap) {
 	for _, role := range roles {
 		start := globalFile.ByteCount
@@ -173,6 +210,10 @@ func PrintCreateRoleStatements(globalFile *utils.FileWithByteCount, toc *utils.T
 		}
 
 		attrs = append(attrs, fmt.Sprintf("RESOURCE QUEUE %s", role.ResQueue))
+
+		if connection.Version.AtLeast("5") {
+			attrs = append(attrs, fmt.Sprintf("RESOURCE GROUP %s", role.ResGroup))
+		}
 
 		if role.Createrexthttp {
 			attrs = append(attrs, "CREATEEXTTABLE (protocol='http')")

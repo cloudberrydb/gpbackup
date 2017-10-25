@@ -62,6 +62,47 @@ var _ = Describe("backup integration create statement tests", func() {
 			Fail("Could not find everythingQueue")
 		})
 	})
+	Describe("PrintCreateResourceGroupStatements", func() {
+		It("creates a basic resource group", func() {
+			someGroup := backup.ResourceGroup{Oid: 1, Name: "some_group", CPURateLimit: 10, MemoryLimit: 20, Concurrency: 15, MemorySharedQuota: 25, MemorySpillRatio: 30}
+			emptyMetadataMap := map[uint32]backup.ObjectMetadata{}
+
+			backup.PrintCreateResourceGroupStatements(backupfile, toc, []backup.ResourceGroup{someGroup}, emptyMetadataMap)
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, `DROP RESOURCE GROUP some_group`)
+
+			resultResourceGroups := backup.GetResourceGroups(connection)
+
+			for _, resultGroup := range resultResourceGroups {
+				if resultGroup.Name == "some_group" {
+					testutils.ExpectStructsToMatchExcluding(&someGroup, &resultGroup, "Oid")
+					return
+				}
+			}
+			Fail("Could not find some_group")
+		})
+		It("alters a default resource group", func() {
+			defaultGroup := backup.ResourceGroup{Oid: 1, Name: "default_group", CPURateLimit: 10, MemoryLimit: 20, Concurrency: 15, MemorySharedQuota: 25, MemorySpillRatio: 30}
+			emptyMetadataMap := map[uint32]backup.ObjectMetadata{}
+
+			backup.PrintCreateResourceGroupStatements(backupfile, toc, []backup.ResourceGroup{defaultGroup}, emptyMetadataMap)
+
+			hunks := regexp.MustCompile(";\n\n").Split(buffer.String(), 5)
+			for i := 0; i < 5; i++ {
+				testutils.AssertQueryRuns(connection, hunks[i])
+			}
+			resultResourceGroups := backup.GetResourceGroups(connection)
+
+			for _, resultGroup := range resultResourceGroups {
+				if resultGroup.Name == "default_group" {
+					testutils.ExpectStructsToMatchExcluding(&defaultGroup, &resultGroup, "Oid")
+					return
+				}
+			}
+			Fail("Could not find default_group")
+		})
+	})
 	Describe("PrintCreateRoleStatements", func() {
 		It("creates a basic role ", func() {
 			role1 := backup.Role{
@@ -76,6 +117,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				Password:        "",
 				ValidUntil:      "",
 				ResQueue:        "pg_default",
+				ResGroup:        "default_group",
 				Createrexthttp:  false,
 				Createrextgpfd:  false,
 				Createwextgpfd:  false,
@@ -113,6 +155,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				Password:        "md5a8b2c77dfeba4705f29c094592eb3369",
 				ValidUntil:      "2099-01-01 08:00:00-00",
 				ResQueue:        "pg_default",
+				ResGroup:        "default_group",
 				Createrexthttp:  true,
 				Createrextgpfd:  true,
 				Createwextgpfd:  true,

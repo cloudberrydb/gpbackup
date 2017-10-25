@@ -187,6 +187,9 @@ func backupGlobal(objectCounts map[string]int) {
 
 	if len(includeSchemas) == 0 {
 		BackupResourceQueues(globalFile, objectCounts)
+		if connection.Version.AtLeast("5") {
+			BackupResourceGroups(globalFile, objectCounts)
+		}
 		BackupRoles(globalFile, objectCounts)
 		BackupRoleGrants(globalFile, objectCounts)
 	}

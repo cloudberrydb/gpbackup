@@ -150,6 +150,7 @@ var (
 	TYPE_OPERATORFAMILY  MetadataQueryParams
 	TYPE_PROTOCOL        MetadataQueryParams
 	TYPE_RELATION        MetadataQueryParams
+	TYPE_RESOURCEGROUP   MetadataQueryParams
 	TYPE_RESOURCEQUEUE   MetadataQueryParams
 	TYPE_ROLE            MetadataQueryParams
 	TYPE_RULE            MetadataQueryParams
@@ -182,6 +183,7 @@ func InitializeMetadataParams(connection *utils.DBConn) {
 	TYPE_OPERATORFAMILY = MetadataQueryParams{NameField: "opfname", SchemaField: "opfnamespace", OidField: "oid", OwnerField: "opfowner", CatalogTable: "pg_opfamily"}
 	TYPE_PROTOCOL = MetadataQueryParams{NameField: "ptcname", ACLField: "ptcacl", OwnerField: "ptcowner", CatalogTable: "pg_extprotocol"}
 	TYPE_RELATION = MetadataQueryParams{NameField: "relname", SchemaField: "relnamespace", ACLField: "relacl", OwnerField: "relowner", CatalogTable: "pg_class"}
+	TYPE_RESOURCEGROUP = MetadataQueryParams{NameField: "rsgname", OidField: "oid", CatalogTable: "pg_resgroup", Shared: true}
 	TYPE_RESOURCEQUEUE = MetadataQueryParams{NameField: "rsqname", OidField: "oid", CatalogTable: "pg_resqueue", Shared: true}
 	TYPE_ROLE = MetadataQueryParams{NameField: "rolname", OidField: "oid", CatalogTable: "pg_authid", Shared: true}
 	TYPE_RULE = MetadataQueryParams{NameField: "rulename", OidField: "oid", CatalogTable: "pg_rewrite"}

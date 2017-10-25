@@ -149,7 +149,7 @@ GRANT CREATE ON DATABASE anotherdb TO testrole WITH GRANT OPTION;`)
 			backup.PrintCreateResourceQueueStatements(backupfile, toc, resQueues, emptyResQueueMetadata)
 			testutils.AssertBufferContents(toc.GlobalEntries, buffer, `CREATE RESOURCE QUEUE "someActiveMaxCostQueue" WITH (ACTIVE_STATEMENTS=5, MAX_COST=62.03);`)
 		})
-		It("prints a resource queue with active statements and max cost", func() {
+		It("prints a resource queue with all properties", func() {
 			everythingQueue := backup.ResourceQueue{Oid: 1, Name: `"everythingQueue"`, ActiveStatements: 7, MaxCost: "32.80", CostOvercommit: true, MinCost: "1.34", Priority: "low", MemoryLimit: "2GB"}
 			resQueues := []backup.ResourceQueue{everythingQueue}
 
@@ -167,11 +167,37 @@ GRANT CREATE ON DATABASE anotherdb TO testrole WITH GRANT OPTION;`)
 COMMENT ON RESOURCE QUEUE "commentQueue" IS 'This is a resource queue comment.';`)
 		})
 		It("prints ALTER statement for pg_default resource queue", func() {
-			pg_default := backup.ResourceQueue{Oid: 1, Name: "pg_default", ActiveStatements: 1, MaxCost: "-1.00", CostOvercommit: false, MinCost: "0.00", Priority: "medium", MemoryLimit: "-1"}
-			resQueues := []backup.ResourceQueue{pg_default}
+			pgDefault := backup.ResourceQueue{Oid: 1, Name: "pg_default", ActiveStatements: 1, MaxCost: "-1.00", CostOvercommit: false, MinCost: "0.00", Priority: "medium", MemoryLimit: "-1"}
+			resQueues := []backup.ResourceQueue{pgDefault}
 
 			backup.PrintCreateResourceQueueStatements(backupfile, toc, resQueues, emptyResQueueMetadata)
 			testutils.AssertBufferContents(toc.GlobalEntries, buffer, `ALTER RESOURCE QUEUE pg_default WITH (ACTIVE_STATEMENTS=1);`)
+		})
+	})
+	Describe("PrintCreateResourceGroupStatements", func() {
+		var emptyResGroupMetadata = map[uint32]backup.ObjectMetadata{}
+		It("prints resource groups", func() {
+			someGroup := backup.ResourceGroup{Oid: 1, Name: "some_group", CPURateLimit: 10, MemoryLimit: 20, Concurrency: 15, MemorySharedQuota: 25, MemorySpillRatio: 30}
+			someGroup2 := backup.ResourceGroup{Oid: 2, Name: "some_group2", CPURateLimit: 20, MemoryLimit: 30, Concurrency: 25, MemorySharedQuota: 35, MemorySpillRatio: 10}
+			resGroups := []backup.ResourceGroup{someGroup, someGroup2}
+
+			backup.PrintCreateResourceGroupStatements(backupfile, toc, resGroups, emptyResGroupMetadata)
+			testutils.ExpectEntry(toc.GlobalEntries, 0, "", "some_group", "RESOURCE GROUP")
+			testutils.AssertBufferContents(toc.GlobalEntries, buffer,
+				`CREATE RESOURCE GROUP some_group WITH (CPU_RATE_LIMIT=10, MEMORY_LIMIT=20, MEMORY_SHARED_QUOTA=25, MEMORY_SPILL_RATIO=30, CONCURRENCY=15);`,
+				`CREATE RESOURCE GROUP some_group2 WITH (CPU_RATE_LIMIT=20, MEMORY_LIMIT=30, MEMORY_SHARED_QUOTA=35, MEMORY_SPILL_RATIO=10, CONCURRENCY=25);`)
+		})
+		It("prints ALTER statement for default_group resource group", func() {
+			default_group := backup.ResourceGroup{Oid: 1, Name: "default_group", CPURateLimit: 10, MemoryLimit: 20, Concurrency: 15, MemorySharedQuota: 25, MemorySpillRatio: 30}
+			resGroups := []backup.ResourceGroup{default_group}
+
+			backup.PrintCreateResourceGroupStatements(backupfile, toc, resGroups, emptyResGroupMetadata)
+			testutils.ExpectEntry(toc.GlobalEntries, 0, "", "default_group", "RESOURCE GROUP")
+			testutils.AssertBufferContents(toc.GlobalEntries, buffer, `ALTER RESOURCE GROUP default_group SET CPU_RATE_LIMIT 10;`,
+				`ALTER RESOURCE GROUP default_group SET MEMORY_LIMIT 20;`,
+				`ALTER RESOURCE GROUP default_group SET MEMORY_SHARED_QUOTA 25;`,
+				`ALTER RESOURCE GROUP default_group SET MEMORY_SPILL_RATIO 30;`,
+				`ALTER RESOURCE GROUP default_group SET CONCURRENCY 15;`)
 		})
 	})
 	Describe("PrintCreateRoleStatements", func() {
@@ -187,6 +213,7 @@ COMMENT ON RESOURCE QUEUE "commentQueue" IS 'This is a resource queue comment.';
 			Password:        "",
 			ValidUntil:      "",
 			ResQueue:        "pg_default",
+			ResGroup:        "default_group",
 			Createrexthttp:  false,
 			Createrextgpfd:  false,
 			Createwextgpfd:  false,
@@ -207,6 +234,7 @@ COMMENT ON RESOURCE QUEUE "commentQueue" IS 'This is a resource queue comment.';
 			Password:        "md5a8b2c77dfeba4705f29c094592eb3369",
 			ValidUntil:      "2099-01-01 00:00:00-08",
 			ResQueue:        `"testQueue"`,
+			ResGroup:        `"testGroup"`,
 			Createrexthttp:  true,
 			Createrextgpfd:  true,
 			Createwextgpfd:  true,
@@ -232,7 +260,7 @@ COMMENT ON RESOURCE QUEUE "commentQueue" IS 'This is a resource queue comment.';
 
 			testutils.ExpectEntry(toc.GlobalEntries, 0, "", "testrole1", "ROLE")
 			testutils.AssertBufferContents(toc.GlobalEntries, buffer, `CREATE ROLE testrole1;
-ALTER ROLE testrole1 WITH NOSUPERUSER NOINHERIT NOCREATEROLE NOCREATEDB NOLOGIN RESOURCE QUEUE pg_default;
+ALTER ROLE testrole1 WITH NOSUPERUSER NOINHERIT NOCREATEROLE NOCREATEDB NOLOGIN RESOURCE QUEUE pg_default RESOURCE GROUP default_group;
 
 COMMENT ON ROLE testrole1 IS 'This is a role comment.';`)
 		})
@@ -241,7 +269,7 @@ COMMENT ON ROLE testrole1 IS 'This is a role comment.';`)
 			backup.PrintCreateRoleStatements(backupfile, toc, []backup.Role{testrole2}, roleMetadataMap)
 
 			testutils.AssertBufferContents(toc.GlobalEntries, buffer, `CREATE ROLE "testRole2";
-ALTER ROLE "testRole2" WITH SUPERUSER INHERIT CREATEROLE CREATEDB LOGIN CONNECTION LIMIT 4 PASSWORD 'md5a8b2c77dfeba4705f29c094592eb3369' VALID UNTIL '2099-01-01 00:00:00-08' RESOURCE QUEUE "testQueue" CREATEEXTTABLE (protocol='http') CREATEEXTTABLE (protocol='gpfdist', type='readable') CREATEEXTTABLE (protocol='gpfdist', type='writable') CREATEEXTTABLE (protocol='gphdfs', type='readable') CREATEEXTTABLE (protocol='gphdfs', type='writable');
+ALTER ROLE "testRole2" WITH SUPERUSER INHERIT CREATEROLE CREATEDB LOGIN CONNECTION LIMIT 4 PASSWORD 'md5a8b2c77dfeba4705f29c094592eb3369' VALID UNTIL '2099-01-01 00:00:00-08' RESOURCE QUEUE "testQueue" RESOURCE GROUP "testGroup" CREATEEXTTABLE (protocol='http') CREATEEXTTABLE (protocol='gpfdist', type='readable') CREATEEXTTABLE (protocol='gpfdist', type='writable') CREATEEXTTABLE (protocol='gphdfs', type='readable') CREATEEXTTABLE (protocol='gphdfs', type='writable');
 ALTER ROLE "testRole2" DENY BETWEEN DAY 0 TIME '13:30:00' AND DAY 3 TIME '14:30:00';
 ALTER ROLE "testRole2" DENY BETWEEN DAY 5 TIME '00:00:00' AND DAY 5 TIME '24:00:00';
 
@@ -253,9 +281,9 @@ COMMENT ON ROLE "testRole2" IS 'This is a role comment.';`)
 
 			testutils.AssertBufferContents(toc.GlobalEntries, buffer,
 				`CREATE ROLE testrole1;
-ALTER ROLE testrole1 WITH NOSUPERUSER NOINHERIT NOCREATEROLE NOCREATEDB NOLOGIN RESOURCE QUEUE pg_default;`,
+ALTER ROLE testrole1 WITH NOSUPERUSER NOINHERIT NOCREATEROLE NOCREATEDB NOLOGIN RESOURCE QUEUE pg_default RESOURCE GROUP default_group;`,
 				`CREATE ROLE "testRole2";
-ALTER ROLE "testRole2" WITH SUPERUSER INHERIT CREATEROLE CREATEDB LOGIN CONNECTION LIMIT 4 PASSWORD 'md5a8b2c77dfeba4705f29c094592eb3369' VALID UNTIL '2099-01-01 00:00:00-08' RESOURCE QUEUE "testQueue" CREATEEXTTABLE (protocol='http') CREATEEXTTABLE (protocol='gpfdist', type='readable') CREATEEXTTABLE (protocol='gpfdist', type='writable') CREATEEXTTABLE (protocol='gphdfs', type='readable') CREATEEXTTABLE (protocol='gphdfs', type='writable');
+ALTER ROLE "testRole2" WITH SUPERUSER INHERIT CREATEROLE CREATEDB LOGIN CONNECTION LIMIT 4 PASSWORD 'md5a8b2c77dfeba4705f29c094592eb3369' VALID UNTIL '2099-01-01 00:00:00-08' RESOURCE QUEUE "testQueue" RESOURCE GROUP "testGroup" CREATEEXTTABLE (protocol='http') CREATEEXTTABLE (protocol='gpfdist', type='readable') CREATEEXTTABLE (protocol='gpfdist', type='writable') CREATEEXTTABLE (protocol='gphdfs', type='readable') CREATEEXTTABLE (protocol='gphdfs', type='writable');
 ALTER ROLE "testRole2" DENY BETWEEN DAY 0 TIME '13:30:00' AND DAY 3 TIME '14:30:00';
 ALTER ROLE "testRole2" DENY BETWEEN DAY 5 TIME '00:00:00' AND DAY 5 TIME '24:00:00';`)
 		})
