@@ -118,7 +118,7 @@ func GetResourceGroups(connection *utils.DBConn) []ResourceGroup {
 SELECT g.oid,
 	quote_ident(g.rsgname) AS name,
 	t1.proposed AS concurrency,
-	t2.value AS cpuratelimit,
+	t2.proposed AS cpuratelimit,
 	t3.proposed AS memorylimit,
 	t4.proposed AS memorysharedquota,
 	t5.proposed AS memoryspillratio
