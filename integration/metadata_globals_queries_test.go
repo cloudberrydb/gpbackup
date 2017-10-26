@@ -114,6 +114,9 @@ var _ = Describe("backup integration tests", func() {
 
 	})
 	Describe("GetResourceGroups", func() {
+		BeforeEach(func() {
+			testutils.SkipIf4(connection)
+		})
 		It("returns a slice for a resource group with everything", func() {
 			testutils.AssertQueryRuns(connection, `CREATE RESOURCE GROUP "someGroup" WITH (CPU_RATE_LIMIT=10, MEMORY_LIMIT=20, MEMORY_SHARED_QUOTA=25, MEMORY_SPILL_RATIO=30, CONCURRENCY=15);`)
 			defer testutils.AssertQueryRuns(connection, `DROP RESOURCE GROUP "someGroup"`)
@@ -159,7 +162,9 @@ var _ = Describe("backup integration tests", func() {
 				Createwexthdfs:  false,
 				TimeConstraints: nil,
 			}
-
+			if connection.Version.Before("5") {
+				expectedRole.ResGroup = ""
+			}
 			for _, role := range results {
 				if role.Name == "role1" {
 					testutils.ExpectStructsToMatch(&expectedRole, role)
@@ -219,6 +224,10 @@ CREATEEXTTABLE (protocol='gphdfs', type='writable')`)
 						EndTime:   "24:00:00",
 					},
 				},
+			}
+
+			if connection.Version.Before("5") {
+				expectedRole.ResGroup = ""
 			}
 
 			for _, role := range results {

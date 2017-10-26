@@ -63,6 +63,9 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 	})
 	Describe("PrintCreateResourceGroupStatements", func() {
+		BeforeEach(func() {
+			testutils.SkipIf4(connection)
+		})
 		It("creates a basic resource group", func() {
 			someGroup := backup.ResourceGroup{Oid: 1, Name: "some_group", CPURateLimit: 10, MemoryLimit: 20, Concurrency: 15, MemorySharedQuota: 25, MemorySpillRatio: 30}
 			emptyMetadataMap := map[uint32]backup.ObjectMetadata{}
@@ -125,6 +128,9 @@ var _ = Describe("backup integration create statement tests", func() {
 				Createwexthdfs:  false,
 				TimeConstraints: nil,
 			}
+			if connection.Version.Before("5") {
+				role1.ResGroup = ""
+			}
 			emptyMetadataMap := backup.MetadataMap{}
 
 			backup.PrintCreateRoleStatements(backupfile, toc, []backup.Role{role1}, emptyMetadataMap)
@@ -176,6 +182,9 @@ var _ = Describe("backup integration create statement tests", func() {
 						EndTime:   "24:00:00",
 					},
 				},
+			}
+			if connection.Version.Before("5") {
+				role1.ResGroup = ""
 			}
 			metadataMap := testutils.DefaultMetadataMap("ROLE", false, false, true)
 
