@@ -83,9 +83,18 @@ resources:
       bucket: gpdb5-pipeline-dynamic-terraform
       bucket_path: prod/gpbackup/
 
+- name: scale_schema
+  type: s3
+  source:
+    access_key_id: {{gpdb4-bucket-access-key-id}}
+    bucket: {{netbackup_installer_bucket}}
+    region_name: {{aws-region}}
+    secret_access_key: {{gpdb4-bucket-secret-access-key}}
+    versioned_file: scale-schemas/scale_db1.tgz
+
+
 jobs:
 - name: units
-  serial: true
   plan:
   - aggregate:
     - get: gpbackup
@@ -95,7 +104,6 @@ jobs:
     file: gpbackup-ci/ci/tasks/unit-tests.yml
 
 - name: integrations-master
-  serial: true
   plan:
   - aggregate:
     - get: gpbackup
@@ -129,7 +137,6 @@ jobs:
   - *ccp_destroy
 
 - name: integrations-GPDB5
-  serial: true
   plan:
   - aggregate:
     - get: gpbackup
@@ -163,7 +170,6 @@ jobs:
   - *ccp_destroy
 
 - name: integrations-GPDB4.3
-  serial: true
   plan:
   - aggregate:
     - get: gpbackup
@@ -194,6 +200,123 @@ jobs:
     file: gpbackup-ci/ci/tasks/integration-tests.yml
     on_failure:
       <<: *ccp_destroy
+  - *ccp_destroy
+
+- name: scale-master
+  plan:
+  - aggregate:
+    - get: gpbackup
+      tags: ["gpdb5_ccp_external_worker"]
+    - get: gpbackup-ci
+      tags: ["gpdb5_ccp_external_worker"]
+    - get: bin_gpdb_master
+      tags: ["gpdb5_ccp_external_worker"]
+    - get: ccp_src
+      tags: ["gpdb5_ccp_external_worker"]
+    - get: gpdb_src
+      tags: ["gpdb5_ccp_external_worker"]
+    - get: scale_schema
+      tags: ["gpdb5_ccp_external_worker"]
+  - put: terraform
+    tags: ["gpdb5_ccp_external_worker"]
+    params:
+      <<: *ccp_create_params
+      terraform_source: ccp_src/aws-nvme-block-device/
+      vars:
+        aws_instance-node-instance_type: i3.large
+        aws_ebs_volume_type: gp2
+        number_of_nodes: 1
+  - task: gen_cluster
+    tags: ["gpdb5_ccp_external_worker"]
+    file: ccp_src/ci/tasks/gen_cluster.yml
+    input_mapping:
+      gpdb_binary: bin_gpdb_master
+      gpdb_src: gpdb_src
+    on_failure:
+      <<: *ccp_destroy
+  - task: scale-tests
+    tags: ["gpdb5_ccp_external_worker"]
+    file: gpbackup-ci/ci/tasks/scale-tests.yml
+    on_failure:
+      <<: *debug_sleep
+  - *ccp_destroy
+
+- name: scale-5x-stable
+  plan:
+  - aggregate:
+    - get: gpbackup
+      tags: ["gpdb5_ccp_external_worker"]
+    - get: gpbackup-ci
+      tags: ["gpdb5_ccp_external_worker"]
+    - get: bin_gpdb_5x_stable
+      tags: ["gpdb5_ccp_external_worker"]
+    - get: ccp_src
+      tags: ["gpdb5_ccp_external_worker"]
+    - get: gpdb_src
+      tags: ["gpdb5_ccp_external_worker"]
+    - get: scale_schema
+      tags: ["gpdb5_ccp_external_worker"]
+  - put: terraform
+    tags: ["gpdb5_ccp_external_worker"]
+    params:
+      <<: *ccp_create_params
+      terraform_source: ccp_src/aws-nvme-block-device/
+      vars:
+        aws_instance-node-instance_type: i3.large
+        aws_ebs_volume_type: gp2
+        number_of_nodes: 1
+  - task: gen_cluster
+    tags: ["gpdb5_ccp_external_worker"]
+    file: ccp_src/ci/tasks/gen_cluster.yml
+    input_mapping:
+      gpdb_binary: bin_gpdb_5x_stable
+      gpdb_src: gpdb_src
+    on_failure:
+      <<: *ccp_destroy
+  - task: scale-tests
+    tags: ["gpdb5_ccp_external_worker"]
+    file: gpbackup-ci/ci/tasks/scale-tests.yml
+    on_failure:
+      <<: *debug_sleep
+  - *ccp_destroy
+
+- name: scale-43-stable
+  plan:
+  - aggregate:
+    - get: gpbackup
+      tags: ["gpdb5_ccp_external_worker"]
+    - get: gpbackup-ci
+      tags: ["gpdb5_ccp_external_worker"]
+    - get: bin_gpdb_43_stable
+      tags: ["gpdb5_ccp_external_worker"]
+    - get: ccp_src
+      tags: ["gpdb5_ccp_external_worker"]
+    - get: gpdb_src
+      tags: ["gpdb5_ccp_external_worker"]
+    - get: scale_schema
+      tags: ["gpdb5_ccp_external_worker"]
+  - put: terraform
+    tags: ["gpdb5_ccp_external_worker"]
+    params:
+      <<: *ccp_create_params
+      terraform_source: ccp_src/aws-nvme-block-device/
+      vars:
+        aws_instance-node-instance_type: i3.large
+        aws_ebs_volume_type: gp2
+        number_of_nodes: 1
+  - task: gen_cluster
+    tags: ["gpdb5_ccp_external_worker"]
+    file: ccp_src/ci/tasks/gen_cluster.yml
+    input_mapping:
+      gpdb_binary: bin_gpdb_43_stable
+      gpdb_src: gpdb_src
+    on_failure:
+      <<: *ccp_destroy
+  - task: scale-tests
+    tags: ["gpdb5_ccp_external_worker"]
+    file: gpbackup-ci/ci/tasks/scale-tests.yml
+    on_failure:
+      <<: *debug_sleep
   - *ccp_destroy
 
 ccp_create_params_anchor: &ccp_create_params
