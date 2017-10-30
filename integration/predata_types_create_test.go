@@ -70,7 +70,6 @@ var _ = Describe("backup integration create statement tests", func() {
 			resultTypes := backup.GetCompositeTypes(connection)
 
 			Expect(len(resultTypes)).To(Equal(1))
-			compositeType.Attributes = pq.StringArray{"\\tatt1 text", "\\tatt2 integer"}
 			testutils.ExpectStructsToMatchIncluding(&compositeType, &resultTypes[0], "Type", "Schema", "Name", "Comment", "Owner", "Attributes")
 		})
 

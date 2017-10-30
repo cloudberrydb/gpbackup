@@ -175,7 +175,7 @@ SELECT
 	quote_ident(n.nspname) AS schema,
 	quote_ident(t.typname) AS name,
 	t.typtype,
-	array_agg('\t' || quote_ident(a.attname) || ' ' || pg_catalog.format_type(a.atttypid, NULL) ORDER BY a.attnum) AS attributes
+	array_agg(E'\t' || quote_ident(a.attname) || ' ' || pg_catalog.format_type(a.atttypid, NULL) ORDER BY a.attnum) AS attributes
 FROM pg_type t
 JOIN pg_attribute a ON t.typrelid = a.attrelid
 JOIN pg_namespace n ON t.typnamespace = n.oid`
