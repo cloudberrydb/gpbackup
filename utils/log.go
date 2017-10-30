@@ -9,8 +9,10 @@ import (
 	"io"
 	"log"
 	"os"
+	"time"
 
 	"github.com/pkg/errors"
+	pb "gopkg.in/cheggaaa/pb.v1"
 )
 
 var (
@@ -202,4 +204,13 @@ func formatStackTrace(err error) string {
 	st := err.(stackTracer).StackTrace()
 	message := fmt.Sprintf("%+v", st[1:len(st)-2])
 	return message
+}
+
+func NewProgressBar(count int, prefix string) *pb.ProgressBar {
+	progressBar := pb.New(count).Prefix(prefix)
+	progressBar.ShowTimeLeft = false
+	progressBar.SetMaxWidth(100)
+	progressBar.SetRefreshRate(time.Second)
+	progressBar.Start()
+	return progressBar
 }

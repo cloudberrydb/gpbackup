@@ -27,6 +27,7 @@ dependencies :
 		go get github.com/onsi/gomega
 		go get github.com/pkg/errors
 		go get golang.org/x/tools/cmd/goimports
+		go get gopkg.in/cheggaaa/pb.v1
 		go get gopkg.in/DATA-DOG/go-sqlmock.v1
 		go get gopkg.in/yaml.v2
 		go get github.com/golang/lint/golint

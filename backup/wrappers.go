@@ -388,6 +388,7 @@ func BackupTriggers(postdataFile *utils.FileWithByteCount, objectCounts map[stri
 
 func BackupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
 	numExtTables := 0
+	dataProgressBar := utils.NewProgressBar(len(tables), "Tables backed up: ")
 	for _, table := range tables {
 		if !tableDefs[table.Oid].IsExternal {
 			logger.Verbose("Writing data for table %s to file", table.ToString())
@@ -397,7 +398,9 @@ func BackupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
 			logger.Verbose("Skipping data backup of table %s because it is an external table.", table.ToString())
 			numExtTables++
 		}
+		dataProgressBar.Increment()
 	}
+	dataProgressBar.Finish()
 	if numExtTables > 0 {
 		s := ""
 		if numExtTables > 1 {
