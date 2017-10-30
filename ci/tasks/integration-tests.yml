@@ -36,6 +36,7 @@ run:
 
     cd \$GOPATH/src/github.com/greenplum-db/gpbackup
     make integration
+    make end_to_end
     SCRIPT
 
     ssh -t centos@mdw "sudo yum -y install wget git && wget https://storage.googleapis.com/golang/go1.9.1.linux-amd64.tar.gz && tar -xzf go1.9.1.linux-amd64.tar.gz && sudo mv go /usr/local"
