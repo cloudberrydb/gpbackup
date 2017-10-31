@@ -173,12 +173,15 @@ func restorePredata() {
 
 func restoreData(tableMap map[uint32]utils.DataEntry) {
 	logger.Info("Restoring data")
+	dataProgressBar := utils.NewProgressBar(len(tableMap), "Tables restored: ")
 	for oid, entry := range tableMap {
 		name := utils.MakeFQN(entry.Schema, entry.Name)
 		logger.Verbose("Reading data for table %s from file", name)
 		backupFile := globalCluster.GetTableBackupFilePathForCopyCommand(oid)
 		CopyTableIn(connection, name, entry.AttributeString, backupFile)
+		dataProgressBar.Increment()
 	}
+	dataProgressBar.Finish()
 	logger.Info("Data restore complete")
 }
 
