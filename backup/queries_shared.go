@@ -229,9 +229,11 @@ func GetMetadataForObjectType(connection *utils.DBConn, params MetadataQueryPara
 		schemaStr = fmt.Sprintf(`JOIN pg_namespace n ON o.%s = n.oid
 WHERE %s`, params.SchemaField, SchemaFilterClause("n"))
 	}
-	descFunc := "obj_description"
+	descFunc := "pg_description"
+	subidStr := " AND d.objsubid = 0"
 	if params.Shared {
-		descFunc = "shobj_description"
+		descFunc = "pg_shdescription"
+		subidStr = ""
 	}
 	if params.OwnerField != "" {
 		ownerStr = fmt.Sprintf("pg_get_userbyid(%s)", params.OwnerField)
@@ -242,11 +244,11 @@ SELECT
 	%s AS privileges,
 	%s AS kind,
 	%s AS owner,
-	coalesce(%s(o.oid, '%s'), '') AS comment
-FROM %s o
+	coalesce(description,'') AS comment
+FROM %s o LEFT JOIN %s d ON (d.objoid = o.oid AND d.classoid = '%s'::regclass%s)
 %s
 ORDER BY o.oid;
-`, aclStr, kindStr, ownerStr, descFunc, params.CatalogTable, params.CatalogTable, schemaStr)
+`, aclStr, kindStr, ownerStr, params.CatalogTable, descFunc, params.CatalogTable, subidStr, schemaStr)
 
 	results := make([]struct {
 		Oid        uint32
@@ -304,9 +306,11 @@ func GetCommentsForObjectType(connection *utils.DBConn, params MetadataQueryPara
 		schemaStr = fmt.Sprintf(` JOIN pg_namespace n ON o.%s = n.oid
 	 WHERE %s`, params.SchemaField, SchemaFilterClause("n"))
 	}
-	descFunc := "obj_description"
+	descTable := "pg_description"
+	subidStr := " AND d.objsubid = 0"
 	if params.Shared {
-		descFunc = "shobj_description"
+		descTable = "pg_shdescription"
+		subidStr = ""
 	}
 	commentTable := params.CatalogTable
 	if params.CommentTable != "" {
@@ -315,9 +319,9 @@ func GetCommentsForObjectType(connection *utils.DBConn, params MetadataQueryPara
 	query := fmt.Sprintf(`
 SELECT
 	o.%s AS oid,
-	coalesce(%s(o.%s, '%s'), '') AS comment
-FROM %s o%s;
-`, params.OidField, descFunc, params.OidField, commentTable, params.CatalogTable, schemaStr)
+	coalesce(description,'') AS comment
+	FROM %s o JOIN %s d ON (d.objoid = %s AND d.classoid = '%s'::regclass%s)%s;
+`, params.OidField, params.CatalogTable, descTable, params.OidField, commentTable, subidStr, schemaStr)
 
 	results := make([]struct {
 		Oid     uint32

@@ -78,9 +78,8 @@ var _ = Describe("backup/queries_shared tests", func() {
 	'' AS privileges,
 	'' AS kind,
 	pg_get_userbyid(owner) AS owner,
-	coalesce(obj_description(o.oid, 'table'), '') AS comment
-FROM table o
-
+	coalesce(description,'') AS comment
+FROM table o LEFT JOIN pg_description d ON (d.objoid = o.oid AND d.classoid = 'table'::regclass AND d.objsubid = 0)
 ORDER BY o.oid;`)).WillReturnRows(emptyRows)
 			backup.GetMetadataForObjectType(connection, params)
 		})
@@ -90,8 +89,8 @@ ORDER BY o.oid;`)).WillReturnRows(emptyRows)
 	'' AS privileges,
 	'' AS kind,
 	pg_get_userbyid(owner) AS owner,
-	coalesce(obj_description(o.oid, 'table'), '') AS comment
-FROM table o
+	coalesce(description,'') AS comment
+FROM table o LEFT JOIN pg_description d ON (d.objoid = o.oid AND d.classoid = 'table'::regclass AND d.objsubid = 0)
 JOIN pg_namespace n ON o.schema = n.oid
 WHERE n.nspname NOT LIKE 'pg_temp_%' AND n.nspname NOT LIKE 'pg_toast%' AND n.nspname NOT IN ('gp_toolkit', 'information_schema', 'pg_aoseg', 'pg_bitmapindex', 'pg_catalog')
 ORDER BY o.oid;`)).WillReturnRows(emptyRows)
@@ -110,8 +109,8 @@ ORDER BY o.oid;`)).WillReturnRows(emptyRows)
 		WHEN array_upper(acl, 1) = 0 THEN 'Empty'
 		ELSE '' END AS kind,
 	pg_get_userbyid(owner) AS owner,
-	coalesce(obj_description(o.oid, 'table'), '') AS comment
-FROM table o
+	coalesce(description,'') AS comment
+FROM table o LEFT JOIN pg_description d ON (d.objoid = o.oid AND d.classoid = 'table'::regclass AND d.objsubid = 0)
 
 ORDER BY o.oid;`)).WillReturnRows(emptyRows)
 			params.ACLField = "acl"
@@ -123,8 +122,8 @@ ORDER BY o.oid;`)).WillReturnRows(emptyRows)
 	'' AS privileges,
 	'' AS kind,
 	pg_get_userbyid(owner) AS owner,
-	coalesce(shobj_description(o.oid, 'table'), '') AS comment
-FROM table o
+	coalesce(description,'') AS comment
+FROM table o LEFT JOIN pg_shdescription d ON (d.objoid = o.oid AND d.classoid = 'table'::regclass)
 
 ORDER BY o.oid;`)).WillReturnRows(emptyRows)
 			params.Shared = true
@@ -162,24 +161,24 @@ ORDER BY o.oid;`)).WillReturnRows(emptyRows)
 		It("returns comment for object with default params", func() {
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT
 	o.oid AS oid,
-	coalesce(obj_description(o.oid, 'table'), '') AS comment
-FROM table o;`)).WillReturnRows(emptyRows)
+	coalesce(description,'') AS comment
+FROM table o JOIN pg_description d ON (d.objoid = oid AND d.classoid = 'table'::regclass AND d.objsubid = 0);`)).WillReturnRows(emptyRows)
 			backup.GetCommentsForObjectType(connection, params)
 		})
 		It("returns comment for object with different comment table", func() {
 			params.CommentTable = "comment_table"
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT
 	o.oid AS oid,
-	coalesce(obj_description(o.oid, 'comment_table'), '') AS comment
-FROM table o;`)).WillReturnRows(emptyRows)
+	coalesce(description,'') AS comment
+FROM table o JOIN pg_description d ON (d.objoid = oid AND d.classoid = 'comment_table'::regclass AND d.objsubid = 0);`)).WillReturnRows(emptyRows)
 			backup.GetCommentsForObjectType(connection, params)
 		})
 		It("returns comment for a shared object", func() {
 			params.Shared = true
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT
 	o.oid AS oid,
-	coalesce(shobj_description(o.oid, 'table'), '') AS comment
-FROM table o;`)).WillReturnRows(emptyRows)
+	coalesce(description,'') AS comment
+FROM table o JOIN pg_shdescription d ON (d.objoid = oid AND d.classoid = 'table'::regclass);`)).WillReturnRows(emptyRows)
 			backup.GetCommentsForObjectType(connection, params)
 		})
 		It("returns comments for multiple objects", func() {
