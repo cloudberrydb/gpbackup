@@ -109,8 +109,7 @@ Database Name: %s
 Command Line: %s
 Backup Type: %s
 Backup Status: %s
-%s
-Database Size: %s`
+%s%s`
 
 	gpbackupCommandLine := strings.Join(os.Args, " ")
 	backupStatus := "Success"
@@ -118,8 +117,12 @@ Database Size: %s`
 		backupStatus = "Failure"
 		errMsg = fmt.Sprintf("Backup Error: %s\n", errMsg)
 	}
+	dbSizeStr := ""
+	if report.DatabaseSize != "" {
+		dbSizeStr = fmt.Sprintf("\nDatabase Size: %s", report.DatabaseSize)
+	}
 	MustPrintf(reportFile, reportFileTemplate, timestamp, report.DatabaseVersion, report.BackupVersion, report.DatabaseName,
-		gpbackupCommandLine, report.BackupType, backupStatus, errMsg, report.DatabaseSize)
+		gpbackupCommandLine, report.BackupType, backupStatus, errMsg, dbSizeStr)
 
 	objectStr := "\nCount of Database Objects in Backup:\n"
 	objectSlice := make([]string, 0)

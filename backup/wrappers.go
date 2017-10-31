@@ -43,8 +43,13 @@ func InitializeBackupReport() {
 		DatabaseVersion: connection.Version.VersionString,
 		BackupVersion:   version,
 	}
+	dbSize := ""
+	if !*metadataOnly {
+		dbSize = connection.GetDBSize()
+	}
+
 	backupReport = &utils.Report{
-		DatabaseSize: connection.GetDBSize(),
+		DatabaseSize: dbSize,
 		BackupConfig: config,
 	}
 	utils.InitializeCompressionParameters(!*noCompression)

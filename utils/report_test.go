@@ -35,13 +35,14 @@ var _ = Describe("utils/report tests", func() {
 			DatabaseName:    "testdb",
 			DatabaseVersion: "5.0.0 build test",
 		}
-		backupReport := &utils.Report{
-			BackupType:   "Unfiltered Full Backup",
-			DatabaseSize: "42 MB",
-			BackupConfig: config,
-		}
+		backupReport := &utils.Report{}
 		objectCounts := map[string]int{"tables": 42, "sequences": 1, "types": 1000}
 		BeforeEach(func() {
+			backupReport = &utils.Report{
+				BackupType:   "Unfiltered Full Backup",
+				DatabaseSize: "42 MB",
+				BackupConfig: config,
+			}
 			utils.System.OpenFileWrite = func(name string, flag int, perm os.FileMode) (io.WriteCloser, error) {
 				return buffer, nil
 			}
@@ -81,6 +82,25 @@ Backup Status: Failure
 Backup Error: Cannot access /tmp/backups: Permission denied
 
 Database Size: 42 MB
+Count of Database Objects in Backup:
+sequences                    1
+tables                       42
+types                        1000`))
+		})
+		It("writes a report without database size information", func() {
+			backupReport.DatabaseSize = ""
+			backupReport.WriteReportFile("filename", timestamp, objectCounts, "")
+			Expect(buffer).To(gbytes.Say(`Greenplum Database Backup Report
+
+Timestamp Key: 20170101010101
+GPDB Version: 5\.0\.0 build test
+gpbackup Version: 0\.1\.0
+
+Database Name: testdb
+Command Line: .*
+Backup Type: Unfiltered Full Backup
+Backup Status: Success
+
 Count of Database Objects in Backup:
 sequences                    1
 tables                       42
