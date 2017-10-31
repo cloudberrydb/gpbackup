@@ -42,10 +42,10 @@ lint :
 		gometalinter --config=gometalinter.config ./...
 
 unit :
-		ginkgo -r -randomizeSuites -randomizeAllSpecs backup restore utils testutils 2>&1
+		ginkgo -r -randomizeSuites -noisySkippings=false -randomizeAllSpecs backup restore utils testutils 2>&1
 
 integration :
-		ginkgo -r -randomizeSuites -randomizeAllSpecs integration 2>&1
+		ginkgo -r -randomizeSuites -noisySkippings=false -randomizeAllSpecs integration 2>&1
 
 test : lint unit integration
 
