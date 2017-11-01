@@ -42,7 +42,7 @@ var ( // Command-line flags
 
 // We define and initialize flags separately to avoid import conflicts in tests
 func initializeFlags() {
-	backupDir = flag.String("backupdir", "", "The directory to which all backup files will be written")
+	backupDir = flag.String("backupdir", "", "The absolute path of the directory to which all backup files will be written")
 	backupGlobals = flag.Bool("globals", false, "Back up global metadata")
 	dataOnly = flag.Bool("data-only", false, "Only back up data, do not back up metadata")
 	dbname = flag.String("dbname", "", "The database to be backed up")
@@ -113,6 +113,7 @@ func DoFlagValidation() {
 		os.Exit(0)
 	}
 	ValidateFlagCombinations()
+	utils.ValidateBackupDir(*backupDir)
 }
 
 // This function handles setup that must be done after parsing flags.

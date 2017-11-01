@@ -33,6 +33,17 @@ var _ = Describe("utils/flag tests", func() {
 			Expect(isValid).To(BeFalse())
 		})
 	})
+	Context("ValidateBackupDir", func() {
+		It("does not panic when given an absolute path", func() {
+			path := "/this/is/an/absolute/path"
+			utils.ValidateBackupDir(path)
+		})
+		It("panics when given a relative path", func() {
+			path := "this/is/a/relative/path"
+			defer testutils.ShouldPanicWithMessage("Absolute path required for backupdir")
+			utils.ValidateBackupDir(path)
+		})
+	})
 	Context("Flag parsing functions ", func() {
 		BeforeEach(func() {
 			flag.CommandLine = flag.NewFlagSet("", flag.ContinueOnError)

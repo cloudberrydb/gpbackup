@@ -35,7 +35,7 @@ var ( // Command-line flags
 
 // We define and initialize flags separately to avoid import conflicts in tests
 func initializeFlags() {
-	backupDir = flag.String("backupdir", "", "The directory in which the backup files to be restored are located")
+	backupDir = flag.String("backupdir", "", "The absolute path of the directory in which the backup files to be restored are located")
 	createdb = flag.Bool("createdb", false, "Create the database before metadata restore")
 	debug = flag.Bool("debug", false, "Print verbose and debug log messages")
 	printVersion = flag.Bool("version", false, "Print version number and exit")
@@ -76,6 +76,7 @@ func DoValidation() {
 		os.Exit(0)
 	}
 	ValidateFlagCombinations()
+	utils.ValidateBackupDir(*backupDir)
 	if !utils.IsValidTimestamp(*timestamp) {
 		logger.Fatal(errors.Errorf("Timestamp %s is invalid.  Timestamps must be in the format YYYYMMDDHHMMSS.", *timestamp), "")
 	}
