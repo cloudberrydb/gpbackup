@@ -35,21 +35,34 @@ func ValidateFilterTables(connection *utils.DBConn, tableList utils.ArrayFlags) 
 		quotedTablesStr := utils.SliceToQuotedString(tableList)
 		query := fmt.Sprintf(`
 SELECT
-	n.nspname || '.' || c.relname AS string
+	c.oid,
+	n.nspname || '.' || c.relname AS name
 FROM pg_namespace n
 JOIN pg_class c ON n.oid = c.relnamespace
 WHERE quote_ident(n.nspname) || '.' || quote_ident(c.relname) IN (%s)`, quotedTablesStr)
-		resultTables := SelectStringSlice(connection, query)
-		if len(resultTables) < len(tableList) {
-			tableMap := make(map[string]bool)
-			for _, table := range resultTables {
-				tableMap[table] = true
-			}
+		resultTables := make([]struct {
+			Oid  uint32
+			Name string
+		}, 0)
+		err := connection.Select(&resultTables, query)
+		utils.CheckError(err)
+		tableMap := make(map[string]uint32)
+		for _, table := range resultTables {
+			tableMap[table.Name] = table.Oid
+		}
 
-			for _, table := range tableList {
-				if _, ok := tableMap[table]; !ok {
-					logger.Fatal(nil, "Table %s does not exist", table)
-				}
+		partTableMap := GetPartitionTableMap(connection)
+		for _, table := range tableList {
+			tableOid := tableMap[table]
+			if tableOid == 0 {
+				logger.Fatal(nil, "Table %s does not exist", table)
+			}
+			partType, inMap := partTableMap[tableOid]
+			if partType == "i" {
+				logger.Fatal(nil, "Cannot filter on %s, as it is an intermediate partition table.  Only parent partition tables and leaf partition tables may be specified.", table)
+			}
+			if !*leafPartitionData && inMap && partType != "p" {
+				logger.Fatal(nil, "Cannot filter on %s, as it is a partition table.  Either filter on its parent table or set the --leaf-partition-data flag.", table)
 			}
 		}
 	}

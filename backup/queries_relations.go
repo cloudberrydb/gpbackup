@@ -23,10 +23,41 @@ func tableAndSchemaFilterClause() string {
 	return filterClause
 }
 
-func GetAllUserTables(connection *utils.DBConn, retrieveLeaves bool) []Relation {
+func GetAllUserTables(connection *utils.DBConn) []Relation {
 	// This query is adapted from the getTables() function in pg_dump.c.
 	query := ""
-	if retrieveLeaves {
+	if *leafPartitionData {
+		filterClause := ""
+		if len(includeTables) == 0 && len(excludeTables) == 0 {
+			filterClause = SchemaFilterClause("n")
+		} else if len(includeTables) > 0 {
+			/*
+			 * In this case, we need to retrieve the parent tables of any partition tables in
+			 * the filter, so that we can print the metadata for the parent tables, so we include
+			 * tables in the list of include tables OR parent tables of tables in the list.
+			 */
+			includeList := utils.SliceToQuotedString(includeTables)
+			filterClause = fmt.Sprintf(`
+%s
+AND (
+	quote_ident(n.nspname) || '.' || quote_ident(c.relname) IN (%s)
+	OR (n.nspname, c.relname) IN (
+		SELECT
+			n.nspname AS parentschema,
+			c.relname AS parentname
+		FROM pg_partition p
+		JOIN pg_partition_rule r ON p.oid = r.paroid
+		JOIN pg_class c ON p.parrelid = c.oid
+		JOIN pg_class c2 ON c2.oid = r.parchildrelid
+		JOIN pg_namespace n2  ON c2.relnamespace = n2.oid
+		WHERE p.paristemplate = false
+		AND quote_ident(n2.nspname) || '.' || quote_ident(c2.relname) IN (%s)
+	)
+)`, SchemaFilterClause("n"), includeList, includeList)
+		} else {
+			filterClause = tableAndSchemaFilterClause()
+		}
+
 		query = fmt.Sprintf(`
 SELECT
 	n.oid AS schemaoid,
@@ -34,11 +65,11 @@ SELECT
 	quote_ident(n.nspname) AS schema,
 	quote_ident(c.relname) AS name
 FROM pg_class c
-LEFT JOIN pg_namespace n
+JOIN pg_namespace n
 	ON c.relnamespace = n.oid
 WHERE %s
 AND relkind = 'r'
-ORDER BY n.nspname, c.relname;`, tableAndSchemaFilterClause())
+ORDER BY n.nspname, c.relname;`, filterClause)
 	} else {
 		query = fmt.Sprintf(`
 SELECT
@@ -66,7 +97,6 @@ ORDER BY n.nspname, c.relname;`, tableAndSchemaFilterClause())
 	}
 
 	results := make([]Relation, 0)
-
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results

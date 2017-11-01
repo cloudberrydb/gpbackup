@@ -133,7 +133,7 @@ func RetrieveTypes(objectCounts map[string]int) ([]Type, MetadataMap, map[uint32
 }
 
 func RetrieveAndLockTables(objectCounts map[string]int) ([]Relation, map[uint32]TableDefinition) {
-	tables := GetAllUserTables(connection, *leafPartitionData)
+	tables := GetAllUserTables(connection)
 	LockTables(connection, tables)
 	objectCounts["Tables"] = len(tables)
 	tableDefs := ConstructDefinitionsForTables(connection, tables)

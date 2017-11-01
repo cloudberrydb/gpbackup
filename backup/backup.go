@@ -98,6 +98,10 @@ func SetIncludeTables(tables []string) {
 	includeTables = tables
 }
 
+func SetLeafPartitionData(which bool) {
+	leafPartitionData = &which
+}
+
 func SetTOC(toc *utils.TOC) {
 	globalTOC = toc
 }

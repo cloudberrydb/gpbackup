@@ -18,7 +18,6 @@ var _ = Describe("backup/validate tests", func() {
 			backup.ValidateFilterSchemas(connection, filterList)
 		})
 		It("passes if single schema is present in database", func() {
-			connection, mock = testutils.CreateAndConnectMockDB()
 			single_schema_row := sqlmock.NewRows([]string{"string"}).
 				AddRow("schema1")
 			mock.ExpectQuery("SELECT (.*)").WillReturnRows(single_schema_row)
@@ -26,7 +25,6 @@ var _ = Describe("backup/validate tests", func() {
 			backup.ValidateFilterSchemas(connection, filterList)
 		})
 		It("passes if multiple schemas are present in database", func() {
-			connection, mock = testutils.CreateAndConnectMockDB()
 			two_schema_rows := sqlmock.NewRows([]string{"string"}).
 				AddRow("schema1").AddRow("schema2")
 			mock.ExpectQuery("SELECT (.*)").WillReturnRows(two_schema_rows)
@@ -34,7 +32,6 @@ var _ = Describe("backup/validate tests", func() {
 			backup.ValidateFilterSchemas(connection, filterList)
 		})
 		It("panics if schema is not present in database", func() {
-			connection, mock = testutils.CreateAndConnectMockDB()
 			two_schema_rows := sqlmock.NewRows([]string{"string"}).
 				AddRow("schema1")
 			mock.ExpectQuery("SELECT (.*)").WillReturnRows(two_schema_rows)
@@ -44,33 +41,92 @@ var _ = Describe("backup/validate tests", func() {
 		})
 	})
 	Describe("ValidateFilterTables", func() {
-		It("passes if there are no filter tables", func() {
-			backup.ValidateFilterTables(connection, filterList)
+		var tableRows, partitionTables *sqlmock.Rows
+		BeforeEach(func() {
+			tableRows = sqlmock.NewRows([]string{"oid", "name"})
+			partitionTables = sqlmock.NewRows([]string{"oid", "value"})
 		})
-		It("passes if single table is present in database", func() {
-			connection, mock = testutils.CreateAndConnectMockDB()
-			single_table_row := sqlmock.NewRows([]string{"string"}).
-				AddRow("public.table1")
-			mock.ExpectQuery("SELECT (.*)").WillReturnRows(single_table_row)
-			filterList = []string{"public.table1"}
-			backup.ValidateFilterTables(connection, filterList)
+		Context("Non-partition tables", func() {
+			BeforeEach(func() {
+				backup.SetLeafPartitionData(false)
+			})
+			It("passes if there are no filter tables", func() {
+				backup.ValidateFilterTables(connection, filterList)
+			})
+			It("passes if single table is present in database", func() {
+				tableRows.AddRow("1", "public.table1")
+				mock.ExpectQuery("SELECT (.*)").WillReturnRows(tableRows)
+				mock.ExpectQuery("SELECT (.*)").WillReturnRows(partitionTables)
+				filterList = []string{"public.table1"}
+				backup.ValidateFilterTables(connection, filterList)
+			})
+			It("passes if multiple tables are present in database", func() {
+				tableRows.AddRow("1", "public.table1").AddRow("2", "public.table2")
+				mock.ExpectQuery("SELECT (.*)").WillReturnRows(tableRows)
+				mock.ExpectQuery("SELECT (.*)").WillReturnRows(partitionTables)
+				filterList = []string{"public.table1", "public.table2"}
+				backup.ValidateFilterTables(connection, filterList)
+			})
+			It("panics if table is not present in database", func() {
+				tableRows.AddRow("1", "public.table1")
+				mock.ExpectQuery("SELECT (.*)").WillReturnRows(tableRows)
+				mock.ExpectQuery("SELECT (.*)").WillReturnRows(partitionTables)
+				filterList = []string{"public.table1", "public.table2"}
+				defer testutils.ShouldPanicWithMessage("Table public.table2 does not exist")
+				backup.ValidateFilterTables(connection, filterList)
+			})
 		})
-		It("passes if multiple tables are present in database", func() {
-			connection, mock = testutils.CreateAndConnectMockDB()
-			two_table_rows := sqlmock.NewRows([]string{"string"}).
-				AddRow("public.table1").AddRow("public.table2")
-			mock.ExpectQuery("SELECT (.*)").WillReturnRows(two_table_rows)
-			filterList = []string{"public.table1", "public.table2"}
-			backup.ValidateFilterTables(connection, filterList)
-		})
-		It("panics if table is not present in database", func() {
-			connection, mock = testutils.CreateAndConnectMockDB()
-			two_table_rows := sqlmock.NewRows([]string{"string"}).
-				AddRow("public.table1")
-			mock.ExpectQuery("SELECT (.*)").WillReturnRows(two_table_rows)
-			filterList = []string{"public.table1", "public.table2"}
-			defer testutils.ShouldPanicWithMessage("Table public.table2 does not exist")
-			backup.ValidateFilterTables(connection, filterList)
+		Context("Partition tables", func() {
+			BeforeEach(func() {
+				backup.SetLeafPartitionData(false)
+			})
+			It("passes if given a parent partition table", func() {
+				tableRows.AddRow("1", "public.table1")
+				mock.ExpectQuery("SELECT (.*)").WillReturnRows(tableRows)
+				partitionTables.AddRow("1", "p")
+				mock.ExpectQuery("SELECT (.*)").WillReturnRows(partitionTables)
+				filterList = []string{"public.table1"}
+				backup.ValidateFilterTables(connection, filterList)
+			})
+			It("passes if given a leaf partition table and --leaf-partition-data is set", func() {
+				backup.SetLeafPartitionData(true)
+				defer backup.SetLeafPartitionData(false)
+				tableRows.AddRow("1", "public.table1")
+				mock.ExpectQuery("SELECT (.*)").WillReturnRows(tableRows)
+				partitionTables.AddRow("1", "l")
+				mock.ExpectQuery("SELECT (.*)").WillReturnRows(partitionTables)
+				filterList = []string{"public.table1"}
+				backup.ValidateFilterTables(connection, filterList)
+			})
+			It("panics if given a leaf partition table and --leaf-partition-data is not set", func() {
+				tableRows.AddRow("1", "public.table1")
+				mock.ExpectQuery("SELECT (.*)").WillReturnRows(tableRows)
+				partitionTables.AddRow("1", "l")
+				mock.ExpectQuery("SELECT (.*)").WillReturnRows(partitionTables)
+				filterList = []string{"public.table1"}
+				defer testutils.ShouldPanicWithMessage("Cannot filter on public.table1, as it is a partition table.  Either filter on its parent table or set the --leaf-partition-data flag.")
+				backup.ValidateFilterTables(connection, filterList)
+			})
+			It("panics if given an intermediate partition table and --leaf-partition-data is set", func() {
+				backup.SetLeafPartitionData(true)
+				defer backup.SetLeafPartitionData(false)
+				tableRows.AddRow("1", "public.table1")
+				mock.ExpectQuery("SELECT (.*)").WillReturnRows(tableRows)
+				partitionTables.AddRow("1", "i")
+				mock.ExpectQuery("SELECT (.*)").WillReturnRows(partitionTables)
+				filterList = []string{"public.table1"}
+				defer testutils.ShouldPanicWithMessage("Cannot filter on public.table1, as it is an intermediate partition table.  Only parent partition tables and leaf partition tables may be specified.")
+				backup.ValidateFilterTables(connection, filterList)
+			})
+			It("panics if given an intermediate partition table and --leaf-partition-data is not set", func() {
+				tableRows.AddRow("1", "public.table1")
+				mock.ExpectQuery("SELECT (.*)").WillReturnRows(tableRows)
+				partitionTables.AddRow("1", "i")
+				mock.ExpectQuery("SELECT (.*)").WillReturnRows(partitionTables)
+				filterList = []string{"public.table1"}
+				defer testutils.ShouldPanicWithMessage("Cannot filter on public.table1, as it is an intermediate partition table.  Only parent partition tables and leaf partition tables may be specified.")
+				backup.ValidateFilterTables(connection, filterList)
+			})
 		})
 	})
 })

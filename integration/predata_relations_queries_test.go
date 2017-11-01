@@ -12,6 +12,9 @@ import (
 
 var _ = Describe("backup integration tests", func() {
 	Describe("GetAllUserTables", func() {
+		BeforeEach(func() {
+			backup.SetLeafPartitionData(false)
+		})
 		It("returns user table information for basic heap tables", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE foo(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE foo")
@@ -19,7 +22,7 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema CASCADE")
 			testutils.AssertQueryRuns(connection, "CREATE TABLE testschema.testtable(t text)")
 
-			tables := backup.GetAllUserTables(connection, false)
+			tables := backup.GetAllUserTables(connection)
 
 			tableFoo := backup.BasicRelation("public", "foo")
 			tableTestTable := backup.BasicRelation("testschema", "testtable")
@@ -39,7 +42,7 @@ PARTITION BY LIST (gender)
 			testutils.AssertQueryRuns(connection, createStmt)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE rank")
 
-			tables := backup.GetAllUserTables(connection, false)
+			tables := backup.GetAllUserTables(connection)
 
 			tableRank := backup.BasicRelation("public", "rank")
 
@@ -47,6 +50,7 @@ PARTITION BY LIST (gender)
 			testutils.ExpectStructsToMatchExcluding(&tableRank, &tables[0], "SchemaOid", "Oid")
 		})
 		It("returns both parent partition tables and leaf tables for partition tables if the leafPartitionData flag is set", func() {
+			backup.SetLeafPartitionData(true)
 			createStmt := `CREATE TABLE rank (id int, rank int, year int, gender
 char(1), count int )
 DISTRIBUTED BY (id)
@@ -57,7 +61,7 @@ PARTITION BY LIST (gender)
 			testutils.AssertQueryRuns(connection, createStmt)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE rank")
 
-			tables := backup.GetAllUserTables(connection, true)
+			tables := backup.GetAllUserTables(connection)
 
 			expectedTableNames := []string{"public.rank", "public.rank_1_prt_boys", "public.rank_1_prt_girls", "public.rank_1_prt_other"}
 			tableNames := make([]string, 0)
@@ -69,6 +73,32 @@ PARTITION BY LIST (gender)
 			Expect(len(tables)).To(Equal(4))
 			Expect(tableNames).To(Equal(expectedTableNames))
 		})
+		It("returns parent partition tables for leaf tables for partition tables if the leafPartitionData flag is set and the filter includes a leaf table", func() {
+			backup.SetLeafPartitionData(true)
+			backup.SetIncludeTables([]string{"public.rank_1_prt_girls"})
+			defer backup.SetIncludeTables([]string{})
+			createStmt := `CREATE TABLE rank (id int, rank int, year int, gender
+char(1), count int )
+DISTRIBUTED BY (id)
+PARTITION BY LIST (gender)
+( PARTITION girls VALUES ('F'),
+  PARTITION boys VALUES ('M'),
+  DEFAULT PARTITION other );`
+			testutils.AssertQueryRuns(connection, createStmt)
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE rank")
+
+			tables := backup.GetAllUserTables(connection)
+
+			expectedTableNames := []string{"public.rank", "public.rank_1_prt_girls"}
+			tableNames := make([]string, 0)
+			for _, table := range tables {
+				tableNames = append(tableNames, table.FQN())
+			}
+			sort.Strings(tableNames)
+
+			Expect(len(tables)).To(Equal(2))
+			Expect(tableNames).To(Equal(expectedTableNames))
+		})
 		It("returns user table information for table in specific schema", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE foo(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE foo")
@@ -78,7 +108,7 @@ PARTITION BY LIST (gender)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE testschema.foo")
 
 			backup.SetIncludeSchemas([]string{"testschema"})
-			tables := backup.GetAllUserTables(connection, false)
+			tables := backup.GetAllUserTables(connection)
 
 			tableFoo := backup.BasicRelation("testschema", "foo")
 
@@ -94,7 +124,7 @@ PARTITION BY LIST (gender)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE testschema.foo")
 
 			backup.SetIncludeTables([]string{"testschema.foo"})
-			tables := backup.GetAllUserTables(connection, false)
+			tables := backup.GetAllUserTables(connection)
 
 			tableFoo := backup.BasicRelation("testschema", "foo")
 
@@ -110,7 +140,7 @@ PARTITION BY LIST (gender)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE testschema.foo")
 
 			backup.SetExcludeTables([]string{"testschema.foo"})
-			tables := backup.GetAllUserTables(connection, false)
+			tables := backup.GetAllUserTables(connection)
 
 			tableFoo := backup.BasicRelation("public", "foo")
 
@@ -129,7 +159,7 @@ PARTITION BY LIST (gender)
 
 			backup.SetIncludeSchemas([]string{"testschema"})
 			backup.SetExcludeTables([]string{"testschema.foo"})
-			tables := backup.GetAllUserTables(connection, false)
+			tables := backup.GetAllUserTables(connection)
 
 			tableFoo := backup.BasicRelation("testschema", "bar")
 
