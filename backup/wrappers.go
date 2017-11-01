@@ -68,6 +68,35 @@ func InitializeFilterLists() {
 }
 
 /*
+ * When leafPartitionData is set, for partition tables we want to print metadata
+ * for the parent tables and data for the leaf tables, so we split them into
+ * separate lists.  Intermediate tables are skipped, and non-partition tables are
+ * backed up normally (both metadata and data).
+ *
+ * When the flag is not set, we want to back up both metadata and data for all
+ * tables, so both returned arrays contain all tables.
+ */
+func SplitTablesByPartitionType(tables []Relation, tableDefs map[uint32]TableDefinition) ([]Relation, []Relation) {
+	metadataTables := make([]Relation, 0)
+	dataTables := make([]Relation, 0)
+	if *leafPartitionData {
+		for _, table := range tables {
+			partType := tableDefs[table.Oid].PartitionType
+			if partType != "l" && partType != "i" {
+				metadataTables = append(metadataTables, table)
+			}
+			if partType != "p" && partType != "i" {
+				dataTables = append(dataTables, table)
+			}
+		}
+	} else {
+		metadataTables = tables
+		dataTables = tables
+	}
+	return metadataTables, dataTables
+}
+
+/*
  * Metadata retrieval wrapper functions
  */
 
@@ -104,7 +133,7 @@ func RetrieveTypes(objectCounts map[string]int) ([]Type, MetadataMap, map[uint32
 }
 
 func RetrieveAndLockTables(objectCounts map[string]int) ([]Relation, map[uint32]TableDefinition) {
-	tables := GetAllUserTables(connection)
+	tables := GetAllUserTables(connection, *leafPartitionData)
 	LockTables(connection, tables)
 	objectCounts["Tables"] = len(tables)
 	tableDefs := ConstructDefinitionsForTables(connection, tables)

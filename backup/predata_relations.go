@@ -93,6 +93,7 @@ type TableDefinition struct {
 	ColumnDefs      []ColumnDefinition
 	IsExternal      bool
 	ExtTableDef     ExternalTableDefinition
+	PartitionType   string // "p" for parent, "l" for leaf, "i" for intermediate, "n" for none of the above
 }
 
 /*
@@ -115,11 +116,13 @@ func ConstructDefinitionsForTables(connection *utils.DBConn, tables []Relation) 
 	tablespaceNames := GetTablespaceNames(connection)
 	logger.Verbose("Retrieving external table information")
 	extTableDefs := GetExternalTableDefinitions(connection)
+	logger.Verbose("Retrieving partition table information")
+	partTableMap := GetPartitionTableMap(connection)
 
 	logger.Verbose("Constructing table definition map")
 	for _, table := range tables {
 		oid := table.Oid
-		tableDefinitionMap[oid] = TableDefinition{
+		tableDef := TableDefinition{
 			distributionPolicies[oid],
 			partitionDefs[oid],
 			partTemplateDefs[oid],
@@ -128,7 +131,12 @@ func ConstructDefinitionsForTables(connection *utils.DBConn, tables []Relation) 
 			columnDefs[oid],
 			(extTableDefs[oid].Oid != 0),
 			extTableDefs[oid],
+			"n",
 		}
+		if partTableMap[oid] != "" {
+			tableDef.PartitionType = partTableMap[oid]
+		}
+		tableDefinitionMap[oid] = tableDef
 	}
 	return tableDefinitionMap
 }

@@ -1,6 +1,8 @@
 package integration
 
 import (
+	"sort"
+
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
 
@@ -17,7 +19,7 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema CASCADE")
 			testutils.AssertQueryRuns(connection, "CREATE TABLE testschema.testtable(t text)")
 
-			tables := backup.GetAllUserTables(connection)
+			tables := backup.GetAllUserTables(connection, false)
 
 			tableFoo := backup.BasicRelation("public", "foo")
 			tableTestTable := backup.BasicRelation("testschema", "testtable")
@@ -26,7 +28,7 @@ var _ = Describe("backup integration tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "Oid")
 			testutils.ExpectStructsToMatchExcluding(&tableTestTable, &tables[1], "SchemaOid", "Oid")
 		})
-		It("only returns the parent partition table for partition tables", func() {
+		It("returns only parent partition tables if the leafPartitionData flag is not set", func() {
 			createStmt := `CREATE TABLE rank (id int, rank int, year int, gender
 char(1), count int )
 DISTRIBUTED BY (id)
@@ -37,12 +39,35 @@ PARTITION BY LIST (gender)
 			testutils.AssertQueryRuns(connection, createStmt)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE rank")
 
-			tables := backup.GetAllUserTables(connection)
+			tables := backup.GetAllUserTables(connection, false)
 
 			tableRank := backup.BasicRelation("public", "rank")
 
 			Expect(len(tables)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&tableRank, &tables[0], "SchemaOid", "Oid")
+		})
+		It("returns both parent partition tables and leaf tables for partition tables if the leafPartitionData flag is set", func() {
+			createStmt := `CREATE TABLE rank (id int, rank int, year int, gender
+char(1), count int )
+DISTRIBUTED BY (id)
+PARTITION BY LIST (gender)
+( PARTITION girls VALUES ('F'),
+  PARTITION boys VALUES ('M'),
+  DEFAULT PARTITION other );`
+			testutils.AssertQueryRuns(connection, createStmt)
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE rank")
+
+			tables := backup.GetAllUserTables(connection, true)
+
+			expectedTableNames := []string{"public.rank", "public.rank_1_prt_boys", "public.rank_1_prt_girls", "public.rank_1_prt_other"}
+			tableNames := make([]string, 0)
+			for _, table := range tables {
+				tableNames = append(tableNames, table.FQN())
+			}
+			sort.Strings(tableNames)
+
+			Expect(len(tables)).To(Equal(4))
+			Expect(tableNames).To(Equal(expectedTableNames))
 		})
 		It("returns user table information for table in specific schema", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE foo(i int)")
@@ -53,7 +78,7 @@ PARTITION BY LIST (gender)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE testschema.foo")
 
 			backup.SetIncludeSchemas([]string{"testschema"})
-			tables := backup.GetAllUserTables(connection)
+			tables := backup.GetAllUserTables(connection, false)
 
 			tableFoo := backup.BasicRelation("testschema", "foo")
 
@@ -69,7 +94,7 @@ PARTITION BY LIST (gender)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE testschema.foo")
 
 			backup.SetIncludeTables([]string{"testschema.foo"})
-			tables := backup.GetAllUserTables(connection)
+			tables := backup.GetAllUserTables(connection, false)
 
 			tableFoo := backup.BasicRelation("testschema", "foo")
 
@@ -85,7 +110,7 @@ PARTITION BY LIST (gender)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE testschema.foo")
 
 			backup.SetExcludeTables([]string{"testschema.foo"})
-			tables := backup.GetAllUserTables(connection)
+			tables := backup.GetAllUserTables(connection, false)
 
 			tableFoo := backup.BasicRelation("public", "foo")
 
@@ -104,12 +129,58 @@ PARTITION BY LIST (gender)
 
 			backup.SetIncludeSchemas([]string{"testschema"})
 			backup.SetExcludeTables([]string{"testschema.foo"})
-			tables := backup.GetAllUserTables(connection)
+			tables := backup.GetAllUserTables(connection, false)
 
 			tableFoo := backup.BasicRelation("testschema", "bar")
 
 			Expect(len(tables)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "Oid")
+		})
+	})
+	Describe("GetPartitionTableMap", func() {
+		It("correctly maps oids to parent or leaf table types", func() {
+			createStmt := `CREATE TABLE summer_sales (id int, year int, month int)
+DISTRIBUTED BY (id)
+PARTITION BY RANGE (year)
+    SUBPARTITION BY RANGE (month)
+       SUBPARTITION TEMPLATE (
+        START (6) END (8) EVERY (1),
+        DEFAULT SUBPARTITION other_months )
+( START (2015) END (2017) EVERY (1),
+  DEFAULT PARTITION outlying_years );
+`
+			testutils.AssertQueryRuns(connection, createStmt)
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE summer_sales")
+
+			parent := testutils.OidFromObjectName(connection, "public", "summer_sales", backup.TYPE_RELATION)
+			intermediate1 := testutils.OidFromObjectName(connection, "public", "summer_sales_1_prt_outlying_years", backup.TYPE_RELATION)
+			leaf11 := testutils.OidFromObjectName(connection, "public", "summer_sales_1_prt_outlying_years_2_prt_2", backup.TYPE_RELATION)
+			leaf12 := testutils.OidFromObjectName(connection, "public", "summer_sales_1_prt_outlying_years_2_prt_3", backup.TYPE_RELATION)
+			leaf13 := testutils.OidFromObjectName(connection, "public", "summer_sales_1_prt_outlying_years_2_prt_other_months", backup.TYPE_RELATION)
+			intermediate2 := testutils.OidFromObjectName(connection, "public", "summer_sales_1_prt_2", backup.TYPE_RELATION)
+			leaf21 := testutils.OidFromObjectName(connection, "public", "summer_sales_1_prt_2_2_prt_2", backup.TYPE_RELATION)
+			leaf22 := testutils.OidFromObjectName(connection, "public", "summer_sales_1_prt_2_2_prt_3", backup.TYPE_RELATION)
+			leaf23 := testutils.OidFromObjectName(connection, "public", "summer_sales_1_prt_2_2_prt_other_months", backup.TYPE_RELATION)
+			intermediate3 := testutils.OidFromObjectName(connection, "public", "summer_sales_1_prt_3", backup.TYPE_RELATION)
+			leaf31 := testutils.OidFromObjectName(connection, "public", "summer_sales_1_prt_3_2_prt_2", backup.TYPE_RELATION)
+			leaf32 := testutils.OidFromObjectName(connection, "public", "summer_sales_1_prt_3_2_prt_3", backup.TYPE_RELATION)
+			leaf33 := testutils.OidFromObjectName(connection, "public", "summer_sales_1_prt_3_2_prt_other_months", backup.TYPE_RELATION)
+			partTableMap := backup.GetPartitionTableMap(connection)
+
+			Expect(len(partTableMap)).To(Equal(13))
+			Expect(partTableMap[parent]).To(Equal("p"))
+			Expect(partTableMap[intermediate1]).To(Equal("i"))
+			Expect(partTableMap[intermediate2]).To(Equal("i"))
+			Expect(partTableMap[intermediate3]).To(Equal("i"))
+			Expect(partTableMap[leaf11]).To(Equal("l"))
+			Expect(partTableMap[leaf12]).To(Equal("l"))
+			Expect(partTableMap[leaf13]).To(Equal("l"))
+			Expect(partTableMap[leaf21]).To(Equal("l"))
+			Expect(partTableMap[leaf22]).To(Equal("l"))
+			Expect(partTableMap[leaf23]).To(Equal("l"))
+			Expect(partTableMap[leaf31]).To(Equal("l"))
+			Expect(partTableMap[leaf32]).To(Equal("l"))
+			Expect(partTableMap[leaf33]).To(Equal("l"))
 		})
 	})
 	Describe("GetColumnDefinitions", func() {

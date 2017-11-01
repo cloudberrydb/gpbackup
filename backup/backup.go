@@ -20,23 +20,24 @@ var (
 )
 
 var ( // Command-line flags
-	backupDir        *string
-	backupGlobals    *bool
-	dataOnly         *bool
-	dbname           *string
-	debug            *bool
-	excludeSchemas   utils.ArrayFlags
-	excludeTableFile *string
-	excludeTables    utils.ArrayFlags
-	includeSchemas   utils.ArrayFlags
-	includeTableFile *string
-	includeTables    utils.ArrayFlags
-	metadataOnly     *bool
-	noCompression    *bool
-	printVersion     *bool
-	quiet            *bool
-	verbose          *bool
-	withStats        *bool
+	backupDir         *string
+	backupGlobals     *bool
+	dataOnly          *bool
+	dbname            *string
+	debug             *bool
+	excludeSchemas    utils.ArrayFlags
+	excludeTableFile  *string
+	excludeTables     utils.ArrayFlags
+	includeSchemas    utils.ArrayFlags
+	includeTableFile  *string
+	includeTables     utils.ArrayFlags
+	leafPartitionData *bool
+	metadataOnly      *bool
+	noCompression     *bool
+	printVersion      *bool
+	quiet             *bool
+	verbose           *bool
+	withStats         *bool
 )
 
 // We define and initialize flags separately to avoid import conflicts in tests
@@ -50,6 +51,7 @@ func initializeFlags() {
 	excludeTableFile = flag.String("exclude-table-file", "", "A file containing a list of fully-qualified tables to be excluded from the backup")
 	flag.Var(&includeSchemas, "include-schema", "Back up only the specified schema(s). --include-schema can be specified multiple times.")
 	includeTableFile = flag.String("include-table-file", "", "A file containing a list of fully-qualified tables to be included in the backup")
+	leafPartitionData = flag.Bool("leaf-partition-data", false, "For partition tables, create one data file per leaf partition instead of one data file for the whole table")
 	metadataOnly = flag.Bool("metadata-only", false, "Only back up metadata, do not back up data")
 	noCompression = flag.Bool("no-compression", false, "Disable compression of data files")
 	printVersion = flag.Bool("version", false, "Print version number and exit")
@@ -152,18 +154,19 @@ func DoBackup() {
 
 	isTableFiltered := len(includeTables) > 0 || len(excludeTables) > 0
 
+	metadataTables, dataTables := SplitTablesByPartitionType(tables, tableDefs)
 	if !*dataOnly {
 		if isTableFiltered {
-			backupTablePredata(tables, tableDefs, objectCounts)
+			backupTablePredata(metadataTables, tableDefs, objectCounts)
 		} else {
 			backupGlobal(objectCounts)
-			backupPredata(tables, tableDefs, objectCounts)
+			backupPredata(metadataTables, tableDefs, objectCounts)
 			backupPostdata(objectCounts)
 		}
 	}
 
 	if !*metadataOnly {
-		backupData(tables, tableDefs)
+		backupData(dataTables, tableDefs)
 	}
 
 	if *withStats {

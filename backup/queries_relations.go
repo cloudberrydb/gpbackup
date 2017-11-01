@@ -23,9 +23,24 @@ func tableAndSchemaFilterClause() string {
 	return filterClause
 }
 
-func GetAllUserTables(connection *utils.DBConn) []Relation {
+func GetAllUserTables(connection *utils.DBConn, retrieveLeaves bool) []Relation {
 	// This query is adapted from the getTables() function in pg_dump.c.
-	query := fmt.Sprintf(`
+	query := ""
+	if retrieveLeaves {
+		query = fmt.Sprintf(`
+SELECT
+	n.oid AS schemaoid,
+	c.oid AS oid,
+	quote_ident(n.nspname) AS schema,
+	quote_ident(c.relname) AS name
+FROM pg_class c
+LEFT JOIN pg_namespace n
+	ON c.relnamespace = n.oid
+WHERE %s
+AND relkind = 'r'
+ORDER BY n.nspname, c.relname;`, tableAndSchemaFilterClause())
+	} else {
+		query = fmt.Sprintf(`
 SELECT
 	n.oid AS schemaoid,
 	c.oid AS oid,
@@ -48,12 +63,47 @@ JOIN pg_exttable e
 	ON p.parchildrelid = e.reloid
 WHERE e.reloid IS NULL)
 ORDER BY n.nspname, c.relname;`, tableAndSchemaFilterClause())
+	}
 
 	results := make([]Relation, 0)
 
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
 	return results
+}
+
+/*
+ * This returns a map of all parent partition tables and leaf partition tables;
+ * "p" indicates a parent table, "l" indicates a leaf table, and "i" indicates
+ * an intermediate table.
+ */
+func GetPartitionTableMap(connection *utils.DBConn) map[uint32]string {
+	query := `
+SELECT
+	pc.oid AS oid,
+	'p' AS value
+FROM pg_partition p
+JOIN pg_class pc
+	ON p.parrelid = pc.oid
+UNION
+SELECT
+	cc.oid AS oid,
+	CASE WHEN p.parlevel = levels.pl THEN 'l' ELSE 'i' END AS value
+FROM pg_partition p
+JOIN pg_partition_rule r
+	ON p.oid = r.paroid
+JOIN pg_class cc
+	ON r.parchildrelid = cc.oid
+JOIN (
+	SELECT
+		parrelid AS relid,
+		max(parlevel) AS pl
+	FROM pg_partition
+	GROUP BY parrelid
+) AS levels
+	ON p.parrelid = levels.relid;
+`
+	return SelectAsOidToStringMap(connection, query)
 }
 
 type ColumnDefinition struct {

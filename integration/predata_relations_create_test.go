@@ -65,7 +65,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 		BeforeEach(func() {
 			extTableEmpty = backup.ExternalTableDefinition{Oid: 0, Type: -2, Protocol: -2, Location: "", ExecLocation: "ALL_SEGMENTS", FormatType: "t", FormatOpts: "", Options: "", Command: "", RejectLimit: 0, RejectLimitType: "", ErrTable: "", Encoding: "UTF-8", Writable: false, URIs: nil}
 			testTable = backup.BasicRelation("public", "testtable")
-			tableDef = backup.TableDefinition{DistPolicy: "DISTRIBUTED RANDOMLY", ExtTableDef: extTableEmpty}
+			tableDef = backup.TableDefinition{DistPolicy: "DISTRIBUTED RANDOMLY", ExtTableDef: extTableEmpty, PartitionType: "n"}
 		})
 		AfterEach(func() {
 			testTable.DependsUpon = []string{}
@@ -124,6 +124,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			rowTwo := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "gender", NotNull: false, HasDefault: false, IsDropped: false, Type: "text", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: ""}
 			tableDef.PartDef = partitionDef
 			tableDef.ColumnDefs = []backup.ColumnDefinition{rowOne, rowTwo}
+			tableDef.PartitionType = "p"
 
 			backup.PrintRegularTableCreateStatement(backupfile, toc, testTable, tableDef)
 
@@ -138,6 +139,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			tableDef.PartDef = subpartitionDef
 			tableDef.PartTemplateDef = partTemplateDef
 			tableDef.ColumnDefs = []backup.ColumnDefinition{rowOne, rowTwo}
+			tableDef.PartitionType = "p"
 
 			backup.PrintRegularTableCreateStatement(backupfile, toc, testTable, tableDef)
 
@@ -212,7 +214,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			extTableEmpty = backup.ExternalTableDefinition{Oid: 0, Type: -2, Protocol: -2, Location: "", ExecLocation: "ALL_SEGMENTS", FormatType: "t", FormatOpts: "", Options: "", Command: "", RejectLimit: 0, RejectLimitType: "", ErrTable: "", Encoding: "UTF-8", Writable: false, URIs: nil}
 			testTable     = backup.BasicRelation("public", "testtable")
 			tableRow      = backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", NotNull: false, HasDefault: false, IsDropped: false, Type: "integer", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: ""}
-			tableDef      = backup.TableDefinition{DistPolicy: "DISTRIBUTED BY (i)", ColumnDefs: []backup.ColumnDefinition{tableRow}, ExtTableDef: extTableEmpty}
+			tableDef      = backup.TableDefinition{DistPolicy: "DISTRIBUTED BY (i)", ColumnDefs: []backup.ColumnDefinition{tableRow}, ExtTableDef: extTableEmpty, PartitionType: "n"}
 			tableMetadata backup.ObjectMetadata
 		)
 		BeforeEach(func() {
