@@ -9,38 +9,10 @@ import (
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
-var (
-	connection    *utils.DBConn
-	logger        *utils.Logger
-	globalCluster utils.Cluster
-	globalTOC     *utils.TOC
-	objectCounts  map[string]int
-	backupReport  *utils.Report
-	version       string
-)
-
-var ( // Command-line flags
-	backupDir         *string
-	backupGlobals     *bool
-	dataOnly          *bool
-	dbname            *string
-	debug             *bool
-	excludeSchemas    utils.ArrayFlags
-	excludeTableFile  *string
-	excludeTables     utils.ArrayFlags
-	includeSchemas    utils.ArrayFlags
-	includeTableFile  *string
-	includeTables     utils.ArrayFlags
-	leafPartitionData *bool
-	metadataOnly      *bool
-	noCompression     *bool
-	printVersion      *bool
-	quiet             *bool
-	verbose           *bool
-	withStats         *bool
-)
-
-// We define and initialize flags separately to avoid import conflicts in tests
+/*
+ * We define and initialize flags separately to avoid import conflicts in tests.
+ * The flag variables, and setter functions for them, are in global_variables.go.
+ */
 func initializeFlags() {
 	backupDir = flag.String("backupdir", "", "The absolute path of the directory to which all backup files will be written")
 	backupGlobals = flag.Bool("globals", false, "Back up global metadata")
@@ -64,46 +36,6 @@ func initializeFlags() {
 func DoInit() {
 	SetLogger(utils.InitializeLogging("gpbackup", ""))
 	initializeFlags()
-}
-
-func SetLogger(log *utils.Logger) {
-	logger = log
-}
-
-func SetConnection(conn *utils.DBConn) {
-	connection = conn
-}
-
-func SetCluster(cluster utils.Cluster) {
-	globalCluster = cluster
-}
-
-func SetVersion(v string) {
-	version = v
-}
-
-func SetExcludeSchemas(schemas []string) {
-	excludeSchemas = schemas
-}
-
-func SetIncludeSchemas(schemas []string) {
-	includeSchemas = schemas
-}
-
-func SetExcludeTables(tables []string) {
-	excludeTables = tables
-}
-
-func SetIncludeTables(tables []string) {
-	includeTables = tables
-}
-
-func SetLeafPartitionData(which bool) {
-	leafPartitionData = &which
-}
-
-func SetTOC(toc *utils.TOC) {
-	globalTOC = toc
 }
 
 func DoFlagValidation() {

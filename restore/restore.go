@@ -11,29 +11,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-var (
-	connection    *utils.DBConn
-	logger        *utils.Logger
-	globalCluster utils.Cluster
-	globalTOC     *utils.TOC
-	backupConfig  *utils.BackupConfig
-	version       string
-)
-
-var ( // Command-line flags
-	backupDir      *string
-	createdb       *bool
-	debug          *bool
-	printVersion   *bool
-	quiet          *bool
-	redirect       *string
-	restoreGlobals *bool
-	timestamp      *string
-	verbose        *bool
-	withStats      *bool
-)
-
-// We define and initialize flags separately to avoid import conflicts in tests
+/*
+ * We define and initialize flags separately to avoid import conflicts in tests.
+ * The flag variables, and setter functions for them, are in global_variables.go.
+ */
 func initializeFlags() {
 	backupDir = flag.String("backupdir", "", "The absolute path of the directory in which the backup files to be restored are located")
 	createdb = flag.Bool("createdb", false, "Create the database before metadata restore")
@@ -51,14 +32,6 @@ func initializeFlags() {
 func DoInit() {
 	SetLogger(utils.InitializeLogging("gprestore", ""))
 	initializeFlags()
-}
-
-func SetLogger(log *utils.Logger) {
-	logger = log
-}
-
-func SetTOC(toc *utils.TOC) {
-	globalTOC = toc
 }
 
 /*
