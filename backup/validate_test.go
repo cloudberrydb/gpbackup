@@ -129,4 +129,42 @@ var _ = Describe("backup/validate tests", func() {
 			})
 		})
 	})
+	Describe("ValidateFQNs", func() {
+		It("validates an unquoted string", func() {
+			testStrings := []string{`schemaname.tablename`}
+			backup.ValidateFQNs(testStrings)
+		})
+		It("validates a string with a quoted schema", func() {
+			testStrings := []string{`"schema,name".tablename`}
+			backup.ValidateFQNs(testStrings)
+		})
+		It("validates a string with a quoted table", func() {
+			testStrings := []string{`schemaname."table,name"`}
+			backup.ValidateFQNs(testStrings)
+		})
+		It("validates a string with both schema and table quoted", func() {
+			testStrings := []string{`"schema,name"."table,name"`}
+			backup.ValidateFQNs(testStrings)
+		})
+		It("panics if given a string without a schema", func() {
+			testStrings := []string{`tablename`}
+			defer testutils.ShouldPanicWithMessage(`tablename is not correctly fully-qualified.`)
+			backup.ValidateFQNs(testStrings)
+		})
+		It("panics if given an invalid string", func() {
+			testStrings := []string{`schema"name.table.name`}
+			defer testutils.ShouldPanicWithMessage(`schema"name.table.name is not correctly fully-qualified.`)
+			backup.ValidateFQNs(testStrings)
+		})
+		It("panics if given a string with preceding whitespace", func() {
+			testStrings := []string{`  schemaname.tablename`}
+			defer testutils.ShouldPanicWithMessage(`  schemaname.tablename is not correctly fully-qualified.`)
+			backup.ValidateFQNs(testStrings)
+		})
+		It("panics if given a string with trailing whitespace", func() {
+			testStrings := []string{`schemaname.tablename  `}
+			defer testutils.ShouldPanicWithMessage(`schemaname.tablename   is not correctly fully-qualified.`)
+			backup.ValidateFQNs(testStrings)
+		})
+	})
 })

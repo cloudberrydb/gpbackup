@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/greenplum-db/gpbackup/utils"
-	"github.com/pkg/errors"
 )
 
 type Relation struct {
@@ -28,30 +27,6 @@ type Relation struct {
  */
 func (t Relation) ToString() string {
 	return utils.MakeFQN(t.Schema, t.Name)
-}
-
-/* Parse an appropriately-escaped schema.table string into a Relation.  The Relation's
- * Oid fields are left at 0, and will need to be filled in with the real values
- * if the Relation is to be used in any Get[Something]() function in queries.go.
- */
-func RelationFromString(name string) Relation {
-	var schema, table string
-	var matches []string
-	if matches = utils.QuotedOrUnquotedString.FindStringSubmatch(name); len(matches) != 0 {
-		if matches[1] != "" { // schema was quoted
-			schema = utils.ReplacerUnescape.Replace(matches[1])
-		} else { // schema wasn't quoted
-			schema = utils.ReplacerUnescape.Replace(matches[2])
-		}
-		if matches[3] != "" { // table was quoted
-			table = utils.ReplacerUnescape.Replace(matches[3])
-		} else { // table wasn't quoted
-			table = utils.ReplacerUnescape.Replace(matches[4])
-		}
-	} else {
-		logger.Fatal(errors.Errorf("%s is not a valid fully-qualified table expression", name), "")
-	}
-	return BasicRelation(schema, table)
 }
 
 func BasicRelation(schema string, relation string) Relation {

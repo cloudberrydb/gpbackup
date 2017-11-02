@@ -2,8 +2,10 @@ package backup
 
 import (
 	"fmt"
+	"regexp"
 
 	"github.com/greenplum-db/gpbackup/utils"
+	"github.com/pkg/errors"
 )
 
 /*
@@ -32,6 +34,7 @@ func ValidateFilterSchemas(connection *utils.DBConn, schemaList utils.ArrayFlags
 
 func ValidateFilterTables(connection *utils.DBConn, tableList utils.ArrayFlags) {
 	if len(tableList) > 0 {
+		ValidateFQNs(tableList)
 		quotedTablesStr := utils.SliceToQuotedString(tableList)
 		query := fmt.Sprintf(`
 SELECT
@@ -76,4 +79,16 @@ func ValidateFlagCombinations() {
 	utils.CheckExclusiveFlags("include-schema", "include-table-file")
 	utils.CheckExclusiveFlags("exclude-schema", "include-schema")
 	utils.CheckExclusiveFlags("exclude-schema", "exclude-table-file", "include-table-file")
+}
+
+func ValidateFQNs(fqns []string) {
+	unquotedIdentString := "[a-z_][a-z0-9_]*"
+	validIdentString := fmt.Sprintf("(?:\"(.*)\"|(%s))", unquotedIdentString)
+	validFormat := regexp.MustCompile(fmt.Sprintf(`^%s\.%s$`, validIdentString, validIdentString))
+	var matches []string
+	for _, fqn := range fqns {
+		if matches = validFormat.FindStringSubmatch(fqn); len(matches) == 0 {
+			logger.Fatal(errors.Errorf(`Table %s is not correctly fully-qualified.  Please ensure that it is in the format schema.table, it is quoted appropriately, and it has no preceding or trailing whitespace.`, fqn), "")
+		}
+	}
 }

@@ -52,45 +52,6 @@ SET SUBPARTITION TEMPLATE
 	BeforeEach(func() {
 		toc, backupfile = testutils.InitializeTestTOC(buffer, "predata")
 	})
-	Describe("RelationFromString", func() {
-		It("can parse an unquoted string", func() {
-			testString := `schemaname.tablename`
-			newTable := backup.RelationFromString(testString)
-			Expect(newTable.SchemaOid).To(Equal(uint32(0)))
-			Expect(newTable.Oid).To(Equal(uint32(0)))
-			Expect(newTable.Schema).To(Equal(`schemaname`))
-			Expect(newTable.Name).To(Equal(`tablename`))
-		})
-		It("can parse a string with a quoted schema", func() {
-			testString := `"schema,name".tablename`
-			newTable := backup.RelationFromString(testString)
-			Expect(newTable.SchemaOid).To(Equal(uint32(0)))
-			Expect(newTable.Oid).To(Equal(uint32(0)))
-			Expect(newTable.Schema).To(Equal(`schema,name`))
-			Expect(newTable.Name).To(Equal(`tablename`))
-		})
-		It("can parse a string with a quoted table", func() {
-			testString := `schemaname."table,name"`
-			newTable := backup.RelationFromString(testString)
-			Expect(newTable.SchemaOid).To(Equal(uint32(0)))
-			Expect(newTable.Oid).To(Equal(uint32(0)))
-			Expect(newTable.Schema).To(Equal(`schemaname`))
-			Expect(newTable.Name).To(Equal(`table,name`))
-		})
-		It("can parse a string with both schema and table quoted", func() {
-			testString := `"schema,name"."table,name"`
-			newTable := backup.RelationFromString(testString)
-			Expect(newTable.SchemaOid).To(Equal(uint32(0)))
-			Expect(newTable.Oid).To(Equal(uint32(0)))
-			Expect(newTable.Schema).To(Equal(`schema,name`))
-			Expect(newTable.Name).To(Equal(`table,name`))
-		})
-		It("panics if given an invalid string", func() {
-			testString := `schema.name.table.name`
-			defer testutils.ShouldPanicWithMessage(`schema.name.table.name is not a valid fully-qualified table expression`)
-			backup.RelationFromString(testString)
-		})
-	})
 	Describe("PrintCreateTableStatement", func() {
 		tableDef := backup.TableDefinition{DistPolicy: distRandom, PartDef: partDefEmpty, PartTemplateDef: partTemplateDefEmpty, StorageOpts: heapOpts, ColumnDefs: colDefsEmpty, ExtTableDef: extTableEmpty}
 		It("calls PrintRegularTableCreateStatement for a regular table", func() {
