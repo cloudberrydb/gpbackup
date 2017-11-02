@@ -206,11 +206,33 @@ func formatStackTrace(err error) string {
 	return message
 }
 
+/*
+ * Progress bar functions
+ *
+ * Progress bars will only be shown when verbosity is LOGINFO, as we don't want
+ * to print it when verbosity is LOGERROR and it might interfere with Verbose
+ * or Debug output.
+ */
 func NewProgressBar(count int, prefix string) *pb.ProgressBar {
+	if logger.GetVerbosity() != LOGINFO {
+		return nil
+	}
 	progressBar := pb.New(count).Prefix(prefix)
 	progressBar.ShowTimeLeft = false
 	progressBar.SetMaxWidth(100)
 	progressBar.SetRefreshRate(time.Second)
 	progressBar.Start()
 	return progressBar
+}
+
+func IncrementProgressBar(progressBar *pb.ProgressBar) {
+	if logger.GetVerbosity() == LOGINFO {
+		progressBar.Increment()
+	}
+}
+
+func FinishProgressBar(progressBar *pb.ProgressBar) {
+	if logger.GetVerbosity() == LOGINFO {
+		progressBar.Finish()
+	}
 }

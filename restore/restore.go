@@ -146,16 +146,23 @@ func restorePredata() {
 }
 
 func restoreData(tableMap map[uint32]utils.DataEntry) {
+	numTables := 1
 	logger.Info("Restoring data")
 	dataProgressBar := utils.NewProgressBar(len(tableMap), "Tables restored: ")
 	for oid, entry := range tableMap {
 		name := utils.MakeFQN(entry.Schema, entry.Name)
-		logger.Verbose("Reading data for table %s from file", name)
+		if logger.GetVerbosity() > utils.LOGINFO {
+			// No progress bar at this log level, so we note table count here
+			logger.Verbose("Reading data for table %s from file (table %d of %d)", name, numTables, len(tableMap))
+		} else {
+			logger.Verbose("Reading data for table %s from file", name)
+		}
 		backupFile := globalCluster.GetTableBackupFilePathForCopyCommand(oid)
 		CopyTableIn(connection, name, entry.AttributeString, backupFile)
-		dataProgressBar.Increment()
+		numTables++
+		utils.IncrementProgressBar(dataProgressBar)
 	}
-	dataProgressBar.Finish()
+	utils.FinishProgressBar(dataProgressBar)
 	logger.Info("Data restore complete")
 }
 

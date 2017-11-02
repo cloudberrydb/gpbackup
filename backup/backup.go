@@ -253,11 +253,11 @@ func DoTeardown() {
 	 * and a backup directory exists in which to create the report file.
 	 */
 	if globalCluster.Timestamp != "" {
-		reportFilename := globalCluster.GetReportFilePath()
-		_, statErr := os.Stat(reportFilename)
+		_, statErr := os.Stat(globalCluster.GetDirForContent(-1))
 		if statErr != nil { // Even if this isn't os.IsNotExist, don't try to write a report file in case of further errors
 			os.Exit(exitCode)
 		}
+		reportFilename := globalCluster.GetReportFilePath()
 		configFilename := globalCluster.GetConfigFilePath()
 		backupReport.WriteReportFile(reportFilename, globalCluster.Timestamp, objectCounts, errMsg)
 		backupReport.WriteConfigFile(configFilename)

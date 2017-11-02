@@ -422,19 +422,26 @@ func BackupTriggers(postdataFile *utils.FileWithByteCount, objectCounts map[stri
 
 func BackupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
 	numExtTables := 0
+	numRegularTables := 1
 	dataProgressBar := utils.NewProgressBar(len(tables), "Tables backed up: ")
 	for _, table := range tables {
 		if !tableDefs[table.Oid].IsExternal {
-			logger.Verbose("Writing data for table %s to file", table.ToString())
+			if logger.GetVerbosity() > utils.LOGINFO {
+				// No progress bar at this log level, so we note table count here
+				logger.Verbose("Writing data for table %s to file (table %d of %d)", table.ToString(), numRegularTables, len(tables))
+			} else {
+				logger.Verbose("Writing data for table %s to file", table.ToString())
+			}
 			backupFile := globalCluster.GetTableBackupFilePathForCopyCommand(table.Oid)
 			CopyTableOut(connection, table, backupFile)
+			numRegularTables++
 		} else {
 			logger.Verbose("Skipping data backup of table %s because it is an external table.", table.ToString())
 			numExtTables++
 		}
-		dataProgressBar.Increment()
+		utils.IncrementProgressBar(dataProgressBar)
 	}
-	dataProgressBar.Finish()
+	utils.FinishProgressBar(dataProgressBar)
 	if numExtTables > 0 {
 		s := ""
 		if numExtTables > 1 {
