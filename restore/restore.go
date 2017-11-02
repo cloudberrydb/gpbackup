@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/greenplum-db/gpbackup/utils"
 
@@ -19,6 +21,7 @@ func initializeFlags() {
 	backupDir = flag.String("backupdir", "", "The absolute path of the directory in which the backup files to be restored are located")
 	createdb = flag.Bool("createdb", false, "Create the database before metadata restore")
 	debug = flag.Bool("debug", false, "Print verbose and debug log messages")
+	numJobs = flag.Int("jobs", 2, "Number of parallel connections to use when restoring table data and post-data metadata")
 	printVersion = flag.Bool("version", false, "Print version number and exit")
 	quiet = flag.Bool("quiet", false, "Suppress non-warning, non-error log messages")
 	redirect = flag.String("redirect", "", "Restore to the specified database instead of the database that was backed up")
@@ -79,6 +82,7 @@ func DoRestore() {
 	tocFilename := globalCluster.GetTOCFilePath()
 	globalTOC = utils.NewTOC(tocFilename)
 	globalTOC.InitializeEntryMapFromCluster(globalCluster)
+	setSerialRestore()
 	if *restoreGlobals {
 		restoreGlobal()
 	} else if *createdb {
@@ -99,10 +103,9 @@ func DoRestore() {
 	}
 
 	if !backupConfig.MetadataOnly {
-		tableMap := GetTableDataEntriesFromTOC()
-		backupFileCount := len(tableMap)
+		backupFileCount := len(globalTOC.DataEntries)
 		globalCluster.VerifyBackupFileCountOnSegments(backupFileCount)
-		restoreData(tableMap)
+		restoreData()
 	}
 
 	if !backupConfig.DataOnly && !backupConfig.TableFiltered {
@@ -122,7 +125,7 @@ func createDatabase() {
 	if *redirect != "" {
 		statements = utils.SubstituteRedirectDatabaseInStatements(statements, backupConfig.DatabaseName, *redirect)
 	}
-	ExecuteRestoreMetadataStatements(statements)
+	ExecuteRestoreMetadataStatements(statements, 1)
 	logger.Info("Database creation complete")
 }
 
@@ -133,7 +136,7 @@ func restoreGlobal() {
 	if *redirect != "" {
 		statements = utils.SubstituteRedirectDatabaseInStatements(statements, backupConfig.DatabaseName, *redirect)
 	}
-	ExecuteRestoreMetadataStatements(statements)
+	ExecuteRestoreMetadataStatements(statements, 1)
 	logger.Info("Global database metadata restore complete")
 }
 
@@ -141,36 +144,66 @@ func restorePredata() {
 	predataFilename := globalCluster.GetPredataFilePath()
 	logger.Info("Restoring pre-data metadata from %s", predataFilename)
 	statements := GetRestoreMetadataStatements(predataFilename)
-	ExecuteRestoreMetadataStatements(statements)
+	ExecuteRestoreMetadataStatements(statements, 1)
 	logger.Info("Pre-data metadata restore complete")
 }
 
-func restoreData(tableMap map[uint32]utils.DataEntry) {
-	numTables := 1
+func restoreData() {
+	setParallelRestore()
+	defer setSerialRestore()
 	logger.Info("Restoring data")
-	dataProgressBar := utils.NewProgressBar(len(tableMap), "Tables restored: ")
-	for oid, entry := range tableMap {
-		name := utils.MakeFQN(entry.Schema, entry.Name)
-		if logger.GetVerbosity() > utils.LOGINFO {
-			// No progress bar at this log level, so we note table count here
-			logger.Verbose("Reading data for table %s from file (table %d of %d)", name, numTables, len(tableMap))
-		} else {
-			logger.Verbose("Reading data for table %s from file", name)
+	totalTables := len(globalTOC.DataEntries)
+	dataProgressBar := utils.NewProgressBar(totalTables, "Tables restored: ")
+
+	if *numJobs == 1 {
+		for i, entry := range globalTOC.DataEntries {
+			restoreSingleTableData(entry, uint32(i)+1, totalTables)
+			utils.IncrementProgressBar(dataProgressBar)
 		}
-		backupFile := globalCluster.GetTableBackupFilePathForCopyCommand(oid)
-		CopyTableIn(connection, name, entry.AttributeString, backupFile)
-		numTables++
-		utils.IncrementProgressBar(dataProgressBar)
+	} else {
+		var tableNum uint32 = 1
+		tasks := make(chan utils.DataEntry, totalTables)
+		var workerPool sync.WaitGroup
+		for i := 0; i < *numJobs; i++ {
+			workerPool.Add(1)
+			go func() {
+				for entry := range tasks {
+					restoreSingleTableData(entry, tableNum, totalTables)
+					atomic.AddUint32(&tableNum, 1)
+					utils.IncrementProgressBar(dataProgressBar)
+				}
+				workerPool.Done()
+			}()
+		}
+		for _, entry := range globalTOC.DataEntries {
+			tasks <- entry
+		}
+		close(tasks)
+		workerPool.Wait()
 	}
 	utils.FinishProgressBar(dataProgressBar)
 	logger.Info("Data restore complete")
 }
 
+func restoreSingleTableData(entry utils.DataEntry, tableNum uint32, totalTables int) {
+	name := utils.MakeFQN(entry.Schema, entry.Name)
+	if logger.GetVerbosity() > utils.LOGINFO {
+		// No progress bar at this log level, so we note table count here
+		logger.Verbose("Reading data for table %s from file (table %d of %d)", name, tableNum, totalTables)
+	} else {
+		logger.Verbose("Reading data for table %s from file", name)
+	}
+	backupFile := globalCluster.GetTableBackupFilePathForCopyCommand(entry.Oid)
+	CopyTableIn(connection, name, entry.AttributeString, backupFile)
+}
+
 func restorePostdata() {
+	setParallelRestore()
+	defer setSerialRestore()
 	postdataFilename := globalCluster.GetPostdataFilePath()
 	logger.Info("Restoring post-data metadata from %s", postdataFilename)
 	statements := GetRestoreMetadataStatements(postdataFilename)
-	ExecuteRestoreMetadataStatements(statements)
+	ExecuteRestoreMetadataStatements(statements, *numJobs)
 	logger.Info("Post-data metadata restore complete")
 }
 
@@ -178,7 +211,7 @@ func restoreStatistics() {
 	statisticsFilename := globalCluster.GetStatisticsFilePath()
 	logger.Info("Restoring query planner statistics from %s", statisticsFilename)
 	statements := GetRestoreMetadataStatements(statisticsFilename)
-	ExecuteRestoreMetadataStatements(statements)
+	ExecuteRestoreMetadataStatements(statements, 1)
 	logger.Info("Query planner statistics restore complete")
 }
 

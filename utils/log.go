@@ -220,7 +220,7 @@ func NewProgressBar(count int, prefix string) *pb.ProgressBar {
 	progressBar := pb.New(count).Prefix(prefix)
 	progressBar.ShowTimeLeft = false
 	progressBar.SetMaxWidth(100)
-	progressBar.SetRefreshRate(time.Second)
+	progressBar.SetRefreshRate(time.Millisecond * 200)
 	progressBar.Start()
 	return progressBar
 }

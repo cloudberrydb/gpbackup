@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" // Need driver for postgres
@@ -168,37 +169,80 @@ func (dbconn *DBConn) validateGPDBVersionCompatibility() {
 	}
 }
 
-func (dbconn *DBConn) ExecuteAllStatements(statements []StatementWithType) {
-	for _, statement := range statements {
+/*
+ * Helper functions for executing SQL statements
+ */
+
+/*
+ * The shouldExec function should accept a StatementWithType and return whether
+ * it should be executed.  This allows the ExecuteAllStatements*() functions
+ * below to filter statements before execution.
+ */
+func (dbconn *DBConn) executeStatement(statement StatementWithType, shouldExec func(statement StatementWithType) bool) {
+	if shouldExec(statement) {
 		_, err := dbconn.Exec(statement.Statement)
 		CheckErrorForQuery(err, statement.Statement)
 	}
 }
 
-func (dbconn *DBConn) ExecuteAllStatementsMatching(statements []StatementWithType, objectTypes ...string) {
+/*
+ * This function creates a worker pool of N goroutines to be able to execute up
+ * to N statements in parallel; the value of numJobs passed in should either be
+ * set to 1 (to execute everything in series) or the value of the numJobs flag
+ * (so the number of goroutines match the available database connections).
+ */
+func (dbconn *DBConn) executeStatementsInParallel(statements []StatementWithType, numJobs int, shouldExec func(statement StatementWithType) bool) {
+	if numJobs == 1 {
+		for _, statement := range statements {
+			dbconn.executeStatement(statement, shouldExec)
+		}
+	} else {
+		tasks := make(chan StatementWithType, len(statements))
+		var workerPool sync.WaitGroup
+		for i := 0; i < numJobs; i++ {
+			workerPool.Add(1)
+			go func() {
+				for statement := range tasks {
+					dbconn.executeStatement(statement, shouldExec)
+				}
+				workerPool.Done()
+			}()
+		}
+		for _, statement := range statements {
+			tasks <- statement
+		}
+		close(tasks)
+		workerPool.Wait()
+	}
+}
+
+func (dbconn *DBConn) ExecuteAllStatements(statements []StatementWithType, numJobs int) {
+	shouldExec := func(statement StatementWithType) bool {
+		return true
+	}
+	dbconn.executeStatementsInParallel(statements, numJobs, shouldExec)
+}
+
+func (dbconn *DBConn) ExecuteAllStatementsMatching(statements []StatementWithType, numJobs int, objectTypes ...string) {
 	shouldExecute := make(map[string]bool, len(objectTypes))
 	for _, obj := range objectTypes {
 		shouldExecute[obj] = true
 	}
-	for _, statement := range statements {
-		if shouldExecute[statement.ObjectType] {
-			_, err := dbconn.Exec(statement.Statement)
-			CheckErrorForQuery(err, statement.Statement)
-		}
+	shouldExec := func(statement StatementWithType) bool {
+		return shouldExecute[statement.ObjectType]
 	}
+	dbconn.executeStatementsInParallel(statements, numJobs, shouldExec)
 }
 
-func (dbconn *DBConn) ExecuteAllStatementsExcept(statements []StatementWithType, objectTypes ...string) {
+func (dbconn *DBConn) ExecuteAllStatementsExcept(statements []StatementWithType, numJobs int, objectTypes ...string) {
 	shouldNotExecute := make(map[string]bool, len(objectTypes))
 	for _, obj := range objectTypes {
 		shouldNotExecute[obj] = true
 	}
-	for _, statement := range statements {
-		if !shouldNotExecute[statement.ObjectType] {
-			_, err := dbconn.Exec(statement.Statement)
-			CheckErrorForQuery(err, statement.Statement)
-		}
+	shouldExec := func(statement StatementWithType) bool {
+		return !shouldNotExecute[statement.ObjectType]
 	}
+	dbconn.executeStatementsInParallel(statements, numJobs, shouldExec)
 }
 
 func CheckErrorForQuery(err error, statement string) {

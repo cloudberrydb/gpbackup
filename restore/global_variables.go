@@ -28,6 +28,7 @@ var (
 	backupDir      *string
 	createdb       *bool
 	debug          *bool
+	numJobs        *int
 	printVersion   *bool
 	quiet          *bool
 	redirect       *string

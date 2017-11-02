@@ -272,25 +272,60 @@ var _ = Describe("utils/db tests", func() {
 			connection.SetDatabaseVersion()
 		})
 	})
-	Describe("Dbconn.ExecuteAllStatements", func() {
-		It("executes all statements in the list", func() {
-			mock.ExpectExec(commentStr).WillReturnResult(sqlmock.NewResult(0, 0))
-			mock.ExpectExec(createStr).WillReturnResult(sqlmock.NewResult(1, 0))
-			mock.ExpectExec(gucStr).WillReturnResult(sqlmock.NewResult(0, 1))
-			connection.ExecuteAllStatements(statements)
+	Describe("DBConn statement execution functions", func() {
+		Context("Serial execution", func() {
+			Context("Dbconn.ExecuteAllStatements", func() {
+				It("can execute all statements in the list serially", func() {
+					mock.ExpectExec(commentStr).WillReturnResult(sqlmock.NewResult(0, 0))
+					mock.ExpectExec(createStr).WillReturnResult(sqlmock.NewResult(1, 0))
+					mock.ExpectExec(gucStr).WillReturnResult(sqlmock.NewResult(0, 1))
+					connection.ExecuteAllStatements(statements, 1)
+				})
+			})
+			Context("Dbconn.ExecuteAllStatementsMatching", func() {
+				It("can execute all statements in the list that are of the specified object type serially", func() {
+					mock.ExpectExec(createStr).WillReturnResult(sqlmock.NewResult(1, 0))
+					mock.ExpectExec(gucStr).WillReturnResult(sqlmock.NewResult(0, 1))
+					connection.ExecuteAllStatementsMatching(statements, 1, "DATABASE", "SESSION GUCS")
+				})
+			})
+			Context("Dbconn.ExecuteAllStatementsExcept", func() {
+				It("can execute all statements in the list that are not of the specified object type serially", func() {
+					mock.ExpectExec(commentStr).WillReturnResult(sqlmock.NewResult(0, 0))
+					mock.ExpectExec(gucStr).WillReturnResult(sqlmock.NewResult(0, 1))
+					connection.ExecuteAllStatementsExcept(statements, 1, "DATABASE")
+				})
+			})
 		})
-	})
-	Describe("Dbconn.ExecuteAllStatementsMatching", func() {
-		It("executes all statements in the list that are of the specified object type", func() {
-			mock.ExpectExec(createStr).WillReturnResult(sqlmock.NewResult(1, 0))
-			connection.ExecuteAllStatementsMatching(statements, "DATABASE")
-		})
-	})
-	Describe("Dbconn.ExecuteAllStatementsExcept", func() {
-		It("executes all statements in the list that are not of the specified object type", func() {
-			mock.ExpectExec(commentStr).WillReturnResult(sqlmock.NewResult(0, 0))
-			mock.ExpectExec(gucStr).WillReturnResult(sqlmock.NewResult(0, 1))
-			connection.ExecuteAllStatementsExcept(statements, "DATABASE")
+		Context("Parallel execution", func() {
+			BeforeEach(func() {
+				mock.MatchExpectationsInOrder(false)
+			})
+			AfterEach(func() {
+				mock.MatchExpectationsInOrder(true)
+			})
+			Context("Dbconn.ExecuteAllStatements", func() {
+				It("can execute all statements in the list in parallel", func() {
+					mock.ExpectExec(commentStr).WillReturnResult(sqlmock.NewResult(0, 0))
+					mock.ExpectExec(createStr).WillReturnResult(sqlmock.NewResult(1, 0))
+					mock.ExpectExec(gucStr).WillReturnResult(sqlmock.NewResult(0, 1))
+					connection.ExecuteAllStatements(statements, 2)
+				})
+			})
+			Context("Dbconn.ExecuteAllStatementsMatching", func() {
+				It("can execute all statements in the list that are of the specified object type in parallel", func() {
+					mock.ExpectExec(createStr).WillReturnResult(sqlmock.NewResult(1, 0))
+					mock.ExpectExec(gucStr).WillReturnResult(sqlmock.NewResult(0, 1))
+					connection.ExecuteAllStatementsMatching(statements, 2, "DATABASE", "SESSION GUCS")
+				})
+			})
+			Context("Dbconn.ExecuteAllStatementsExcept", func() {
+				It("can execute all statements in the list that are not of the specified object type in parallel", func() {
+					mock.ExpectExec(commentStr).WillReturnResult(sqlmock.NewResult(0, 0))
+					mock.ExpectExec(gucStr).WillReturnResult(sqlmock.NewResult(0, 1))
+					connection.ExecuteAllStatementsExcept(statements, 2, "DATABASE")
+				})
+			})
 		})
 	})
 })

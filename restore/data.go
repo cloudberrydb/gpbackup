@@ -14,14 +14,6 @@ var (
 	tableDelim = ","
 )
 
-func GetTableDataEntriesFromTOC() map[uint32]utils.DataEntry {
-	tableMap := make(map[uint32]utils.DataEntry, 0)
-	for _, entry := range globalTOC.DataEntries {
-		tableMap[entry.Oid] = entry
-	}
-	return tableMap
-}
-
 func CopyTableIn(connection *utils.DBConn, tableName string, tableAttributes string, backupFile string) {
 	usingCompression, compressionProgram := utils.GetCompressionParameters()
 	copyCmdStr := ""
