@@ -248,9 +248,16 @@ func DoTeardown() {
 		connection.Close()
 	}
 
-	// Only create a report file if we fail after the cluster is initialized
+	/*
+	 * Only create a report file if we fail after the cluster is initialized
+	 * and a backup directory exists in which to create the report file.
+	 */
 	if globalCluster.Timestamp != "" {
 		reportFilename := globalCluster.GetReportFilePath()
+		_, statErr := os.Stat(reportFilename)
+		if statErr != nil { // Even if this isn't os.IsNotExist, don't try to write a report file in case of further errors
+			os.Exit(exitCode)
+		}
 		configFilename := globalCluster.GetConfigFilePath()
 		backupReport.WriteReportFile(reportFilename, globalCluster.Timestamp, objectCounts, errMsg)
 		backupReport.WriteConfigFile(configFilename)
