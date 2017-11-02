@@ -34,6 +34,10 @@ var _ = Describe("utils/flag tests", func() {
 		})
 	})
 	Context("ValidateBackupDir", func() {
+		It("does not panic when the flag is not set", func() {
+			path := ""
+			utils.ValidateBackupDir(path)
+		})
 		It("does not panic when given an absolute path", func() {
 			path := "/this/is/an/absolute/path"
 			utils.ValidateBackupDir(path)

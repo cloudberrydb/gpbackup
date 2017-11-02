@@ -70,7 +70,7 @@ func IsValidTimestamp(timestamp string) bool {
 }
 
 func ValidateBackupDir(path string) {
-	if string(path[0]) != "/" {
+	if len(path) > 0 && string(path[0]) != "/" {
 		logger.Fatal(errors.Errorf("Absolute path required for backupdir."), "")
 	}
 }
