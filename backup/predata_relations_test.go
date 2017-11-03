@@ -1,6 +1,8 @@
 package backup_test
 
 import (
+	"sort"
+
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
 
@@ -686,6 +688,115 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 			backup.PrintAlterSequenceStatements(backupfile, toc, sequences, columnOwnerMap)
 			testutils.ExpectEntry(toc.PredataEntries, 0, "public", "seq_name", "SEQUENCE OWNER")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `ALTER SEQUENCE public.seq_name OWNED BY tablename.col_one;`)
+		})
+	})
+	Describe("SplitTablesByPartitionType", func() {
+		var tables []backup.Relation
+		var partTableMap map[uint32]string
+		var includeList []string
+		var expectedMetadataTables = []backup.Relation{
+			{Oid: 1, Schema: "public", Name: "part_parent1"},
+			{Oid: 2, Schema: "public", Name: "part_parent2"},
+			{Oid: 8, Schema: "public", Name: "test_table"},
+		}
+		BeforeEach(func() {
+			tables = []backup.Relation{
+				{Oid: 1, Schema: "public", Name: "part_parent1"},
+				{Oid: 2, Schema: "public", Name: "part_parent2"},
+				{Oid: 3, Schema: "public", Name: "part_parent1_inter1"},
+				{Oid: 4, Schema: "public", Name: "part_parent1_child1"},
+				{Oid: 5, Schema: "public", Name: "part_parent1_child2"},
+				{Oid: 6, Schema: "public", Name: "part_parent2_child1"},
+				{Oid: 7, Schema: "public", Name: "part_parent2_child2"},
+				{Oid: 8, Schema: "public", Name: "test_table"},
+			}
+			partTableMap = map[uint32]string{1: "p", 2: "p", 3: "i", 4: "l", 5: "l", 6: "l", 7: "l", 8: "n"}
+		})
+		Context("leafPartitionData and includeTables", func() {
+			It("gets only parent partitions of included tables for metadata and only child partitions for data", func() {
+				includeList = []string{"public.part_parent1", "public.part_parent2_child1", "public.part_parent2_child2", "public.test_table"}
+				backup.SetLeafPartitionData(true)
+				defer backup.SetLeafPartitionData(false)
+
+				metadataTables, dataTables := backup.SplitTablesByPartitionType(tables, partTableMap, includeList)
+
+				Expect(metadataTables).To(Equal(expectedMetadataTables))
+
+				expectedDataTables := []string{"public.part_parent1_child1", "public.part_parent1_child2", "public.part_parent2_child1", "public.part_parent2_child2", "public.test_table"}
+				dataTableNames := make([]string, 0)
+				for _, table := range dataTables {
+					dataTableNames = append(dataTableNames, table.FQN())
+				}
+				sort.Strings(dataTableNames)
+
+				Expect(len(dataTables)).To(Equal(5))
+				Expect(dataTableNames).To(Equal(expectedDataTables))
+			})
+		})
+		Context("leafPartitionData only", func() {
+			It("gets only parent partitions for metadata and only child partitions in data", func() {
+				backup.SetLeafPartitionData(true)
+				defer backup.SetLeafPartitionData(false)
+				includeList = []string{}
+				metadataTables, dataTables := backup.SplitTablesByPartitionType(tables, partTableMap, includeList)
+
+				Expect(metadataTables).To(Equal(expectedMetadataTables))
+
+				expectedDataTables := []string{"public.part_parent1_child1", "public.part_parent1_child2", "public.part_parent2_child1", "public.part_parent2_child2", "public.test_table"}
+				dataTableNames := make([]string, 0)
+				for _, table := range dataTables {
+					dataTableNames = append(dataTableNames, table.FQN())
+				}
+				sort.Strings(dataTableNames)
+
+				Expect(len(dataTables)).To(Equal(5))
+				Expect(dataTableNames).To(Equal(expectedDataTables))
+			})
+		})
+		Context("includeTables only", func() {
+			It("gets only parent partitions of included tables for metadata and only included tables for data", func() {
+				backup.SetLeafPartitionData(false)
+				includeList = []string{"public.part_parent1", "public.part_parent2_child1", "public.part_parent2_child2", "public.test_table"}
+				metadataTables, dataTables := backup.SplitTablesByPartitionType(tables, partTableMap, includeList)
+
+				Expect(metadataTables).To(Equal(expectedMetadataTables))
+
+				expectedDataTables := []string{"public.part_parent1", "public.part_parent2_child1", "public.part_parent2_child2", "public.test_table"}
+				dataTableNames := make([]string, 0)
+				for _, table := range dataTables {
+					dataTableNames = append(dataTableNames, table.FQN())
+				}
+				sort.Strings(dataTableNames)
+
+				Expect(len(dataTables)).To(Equal(4))
+				Expect(dataTableNames).To(Equal(expectedDataTables))
+			})
+		})
+		Context("neither leafPartitionData nor includeTables", func() {
+			It("gets the same table list for both metadata and data", func() {
+				includeList = []string{}
+				tables = []backup.Relation{
+					backup.Relation{Oid: 1, Schema: "public", Name: "part_parent1"},
+					backup.Relation{Oid: 2, Schema: "public", Name: "part_parent2"},
+					backup.Relation{Oid: 8, Schema: "public", Name: "test_table"},
+				}
+				partTableMap = map[uint32]string{1: "p", 2: "p", 8: "n"}
+				backup.SetLeafPartitionData(false)
+				backup.SetIncludeTables([]string{})
+				metadataTables, dataTables := backup.SplitTablesByPartitionType(tables, partTableMap, includeList)
+
+				Expect(metadataTables).To(Equal(expectedMetadataTables))
+
+				expectedDataTables := []string{"public.part_parent1", "public.part_parent2", "public.test_table"}
+				dataTableNames := make([]string, 0)
+				for _, table := range dataTables {
+					dataTableNames = append(dataTableNames, table.FQN())
+				}
+				sort.Strings(dataTableNames)
+
+				Expect(len(dataTables)).To(Equal(3))
+				Expect(dataTableNames).To(Equal(expectedDataTables))
+			})
 		})
 	})
 })

@@ -87,11 +87,9 @@ func DoBackup() {
 	LogBackupInfo()
 
 	objectCounts = make(map[string]int, 0)
-	tables, tableDefs := RetrieveAndLockTables(objectCounts)
 
 	isTableFiltered := len(includeTables) > 0 || len(excludeTables) > 0
-
-	metadataTables, dataTables := SplitTablesByPartitionType(tables, tableDefs)
+	metadataTables, dataTables, tableDefs := RetrieveAndProcessTables()
 	if !*dataOnly {
 		if isTableFiltered {
 			backupTablePredata(metadataTables, tableDefs, objectCounts)
@@ -107,7 +105,7 @@ func DoBackup() {
 	}
 
 	if *withStats {
-		backupStatistics(tables)
+		backupStatistics(metadataTables)
 	}
 
 	globalTOC.WriteToFile(globalCluster.GetTOCFilePath())

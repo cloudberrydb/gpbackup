@@ -31,73 +31,102 @@ var _ = Describe("backup integration tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "Oid")
 			testutils.ExpectStructsToMatchExcluding(&tableTestTable, &tables[1], "SchemaOid", "Oid")
 		})
-		It("returns only parent partition tables if the leafPartitionData flag is not set", func() {
-			createStmt := `CREATE TABLE rank (id int, rank int, year int, gender
+		Context("leafPartitionData flag", func() {
+			It("returns only parent partition tables if the leafPartitionData flag is not set and there are no include tables", func() {
+				createStmt := `CREATE TABLE rank (id int, rank int, year int, gender
 char(1), count int )
 DISTRIBUTED BY (id)
 PARTITION BY LIST (gender)
 ( PARTITION girls VALUES ('F'),
   PARTITION boys VALUES ('M'),
   DEFAULT PARTITION other );`
-			testutils.AssertQueryRuns(connection, createStmt)
-			defer testutils.AssertQueryRuns(connection, "DROP TABLE rank")
+				testutils.AssertQueryRuns(connection, createStmt)
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE rank")
 
-			tables := backup.GetAllUserTables(connection)
+				tables := backup.GetAllUserTables(connection)
 
-			tableRank := backup.BasicRelation("public", "rank")
+				tableRank := backup.BasicRelation("public", "rank")
 
-			Expect(len(tables)).To(Equal(1))
-			testutils.ExpectStructsToMatchExcluding(&tableRank, &tables[0], "SchemaOid", "Oid")
-		})
-		It("returns both parent partition tables and leaf tables for partition tables if the leafPartitionData flag is set", func() {
-			backup.SetLeafPartitionData(true)
-			createStmt := `CREATE TABLE rank (id int, rank int, year int, gender
+				Expect(len(tables)).To(Equal(1))
+				testutils.ExpectStructsToMatchExcluding(&tableRank, &tables[0], "SchemaOid", "Oid")
+			})
+			It("returns both parent and leaf partition tables if the leafPartitionData flag is set and there are no include tables", func() {
+				backup.SetLeafPartitionData(true)
+				createStmt := `CREATE TABLE rank (id int, rank int, year int, gender
 char(1), count int )
 DISTRIBUTED BY (id)
 PARTITION BY LIST (gender)
 ( PARTITION girls VALUES ('F'),
   PARTITION boys VALUES ('M'),
   DEFAULT PARTITION other );`
-			testutils.AssertQueryRuns(connection, createStmt)
-			defer testutils.AssertQueryRuns(connection, "DROP TABLE rank")
+				testutils.AssertQueryRuns(connection, createStmt)
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE rank")
 
-			tables := backup.GetAllUserTables(connection)
+				tables := backup.GetAllUserTables(connection)
 
-			expectedTableNames := []string{"public.rank", "public.rank_1_prt_boys", "public.rank_1_prt_girls", "public.rank_1_prt_other"}
-			tableNames := make([]string, 0)
-			for _, table := range tables {
-				tableNames = append(tableNames, table.FQN())
-			}
-			sort.Strings(tableNames)
+				expectedTableNames := []string{"public.rank", "public.rank_1_prt_boys", "public.rank_1_prt_girls", "public.rank_1_prt_other"}
+				tableNames := make([]string, 0)
+				for _, table := range tables {
+					tableNames = append(tableNames, table.FQN())
+				}
+				sort.Strings(tableNames)
 
-			Expect(len(tables)).To(Equal(4))
-			Expect(tableNames).To(Equal(expectedTableNames))
-		})
-		It("returns parent partition tables for leaf tables for partition tables if the leafPartitionData flag is set and the filter includes a leaf table", func() {
-			backup.SetLeafPartitionData(true)
-			backup.SetIncludeTables([]string{"public.rank_1_prt_girls"})
-			defer backup.SetIncludeTables([]string{})
-			createStmt := `CREATE TABLE rank (id int, rank int, year int, gender
+				Expect(len(tables)).To(Equal(4))
+				Expect(tableNames).To(Equal(expectedTableNames))
+			})
+			It("returns parent and included child partition table if the filter includes a leaf table", func() {
+				backup.SetIncludeTables([]string{"public.rank_1_prt_girls"})
+				defer backup.SetIncludeTables([]string{})
+				createStmt := `CREATE TABLE rank (id int, rank int, year int, gender
 char(1), count int )
 DISTRIBUTED BY (id)
 PARTITION BY LIST (gender)
 ( PARTITION girls VALUES ('F'),
   PARTITION boys VALUES ('M'),
   DEFAULT PARTITION other );`
-			testutils.AssertQueryRuns(connection, createStmt)
-			defer testutils.AssertQueryRuns(connection, "DROP TABLE rank")
+				testutils.AssertQueryRuns(connection, createStmt)
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE rank")
 
-			tables := backup.GetAllUserTables(connection)
+				tables := backup.GetAllUserTables(connection)
 
-			expectedTableNames := []string{"public.rank", "public.rank_1_prt_girls"}
-			tableNames := make([]string, 0)
-			for _, table := range tables {
-				tableNames = append(tableNames, table.FQN())
-			}
-			sort.Strings(tableNames)
+				expectedTableNames := []string{"public.rank", "public.rank_1_prt_girls"}
+				tableNames := make([]string, 0)
+				for _, table := range tables {
+					tableNames = append(tableNames, table.FQN())
+				}
+				sort.Strings(tableNames)
 
-			Expect(len(tables)).To(Equal(2))
-			Expect(tableNames).To(Equal(expectedTableNames))
+				Expect(len(tables)).To(Equal(2))
+				Expect(tableNames).To(Equal(expectedTableNames))
+			})
+			It("returns child partition tables for an included parent table if the leafPartitionData flag is set and the filter includes a parent partition table", func() {
+				backup.SetLeafPartitionData(true)
+				backup.SetIncludeTables([]string{"public.rank"})
+				defer backup.SetIncludeTables([]string{})
+				createStmt := `CREATE TABLE rank (id int, rank int, year int, gender
+char(1), count int )
+DISTRIBUTED BY (id)
+PARTITION BY LIST (gender)
+( PARTITION girls VALUES ('F'),
+  PARTITION boys VALUES ('M'),
+  DEFAULT PARTITION other );`
+				testutils.AssertQueryRuns(connection, createStmt)
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE rank")
+				testutils.AssertQueryRuns(connection, "CREATE TABLE test_table(i int)")
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE test_table")
+
+				tables := backup.GetAllUserTables(connection)
+
+				expectedTableNames := []string{"public.rank", "public.rank_1_prt_boys", "public.rank_1_prt_girls", "public.rank_1_prt_other"}
+				tableNames := make([]string, 0)
+				for _, table := range tables {
+					tableNames = append(tableNames, table.FQN())
+				}
+				sort.Strings(tableNames)
+
+				Expect(len(tables)).To(Equal(4))
+				Expect(tableNames).To(Equal(expectedTableNames))
+			})
 		})
 		It("returns user table information for table in specific schema", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE foo(i int)")

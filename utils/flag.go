@@ -40,7 +40,7 @@ func CheckExclusiveFlags(flagNames ...string) {
 		}
 	}
 	if numSet > 1 {
-		logger.Fatal(errors.Errorf("No more than one of the following flags may be set: %s", strings.Join(flagNames, ", ")), "")
+		logger.Fatal(errors.Errorf("The following flags may not be specified together: %s", strings.Join(flagNames, ", ")), "")
 	}
 }
 

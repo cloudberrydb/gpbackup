@@ -81,7 +81,7 @@ var _ = Describe("utils/flag tests", func() {
 			})
 			It("panics if two or more flags in the argument list are set", func() {
 				flag.CommandLine.Parse([]string{"-stringFlag", "foo", "-boolFlag"})
-				defer testutils.ShouldPanicWithMessage("No more than one of the following flags may be set: stringFlag, boolFlag")
+				defer testutils.ShouldPanicWithMessage("The following flags may not be specified together: stringFlag, boolFlag")
 				utils.CheckExclusiveFlags("stringFlag", "boolFlag")
 			})
 		})

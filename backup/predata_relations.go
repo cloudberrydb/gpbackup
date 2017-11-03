@@ -59,6 +59,45 @@ func GetUniqueSchemas(schemas []Schema, tables []Relation) []Schema {
 	return uniqueSchemas
 }
 
+/*
+ * When leafPartitionData is set, for partition tables we want to print metadata
+ * for the parent tables and data for the leaf tables, so we split them into
+ * separate lists.  Intermediate tables are skipped, and non-partition tables are
+ * backed up normally (both metadata and data).
+ *
+ * When the flag is not set, we want to back up both metadata and data for all
+ * tables, so both returned arrays contain all tables.
+ */
+func SplitTablesByPartitionType(tables []Relation, partTableMap map[uint32]string, includeList []string) ([]Relation, []Relation) {
+	metadataTables := make([]Relation, 0)
+	dataTables := make([]Relation, 0)
+	if *leafPartitionData || len(includeList) > 0 {
+		includeMap := make(map[string]bool)
+		for _, includeTable := range includeList {
+			includeMap[includeTable] = true
+		}
+		for _, table := range tables {
+			partType := partTableMap[table.Oid]
+			if partType != "l" && partType != "i" {
+				metadataTables = append(metadataTables, table)
+			}
+			if *leafPartitionData {
+				if partType != "p" && partType != "i" {
+					dataTables = append(dataTables, table)
+				}
+			} else if len(includeList) > 0 {
+				if includeMap[table.ToString()] {
+					dataTables = append(dataTables, table)
+				}
+			}
+		}
+	} else {
+		metadataTables = tables
+		dataTables = tables
+	}
+	return metadataTables, dataTables
+}
+
 type TableDefinition struct {
 	DistPolicy      string
 	PartDef         string
@@ -68,7 +107,6 @@ type TableDefinition struct {
 	ColumnDefs      []ColumnDefinition
 	IsExternal      bool
 	ExtTableDef     ExternalTableDefinition
-	PartitionType   string // "p" for parent, "l" for leaf, "i" for intermediate, "n" for none of the above
 }
 
 /*
@@ -91,8 +129,6 @@ func ConstructDefinitionsForTables(connection *utils.DBConn, tables []Relation) 
 	tablespaceNames := GetTablespaceNames(connection)
 	logger.Verbose("Retrieving external table information")
 	extTableDefs := GetExternalTableDefinitions(connection)
-	logger.Verbose("Retrieving partition table information")
-	partTableMap := GetPartitionTableMap(connection)
 
 	logger.Verbose("Constructing table definition map")
 	for _, table := range tables {
@@ -106,10 +142,6 @@ func ConstructDefinitionsForTables(connection *utils.DBConn, tables []Relation) 
 			columnDefs[oid],
 			(extTableDefs[oid].Oid != 0),
 			extTableDefs[oid],
-			"n",
-		}
-		if partTableMap[oid] != "" {
-			tableDef.PartitionType = partTableMap[oid]
 		}
 		tableDefinitionMap[oid] = tableDef
 	}

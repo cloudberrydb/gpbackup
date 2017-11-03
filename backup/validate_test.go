@@ -88,23 +88,12 @@ var _ = Describe("backup/validate tests", func() {
 				filterList = []string{"public.table1"}
 				backup.ValidateFilterTables(connection, filterList)
 			})
-			It("passes if given a leaf partition table and --leaf-partition-data is set", func() {
-				backup.SetLeafPartitionData(true)
-				defer backup.SetLeafPartitionData(false)
+			It("passes if given a leaf partition table", func() {
 				tableRows.AddRow("1", "public.table1")
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(tableRows)
 				partitionTables.AddRow("1", "l")
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(partitionTables)
 				filterList = []string{"public.table1"}
-				backup.ValidateFilterTables(connection, filterList)
-			})
-			It("panics if given a leaf partition table and --leaf-partition-data is not set", func() {
-				tableRows.AddRow("1", "public.table1")
-				mock.ExpectQuery("SELECT (.*)").WillReturnRows(tableRows)
-				partitionTables.AddRow("1", "l")
-				mock.ExpectQuery("SELECT (.*)").WillReturnRows(partitionTables)
-				filterList = []string{"public.table1"}
-				defer testutils.ShouldPanicWithMessage("Cannot filter on public.table1, as it is a partition table.  Either filter on its parent table or set the --leaf-partition-data flag.")
 				backup.ValidateFilterTables(connection, filterList)
 			})
 			It("panics if given an intermediate partition table and --leaf-partition-data is set", func() {

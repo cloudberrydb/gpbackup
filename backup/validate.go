@@ -60,12 +60,8 @@ WHERE quote_ident(n.nspname) || '.' || quote_ident(c.relname) IN (%s)`, quotedTa
 			if tableOid == 0 {
 				logger.Fatal(nil, "Table %s does not exist", table)
 			}
-			partType, inMap := partTableMap[tableOid]
-			if partType == "i" {
+			if partTableMap[tableOid] == "i" {
 				logger.Fatal(nil, "Cannot filter on %s, as it is an intermediate partition table.  Only parent partition tables and leaf partition tables may be specified.", table)
-			}
-			if !*leafPartitionData && inMap && partType != "p" {
-				logger.Fatal(nil, "Cannot filter on %s, as it is a partition table.  Either filter on its parent table or set the --leaf-partition-data flag.", table)
 			}
 		}
 	}
@@ -79,6 +75,8 @@ func ValidateFlagCombinations() {
 	utils.CheckExclusiveFlags("include-schema", "include-table-file")
 	utils.CheckExclusiveFlags("exclude-schema", "include-schema")
 	utils.CheckExclusiveFlags("exclude-schema", "exclude-table-file", "include-table-file")
+	utils.CheckExclusiveFlags("exclude-table-file", "leaf-partition-data")
+	utils.CheckExclusiveFlags("metadata-only", "leaf-partition-data")
 }
 
 func ValidateFQNs(fqns []string) {

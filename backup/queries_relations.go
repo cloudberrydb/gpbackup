@@ -26,8 +26,9 @@ func tableAndSchemaFilterClause() string {
 func GetAllUserTables(connection *utils.DBConn) []Relation {
 	// This query is adapted from the getTables() function in pg_dump.c.
 	query := ""
-	if *leafPartitionData {
+	if *leafPartitionData || len(includeTables) > 0 {
 		filterClause := ""
+		leafDataFilterClause := ""
 		if len(includeTables) == 0 && len(excludeTables) == 0 {
 			filterClause = SchemaFilterClause("n")
 		} else if len(includeTables) > 0 {
@@ -37,6 +38,21 @@ func GetAllUserTables(connection *utils.DBConn) []Relation {
 			 * tables in the list of include tables OR parent tables of tables in the list.
 			 */
 			includeList := utils.SliceToQuotedString(includeTables)
+			if *leafPartitionData {
+				leafDataFilterClause = fmt.Sprintf(`
+	OR (n.nspname, c.relname) IN (
+		SELECT
+			n2.nspname AS childschema,
+			c2.relname AS childname
+		FROM pg_partition p
+		JOIN pg_partition_rule r ON p.oid = r.paroid
+		JOIN pg_class c ON p.parrelid = c.oid
+		JOIN pg_class c2 ON c2.oid = r.parchildrelid
+		JOIN pg_namespace n2  ON c2.relnamespace = n2.oid
+		WHERE p.paristemplate = false
+		AND quote_ident(n.nspname) || '.' || quote_ident(c.relname) IN (%s)
+	)`, includeList)
+			}
 			filterClause = fmt.Sprintf(`
 %s
 AND (
@@ -52,12 +68,11 @@ AND (
 		JOIN pg_namespace n2  ON c2.relnamespace = n2.oid
 		WHERE p.paristemplate = false
 		AND quote_ident(n2.nspname) || '.' || quote_ident(c2.relname) IN (%s)
-	)
-)`, SchemaFilterClause("n"), includeList, includeList)
+	)%s
+)`, SchemaFilterClause("n"), includeList, includeList, leafDataFilterClause)
 		} else {
 			filterClause = tableAndSchemaFilterClause()
 		}
-
 		query = fmt.Sprintf(`
 SELECT
 	n.oid AS schemaoid,

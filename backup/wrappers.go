@@ -68,37 +68,34 @@ func InitializeFilterLists() {
 }
 
 /*
- * When leafPartitionData is set, for partition tables we want to print metadata
- * for the parent tables and data for the leaf tables, so we split them into
- * separate lists.  Intermediate tables are skipped, and non-partition tables are
- * backed up normally (both metadata and data).
- *
- * When the flag is not set, we want to back up both metadata and data for all
- * tables, so both returned arrays contain all tables.
- */
-func SplitTablesByPartitionType(tables []Relation, tableDefs map[uint32]TableDefinition) ([]Relation, []Relation) {
-	metadataTables := make([]Relation, 0)
-	dataTables := make([]Relation, 0)
-	if *leafPartitionData {
-		for _, table := range tables {
-			partType := tableDefs[table.Oid].PartitionType
-			if partType != "l" && partType != "i" {
-				metadataTables = append(metadataTables, table)
-			}
-			if partType != "p" && partType != "i" {
-				dataTables = append(dataTables, table)
-			}
-		}
-	} else {
-		metadataTables = tables
-		dataTables = tables
-	}
-	return metadataTables, dataTables
-}
-
-/*
  * Metadata retrieval wrapper functions
  */
+
+func RetrieveAndProcessTables() ([]Relation, []Relation, map[uint32]TableDefinition) {
+	tables := GetAllUserTables(connection)
+	LockTables(connection, tables)
+
+	/*
+	 * We expand the includeTables list to include parent and leaf partitions that may not have been
+	 * specified by the user but are used in the backup for metadata or data.
+	 */
+	userPassedIncludeTables := includeTables
+	if len(includeTables) > 0 {
+		expandedIncludeTables := make([]string, 0)
+		for _, table := range tables {
+			expandedIncludeTables = append(expandedIncludeTables, table.FQN())
+		}
+		includeTables = expandedIncludeTables
+	}
+
+	tableDefs := ConstructDefinitionsForTables(connection, tables)
+
+	partTableMap := GetPartitionTableMap(connection)
+	metadataTables, dataTables := SplitTablesByPartitionType(tables, partTableMap, userPassedIncludeTables)
+	objectCounts["Tables"] = len(metadataTables)
+
+	return metadataTables, dataTables, tableDefs
+}
 
 func RetrieveFunctions(objectCounts map[string]int, procLangs []ProceduralLanguage) ([]Function, []Function, MetadataMap) {
 	logger.Verbose("Retrieving function information")
@@ -130,14 +127,6 @@ func RetrieveTypes(objectCounts map[string]int) ([]Type, MetadataMap, map[uint32
 	objectCounts["Types"] = len(types)
 	typeMetadata := GetMetadataForObjectType(connection, TYPE_TYPE)
 	return types, typeMetadata, funcInfoMap
-}
-
-func RetrieveAndLockTables(objectCounts map[string]int) ([]Relation, map[uint32]TableDefinition) {
-	tables := GetAllUserTables(connection)
-	LockTables(connection, tables)
-	objectCounts["Tables"] = len(tables)
-	tableDefs := ConstructDefinitionsForTables(connection, tables)
-	return tables, tableDefs
 }
 
 func RetrieveConstraints(objectCounts map[string]int, tables ...Relation) ([]Constraint, MetadataMap) {
