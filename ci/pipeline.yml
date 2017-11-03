@@ -121,9 +121,13 @@ jobs:
     tags: ["ccp"]
     params:
       <<: *ccp_create_params
+      vars:
+        <<: *ccp_default_vars
   - task: gen_cluster
     tags: ["ccp"]
     file: ccp_src/ci/tasks/gen_cluster.yml
+    params:
+      <<: *ccp_gen_cluster_default_params
     input_mapping:
       gpdb_binary: bin_gpdb_master
       gpdb_src: gpdb_src
@@ -154,7 +158,11 @@ jobs:
     tags: ["ccp"]
     params:
       <<: *ccp_create_params
+      vars:
+        <<: *ccp_default_vars
   - task: gen_cluster
+    params:
+      <<: *ccp_gen_cluster_default_params
     tags: ["ccp"]
     file: ccp_src/ci/tasks/gen_cluster.yml
     input_mapping:
@@ -187,7 +195,11 @@ jobs:
     tags: ["ccp"]
     params:
       <<: *ccp_create_params
+      vars:
+        <<: *ccp_default_vars
   - task: gen_cluster
+    params:
+      <<: *ccp_gen_cluster_default_params
     tags: ["ccp"]
     file: ccp_src/ci/tasks/gen_cluster.yml
     input_mapping:
@@ -324,8 +336,19 @@ ccp_create_params_anchor: &ccp_create_params
   delete_on_failure: true
   generate_random_name: true
   terraform_source: ccp_src/aws/
-  vars:
-    aws_instance-node-instance_type: t2.medium
+
+ccp_vars_anchor: &ccp_default_vars
+  aws_instance-node-instance_type: t2.medium
+  aws_ebs_volume_type: standard
+  platform: centos6
+
+ccp_gen_cluster_default_params_anchor: &ccp_gen_cluster_default_params
+  AWS_ACCESS_KEY_ID: {{tf-machine-access-key-id}}
+  AWS_SECRET_ACCESS_KEY: {{tf-machine-secret-access-key}}
+  AWS_DEFAULT_REGION: {{aws-region}}
+  BUCKET_PATH: {{tf-bucket-path}}
+  BUCKET_NAME: {{tf-bucket-name}}
+
 
 ccp_destroy_anchor: &ccp_destroy
   put: terraform
