@@ -76,7 +76,7 @@ func SetDefaultSegmentConfiguration() utils.Cluster {
 	configMaster := utils.SegConfig{ContentID: -1, Hostname: "localhost", DataDir: "gpseg-1"}
 	configSegOne := utils.SegConfig{ContentID: 0, Hostname: "localhost", DataDir: "gpseg0"}
 	configSegTwo := utils.SegConfig{ContentID: 1, Hostname: "localhost", DataDir: "gpseg1"}
-	cluster := utils.NewCluster([]utils.SegConfig{configMaster, configSegOne, configSegTwo}, "", "20170101010101")
+	cluster := utils.NewCluster([]utils.SegConfig{configMaster, configSegOne, configSegTwo}, "", "20170101010101", "gpseg")
 	return cluster
 }
 

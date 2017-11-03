@@ -71,7 +71,8 @@ func DoSetup() {
 
 	logger.Verbose("Gathering information on backup directories")
 	segConfig := utils.GetSegmentConfiguration(connection)
-	globalCluster = utils.NewCluster(segConfig, *backupDir, *timestamp)
+	globalCluster = utils.NewCluster(segConfig, *backupDir, *timestamp, "")
+	globalCluster.UserSpecifiedSegPrefix = utils.ParseSegPrefix(*backupDir)
 	globalCluster.VerifyBackupDirectoriesExistOnAllHosts()
 
 	InitializeBackupConfig()

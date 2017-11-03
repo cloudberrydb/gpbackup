@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/user"
+	"path/filepath"
 
 	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
 
@@ -30,7 +31,7 @@ var _ = Describe("utils/cluster tests", func() {
 		utils.System.CurrentUser = func() (*user.User, error) { return &user.User{Username: "testUser", HomeDir: "testDir"}, nil }
 		utils.System.Hostname = func() (string, error) { return "testHost", nil }
 		testExecutor = &testutils.TestExecutor{}
-		testCluster = utils.NewCluster([]utils.SegConfig{masterSeg, localSegOne, remoteSegOne}, "", "20170101010101")
+		testCluster = utils.NewCluster([]utils.SegConfig{masterSeg, localSegOne, remoteSegOne}, "", "20170101010101", "gpseg")
 		testCluster.Executor = testExecutor
 	})
 	Describe("ConstructSSHCommand", func() {
@@ -78,7 +79,7 @@ var _ = Describe("utils/cluster tests", func() {
 	})
 	Describe("GenerateSSHCommandMap", func() {
 		It("Returns a map of ssh commands for the master, including master", func() {
-			cluster := utils.NewCluster([]utils.SegConfig{masterSeg}, "", "20170101010101")
+			cluster := utils.NewCluster([]utils.SegConfig{masterSeg}, "", "20170101010101", "gpseg")
 			commandMap := cluster.GenerateSSHCommandMap(true, func(_ int) string {
 				return "ls"
 			})
@@ -86,14 +87,14 @@ var _ = Describe("utils/cluster tests", func() {
 			Expect(commandMap[-1]).To(Equal([]string{"bash", "-c", "ls"}))
 		})
 		It("Returns a map of ssh commands for the master, excluding master", func() {
-			cluster := utils.NewCluster([]utils.SegConfig{masterSeg}, "", "20170101010101")
+			cluster := utils.NewCluster([]utils.SegConfig{masterSeg}, "", "20170101010101", "gpseg")
 			commandMap := cluster.GenerateSSHCommandMap(false, func(_ int) string {
 				return "ls"
 			})
 			Expect(len(commandMap)).To(Equal(0))
 		})
 		It("Returns a map of ssh commands for one segment, including master", func() {
-			cluster := utils.NewCluster([]utils.SegConfig{remoteSegOne}, "", "20170101010101")
+			cluster := utils.NewCluster([]utils.SegConfig{remoteSegOne}, "", "20170101010101", "gpseg")
 			commandMap := cluster.GenerateSSHCommandMap(true, func(_ int) string {
 				return "ls"
 			})
@@ -101,7 +102,7 @@ var _ = Describe("utils/cluster tests", func() {
 			Expect(commandMap[1]).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@remotehost1", "ls"}))
 		})
 		It("Returns a map of ssh commands for one segment, excluding master", func() {
-			cluster := utils.NewCluster([]utils.SegConfig{remoteSegOne}, "", "20170101010101")
+			cluster := utils.NewCluster([]utils.SegConfig{remoteSegOne}, "", "20170101010101", "gpseg")
 			commandMap := cluster.GenerateSSHCommandMap(false, func(_ int) string {
 				return "ls"
 			})
@@ -109,7 +110,7 @@ var _ = Describe("utils/cluster tests", func() {
 			Expect(commandMap[1]).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@remotehost1", "ls"}))
 		})
 		It("Returns a map of ssh commands for two segments on the same host, including master", func() {
-			cluster := utils.NewCluster([]utils.SegConfig{masterSeg, localSegOne}, "", "20170101010101")
+			cluster := utils.NewCluster([]utils.SegConfig{masterSeg, localSegOne}, "", "20170101010101", "gpseg")
 			commandMap := cluster.GenerateSSHCommandMap(true, func(_ int) string {
 				return "ls"
 			})
@@ -118,7 +119,7 @@ var _ = Describe("utils/cluster tests", func() {
 			Expect(commandMap[0]).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@localhost", "ls"}))
 		})
 		It("Returns a map of ssh commands for two segments on the same host, excluding master", func() {
-			cluster := utils.NewCluster([]utils.SegConfig{masterSeg, localSegOne}, "", "20170101010101")
+			cluster := utils.NewCluster([]utils.SegConfig{masterSeg, localSegOne}, "", "20170101010101", "gpseg")
 			commandMap := cluster.GenerateSSHCommandMap(false, func(_ int) string {
 				return "ls"
 			})
@@ -126,7 +127,7 @@ var _ = Describe("utils/cluster tests", func() {
 			Expect(commandMap[0]).To(Equal([]string{"ssh", "-o", "StrictHostKeyChecking=no", "testUser@localhost", "ls"}))
 		})
 		It("Returns a map of ssh commands for three segments on different hosts", func() {
-			cluster := utils.NewCluster([]utils.SegConfig{localSegOne, remoteSegOne, remoteSegTwo}, "", "20170101010101")
+			cluster := utils.NewCluster([]utils.SegConfig{localSegOne, remoteSegOne, remoteSegTwo}, "", "20170101010101", "gpseg")
 			commandMap := cluster.GenerateSSHCommandMap(false, func(contentID int) string {
 				return fmt.Sprintf("mkdir -p %s", cluster.GetDirForContent(contentID))
 			})
@@ -138,7 +139,7 @@ var _ = Describe("utils/cluster tests", func() {
 	})
 	Describe("GenerateSSHCommandMapForCluster", func() {
 		It("includes master in the command map", func() {
-			cluster := utils.NewCluster([]utils.SegConfig{masterSeg, localSegOne}, "", "20170101010101")
+			cluster := utils.NewCluster([]utils.SegConfig{masterSeg, localSegOne}, "", "20170101010101", "gpseg")
 			commandMap := cluster.GenerateSSHCommandMapForCluster(func(_ int) string {
 				return "ls"
 			})
@@ -149,7 +150,7 @@ var _ = Describe("utils/cluster tests", func() {
 	})
 	Describe("GenerateSSHCommandMapForSegments", func() {
 		It("excludes master from the command map", func() {
-			cluster := utils.NewCluster([]utils.SegConfig{masterSeg, localSegOne}, "", "20170101010101")
+			cluster := utils.NewCluster([]utils.SegConfig{masterSeg, localSegOne}, "", "20170101010101", "gpseg")
 			commandMap := cluster.GenerateSSHCommandMapForSegments(func(_ int) string {
 				return "ls"
 			})
@@ -159,7 +160,7 @@ var _ = Describe("utils/cluster tests", func() {
 	})
 	Describe("GenerateFileVerificationCommandMap", func() {
 		It("creates a command map for segments only", func() {
-			cluster := utils.NewCluster([]utils.SegConfig{masterSeg, localSegOne, remoteSegOne}, "", "20170101010101")
+			cluster := utils.NewCluster([]utils.SegConfig{masterSeg, localSegOne, remoteSegOne}, "", "20170101010101", "gpseg")
 			commandMap := cluster.GenerateFileVerificationCommandMap(13)
 
 			Expect(len(commandMap)).To(Equal(2))
@@ -226,12 +227,12 @@ var _ = Describe("utils/cluster tests", func() {
 	})
 	Describe("LogFatalError", func() {
 		It("logs an error for 1 segment", func() {
-			cluster := utils.NewCluster(nil, "", "20170101010101")
+			cluster := utils.NewCluster(nil, "", "20170101010101", "gpseg")
 			defer testutils.ShouldPanicWithMessage("Error occurred on 1 segment. See gbytes.Buffer for a complete list of segments with errors.")
 			cluster.LogFatalError("Error occurred", 1)
 		})
 		It("logs an error for more than 1 segment", func() {
-			cluster := utils.NewCluster(nil, "", "20170101010101")
+			cluster := utils.NewCluster(nil, "", "20170101010101", "gpseg")
 			defer testutils.ShouldPanicWithMessage("Error occurred on 2 segments. See gbytes.Buffer for a complete list of segments with errors.")
 			cluster.LogFatalError("Error occurred", 2)
 		})
@@ -242,7 +243,7 @@ var _ = Describe("utils/cluster tests", func() {
 		localSegTwo := utils.SegConfig{ContentID: 1, Hostname: "localhost", DataDir: "/data/gpseg1"}
 		remoteSegTwo := utils.SegConfig{ContentID: 1, Hostname: "remotehost", DataDir: "/data/gpseg1"}
 		It("returns content dir for a single-host, single-segment nodes", func() {
-			cluster := utils.NewCluster([]utils.SegConfig{masterSeg, localSegOne}, "", "20170101010101")
+			cluster := utils.NewCluster([]utils.SegConfig{masterSeg, localSegOne}, "", "20170101010101", "gpseg")
 			Expect(len(cluster.GetContentList())).To(Equal(2))
 			Expect(cluster.GetDirForContent(-1)).To(Equal("/data/gpseg-1/backups/20170101/20170101010101"))
 			Expect(cluster.GetHostForContent(-1)).To(Equal("localhost"))
@@ -250,7 +251,7 @@ var _ = Describe("utils/cluster tests", func() {
 			Expect(cluster.GetHostForContent(0)).To(Equal("localhost"))
 		})
 		It("sets up the configuration for a single-host, multi-segment cluster", func() {
-			cluster := utils.NewCluster([]utils.SegConfig{masterSeg, localSegOne, localSegTwo}, "", "20170101010101")
+			cluster := utils.NewCluster([]utils.SegConfig{masterSeg, localSegOne, localSegTwo}, "", "20170101010101", "gpseg")
 			Expect(len(cluster.GetContentList())).To(Equal(3))
 			Expect(cluster.GetDirForContent(-1)).To(Equal("/data/gpseg-1/backups/20170101/20170101010101"))
 			Expect(cluster.GetHostForContent(-1)).To(Equal("localhost"))
@@ -260,7 +261,7 @@ var _ = Describe("utils/cluster tests", func() {
 			Expect(cluster.GetHostForContent(1)).To(Equal("localhost"))
 		})
 		It("sets up the configuration for a multi-host, multi-segment cluster", func() {
-			cluster := utils.NewCluster([]utils.SegConfig{masterSeg, localSegOne, remoteSegTwo}, "", "20170101010101")
+			cluster := utils.NewCluster([]utils.SegConfig{masterSeg, localSegOne, remoteSegTwo}, "", "20170101010101", "gpseg")
 			Expect(len(cluster.GetContentList())).To(Equal(3))
 			Expect(cluster.GetDirForContent(-1)).To(Equal("/data/gpseg-1/backups/20170101/20170101010101"))
 			Expect(cluster.GetHostForContent(-1)).To(Equal("localhost"))
@@ -270,37 +271,37 @@ var _ = Describe("utils/cluster tests", func() {
 			Expect(cluster.GetHostForContent(1)).To(Equal("remotehost"))
 		})
 		It("returns the content directory based on the user specified path", func() {
-			cluster := utils.NewCluster([]utils.SegConfig{masterSeg}, "/foo/bar", "20170101010101")
+			cluster := utils.NewCluster([]utils.SegConfig{masterSeg}, "/foo/bar", "20170101010101", "gpseg")
 			Expect(cluster.GetDirForContent(-1)).To(Equal("/foo/bar/gpseg-1/backups/20170101/20170101010101"))
 		})
 	})
 	Describe("GetTableBackupFilePathForCopyCommand()", func() {
 		It("returns table file path for copy command", func() {
-			cluster := utils.NewCluster(nil, "", "20170101010101")
+			cluster := utils.NewCluster(nil, "", "20170101010101", "gpseg")
 			Expect(cluster.GetTableBackupFilePathForCopyCommand(1234)).To(Equal("<SEG_DATA_DIR>/backups/20170101/20170101010101/gpbackup_<SEGID>_20170101010101_1234"))
 		})
 		It("returns table file path for copy command based on user specified path", func() {
-			cluster := utils.NewCluster(nil, "/foo/bar", "20170101010101")
+			cluster := utils.NewCluster(nil, "/foo/bar", "20170101010101", "gpseg")
 			Expect(cluster.GetTableBackupFilePathForCopyCommand(1234)).To(Equal("/foo/bar/gpseg<SEGID>/backups/20170101/20170101010101/gpbackup_<SEGID>_20170101010101_1234"))
 		})
 	})
 	Describe("GetReportFilePath", func() {
 		It("returns report file path", func() {
-			cluster := utils.NewCluster([]utils.SegConfig{masterSeg}, "", "20170101010101")
+			cluster := utils.NewCluster([]utils.SegConfig{masterSeg}, "", "20170101010101", "gpseg")
 			Expect(cluster.GetReportFilePath()).To(Equal("/data/gpseg-1/backups/20170101/20170101010101/gpbackup_20170101010101_report"))
 		})
 		It("returns report file path based on user specified path", func() {
-			cluster := utils.NewCluster(nil, "/foo/bar", "20170101010101")
+			cluster := utils.NewCluster(nil, "/foo/bar", "20170101010101", "gpseg")
 			Expect(cluster.GetReportFilePath()).To(Equal("/foo/bar/gpseg-1/backups/20170101/20170101010101/gpbackup_20170101010101_report"))
 		})
 	})
 	Describe("GetTableBackupFilePath", func() {
 		It("returns table file path", func() {
-			cluster := utils.NewCluster([]utils.SegConfig{masterSeg}, "", "20170101010101")
+			cluster := utils.NewCluster([]utils.SegConfig{masterSeg}, "", "20170101010101", "gpseg")
 			Expect(cluster.GetTableBackupFilePath(-1, 1234)).To(Equal("/data/gpseg-1/backups/20170101/20170101010101/gpbackup_-1_20170101010101_1234"))
 		})
 		It("returns table file path based on user specified path", func() {
-			cluster := utils.NewCluster([]utils.SegConfig{masterSeg}, "/foo/bar", "20170101010101")
+			cluster := utils.NewCluster([]utils.SegConfig{masterSeg}, "/foo/bar", "20170101010101", "gpseg")
 			Expect(cluster.GetTableBackupFilePath(-1, 1234)).To(Equal("/foo/bar/gpseg-1/backups/20170101/20170101010101/gpbackup_-1_20170101010101_1234"))
 		})
 	})
@@ -371,6 +372,27 @@ var _ = Describe("utils/cluster tests", func() {
 			testCluster.Executor = testExecutor
 			defer testutils.ShouldPanicWithMessage("Unable to create directories on 1 segment")
 			testCluster.CreateBackupDirectoriesOnAllHosts()
+		})
+	})
+	Describe("ParseSegPrefix", func() {
+		AfterEach(func() {
+			utils.System.Glob = filepath.Glob
+		})
+		It("returns segment prefix from directory path if master backup directory exists", func() {
+			utils.System.Glob = func(pattern string) (matches []string, err error) { return []string{"/tmp/foo/gpseg-1"}, nil }
+			Expect(utils.ParseSegPrefix("/tmp/foo")).To(Equal("gpseg"))
+		})
+		It("panics if master backup directory does not exist", func() {
+			utils.System.Glob = func(pattern string) (matches []string, err error) { return []string{}, nil }
+			defer testutils.ShouldPanicWithMessage("Master backup directory in /tmp/foo missing or inaccessible")
+			Expect(utils.ParseSegPrefix("/tmp/foo")).To(Equal("gpseg"))
+		})
+		It("panics if there is an error accessing master backup directory", func() {
+			utils.System.Glob = func(pattern string) (matches []string, err error) {
+				return []string{""}, os.ErrPermission
+			}
+			defer testutils.ShouldPanicWithMessage("Master backup directory in /tmp/foo missing or inaccessible")
+			Expect(utils.ParseSegPrefix("/tmp/foo")).To(Equal("gpseg"))
 		})
 	})
 })

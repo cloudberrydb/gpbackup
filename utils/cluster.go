@@ -54,6 +54,7 @@ type Cluster struct {
 	SegDirMap              map[int]string
 	SegHostMap             map[int]string
 	UserSpecifiedBackupDir string
+	UserSpecifiedSegPrefix string
 	Timestamp              string
 	Executor
 }
@@ -72,11 +73,12 @@ func (cluster *Cluster) IsUserSpecifiedBackupDir() bool {
 	return cluster.UserSpecifiedBackupDir != ""
 }
 
-func NewCluster(segConfigs []SegConfig, userSpecifiedBackupDir string, timestamp string) Cluster {
+func NewCluster(segConfigs []SegConfig, userSpecifiedBackupDir string, timestamp string, userSegPrefix string) Cluster {
 	cluster := Cluster{}
 	cluster.SegHostMap = make(map[int]string, 0)
 	cluster.SegDirMap = make(map[int]string, 0)
 	cluster.UserSpecifiedBackupDir = userSpecifiedBackupDir
+	cluster.UserSpecifiedSegPrefix = userSegPrefix
 	cluster.Timestamp = timestamp
 	for _, seg := range segConfigs {
 		cluster.ContentIDs = append(cluster.ContentIDs, seg.ContentID)
@@ -214,7 +216,7 @@ func (cluster *Cluster) GetHostForContent(contentID int) string {
 
 func (cluster *Cluster) GetDirForContent(contentID int) string {
 	if cluster.IsUserSpecifiedBackupDir() {
-		segDir := fmt.Sprintf("gpseg%d", contentID)
+		segDir := fmt.Sprintf("%s%d", cluster.UserSpecifiedSegPrefix, contentID)
 		return path.Join(cluster.UserSpecifiedBackupDir, segDir, "backups", cluster.Timestamp[0:8], cluster.Timestamp)
 	}
 	return path.Join(cluster.SegDirMap[contentID], "backups", cluster.Timestamp[0:8], cluster.Timestamp)
@@ -233,7 +235,7 @@ func (cluster *Cluster) GetTableBackupFilePathForCopyCommand(tableOid uint32) st
 	}
 	baseDir := "<SEG_DATA_DIR>"
 	if cluster.IsUserSpecifiedBackupDir() {
-		baseDir = path.Join(cluster.UserSpecifiedBackupDir, "gpseg<SEGID>")
+		baseDir = path.Join(cluster.UserSpecifiedBackupDir, fmt.Sprintf("%s<SEGID>", cluster.UserSpecifiedSegPrefix))
 	}
 	return path.Join(baseDir, "backups", cluster.Timestamp[0:8], cluster.Timestamp, backupFilePath)
 }
@@ -334,6 +336,26 @@ ORDER BY s.content;`
 	err := connection.Select(&results, query)
 	CheckError(err)
 	return results
+}
+
+func GetSegPrefix(connection *DBConn) string {
+	query := "SELECT fselocation FROM pg_filespace_entry WHERE fsedbid = 1;"
+	result := ""
+	err := connection.Get(&result, query)
+	CheckError(err)
+	_, segPrefix := path.Split(result)
+	segPrefix = segPrefix[:len(segPrefix)-2] // Remove "-1" segment ID from string
+	return segPrefix
+}
+
+func ParseSegPrefix(backupDir string) string {
+	masterDir, err := System.Glob(fmt.Sprintf("%s/*-1", backupDir))
+	if err != nil || len(masterDir) == 0 {
+		logger.Fatal(err, "Master backup directory in %s missing or inaccessible", backupDir)
+	}
+	_, segPrefix := path.Split(masterDir[0])
+	segPrefix = segPrefix[:len(segPrefix)-2] // Remove "-1" segment ID from string
+	return segPrefix
 }
 
 func ConstructSSHCommand(host string, cmd string) []string {

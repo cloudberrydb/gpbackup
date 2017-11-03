@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"os/user"
+	"path/filepath"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -74,6 +75,7 @@ type SystemFunctions struct {
 	CurrentUser   func() (*user.User, error)
 	Getenv        func(key string) string
 	Getpid        func() int
+	Glob          func(pattern string) (matches []string, err error)
 	Hostname      func() (string, error)
 	IsNotExist    func(err error) bool
 	MkdirAll      func(path string, perm os.FileMode) error
@@ -89,6 +91,7 @@ func InitializeSystemFunctions() *SystemFunctions {
 		CurrentUser:   user.Current,
 		Getenv:        os.Getenv,
 		Getpid:        os.Getpid,
+		Glob:          filepath.Glob,
 		Hostname:      os.Hostname,
 		IsNotExist:    os.IsNotExist,
 		MkdirAll:      os.MkdirAll,

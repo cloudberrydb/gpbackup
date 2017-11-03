@@ -50,7 +50,7 @@ var _ = BeforeSuite(func() {
 	testutils.AssertQueryRuns(connection, "DROP PROTOCOL IF EXISTS gphdfs")
 	testutils.AssertQueryRuns(connection, `SET standard_conforming_strings TO "on"`)
 	segConfig := utils.GetSegmentConfiguration(connection)
-	cluster := utils.NewCluster(segConfig, "/tmp/test_filespace", "20170101010101")
+	cluster := utils.NewCluster(segConfig, "/tmp/test_filespace", "20170101010101", "gpseg")
 	setupTestFilespace(cluster)
 })
 
