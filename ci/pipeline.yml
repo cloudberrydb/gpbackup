@@ -239,6 +239,8 @@ jobs:
         aws_ebs_volume_type: gp2
         number_of_nodes: 1
   - task: gen_cluster
+    params:
+      <<: *ccp_gen_cluster_default_params
     tags: ["ccp"]
     file: ccp_src/ci/tasks/gen_cluster.yml
     input_mapping:
@@ -278,6 +280,8 @@ jobs:
         aws_ebs_volume_type: gp2
         number_of_nodes: 1
   - task: gen_cluster
+    params:
+      <<: *ccp_gen_cluster_default_params
     tags: ["ccp"]
     file: ccp_src/ci/tasks/gen_cluster.yml
     input_mapping:
@@ -317,6 +321,8 @@ jobs:
         aws_ebs_volume_type: gp2
         number_of_nodes: 1
   - task: gen_cluster
+    params:
+      <<: *ccp_gen_cluster_default_params
     tags: ["ccp"]
     file: ccp_src/ci/tasks/gen_cluster.yml
     input_mapping:
