@@ -349,12 +349,15 @@ func GetSegPrefix(connection *DBConn) string {
 }
 
 func ParseSegPrefix(backupDir string) string {
-	masterDir, err := System.Glob(fmt.Sprintf("%s/*-1", backupDir))
-	if err != nil || len(masterDir) == 0 {
-		logger.Fatal(err, "Master backup directory in %s missing or inaccessible", backupDir)
+	segPrefix := ""
+	if len(backupDir) > 0 {
+		masterDir, err := System.Glob(fmt.Sprintf("%s/*-1", backupDir))
+		if err != nil || len(masterDir) == 0 {
+			logger.Fatal(err, "Master backup directory in %s missing or inaccessible", backupDir)
+		}
+		_, segPrefix = path.Split(masterDir[0])
+		segPrefix = segPrefix[:len(segPrefix)-2] // Remove "-1" segment ID from string
 	}
-	_, segPrefix := path.Split(masterDir[0])
-	segPrefix = segPrefix[:len(segPrefix)-2] // Remove "-1" segment ID from string
 	return segPrefix
 }
 

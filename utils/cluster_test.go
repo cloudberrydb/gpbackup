@@ -382,6 +382,9 @@ var _ = Describe("utils/cluster tests", func() {
 			utils.System.Glob = func(pattern string) (matches []string, err error) { return []string{"/tmp/foo/gpseg-1"}, nil }
 			Expect(utils.ParseSegPrefix("/tmp/foo")).To(Equal("gpseg"))
 		})
+		It("returns empty string if backup directory is empty", func() {
+			Expect(utils.ParseSegPrefix("")).To(Equal(""))
+		})
 		It("panics if master backup directory does not exist", func() {
 			utils.System.Glob = func(pattern string) (matches []string, err error) { return []string{}, nil }
 			defer testutils.ShouldPanicWithMessage("Master backup directory in /tmp/foo missing or inaccessible")
