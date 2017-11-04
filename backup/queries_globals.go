@@ -32,20 +32,21 @@ type Database struct {
 	Tablespace string
 }
 
-func GetDatabaseNames(connection *utils.DBConn) []Database {
-	query := `
+func GetDatabaseName(connection *utils.DBConn) Database {
+	query := fmt.Sprintf(`
 SELECT
 	d.oid,
 	quote_ident(d.datname) AS name,
 	quote_ident(t.spcname) AS tablespace
 FROM pg_database d
 JOIN pg_tablespace t
-ON d.dattablespace = t.oid;`
+ON d.dattablespace = t.oid
+WHERE d.datname = '%s';`, connection.DBName)
 
-	results := make([]Database, 0)
-	err := connection.Select(&results, query)
+	result := Database{}
+	err := connection.Get(&result, query)
 	utils.CheckError(err)
-	return results
+	return result
 }
 
 func GetDatabaseGUCs(connection *utils.DBConn) []string {

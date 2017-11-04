@@ -2,9 +2,10 @@ package backup
 
 import (
 	"fmt"
-	"github.com/greenplum-db/gpbackup/utils"
 	"strconv"
 	"strings"
+
+	"github.com/greenplum-db/gpbackup/utils"
 )
 
 /*
@@ -51,33 +52,19 @@ func print4OnlySessionGUCs(metadataFile *utils.FileWithByteCount, toc *utils.TOC
 	toc.AddMetadataEntry("", "", "GPDB4 SESSION GUCS", start, metadataFile)
 }
 
-func PrintCreateDatabaseStatement(globalFile *utils.FileWithByteCount, toc *utils.TOC, dbname string, allDBs []Database, dbMetadata MetadataMap, backupGlobals bool) {
-	for _, db := range allDBs {
-		if db.Name == dbname || db.Name == fmt.Sprintf(`"%s"`, dbname) {
-			dbname = db.Name
-			start := globalFile.ByteCount
-			globalFile.MustPrintf("\n\nCREATE DATABASE %s", dbname)
-			if db.Tablespace != "pg_default" {
-				globalFile.MustPrintf(" TABLESPACE %s", db.Tablespace)
-			}
-			globalFile.MustPrintf(";")
-			toc.AddMetadataEntry("", dbname, "DATABASE", start, globalFile)
-			start = globalFile.ByteCount
-			PrintObjectMetadata(globalFile, dbMetadata[db.Oid], dbname, "DATABASE")
-			if globalFile.ByteCount > start {
-				toc.AddMetadataEntry("", dbname, "DATABASE METADATA", start, globalFile)
-			}
-			break
-		}
+func PrintCreateDatabaseStatement(globalFile *utils.FileWithByteCount, toc *utils.TOC, db Database, dbMetadata MetadataMap) {
+	dbname := db.Name
+	start := globalFile.ByteCount
+	globalFile.MustPrintf("\n\nCREATE DATABASE %s", dbname)
+	if db.Tablespace != "pg_default" {
+		globalFile.MustPrintf(" TABLESPACE %s", db.Tablespace)
 	}
-	if backupGlobals {
-		for _, db := range allDBs {
-			if db.Name != dbname {
-				start := globalFile.ByteCount
-				PrintObjectMetadata(globalFile, dbMetadata[db.Oid], db.Name, "DATABASE")
-				toc.AddMetadataEntry("", dbname, "DATABASE OTHER", start, globalFile)
-			}
-		}
+	globalFile.MustPrintf(";")
+	toc.AddMetadataEntry("", dbname, "DATABASE", start, globalFile)
+	start = globalFile.ByteCount
+	PrintObjectMetadata(globalFile, dbMetadata[db.Oid], dbname, "DATABASE")
+	if globalFile.ByteCount > start {
+		toc.AddMetadataEntry("", dbname, "DATABASE METADATA", start, globalFile)
 	}
 }
 

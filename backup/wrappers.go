@@ -175,9 +175,9 @@ func BackupTablespaces(globalFile *utils.FileWithByteCount, objectCounts map[str
 
 func BackupCreateDatabase(globalFile *utils.FileWithByteCount, objectCounts map[string]int) {
 	logger.Verbose("Writing CREATE DATABASE statement to global file")
-	dbnames := GetDatabaseNames(connection)
+	db := GetDatabaseName(connection)
 	dbMetadata := GetMetadataForObjectType(connection, TYPE_DATABASE)
-	PrintCreateDatabaseStatement(globalFile, globalTOC, connection.DBName, dbnames, dbMetadata, *backupGlobals)
+	PrintCreateDatabaseStatement(globalFile, globalTOC, db, dbMetadata)
 }
 
 func BackupDatabaseGUCs(globalFile *utils.FileWithByteCount, objectCounts map[string]int) {

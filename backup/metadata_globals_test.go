@@ -40,16 +40,16 @@ SET default_with_oids = false;`)
 	})
 	Describe("PrintCreateDatabaseStatement", func() {
 		It("prints a basic CREATE DATABASE statement", func() {
-			dbs := []backup.Database{{Oid: 1, Name: "testdb", Tablespace: "pg_default"}}
+			db := backup.Database{Oid: 1, Name: "testdb", Tablespace: "pg_default"}
 			emptyMetadataMap := backup.MetadataMap{}
-			backup.PrintCreateDatabaseStatement(backupfile, toc, "testdb", dbs, emptyMetadataMap, false)
+			backup.PrintCreateDatabaseStatement(backupfile, toc, db, emptyMetadataMap)
 			testutils.ExpectEntry(toc.GlobalEntries, 0, "", "testdb", "DATABASE")
 			testutils.AssertBufferContents(toc.GlobalEntries, buffer, `CREATE DATABASE testdb;`)
 		})
 		It("prints a CREATE DATABASE statement for a reserved keyword named database", func() {
-			dbs := []backup.Database{{Oid: 1, Name: `"table"`, Tablespace: "pg_default"}}
+			db := backup.Database{Oid: 1, Name: `"table"`, Tablespace: "pg_default"}
 			emptyMetadataMap := backup.MetadataMap{}
-			backup.PrintCreateDatabaseStatement(backupfile, toc, "table", dbs, emptyMetadataMap, false)
+			backup.PrintCreateDatabaseStatement(backupfile, toc, db, emptyMetadataMap)
 			testutils.ExpectEntry(toc.GlobalEntries, 0, "", `"table"`, "DATABASE")
 			testutils.AssertBufferContents(toc.GlobalEntries, buffer, `CREATE DATABASE "table";`)
 		})
@@ -58,8 +58,8 @@ SET default_with_oids = false;`)
 			dbMetadata := dbMetadataMap[1]
 			dbMetadata.Privileges[0].Create = false
 			dbMetadataMap[1] = dbMetadata
-			dbs := []backup.Database{{Oid: 1, Name: "testdb", Tablespace: "pg_default"}, {Oid: 2, Name: "otherdb", Tablespace: "pg_default"}}
-			backup.PrintCreateDatabaseStatement(backupfile, toc, "testdb", dbs, dbMetadataMap, false)
+			db := backup.Database{Oid: 1, Name: "testdb", Tablespace: "pg_default"}
+			backup.PrintCreateDatabaseStatement(backupfile, toc, db, dbMetadataMap)
 			testutils.AssertBufferContents(toc.GlobalEntries, buffer, `CREATE DATABASE testdb;`,
 				`COMMENT ON DATABASE testdb IS 'This is a database comment.';
 
@@ -71,38 +71,10 @@ REVOKE ALL ON DATABASE testdb FROM PUBLIC;
 REVOKE ALL ON DATABASE testdb FROM testrole;
 GRANT TEMPORARY,CONNECT ON DATABASE testdb TO testrole;`)
 		})
-		It("prints a CREATE DATABASE statement with privileges for testdb and only prints privileges for otherdb", func() {
-			dbMetadataMap := backup.MetadataMap{
-				1: backup.ObjectMetadata{
-					Privileges: []backup.ACL{{Grantee: "testrole", TemporaryWithGrant: true, ConnectWithGrant: true}},
-					Owner:      "testrole",
-					Comment:    "This is a database comment."},
-				2: backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "testrole", Create: true}}},
-				3: backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "testrole", CreateWithGrant: true}}},
-			}
-			dbs := []backup.Database{{Oid: 1, Name: "testdb", Tablespace: "pg_default"}, {Oid: 2, Name: "otherdb", Tablespace: "pg_default"}, {Oid: 3, Name: "anotherdb", Tablespace: "pg_default"}}
-			backup.PrintCreateDatabaseStatement(backupfile, toc, "testdb", dbs, dbMetadataMap, true)
-			testutils.AssertBufferContents(toc.GlobalEntries, buffer, `CREATE DATABASE testdb;`,
-				`COMMENT ON DATABASE testdb IS 'This is a database comment.';
-
-
-ALTER DATABASE testdb OWNER TO testrole;
-
-
-REVOKE ALL ON DATABASE testdb FROM PUBLIC;
-REVOKE ALL ON DATABASE testdb FROM testrole;
-GRANT TEMPORARY,CONNECT ON DATABASE testdb TO testrole WITH GRANT OPTION;`,
-
-				`REVOKE ALL ON DATABASE otherdb FROM PUBLIC;
-GRANT CREATE ON DATABASE otherdb TO testrole;`,
-
-				`REVOKE ALL ON DATABASE anotherdb FROM PUBLIC;
-GRANT CREATE ON DATABASE anotherdb TO testrole WITH GRANT OPTION;`)
-		})
 		It("prints a CREATE DATABASE statement with a TABLESPACE", func() {
-			dbs := []backup.Database{{Oid: 1, Name: "testdb", Tablespace: "test_tablespace"}}
+			db := backup.Database{Oid: 1, Name: "testdb", Tablespace: "test_tablespace"}
 			emptyMetadataMap := backup.MetadataMap{}
-			backup.PrintCreateDatabaseStatement(backupfile, toc, "testdb", dbs, emptyMetadataMap, false)
+			backup.PrintCreateDatabaseStatement(backupfile, toc, db, emptyMetadataMap)
 			testutils.AssertBufferContents(toc.GlobalEntries, buffer, `CREATE DATABASE testdb TABLESPACE test_tablespace;`)
 		})
 	})

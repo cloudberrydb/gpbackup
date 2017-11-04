@@ -15,7 +15,6 @@ import (
  */
 func initializeFlags() {
 	backupDir = flag.String("backupdir", "", "The absolute path of the directory to which all backup files will be written")
-	backupGlobals = flag.Bool("globals", false, "Back up global metadata")
 	dataOnly = flag.Bool("data-only", false, "Only back up data, do not back up metadata")
 	dbname = flag.String("dbname", "", "The database to be backed up")
 	debug = flag.Bool("debug", false, "Print verbose and debug log messages")
