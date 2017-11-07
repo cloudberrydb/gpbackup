@@ -55,11 +55,11 @@ func GetRestoreMetadataStatements(filename string, objectTypes ...string) []util
 	return statements
 }
 
-func ExecuteRestoreMetadataStatements(statements []utils.StatementWithType, jobs int) {
+func ExecuteRestoreMetadataStatements(statements []utils.StatementWithType, jobs int, showProgressBar bool) {
 	if connection.Version.AtLeast("5") {
-		connection.ExecuteAllStatementsExcept(statements, jobs, "GPDB4 SESSION GUCS")
+		connection.ExecuteAllStatementsExcept(statements, jobs, showProgressBar, "GPDB4 SESSION GUCS")
 	} else {
-		connection.ExecuteAllStatements(statements, jobs)
+		connection.ExecuteAllStatements(statements, jobs, showProgressBar)
 	}
 }
 

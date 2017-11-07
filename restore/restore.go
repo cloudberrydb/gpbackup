@@ -126,7 +126,7 @@ func createDatabase() {
 	if *redirect != "" {
 		statements = utils.SubstituteRedirectDatabaseInStatements(statements, backupConfig.DatabaseName, *redirect)
 	}
-	ExecuteRestoreMetadataStatements(statements, 1)
+	ExecuteRestoreMetadataStatements(statements, 1, false)
 	logger.Info("Database creation complete")
 }
 
@@ -137,7 +137,7 @@ func restoreGlobal() {
 	if *redirect != "" {
 		statements = utils.SubstituteRedirectDatabaseInStatements(statements, backupConfig.DatabaseName, *redirect)
 	}
-	ExecuteRestoreMetadataStatements(statements, 1)
+	ExecuteRestoreMetadataStatements(statements, 1, false)
 	logger.Info("Global database metadata restore complete")
 }
 
@@ -145,7 +145,7 @@ func restorePredata() {
 	predataFilename := globalCluster.GetPredataFilePath()
 	logger.Info("Restoring pre-data metadata from %s", predataFilename)
 	statements := GetRestoreMetadataStatements(predataFilename)
-	ExecuteRestoreMetadataStatements(statements, 1)
+	ExecuteRestoreMetadataStatements(statements, 1, true)
 	logger.Info("Pre-data metadata restore complete")
 }
 
@@ -154,13 +154,14 @@ func restoreData() {
 	defer setSerialRestore()
 	logger.Info("Restoring data")
 	totalTables := len(globalTOC.DataEntries)
-	dataProgressBar := utils.NewProgressBar(totalTables, "Tables restored: ")
+	dataProgressBar := utils.NewProgressBar(totalTables, "Tables restored: ", logger.GetVerbosity() == utils.LOGINFO)
+	dataProgressBar.Start()
 
 	if *numJobs == 1 {
 		disableDistPolicyChecking()
 		for i, entry := range globalTOC.DataEntries {
 			restoreSingleTableData(entry, uint32(i)+1, totalTables)
-			utils.IncrementProgressBar(dataProgressBar)
+			dataProgressBar.Increment()
 		}
 	} else {
 		var tableNum uint32 = 1
@@ -173,7 +174,7 @@ func restoreData() {
 				for entry := range tasks {
 					restoreSingleTableData(entry, tableNum, totalTables)
 					atomic.AddUint32(&tableNum, 1)
-					utils.IncrementProgressBar(dataProgressBar)
+					dataProgressBar.Increment()
 				}
 				workerPool.Done()
 			}()
@@ -184,7 +185,7 @@ func restoreData() {
 		close(tasks)
 		workerPool.Wait()
 	}
-	utils.FinishProgressBar(dataProgressBar)
+	dataProgressBar.Finish()
 	logger.Info("Data restore complete")
 }
 
@@ -212,7 +213,7 @@ func restorePostdata() {
 	postdataFilename := globalCluster.GetPostdataFilePath()
 	logger.Info("Restoring post-data metadata from %s", postdataFilename)
 	statements := GetRestoreMetadataStatements(postdataFilename)
-	ExecuteRestoreMetadataStatements(statements, *numJobs)
+	ExecuteRestoreMetadataStatements(statements, *numJobs, false)
 	logger.Info("Post-data metadata restore complete")
 }
 
@@ -220,7 +221,7 @@ func restoreStatistics() {
 	statisticsFilename := globalCluster.GetStatisticsFilePath()
 	logger.Info("Restoring query planner statistics from %s", statisticsFilename)
 	statements := GetRestoreMetadataStatements(statisticsFilename)
-	ExecuteRestoreMetadataStatements(statements, 1)
+	ExecuteRestoreMetadataStatements(statements, 1, false)
 	logger.Info("Query planner statistics restore complete")
 }
 

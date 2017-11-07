@@ -419,7 +419,8 @@ func BackupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
 		}
 	}
 	totalRegTables := len(tables) - totalExtTables
-	dataProgressBar := utils.NewProgressBar(totalRegTables, "Tables backed up: ")
+	dataProgressBar := utils.NewProgressBar(totalRegTables, "Tables backed up: ", logger.GetVerbosity() == utils.LOGINFO)
+	dataProgressBar.Start()
 
 	for _, table := range tables {
 		if !tableDefs[table.Oid].IsExternal {
@@ -432,13 +433,13 @@ func BackupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
 			backupFile := globalCluster.GetTableBackupFilePathForCopyCommand(table.Oid)
 			CopyTableOut(connection, table, backupFile)
 			numRegTables++
-			utils.IncrementProgressBar(dataProgressBar)
+			dataProgressBar.Increment()
 		} else {
 			logger.Verbose("Skipping data backup of table %s because it is an external table.", table.ToString())
 			numExtTables++
 		}
 	}
-	utils.FinishProgressBar(dataProgressBar)
+	dataProgressBar.Finish()
 	if numExtTables > 0 {
 		s := ""
 		if numExtTables > 1 {

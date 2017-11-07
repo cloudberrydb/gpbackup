@@ -378,4 +378,14 @@ var _ = Describe("utils/log tests", func() {
 			})
 		})
 	})
+	Describe("NewProgressBar", func() {
+		It("will print when passed a value that the progress bar should show", func() {
+			progressBar := utils.NewProgressBar(10, "test progress bar", true)
+			Expect(progressBar.NotPrint).To(Equal(false))
+		})
+		It("will not print when passed a value that the progress bar should not show", func() {
+			progressBar := utils.NewProgressBar(10, "test progress bar", false)
+			Expect(progressBar.NotPrint).To(Equal(true))
+		})
+	})
 })

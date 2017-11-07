@@ -191,10 +191,13 @@ func (dbconn *DBConn) executeStatement(statement StatementWithType, shouldExec f
  * set to 1 (to execute everything in series) or the value of the numJobs flag
  * (so the number of goroutines match the available database connections).
  */
-func (dbconn *DBConn) executeStatementsInParallel(statements []StatementWithType, numJobs int, shouldExec func(statement StatementWithType) bool) {
+func (dbconn *DBConn) executeStatements(statements []StatementWithType, numJobs int, shouldExec func(statement StatementWithType) bool, showProgressBar bool) {
+	progressBar := NewProgressBar(len(statements), "Objects restored: ", showProgressBar)
+	progressBar.Start()
 	if numJobs == 1 {
 		for _, statement := range statements {
 			dbconn.executeStatement(statement, shouldExec)
+			progressBar.Increment()
 		}
 	} else {
 		tasks := make(chan StatementWithType, len(statements))
@@ -204,6 +207,7 @@ func (dbconn *DBConn) executeStatementsInParallel(statements []StatementWithType
 			go func() {
 				for statement := range tasks {
 					dbconn.executeStatement(statement, shouldExec)
+					progressBar.Increment()
 				}
 				workerPool.Done()
 			}()
@@ -214,27 +218,17 @@ func (dbconn *DBConn) executeStatementsInParallel(statements []StatementWithType
 		close(tasks)
 		workerPool.Wait()
 	}
+	progressBar.Finish()
 }
 
-func (dbconn *DBConn) ExecuteAllStatements(statements []StatementWithType, numJobs int) {
+func (dbconn *DBConn) ExecuteAllStatements(statements []StatementWithType, numJobs int, showProgressBar bool) {
 	shouldExec := func(statement StatementWithType) bool {
 		return true
 	}
-	dbconn.executeStatementsInParallel(statements, numJobs, shouldExec)
+	dbconn.executeStatements(statements, numJobs, shouldExec, showProgressBar)
 }
 
-func (dbconn *DBConn) ExecuteAllStatementsMatching(statements []StatementWithType, numJobs int, objectTypes ...string) {
-	shouldExecute := make(map[string]bool, len(objectTypes))
-	for _, obj := range objectTypes {
-		shouldExecute[obj] = true
-	}
-	shouldExec := func(statement StatementWithType) bool {
-		return shouldExecute[statement.ObjectType]
-	}
-	dbconn.executeStatementsInParallel(statements, numJobs, shouldExec)
-}
-
-func (dbconn *DBConn) ExecuteAllStatementsExcept(statements []StatementWithType, numJobs int, objectTypes ...string) {
+func (dbconn *DBConn) ExecuteAllStatementsExcept(statements []StatementWithType, numJobs int, showProgressBar bool, objectTypes ...string) {
 	shouldNotExecute := make(map[string]bool, len(objectTypes))
 	for _, obj := range objectTypes {
 		shouldNotExecute[obj] = true
@@ -242,7 +236,7 @@ func (dbconn *DBConn) ExecuteAllStatementsExcept(statements []StatementWithType,
 	shouldExec := func(statement StatementWithType) bool {
 		return !shouldNotExecute[statement.ObjectType]
 	}
-	dbconn.executeStatementsInParallel(statements, numJobs, shouldExec)
+	dbconn.executeStatements(statements, numJobs, shouldExec, showProgressBar)
 }
 
 func CheckErrorForQuery(err error, statement string) {
