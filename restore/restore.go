@@ -21,7 +21,7 @@ func initializeFlags() {
 	backupDir = flag.String("backupdir", "", "The absolute path of the directory in which the backup files to be restored are located")
 	createdb = flag.Bool("createdb", false, "Create the database before metadata restore")
 	debug = flag.Bool("debug", false, "Print verbose and debug log messages")
-	numJobs = flag.Int("jobs", 2, "Number of parallel connections to use when restoring table data and post-data metadata")
+	numJobs = flag.Int("jobs", 1, "Number of parallel connections to use when restoring table data and post-data metadata")
 	printVersion = flag.Bool("version", false, "Print version number and exit")
 	quiet = flag.Bool("quiet", false, "Suppress non-warning, non-error log messages")
 	redirect = flag.String("redirect", "", "Restore to the specified database instead of the database that was backed up")
