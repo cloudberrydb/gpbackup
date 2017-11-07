@@ -157,6 +157,7 @@ func restoreData() {
 	dataProgressBar := utils.NewProgressBar(totalTables, "Tables restored: ")
 
 	if *numJobs == 1 {
+		disableDistPolicyChecking()
 		for i, entry := range globalTOC.DataEntries {
 			restoreSingleTableData(entry, uint32(i)+1, totalTables)
 			utils.IncrementProgressBar(dataProgressBar)
@@ -168,6 +169,7 @@ func restoreData() {
 		for i := 0; i < *numJobs; i++ {
 			workerPool.Add(1)
 			go func() {
+				disableDistPolicyChecking()
 				for entry := range tasks {
 					restoreSingleTableData(entry, tableNum, totalTables)
 					atomic.AddUint32(&tableNum, 1)
@@ -184,6 +186,12 @@ func restoreData() {
 	}
 	utils.FinishProgressBar(dataProgressBar)
 	logger.Info("Data restore complete")
+}
+
+func disableDistPolicyChecking() {
+	query := fmt.Sprintf("SET gp_enable_segment_copy_checking TO false;")
+	_, err := connection.Exec(query)
+	utils.CheckError(err)
 }
 
 func restoreSingleTableData(entry utils.DataEntry, tableNum uint32, totalTables int) {

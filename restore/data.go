@@ -24,5 +24,7 @@ func CopyTableIn(connection *utils.DBConn, tableName string, tableAttributes str
 	}
 	query := fmt.Sprintf("COPY %s%s FROM %s WITH CSV DELIMITER '%s' ON SEGMENT;", tableName, tableAttributes, copyCmdStr, tableDelim)
 	_, err := connection.Exec(query)
-	utils.CheckError(err)
+	if err != nil {
+		logger.Fatal(err, "Error loading data into table %s", tableName)
+	}
 }
