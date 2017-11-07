@@ -74,6 +74,7 @@ func (report *Report) SetBackupTypeFromFlags(dataOnly bool, ddlOnly bool, noComp
 	}
 	statsStr := ""
 	if withStats {
+		report.WithStatistics = true
 		statsStr = " With Statistics"
 	}
 	report.BackupType = fmt.Sprintf("%s %s Full%s Backup%s", filterStr, compressStr, sectionStr, statsStr)

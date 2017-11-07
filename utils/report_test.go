@@ -155,6 +155,15 @@ types                        1000`))
 			Entry("classifies an uncompressed table-filtered data-only backup",
 				true, false, true, false, true, false, "Table-Filtered Uncompressed Full Data-Only Backup"),
 		)
+		It("sets properties on the report struct with various flag combinations", func() {
+			backupReport.SetBackupTypeFromFlags(true, false, true, false, true, false)
+			expectedBackupConfig := utils.BackupConfig{Compressed: false, DataOnly: true, SchemaFiltered: false, TableFiltered: true, MetadataOnly: false, WithStatistics: false}
+			testutils.ExpectStructsToMatch(expectedBackupConfig, backupReport.BackupConfig)
+			backupReport = &utils.Report{}
+			backupReport.SetBackupTypeFromFlags(false, true, false, true, false, true)
+			expectedBackupConfig = utils.BackupConfig{Compressed: true, DataOnly: false, SchemaFiltered: true, TableFiltered: false, MetadataOnly: true, WithStatistics: true}
+			testutils.ExpectStructsToMatch(expectedBackupConfig, backupReport.BackupConfig)
+		})
 	})
 	Describe("EnsureBackupVersionCompatibility", func() {
 		It("Panics if gpbackup version is greater than gprestore version", func() {
