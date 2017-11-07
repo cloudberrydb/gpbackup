@@ -352,8 +352,8 @@ ccp_gen_cluster_default_params_anchor: &ccp_gen_cluster_default_params
   AWS_ACCESS_KEY_ID: {{tf-machine-access-key-id}}
   AWS_SECRET_ACCESS_KEY: {{tf-machine-secret-access-key}}
   AWS_DEFAULT_REGION: {{aws-region}}
-  BUCKET_PATH: {{tf-bucket-path}}
-  BUCKET_NAME: {{tf-bucket-name}}
+  BUCKET_NAME: gpdb5-pipeline-dynamic-terraform
+  BUCKET_PATH: prod/gpbackup/
 
 
 ccp_destroy_anchor: &ccp_destroy
