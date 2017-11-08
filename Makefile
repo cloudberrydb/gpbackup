@@ -16,7 +16,7 @@ DEST = .
 
 GOFLAGS :=
 
-.PHONY : coverage integration update_pipeline
+.PHONY : coverage integration end_to_end update_pipeline
 
 dependencies :
 		go get github.com/blang/semver
@@ -49,9 +49,8 @@ integration :
 
 test : lint unit integration
 
-end_to_end : build
-		./end_to_end/run.sh end_to_end/all_objects.sql
-		./end_to_end/run.sh end_to_end/1k_tables_and_inherits.sql
+end_to_end :
+		ginkgo -r -randomizeSuites -noisySkippings=false -randomizeAllSpecs end_to_end 2>&1
 
 coverage :
 		@./show_coverage.sh
