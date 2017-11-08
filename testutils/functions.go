@@ -9,6 +9,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/greenplum-db/gpbackup/backup"
+	"github.com/greenplum-db/gpbackup/restore"
 	"github.com/greenplum-db/gpbackup/utils"
 
 	"github.com/jmoiron/sqlx"
@@ -39,6 +40,7 @@ func CreateAndConnectMockDB() (*utils.DBConn, sqlmock.Sqlmock) {
 	connection.Connect()
 	SetDBVersion(connection, "5.1.0")
 	backup.SetConnection(connection)
+	restore.SetConnection(connection)
 	backup.InitializeMetadataParams(connection)
 	return connection, mock
 }

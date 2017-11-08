@@ -22,6 +22,7 @@ func initializeFlags() {
 	createdb = flag.Bool("createdb", false, "Create the database before metadata restore")
 	debug = flag.Bool("debug", false, "Print verbose and debug log messages")
 	numJobs = flag.Int("jobs", 1, "Number of parallel connections to use when restoring table data and post-data metadata")
+	onErrorContinue = flag.Bool("on-error-continue", false, "Log errors and continue restore, instead of exiting on first error")
 	printVersion = flag.Bool("version", false, "Print version number and exit")
 	quiet = flag.Bool("quiet", false, "Suppress non-warning, non-error log messages")
 	redirect = flag.String("redirect", "", "Restore to the specified database instead of the database that was backed up")
@@ -126,7 +127,7 @@ func createDatabase() {
 	if *redirect != "" {
 		statements = utils.SubstituteRedirectDatabaseInStatements(statements, backupConfig.DatabaseName, *redirect)
 	}
-	ExecuteRestoreMetadataStatements(statements, 1, false)
+	ExecuteRestoreMetadataStatements(statements, false)
 	logger.Info("Database creation complete")
 }
 
@@ -137,7 +138,7 @@ func restoreGlobal() {
 	if *redirect != "" {
 		statements = utils.SubstituteRedirectDatabaseInStatements(statements, backupConfig.DatabaseName, *redirect)
 	}
-	ExecuteRestoreMetadataStatements(statements, 1, false)
+	ExecuteRestoreMetadataStatements(statements, false)
 	logger.Info("Global database metadata restore complete")
 }
 
@@ -145,7 +146,7 @@ func restorePredata() {
 	predataFilename := globalCluster.GetPredataFilePath()
 	logger.Info("Restoring pre-data metadata from %s", predataFilename)
 	statements := GetRestoreMetadataStatements(predataFilename)
-	ExecuteRestoreMetadataStatements(statements, 1, true)
+	ExecuteRestoreMetadataStatements(statements, true)
 	logger.Info("Pre-data metadata restore complete")
 }
 
@@ -213,7 +214,7 @@ func restorePostdata() {
 	postdataFilename := globalCluster.GetPostdataFilePath()
 	logger.Info("Restoring post-data metadata from %s", postdataFilename)
 	statements := GetRestoreMetadataStatements(postdataFilename)
-	ExecuteRestoreMetadataStatements(statements, *numJobs, false)
+	ExecuteRestoreMetadataStatements(statements, true)
 	logger.Info("Post-data metadata restore complete")
 }
 
@@ -221,7 +222,7 @@ func restoreStatistics() {
 	statisticsFilename := globalCluster.GetStatisticsFilePath()
 	logger.Info("Restoring query planner statistics from %s", statisticsFilename)
 	statements := GetRestoreMetadataStatements(statisticsFilename)
-	ExecuteRestoreMetadataStatements(statements, 1, false)
+	ExecuteRestoreMetadataStatements(statements, false)
 	logger.Info("Query planner statistics restore complete")
 }
 

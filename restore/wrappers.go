@@ -55,20 +55,10 @@ func GetRestoreMetadataStatements(filename string, objectTypes ...string) []util
 	return statements
 }
 
-func ExecuteRestoreMetadataStatements(statements []utils.StatementWithType, jobs int, showProgressBar bool) {
+func ExecuteRestoreMetadataStatements(statements []utils.StatementWithType, showProgressBar bool) {
 	if connection.Version.AtLeast("5") {
-		connection.ExecuteAllStatementsExcept(statements, jobs, showProgressBar, "GPDB4 SESSION GUCS")
+		ExecuteAllStatementsExcept(statements, showProgressBar, "GPDB4 SESSION GUCS")
 	} else {
-		connection.ExecuteAllStatements(statements, jobs, showProgressBar)
+		ExecuteAllStatements(statements, showProgressBar)
 	}
-}
-
-func setParallelRestore() {
-	connection.Conn.SetMaxOpenConns(*numJobs)
-	connection.Conn.SetMaxIdleConns(*numJobs)
-}
-
-func setSerialRestore() {
-	connection.Conn.SetMaxOpenConns(1)
-	connection.Conn.SetMaxIdleConns(1)
 }

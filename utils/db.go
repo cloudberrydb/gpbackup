@@ -10,8 +10,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" // Need driver for postgres
@@ -167,88 +165,5 @@ func (dbconn *DBConn) validateGPDBVersionCompatibility() {
 		logger.Fatal(errors.Errorf(`GPDB version %s is not supported. Please upgrade to GPDB %s.0 or later.`, dbconn.Version.VersionString, MINIMUM_GPDB4_VERSION), "")
 	} else if dbconn.Version.Is("5") && dbconn.Version.Before(MINIMUM_GPDB5_VERSION) {
 		logger.Fatal(errors.Errorf(`GPDB version %s is not supported. Please upgrade to GPDB %s or later.`, dbconn.Version.VersionString, MINIMUM_GPDB5_VERSION), "")
-	}
-}
-
-/*
- * Helper functions for executing SQL statements
- */
-
-/*
- * The shouldExec function should accept a StatementWithType and return whether
- * it should be executed.  This allows the ExecuteAllStatements*() functions
- * below to filter statements before execution.
- */
-func (dbconn *DBConn) executeStatement(statement StatementWithType, shouldExec func(statement StatementWithType) bool) {
-	if shouldExec(statement) {
-		_, err := dbconn.Exec(statement.Statement)
-		CheckErrorForQuery(err, statement.Statement)
-	}
-}
-
-/*
- * This function creates a worker pool of N goroutines to be able to execute up
- * to N statements in parallel; the value of numJobs passed in should either be
- * set to 1 (to execute everything in series) or the value of the numJobs flag
- * (so the number of goroutines match the available database connections).
- */
-func (dbconn *DBConn) executeStatements(statements []StatementWithType, numJobs int, shouldExec func(statement StatementWithType) bool, showProgressBar bool) {
-	progressBar := NewProgressBar(len(statements), "Objects restored: ", showProgressBar)
-	progressBar.Start()
-	if numJobs == 1 {
-		for _, statement := range statements {
-			dbconn.executeStatement(statement, shouldExec)
-			progressBar.Increment()
-		}
-	} else {
-		tasks := make(chan StatementWithType, len(statements))
-		var workerPool sync.WaitGroup
-		for i := 0; i < numJobs; i++ {
-			workerPool.Add(1)
-			go func(i int) {
-				for statement := range tasks {
-					dbconn.executeStatement(statement, shouldExec)
-					progressBar.Increment()
-				}
-				workerPool.Done()
-			}(i)
-		}
-		for _, statement := range statements {
-			tasks <- statement
-			/*
-			 * Attempting to execute certain statements such as CREATE INDEX on the same table
-			 * at the same time can cause a deadlock due to conflicting Access Exclusive locks,
-			 * so we add a small delay between statements to avoid the issue.
-			 */
-			time.Sleep(20 * time.Millisecond)
-		}
-		close(tasks)
-		workerPool.Wait()
-	}
-	progressBar.Finish()
-}
-
-func (dbconn *DBConn) ExecuteAllStatements(statements []StatementWithType, numJobs int, showProgressBar bool) {
-	shouldExec := func(statement StatementWithType) bool {
-		return true
-	}
-	dbconn.executeStatements(statements, numJobs, shouldExec, showProgressBar)
-}
-
-func (dbconn *DBConn) ExecuteAllStatementsExcept(statements []StatementWithType, numJobs int, showProgressBar bool, objectTypes ...string) {
-	shouldNotExecute := make(map[string]bool, len(objectTypes))
-	for _, obj := range objectTypes {
-		shouldNotExecute[obj] = true
-	}
-	shouldExec := func(statement StatementWithType) bool {
-		return !shouldNotExecute[statement.ObjectType]
-	}
-	dbconn.executeStatements(statements, numJobs, shouldExec, showProgressBar)
-}
-
-func CheckErrorForQuery(err error, statement string) {
-	if err != nil {
-		logger.Verbose("Attempted to execute statement:\n%s\n", statement)
-		logger.Fatal(err, "Failed to execute statement; see log file %s for details.  Error was", logger.GetLogFilePath())
 	}
 }
