@@ -127,7 +127,7 @@ func createDatabase() {
 	if *redirect != "" {
 		statements = utils.SubstituteRedirectDatabaseInStatements(statements, backupConfig.DatabaseName, *redirect)
 	}
-	ExecuteRestoreMetadataStatements(statements, false)
+	ExecuteRestoreMetadataStatements(statements, "", false)
 	logger.Info("Database creation complete")
 }
 
@@ -138,7 +138,7 @@ func restoreGlobal() {
 	if *redirect != "" {
 		statements = utils.SubstituteRedirectDatabaseInStatements(statements, backupConfig.DatabaseName, *redirect)
 	}
-	ExecuteRestoreMetadataStatements(statements, false)
+	ExecuteRestoreMetadataStatements(statements, "Global objects", false)
 	logger.Info("Global database metadata restore complete")
 }
 
@@ -146,7 +146,7 @@ func restorePredata() {
 	predataFilename := globalCluster.GetPredataFilePath()
 	logger.Info("Restoring pre-data metadata from %s", predataFilename)
 	statements := GetRestoreMetadataStatements(predataFilename)
-	ExecuteRestoreMetadataStatements(statements, true)
+	ExecuteRestoreMetadataStatements(statements, "Pre-data objects", true)
 	logger.Info("Pre-data metadata restore complete")
 }
 
@@ -214,7 +214,7 @@ func restorePostdata() {
 	postdataFilename := globalCluster.GetPostdataFilePath()
 	logger.Info("Restoring post-data metadata from %s", postdataFilename)
 	statements := GetRestoreMetadataStatements(postdataFilename)
-	ExecuteRestoreMetadataStatements(statements, true)
+	ExecuteRestoreMetadataStatements(statements, "Post-data objects", true)
 	logger.Info("Post-data metadata restore complete")
 }
 
@@ -222,7 +222,7 @@ func restoreStatistics() {
 	statisticsFilename := globalCluster.GetStatisticsFilePath()
 	logger.Info("Restoring query planner statistics from %s", statisticsFilename)
 	statements := GetRestoreMetadataStatements(statisticsFilename)
-	ExecuteRestoreMetadataStatements(statements, false)
+	ExecuteRestoreMetadataStatements(statements, "Table statistics", false)
 	logger.Info("Query planner statistics restore complete")
 }
 

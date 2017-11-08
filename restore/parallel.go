@@ -5,6 +5,7 @@ package restore
  */
 
 import (
+	"fmt"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -55,9 +56,9 @@ func executeStatement(statement utils.StatementWithType, shouldExec func(stateme
  * This function creates a worker pool of N goroutines to be able to execute up
  * to N statements in parallel.
  */
-func executeStatements(statements []utils.StatementWithType, showProgressBar bool, shouldExec func(statement utils.StatementWithType) bool) {
+func executeStatements(statements []utils.StatementWithType, showProgressBar bool, objectsTitle string, shouldExec func(statement utils.StatementWithType) bool) {
 	var numErrors uint32
-	progressBar := utils.NewProgressBar(len(statements), "Objects restored: ", showProgressBar)
+	progressBar := utils.NewProgressBar(len(statements), fmt.Sprintf("%s restored: ", objectsTitle), showProgressBar)
 	progressBar.Start()
 	if !executeInParallel {
 		for _, statement := range statements {
@@ -95,14 +96,14 @@ func executeStatements(statements []utils.StatementWithType, showProgressBar boo
 	}
 }
 
-func ExecuteAllStatements(statements []utils.StatementWithType, showProgressBar bool) {
+func ExecuteAllStatements(statements []utils.StatementWithType, objectsTitle string, showProgressBar bool) {
 	shouldExec := func(statement utils.StatementWithType) bool {
 		return true
 	}
-	executeStatements(statements, showProgressBar, shouldExec)
+	executeStatements(statements, showProgressBar, objectsTitle, shouldExec)
 }
 
-func ExecuteAllStatementsExcept(statements []utils.StatementWithType, showProgressBar bool, objectTypes ...string) {
+func ExecuteAllStatementsExcept(statements []utils.StatementWithType, objectsTitle string, showProgressBar bool, objectTypes ...string) {
 	shouldNotExecute := make(map[string]bool, len(objectTypes))
 	for _, obj := range objectTypes {
 		shouldNotExecute[obj] = true
@@ -110,5 +111,5 @@ func ExecuteAllStatementsExcept(statements []utils.StatementWithType, showProgre
 	shouldExec := func(statement utils.StatementWithType) bool {
 		return !shouldNotExecute[statement.ObjectType]
 	}
-	executeStatements(statements, showProgressBar, shouldExec)
+	executeStatements(statements, showProgressBar, objectsTitle, shouldExec)
 }
