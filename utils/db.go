@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" // Need driver for postgres
@@ -204,16 +205,22 @@ func (dbconn *DBConn) executeStatements(statements []StatementWithType, numJobs 
 		var workerPool sync.WaitGroup
 		for i := 0; i < numJobs; i++ {
 			workerPool.Add(1)
-			go func() {
+			go func(i int) {
 				for statement := range tasks {
 					dbconn.executeStatement(statement, shouldExec)
 					progressBar.Increment()
 				}
 				workerPool.Done()
-			}()
+			}(i)
 		}
 		for _, statement := range statements {
 			tasks <- statement
+			/*
+			 * Attempting to execute certain statements such as CREATE INDEX on the same table
+			 * at the same time can cause a deadlock due to conflicting Access Exclusive locks,
+			 * so we add a small delay between statements to avoid the issue.
+			 */
+			time.Sleep(20 * time.Millisecond)
 		}
 		close(tasks)
 		workerPool.Wait()
