@@ -209,8 +209,6 @@ func restoreSingleTableData(entry utils.DataEntry, tableNum uint32, totalTables 
 }
 
 func restorePostdata() {
-	setParallelRestore()
-	defer setSerialRestore()
 	postdataFilename := globalCluster.GetPostdataFilePath()
 	logger.Info("Restoring post-data metadata from %s", postdataFilename)
 	statements := GetRestoreMetadataStatements(postdataFilename)
