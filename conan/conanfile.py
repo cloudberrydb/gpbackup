@@ -4,7 +4,7 @@ import os
 
 class GpbackupConan(ConanFile):
     name = "gpbackup"
-    version = "0.2"
+    version = "0.5"
     license = "Apache License v2.0"
     url = "https://github.com/greenplum-db/gpbackup"
     description = "Greenplum DB backup and restore utilities"
@@ -15,7 +15,7 @@ class GpbackupConan(ConanFile):
         os.environ["PATH"] = os.environ["PATH"] + ":" + os.path.join(os.getcwd(), "bin")
         with tools.environment_append({'GOPATH': os.getcwd()}):
             with tools.chdir('src/github.com/greenplum-db/gpbackup'):
-                self.run('make build')
+                self.run('make build_linux')
 
     def package(self):
         self.copy("gpbackup", dst="bin", src="bin")

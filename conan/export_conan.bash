@@ -2,7 +2,8 @@
 
 set -ex
 
-GPBACKUP_SRC=${GOPATH}/src/github.com/greenplum-db/gpbackup
+GO_DIR=$(echo $GOPATH | cut -d : -f 1)
+GPBACKUP_SRC=$GO_DIR/src/github.com/greenplum-db/gpbackup
 pushd ${GPBACKUP_SRC}
 
 GIT_VER=$(git describe --tags | awk -F "-" '{$2+=0; print $1 "." $2}')
@@ -13,9 +14,9 @@ make depend
 sed -i '.bak' "s/^GIT_VERSION := .*/GIT_VERSION=${GIT_VER}/" Makefile
 sed -i '' "s/^DEV_VERSION := .*/DEV_VERSION=${DEV_VER}/" Makefile
 
-cp ./conan/conanfile.py $GOPATH
+cp ./conan/conanfile.py $GO_DIR
 popd
-pushd $GOPATH
+pushd $GO_DIR
 sed -i '' "s/version = .*/version = '${GIT_VER}${DEV_VER}'/" conanfile.py
 
 CONAN_VER=gpbackup/${GIT_VER}${DEV_VER}@gpdb/devel
