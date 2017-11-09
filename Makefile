@@ -16,7 +16,7 @@ DEST = .
 
 GOFLAGS :=
 
-.PHONY : coverage integration end_to_end update_pipeline
+.PHONY : coverage integration end_to_end
 
 dependencies :
 		go get github.com/blang/semver
@@ -69,12 +69,6 @@ build_mac :
 		env GOOS=darwin GOARCH=amd64 go build -tags '$(BACKUP)' $(GOFLAGS) -o $(BIN_DIR)/$(BACKUP) -ldflags $(BACKUP_VERSION_STR)
 		env GOOS=darwin GOARCH=amd64 go build -tags '$(RESTORE)' $(GOFLAGS) -o $(BIN_DIR)/$(RESTORE) -ldflags $(RESTORE_VERSION_STR)
 
-install : all installdirs
-		$(INSTALL_PROGRAM) gpbackup$(X) '$(DESTDIR)$(bindir)/gpbackup$(X)'
-
-installdirs :
-		$(MKDIR_P) '$(DESTDIR)$(bindir)'
-
 clean :
 		# Build artifacts
 		rm -f $(BIN_DIR)/$(BACKUP)
@@ -86,9 +80,3 @@ clean :
 		# Code coverage files
 		rm -rf /tmp/cover*
 		rm -rf /tmp/unit*
-
-update_pipeline :
-	fly -t gpdb set-pipeline -p gpbackup -c ci/pipeline.yml -l <(lpass show "Concourse Credentials" --notes)
-
-push : format
-	git pull -r && make test && git push
