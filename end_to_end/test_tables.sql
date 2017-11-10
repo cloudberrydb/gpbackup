@@ -11,20 +11,17 @@ SET client_min_messages = warning;
 SET default_with_oids = false;
 
 --
--- Name: schema2; Type: SCHEMA; Schema: -; Owner: pivotal
 --
 
 CREATE SCHEMA schema2;
 
 
-ALTER SCHEMA schema2 OWNER TO pivotal;
 
 SET search_path = public, pg_catalog;
 
 SET default_tablespace = '';
 
 --
--- Name: foo; Type: TABLE; Schema: public; Owner: pivotal; Tablespace: 
 --
 
 CREATE TABLE foo (
@@ -32,10 +29,8 @@ CREATE TABLE foo (
 ) DISTRIBUTED BY (i);
 
 
-ALTER TABLE public.foo OWNER TO pivotal;
 
 --
--- Data for Name: foo; Type: TABLE DATA; Schema: public; Owner: pivotal
 --
 
 COPY foo (i) FROM stdin;
@@ -143,7 +138,6 @@ COPY foo (i) FROM stdin;
 
 
 --
--- Name: holds; Type: TABLE; Schema: public; Owner: pivotal; Tablespace: 
 --
 
 CREATE TABLE holds (
@@ -153,10 +147,8 @@ CREATE TABLE holds (
 ) DISTRIBUTED BY (id);
 
 
-ALTER TABLE public.holds OWNER TO pivotal;
 
 --
--- Data for Name: holds; Type: TABLE DATA; Schema: public; Owner: pivotal
 --
 
 COPY holds (id, date, amt) FROM stdin;
@@ -164,7 +156,6 @@ COPY holds (id, date, amt) FROM stdin;
 
 
 --
--- Name: sales; Type: TABLE; Schema: public; Owner: pivotal; Tablespace: 
 --
 
 CREATE TABLE sales (
@@ -188,10 +179,8 @@ CREATE TABLE sales (
           );
 
 
-ALTER TABLE public.sales OWNER TO pivotal;
 
 --
--- Data for Name: sales; Type: TABLE DATA; Schema: public; Owner: pivotal
 --
 
 COPY sales (id, date, amt) FROM stdin;
@@ -214,7 +203,6 @@ COPY sales (id, date, amt) FROM stdin;
 SET search_path = schema2, pg_catalog;
 
 --
--- Name: foo2; Type: TABLE; Schema: schema2; Owner: pivotal; Tablespace: 
 --
 
 CREATE TABLE foo2 (
@@ -222,10 +210,8 @@ CREATE TABLE foo2 (
 ) DISTRIBUTED BY (i);
 
 
-ALTER TABLE schema2.foo2 OWNER TO pivotal;
 
 --
--- Data for Name: foo2; Type: TABLE DATA; Schema: schema2; Owner: pivotal
 --
 
 COPY foo2 (i) FROM stdin;
@@ -333,7 +319,6 @@ COPY foo2 (i) FROM stdin;
 
 
 --
--- Name: returns; Type: TABLE; Schema: schema2; Owner: pivotal; Tablespace: 
 --
 
 CREATE TABLE returns (
@@ -357,10 +342,8 @@ CREATE TABLE returns (
           );
 
 
-ALTER TABLE schema2.returns OWNER TO pivotal;
 
 --
--- Data for Name: returns; Type: TABLE DATA; Schema: schema2; Owner: pivotal
 --
 
 COPY returns (id, date, amt) FROM stdin;
@@ -374,12 +357,9 @@ COPY returns (id, date, amt) FROM stdin;
 
 
 --
--- Name: public; Type: ACL; Schema: -; Owner: pivotal
 --
 
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
-REVOKE ALL ON SCHEMA public FROM pivotal;
-GRANT ALL ON SCHEMA public TO pivotal;
 GRANT ALL ON SCHEMA public TO PUBLIC;
 
 

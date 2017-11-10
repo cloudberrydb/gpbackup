@@ -8,6 +8,7 @@ import (
 	"regexp"
 
 	"github.com/greenplum-db/gpbackup/backup"
+	"github.com/greenplum-db/gpbackup/testutils"
 	"github.com/greenplum-db/gpbackup/utils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -53,6 +54,7 @@ var _ = Describe("backup end to end integration tests", func() {
 	var backupConn, restoreConn *utils.DBConn
 	BeforeSuite(func() {
 		var err error
+		testutils.SetupTestLogger()
 		gpbackupPath, err = gexec.Build("github.com/greenplum-db/gpbackup", "-tags", "gpbackup", "-ldflags", "-X github.com/greenplum-db/gpbackup/backup.version=0.5.0")
 		Expect(err).ShouldNot(HaveOccurred())
 		gprestorePath, err = gexec.Build("github.com/greenplum-db/gpbackup", "-tags", "gprestore", "-ldflags", "-X github.com/greenplum-db/gpbackup/restore.version=0.5.0")
