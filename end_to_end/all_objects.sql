@@ -20,7 +20,7 @@ CREATE SCHEMA schema2;
 --
 --
 
-CREATE PROCEDURAL LANGUAGE plperl;
+CREATE PROCEDURAL LANGUAGE plpythonu;
 
 
 SET search_path = public, pg_catalog;

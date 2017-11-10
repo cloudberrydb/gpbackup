@@ -171,14 +171,16 @@ var _ = Describe("backup end to end integration tests", func() {
 			if err != nil {
 				Fail(fmt.Sprintf("%v", err))
 			}
-			backupConn = utils.NewDBConn("testdb")
-			backupConn.Connect()
-			utils.ExecuteSQLFile(backupConn, "all_objects.sql")
+			connStr := []string{
+				"-d", fmt.Sprintf("%s", "testdb"),
+				"-f", fmt.Sprintf("%s", "all_objects.sql"),
+				"-q",
+			}
+			exec.Command("psql", connStr...)
 
 			timestamp := gpbackup(gpbackupPath)
 			gprestore(gprestorePath, timestamp, "-redirect", "restoredb")
 
-			backupConn.Close()
 			exec.Command("dropdb", "testdb").Run()
 			err = exec.Command("createdb", "testdb").Run()
 			if err != nil {
