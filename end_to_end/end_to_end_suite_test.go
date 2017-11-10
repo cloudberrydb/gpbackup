@@ -2,10 +2,12 @@ package end_to_end_test
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
@@ -140,19 +142,19 @@ var _ = Describe("backup end to end integration tests", func() {
 		It("runs gpbackup and gprestore with leaf-partition-data and backupdir flags", func() {
 			backupdir := "/tmp/leaf_partition_data"
 			timestamp := gpbackup(gpbackupPath, "-leaf-partition-data", "-backupdir", backupdir)
-			gprestore(gprestorePath, timestamp, "-redirect", "restoredb", "-backupdir", backupdir)
-			files, _ := filepath.Glob(filepath.Join(backupdir, "*0/backups/*", timestamp, "*.gz"))
-			Expect(len(files)).To(Equal(27))
+			output := gprestore(gprestorePath, timestamp, "-redirect", "restoredb", "-backupdir", backupdir)
+			r := regexp.MustCompile(`Tables restored:  27 / 27`)
+			Expect(r.Match(output)).To(BeTrue())
 			os.RemoveAll(backupdir)
 		})
 		It("runs gpbackup and gprestore with no-compression flag", func() {
 			backupdir := "/tmp/no_compression"
 			timestamp := gpbackup(gpbackupPath, "-no-compression", "-backupdir", backupdir)
 			gprestore(gprestorePath, timestamp, "-redirect", "restoredb", "-backupdir", backupdir)
-			files, _ := filepath.Glob(filepath.Join(backupdir, "*0/backups/*", timestamp, "*"))
-			gzfiles, _ := filepath.Glob(filepath.Join(backupdir, "*0/backups/*", timestamp, "*.gz"))
-			Expect(len(files)).To(Equal(5))
-			Expect(len(gzfiles)).To(Equal(0))
+			configFile, _ := filepath.Glob(filepath.Join(backupdir, "*-1/backups/*", timestamp, "*config.yaml"))
+			contents, _ := ioutil.ReadFile(configFile[0])
+
+			Expect(strings.Contains(string(contents), "compressed: false")).To(BeTrue())
 			os.RemoveAll(backupdir)
 		})
 		It("runs gpbackup and gprestore with with-stats flag", func() {
