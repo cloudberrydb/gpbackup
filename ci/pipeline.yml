@@ -137,7 +137,7 @@ jobs:
     tags: ["ccp"]
     file: gpbackup-ci/ci/tasks/integration-tests.yml
     on_failure:
-      <<: *ccp_destroy
+      <<: *debug_sleep
   - *ccp_destroy
 
 - name: integrations-GPDB5
@@ -174,7 +174,7 @@ jobs:
     tags: ["ccp"]
     file: gpbackup-ci/ci/tasks/integration-tests.yml
     on_failure:
-      <<: *ccp_destroy
+      <<: *debug_sleep
   - *ccp_destroy
 
 - name: integrations-GPDB4.3
@@ -211,7 +211,7 @@ jobs:
     tags: ["ccp"]
     file: gpbackup-ci/ci/tasks/integration-tests.yml
     on_failure:
-      <<: *ccp_destroy
+      <<: *debug_sleep
   - *ccp_destroy
 
 - name: scale-master
