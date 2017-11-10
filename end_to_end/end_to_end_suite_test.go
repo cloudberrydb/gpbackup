@@ -143,8 +143,7 @@ var _ = Describe("backup end to end integration tests", func() {
 			backupdir := "/tmp/leaf_partition_data"
 			timestamp := gpbackup(gpbackupPath, "-leaf-partition-data", "-backupdir", backupdir)
 			output := gprestore(gprestorePath, timestamp, "-redirect", "restoredb", "-backupdir", backupdir)
-			r := regexp.MustCompile(`Tables restored:  27 / 27`)
-			Expect(r.Match(output)).To(BeTrue())
+			Expect(strings.Contains(string(output), "Tables restored:  27 / 27")).To(BeTrue())
 			os.RemoveAll(backupdir)
 		})
 		It("runs gpbackup and gprestore with no-compression flag", func() {
@@ -163,8 +162,7 @@ var _ = Describe("backup end to end integration tests", func() {
 			files, _ := filepath.Glob(filepath.Join(backupdir, "*-1/backups/*", timestamp, "*statistics.sql"))
 			Expect(len(files)).To(Equal(1))
 			output := gprestore(gprestorePath, timestamp, "-redirect", "restoredb", "-with-stats", "-backupdir", backupdir)
-			r := regexp.MustCompile(`Query planner statistics restore complete`)
-			Expect(r.Match(output)).To(BeTrue())
+			Expect(strings.Contains(string(output), "Query planner statistics restore complete")).To(BeTrue())
 		})
 		It("runs gpbackup and gprestore on database with all objects", func() {
 			backupConn.Close()
