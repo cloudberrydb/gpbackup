@@ -6,20 +6,18 @@ GO_DIR=$(echo $GOPATH | cut -d : -f 1)
 GPBACKUP_SRC=$GO_DIR/src/github.com/greenplum-db/gpbackup
 pushd ${GPBACKUP_SRC}
 
-GIT_VER=$(git describe --tags | awk -F "-" '{$2+=0; print $1 "." $2}')
-DEV_VER=$(git diff | wc -l | awk '{if($1!=0) {print "+dev"}}')
+GIT_VER=$(git describe --tags | perl -pe 's/(.*)-([0-9]*)-(g[0-9a-f]*)/\1+dev.\2.\3/')
 
 make depend
 
 sed -i '.bak' "s/^GIT_VERSION := .*/GIT_VERSION=${GIT_VER}/" Makefile
-sed -i '' "s/^DEV_VERSION := .*/DEV_VERSION=${DEV_VER}/" Makefile
 
 cp ./conan/conanfile.py $GO_DIR
 popd
 pushd $GO_DIR
-sed -i '' "s/version = .*/version = '${GIT_VER}${DEV_VER}'/" conanfile.py
+sed -i '' "s/version = .*/version = '${GIT_VER}'/" conanfile.py
 
-CONAN_VER=gpbackup/${GIT_VER}${DEV_VER}@gpdb/devel
+CONAN_VER=gpbackup/${GIT_VER}@gpdb/devel
 CONAN_REPO_NAME=zzz_gpdb_oss
 conan remove -f ${CONAN_VER}
 conan export ${CONAN_VER}
