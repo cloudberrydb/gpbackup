@@ -165,14 +165,24 @@ var _ = Describe("backup integration tests", func() {
 			}
 		})
 		It("returns a slice of operator classes with operators and functions", func() {
-			testutils.AssertQueryRuns(connection, "CREATE OPERATOR CLASS testclass FOR TYPE int USING gist AS OPERATOR 1 = RECHECK, OPERATOR 2 < , FUNCTION 1 abs(integer), FUNCTION 2 int4out(integer)")
+			opClassQuery := ""
+			expectedRecheck := false
+			if connection.Version.Before("6") {
+				opClassQuery = "CREATE OPERATOR CLASS testclass FOR TYPE int USING gist AS OPERATOR 1 = RECHECK, OPERATOR 2 < , FUNCTION 1 abs(integer), FUNCTION 2 int4out(integer)"
+				expectedRecheck = true
+			} else {
+				opClassQuery = "CREATE OPERATOR CLASS testclass FOR TYPE int USING gist AS OPERATOR 1 =, OPERATOR 2 < , FUNCTION 1 abs(integer), FUNCTION 2 int4out(integer)"
+			}
+
+			testutils.AssertQueryRuns(connection, opClassQuery)
+
 			if connection.Version.Before("5") {
 				defer testutils.AssertQueryRuns(connection, "DROP OPERATOR CLASS testclass USING gist")
 			} else {
 				defer testutils.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testclass USING gist")
 			}
 
-			expectedOperators := []backup.OperatorClassOperator{{ClassOid: 0, StrategyNumber: 1, Operator: "=(integer,integer)", Recheck: true}, {ClassOid: 0, StrategyNumber: 2, Operator: "<(integer,integer)", Recheck: false}}
+			expectedOperators := []backup.OperatorClassOperator{{ClassOid: 0, StrategyNumber: 1, Operator: "=(integer,integer)", Recheck: expectedRecheck}, {ClassOid: 0, StrategyNumber: 2, Operator: "<(integer,integer)", Recheck: false}}
 			expectedFunctions := []backup.OperatorClassFunction{{ClassOid: 0, SupportNumber: 1, FunctionName: "abs(integer)"}, {ClassOid: 0, SupportNumber: 2, FunctionName: "int4out(integer)"}}
 			version4expected := backup.OperatorClass{Oid: 0, Schema: "public", Name: "testclass", FamilySchema: "", FamilyName: "", IndexMethod: "gist", Type: "integer", Default: false, StorageType: "-", Operators: expectedOperators, Functions: expectedFunctions}
 			expected := backup.OperatorClass{Oid: 0, Schema: "public", Name: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "gist", Type: "integer", Default: false, StorageType: "-", Operators: expectedOperators, Functions: expectedFunctions}

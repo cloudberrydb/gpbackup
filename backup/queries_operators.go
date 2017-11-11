@@ -45,7 +45,7 @@ FROM pg_operator o
 JOIN pg_namespace n on n.oid = o.oprnamespace
 WHERE %s AND oprcode != 0`, SchemaFilterClause("n"))
 
-	query := fmt.Sprintf(`
+	masterQuery := fmt.Sprintf(`
 SELECT
 	o.oid,
 	quote_ident(n.nspname) AS schema,
@@ -67,7 +67,7 @@ WHERE %s AND oprcode != 0`, SchemaFilterClause("n"))
 	if connection.Version.Before("5") {
 		err = connection.Select(&results, version4query)
 	} else {
-		err = connection.Select(&results, query)
+		err = connection.Select(&results, masterQuery)
 	}
 	utils.CheckError(err)
 	return results
@@ -138,7 +138,7 @@ FROM pg_catalog.pg_opclass c
 JOIN pg_catalog.pg_namespace cls_ns ON cls_ns.oid = opcnamespace
 WHERE %s`, SchemaFilterClause("cls_ns"))
 
-	query := fmt.Sprintf(`
+	masterQuery := fmt.Sprintf(`
 SELECT
 	c.oid,
 	quote_ident(cls_ns.nspname) AS schema,
@@ -159,7 +159,7 @@ WHERE %s`, SchemaFilterClause("cls_ns"))
 	if connection.Version.Before("5") {
 		err = connection.Select(&results, version4query)
 	} else {
-		err = connection.Select(&results, query)
+		err = connection.Select(&results, masterQuery)
 	}
 	utils.CheckError(err)
 
@@ -194,7 +194,7 @@ FROM pg_catalog.pg_amop
 ORDER BY amopstrategy
 `)
 
-	query := fmt.Sprintf(`
+	version5query := fmt.Sprintf(`
 SELECT
 	refobjid AS classoid,
 	amopstrategy AS strategynumber,
@@ -206,11 +206,25 @@ AND classid = 'pg_catalog.pg_amop'::pg_catalog.regclass
 AND objid = ao.oid
 ORDER BY amopstrategy
 `)
+
+	masterQuery := fmt.Sprintf(`
+SELECT
+	refobjid AS classoid,
+	amopstrategy AS strategynumber,
+	amopopr::pg_catalog.regoperator AS operator
+FROM pg_catalog.pg_amop ao, pg_catalog.pg_depend
+WHERE refclassid = 'pg_catalog.pg_opclass'::pg_catalog.regclass
+AND classid = 'pg_catalog.pg_amop'::pg_catalog.regclass
+AND objid = ao.oid
+ORDER BY amopstrategy
+`)
 	var err error
 	if connection.Version.Before("5") {
 		err = connection.Select(&results, version4query)
+	} else if connection.Version.Before("6") {
+		err = connection.Select(&results, version5query)
 	} else {
-		err = connection.Select(&results, query)
+		err = connection.Select(&results, masterQuery)
 	}
 	utils.CheckError(err)
 
@@ -238,7 +252,7 @@ FROM pg_catalog.pg_amproc
 ORDER BY amprocnum
 `)
 
-	query := fmt.Sprintf(`
+	masterQuery := fmt.Sprintf(`
 SELECT
 	refobjid AS classoid,
 	amprocnum AS supportnumber,
@@ -254,7 +268,7 @@ ORDER BY amprocnum
 	if connection.Version.Before("5") {
 		err = connection.Select(&results, version4query)
 	} else {
-		err = connection.Select(&results, query)
+		err = connection.Select(&results, masterQuery)
 	}
 	utils.CheckError(err)
 

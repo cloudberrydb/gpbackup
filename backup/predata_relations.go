@@ -269,7 +269,9 @@ func PrintCreateSequenceStatements(predataFile *utils.FileWithByteCount, toc *ut
 		start := predataFile.ByteCount
 		seqFQN := sequence.ToString()
 		predataFile.MustPrintln("\n\nCREATE SEQUENCE", seqFQN)
-		if !sequence.IsCalled {
+		if connection.Version.AtLeast("6") {
+			predataFile.MustPrintln("\tSTART WITH", sequence.StartVal)
+		} else if !sequence.IsCalled {
 			predataFile.MustPrintln("\tSTART WITH", sequence.LastVal)
 		}
 		predataFile.MustPrintln("\tINCREMENT BY", sequence.Increment)

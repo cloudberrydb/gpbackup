@@ -368,6 +368,7 @@ ORDER BY n.nspname, c.relname;`, SchemaFilterClause("n"))
 type SequenceDefinition struct {
 	Name      string `db:"sequence_name"`
 	LastVal   int64  `db:"last_value"`
+	StartVal  int64  `db:"start_value"`
 	Increment int64  `db:"increment_by"`
 	MaxVal    int64  `db:"max_value"`
 	MinVal    int64  `db:"min_value"`

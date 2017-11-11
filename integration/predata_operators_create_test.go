@@ -120,7 +120,12 @@ var _ = Describe("backup integration create statement tests", func() {
 				operatorClass.FamilySchema = ""
 				operatorClass.FamilyName = ""
 			}
-			operatorClass.Operators = []backup.OperatorClassOperator{{ClassOid: 0, StrategyNumber: 1, Operator: "=(integer,integer)", Recheck: true}}
+
+			expectedRecheck := false
+			if connection.Version.Before("6") {
+				expectedRecheck = true
+			}
+			operatorClass.Operators = []backup.OperatorClassOperator{{ClassOid: 0, StrategyNumber: 1, Operator: "=(integer,integer)", Recheck: expectedRecheck}}
 			operatorClass.Functions = []backup.OperatorClassFunction{{ClassOid: 0, SupportNumber: 1, FunctionName: "abs(integer)"}}
 
 			testutils.AssertQueryRuns(connection, "CREATE OPERATOR FAMILY public.testfam USING gist")

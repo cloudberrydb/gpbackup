@@ -474,6 +474,9 @@ SET SUBPARTITION TEMPLATE
 			if connection.Version.Before("5") {
 				expectedSequence.LogCnt = 1 // In GPDB 4.3, sequence log count is one-indexed
 			}
+			if connection.Version.AtLeast("6") {
+				expectedSequence.StartVal = 1
+			}
 
 			testutils.ExpectStructsToMatch(&expectedSequence, &resultSequenceDef)
 		})
@@ -493,6 +496,9 @@ SET SUBPARTITION TEMPLATE
 				expectedSequence.LogCnt = 32 // In GPDB 4.3, sequence log count is one-indexed
 			} else {
 				expectedSequence.LogCnt = 31 // In GPDB 5, sequence log count is zero-indexed
+			}
+			if connection.Version.AtLeast("6") {
+				expectedSequence.StartVal = 100
 			}
 
 			testutils.ExpectStructsToMatch(&expectedSequence, &resultSequenceDef)
@@ -518,14 +524,20 @@ SET SUBPARTITION TEMPLATE
 			testutils.AssertQueryRuns(connection, "CREATE SEQUENCE seq_one START 3")
 			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE seq_one")
 			testutils.AssertQueryRuns(connection, "COMMENT ON SEQUENCE public.seq_one IS 'this is a sequence comment'")
+			startValOne := int64(0)
+			startValTwo := int64(0)
+			if connection.Version.AtLeast("6") {
+				startValOne = 3
+				startValTwo = 7
+			}
 
 			testutils.AssertQueryRuns(connection, "CREATE SEQUENCE seq_two START 7")
 			defer testutils.AssertQueryRuns(connection, "DROP SEQUENCE seq_two")
 
 			seqOneRelation := backup.BasicRelation("public", "seq_one")
-			seqOneDef := backup.SequenceDefinition{Name: "seq_one", LastVal: 3, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
+			seqOneDef := backup.SequenceDefinition{Name: "seq_one", LastVal: 3, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1, StartVal: startValOne}
 			seqTwoRelation := backup.BasicRelation("public", "seq_two")
-			seqTwoDef := backup.SequenceDefinition{Name: "seq_two", LastVal: 7, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
+			seqTwoDef := backup.SequenceDefinition{Name: "seq_two", LastVal: 7, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1, StartVal: startValTwo}
 			if connection.Version.Before("5") {
 				seqOneDef.LogCnt = 1 // In GPDB 4.3, sequence log count is one-indexed
 				seqTwoDef.LogCnt = 1
@@ -626,6 +638,8 @@ SET SUBPARTITION TEMPLATE
 
 			tables = backup.ConstructTableDependencies(connection, tables, false)
 
+			sort.Strings(tables[0].DependsUpon)
+			sort.Strings(tables[0].Inherits)
 			Expect(len(tables)).To(Equal(1))
 			Expect(len(tables[0].DependsUpon)).To(Equal(2))
 			Expect(tables[0].DependsUpon[0]).To(Equal("public.parent_one"))
