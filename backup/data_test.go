@@ -38,7 +38,7 @@ var _ = Describe("backup/data tests", func() {
 			tableDefs := map[uint32]backup.TableDefinition{1: {ColumnDefs: columnDefs}}
 			tables := []backup.Relation{{Oid: 1, Schema: "public", Name: "table"}}
 			backup.AddTableDataEntriesToTOC(tables, tableDefs)
-			expectedDataEntries := []utils.DataEntry{{"public", "table", 1, "(a)"}}
+			expectedDataEntries := []utils.DataEntry{{Schema: "public", Name: "table", Oid: 1, AttributeString: "(a)"}}
 			Expect(toc.DataEntries).To(Equal(expectedDataEntries))
 		})
 		It("does not add an entry for an external table to the TOC", func() {

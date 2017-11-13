@@ -10,9 +10,9 @@ import (
 )
 
 var _ = Describe("utils/version tests", func() {
-	fake43 := utils.GPDBVersion{"4.3.0.0", semver.MustParse("4.3.0")}
-	fake50 := utils.GPDBVersion{"5.0.0", semver.MustParse("5.0.0")}
-	fake51 := utils.GPDBVersion{"5.1.0", semver.MustParse("5.1.0")}
+	fake43 := utils.GPDBVersion{VersionString: "4.3.0.0", SemVer: semver.MustParse("4.3.0")}
+	fake50 := utils.GPDBVersion{VersionString: "5.0.0", SemVer: semver.MustParse("5.0.0")}
+	fake51 := utils.GPDBVersion{VersionString: "5.1.0", SemVer: semver.MustParse("5.1.0")}
 	BeforeEach(func() {
 		connection, mock = testutils.CreateAndConnectMockDB()
 	})

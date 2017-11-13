@@ -10,13 +10,13 @@ import (
 )
 
 var _ = Describe("utils/toc tests", func() {
-	comment := utils.StatementWithType{"COMMENT", "-- This is a comment\n"}
+	comment := utils.StatementWithType{ObjectType: "COMMENT", Statement: "-- This is a comment\n"}
 	commentLen := uint64(len(comment.Statement))
-	create := utils.StatementWithType{"DATABASE", "CREATE DATABASE somedatabase;\n"}
+	create := utils.StatementWithType{ObjectType: "DATABASE", Statement: "CREATE DATABASE somedatabase;\n"}
 	createLen := uint64(len(create.Statement))
-	role1 := utils.StatementWithType{"ROLE", "CREATE ROLE somerole1;\n"}
+	role1 := utils.StatementWithType{ObjectType: "ROLE", Statement: "CREATE ROLE somerole1;\n"}
 	role1Len := uint64(len(role1.Statement))
-	role2 := utils.StatementWithType{"ROLE", "CREATE ROLE somerole2;\n"}
+	role2 := utils.StatementWithType{ObjectType: "ROLE", Statement: "CREATE ROLE somerole2;\n"}
 	role2Len := uint64(len(role2.Statement))
 	BeforeEach(func() {
 		toc, backupfile = testutils.InitializeTestTOC(buffer, "global")
@@ -85,16 +85,11 @@ var _ = Describe("utils/toc tests", func() {
 		})
 	})
 	Context("SubstituteRedirectDatabaseInStatements", func() {
-		var toc utils.TOC
-		wrongCreate := utils.StatementWithType{"TABLE", "CREATE DATABASE somedatabase;\n"}
-		gucs := utils.StatementWithType{"DATABASE GUC", "ALTER DATABASE somedatabase SET fsync TO off;\n"}
-		metadata := utils.StatementWithType{"DATABASE METADATA", "ALTER DATABASE somedatabase OWNER TO testrole;\n"}
-		oldSpecial := utils.StatementWithType{"DATABASE", `CREATE DATABASE "db-special-chär$";
+		wrongCreate := utils.StatementWithType{ObjectType: "TABLE", Statement: "CREATE DATABASE somedatabase;\n"}
+		gucs := utils.StatementWithType{ObjectType: "DATABASE GUC", Statement: "ALTER DATABASE somedatabase SET fsync TO off;\n"}
+		metadata := utils.StatementWithType{ObjectType: "DATABASE METADATA", Statement: "ALTER DATABASE somedatabase OWNER TO testrole;\n"}
+		oldSpecial := utils.StatementWithType{ObjectType: "DATABASE", Statement: `CREATE DATABASE "db-special-chär$";
 `}
-
-		BeforeEach(func() {
-			toc = utils.TOC{}
-		})
 		It("can substitute a database name in a CREATE DATABASE statement", func() {
 			statements := utils.SubstituteRedirectDatabaseInStatements([]utils.StatementWithType{create}, "somedatabase", "newdatabase")
 			Expect(statements[0].Statement).To(Equal("CREATE DATABASE newdatabase;\n"))

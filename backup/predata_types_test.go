@@ -6,7 +6,6 @@ import (
 	"github.com/lib/pq"
 
 	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("backup/predata_types tests", func() {
