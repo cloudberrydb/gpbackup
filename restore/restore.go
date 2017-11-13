@@ -159,7 +159,7 @@ func restoreData() {
 	dataProgressBar.Start()
 
 	if *numJobs == 1 {
-		disableDistPolicyChecking()
+		setGUCsBeforeDataRestore()
 		for i, entry := range globalTOC.DataEntries {
 			restoreSingleTableData(entry, uint32(i)+1, totalTables)
 			dataProgressBar.Increment()
@@ -171,7 +171,7 @@ func restoreData() {
 		for i := 0; i < *numJobs; i++ {
 			workerPool.Add(1)
 			go func() {
-				disableDistPolicyChecking()
+				setGUCsBeforeDataRestore()
 				for entry := range tasks {
 					restoreSingleTableData(entry, tableNum, totalTables)
 					atomic.AddUint32(&tableNum, 1)
@@ -188,24 +188,6 @@ func restoreData() {
 	}
 	dataProgressBar.Finish()
 	logger.Info("Data restore complete")
-}
-
-func disableDistPolicyChecking() {
-	query := fmt.Sprintf("SET gp_enable_segment_copy_checking TO false;")
-	_, err := connection.Exec(query)
-	utils.CheckError(err)
-}
-
-func restoreSingleTableData(entry utils.DataEntry, tableNum uint32, totalTables int) {
-	name := utils.MakeFQN(entry.Schema, entry.Name)
-	if logger.GetVerbosity() > utils.LOGINFO {
-		// No progress bar at this log level, so we note table count here
-		logger.Verbose("Reading data for table %s from file (table %d of %d)", name, tableNum, totalTables)
-	} else {
-		logger.Verbose("Reading data for table %s from file", name)
-	}
-	backupFile := globalCluster.GetTableBackupFilePathForCopyCommand(entry.Oid)
-	CopyTableIn(connection, name, entry.AttributeString, backupFile)
 }
 
 func restorePostdata() {

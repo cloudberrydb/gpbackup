@@ -1,6 +1,8 @@
 package restore
 
 import (
+	"fmt"
+
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
@@ -44,6 +46,10 @@ func InitializeBackupConfig() {
 	utils.EnsureDatabaseVersionCompatibility(backupConfig.DatabaseVersion, connection.Version)
 }
 
+/*
+ * Metadata and/or data restore wrapper functions
+ */
+
 func GetRestoreMetadataStatements(filename string, objectTypes ...string) []utils.StatementWithType {
 	metadataFile := utils.MustOpenFileForReading(filename)
 	var statements []utils.StatementWithType
@@ -61,4 +67,29 @@ func ExecuteRestoreMetadataStatements(statements []utils.StatementWithType, obje
 	} else {
 		ExecuteAllStatements(statements, objectsTitle, showProgressBar)
 	}
+}
+
+func setGUCsBeforeDataRestore() {
+	objectTypes := []string{"SESSION GUCS"}
+	if connection.Version.Before("5") {
+		objectTypes = append(objectTypes, "GPDB4 SESSION GUCS")
+	}
+	gucStatements := GetRestoreMetadataStatements(globalCluster.GetPredataFilePath(), objectTypes...)
+	ExecuteRestoreMetadataStatements(gucStatements, "", false)
+
+	query := fmt.Sprintf("SET gp_enable_segment_copy_checking TO false;")
+	_, err := connection.Exec(query)
+	utils.CheckError(err)
+}
+
+func restoreSingleTableData(entry utils.DataEntry, tableNum uint32, totalTables int) {
+	name := utils.MakeFQN(entry.Schema, entry.Name)
+	if logger.GetVerbosity() > utils.LOGINFO {
+		// No progress bar at this log level, so we note table count here
+		logger.Verbose("Reading data for table %s from file (table %d of %d)", name, tableNum, totalTables)
+	} else {
+		logger.Verbose("Reading data for table %s from file", name)
+	}
+	backupFile := globalCluster.GetTableBackupFilePathForCopyCommand(entry.Oid)
+	CopyTableIn(connection, name, entry.AttributeString, backupFile)
 }

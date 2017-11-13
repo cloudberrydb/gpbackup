@@ -98,6 +98,8 @@ func DoBackup() {
 			backupPredata(metadataTables, tableDefs, objectCounts)
 			backupPostdata(objectCounts)
 		}
+	} else {
+		backupSessionGUCs()
 	}
 
 	if !*metadataOnly {
@@ -205,6 +207,13 @@ func backupTablePredata(tables []Relation, tableDefs map[uint32]TableDefinition,
 	BackupTables(predataFile, tables, relationMetadata, tableDefs, constraints)
 	BackupConstraints(predataFile, objectCounts, constraints, conMetadata)
 	logger.Info("Table metadata backup complete")
+}
+
+func backupSessionGUCs() {
+	predataFilename := globalCluster.GetPredataFilePath()
+	predataFile := utils.NewFileWithByteCountFromFile(predataFilename)
+	defer predataFile.Close()
+	BackupSessionGUCs(predataFile)
 }
 
 func backupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
