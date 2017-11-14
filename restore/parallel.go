@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/greenplum-db/gpbackup/utils"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -38,15 +39,18 @@ func setSerialRestore() {
  * The return value for this function is the number of errors encountered, not
  * an error code.
  */
-func executeStatement(statement utils.StatementWithType, shouldExec func(statement utils.StatementWithType) bool) uint32 {
+func executeStatement(statement utils.StatementWithType, showProgressBar bool, shouldExec func(statement utils.StatementWithType) bool) uint32 {
 	if shouldExec(statement) {
 		_, err := connection.Exec(statement.Statement)
 		if err != nil {
+			if showProgressBar {
+				fmt.Println() // Move error message to its own line, since the cursor is currently at the end of the progress bar
+			}
 			logger.Verbose("Error encountered when executing statement: %s Error was: %s", strings.TrimSpace(statement.Statement), err.Error())
 			if *onErrorContinue {
 				return 1
 			}
-			logger.Fatal(err, "Failed to execute statement; see log file %s for details.", logger.GetLogFilePath())
+			logger.Fatal(errors.Errorf("%s; see log file %s for details.", err.Error(), logger.GetLogFilePath()), "Failed to execute statement:")
 		}
 	}
 	return 0
@@ -62,7 +66,7 @@ func executeStatements(statements []utils.StatementWithType, showProgressBar boo
 	progressBar.Start()
 	if !executeInParallel {
 		for _, statement := range statements {
-			atomic.AddUint32(&numErrors, executeStatement(statement, shouldExec))
+			atomic.AddUint32(&numErrors, executeStatement(statement, showProgressBar, shouldExec))
 			progressBar.Increment()
 		}
 	} else {
@@ -72,7 +76,7 @@ func executeStatements(statements []utils.StatementWithType, showProgressBar boo
 			workerPool.Add(1)
 			go func() {
 				for statement := range tasks {
-					atomic.AddUint32(&numErrors, executeStatement(statement, shouldExec))
+					atomic.AddUint32(&numErrors, executeStatement(statement, showProgressBar, shouldExec))
 					progressBar.Increment()
 				}
 				workerPool.Done()
