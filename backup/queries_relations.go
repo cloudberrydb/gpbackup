@@ -157,7 +157,6 @@ type ColumnDefinition struct {
 	Name        string
 	NotNull     bool `db:"attnotnull"`
 	HasDefault  bool `db:"atthasdef"`
-	IsDropped   bool `db:"attisdropped"`
 	Type        string
 	Encoding    string
 	StatTarget  int `db:"attstattarget"`
@@ -182,7 +181,6 @@ SELECT
 	quote_ident(a.attname) AS name,
 	a.attnotnull,
 	a.atthasdef,
-	a.attisdropped,
 	pg_catalog.format_type(t.oid,a.atttypmod) AS type,
 	coalesce(pg_catalog.array_to_string(e.attoptions, ','), '') AS encoding,
 	a.attstattarget,

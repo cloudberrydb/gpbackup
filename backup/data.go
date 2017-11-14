@@ -18,9 +18,7 @@ var (
 func ConstructTableAttributesList(columnDefs []ColumnDefinition) string {
 	names := make([]string, 0)
 	for _, col := range columnDefs {
-		if !col.IsDropped {
-			names = append(names, col.Name)
-		}
+		names = append(names, col.Name)
 	}
 	if len(names) > 0 {
 		return fmt.Sprintf("(%s)", strings.Join(names, ","))

@@ -198,19 +198,17 @@ func PrintRegularTableCreateStatement(predataFile *utils.FileWithByteCount, toc 
 func printColumnDefinitions(predataFile *utils.FileWithByteCount, columnDefs []ColumnDefinition) {
 	lines := make([]string, 0)
 	for _, column := range columnDefs {
-		if !column.IsDropped {
-			line := fmt.Sprintf("\t%s %s", column.Name, column.Type)
-			if column.HasDefault {
-				line += fmt.Sprintf(" DEFAULT %s", column.DefaultVal)
-			}
-			if column.NotNull {
-				line += " NOT NULL"
-			}
-			if column.Encoding != "" {
-				line += fmt.Sprintf(" ENCODING (%s)", column.Encoding)
-			}
-			lines = append(lines, line)
+		line := fmt.Sprintf("\t%s %s", column.Name, column.Type)
+		if column.HasDefault {
+			line += fmt.Sprintf(" DEFAULT %s", column.DefaultVal)
 		}
+		if column.NotNull {
+			line += " NOT NULL"
+		}
+		if column.Encoding != "" {
+			line += fmt.Sprintf(" ENCODING (%s)", column.Encoding)
+		}
+		lines = append(lines, line)
 	}
 	if len(lines) > 0 {
 		predataFile.MustPrintln(strings.Join(lines, ",\n"))

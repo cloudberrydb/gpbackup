@@ -78,7 +78,6 @@ ENCODING 'UTF-8';`)
 		})
 	})
 	Describe("PrintRegularTableCreateStatement", func() {
-		rowDropped := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", IsDropped: true, Type: "character varying(20)", StatTarget: -1}
 		rowOneEncoding := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", Type: "integer", Encoding: "compresstype=none,blocksize=32768,compresslevel=0", StatTarget: -1}
 		rowTwoEncoding := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", Type: "character varying(20)", Encoding: "compresstype=zlib,blocksize=65536,compresslevel=1", StatTarget: -1}
 		rowNotNull := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", NotNull: true, Type: "character varying(20)", StatTarget: -1}
@@ -114,14 +113,6 @@ ENCODING 'UTF-8';`)
 				tableDef.ColumnDefs = colDefsEmpty
 				backup.PrintRegularTableCreateStatement(backupfile, toc, testTable, tableDef)
 				testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE TABLE public.tablename (
-) DISTRIBUTED RANDOMLY;`)
-			})
-			It("prints a CREATE TABLE block without a dropped attribute", func() {
-				col := []backup.ColumnDefinition{rowOne, rowDropped}
-				tableDef.ColumnDefs = col
-				backup.PrintRegularTableCreateStatement(backupfile, toc, testTable, tableDef)
-				testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE TABLE public.tablename (
-	i integer
 ) DISTRIBUTED RANDOMLY;`)
 			})
 		})
