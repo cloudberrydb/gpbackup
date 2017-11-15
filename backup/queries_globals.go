@@ -20,6 +20,7 @@ func GetSessionGUCs(connection *utils.DBConn) SessionGUCs {
 	result := SessionGUCs{}
 	query := "SHOW client_encoding;"
 	err := connection.Get(&result, query)
+	utils.CheckError(err)
 	query = "SHOW default_with_oids;"
 	err = connection.Get(&result, query)
 	utils.CheckError(err)

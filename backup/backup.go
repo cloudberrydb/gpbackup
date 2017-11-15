@@ -122,7 +122,7 @@ func backupGlobal(objectCounts map[string]int) {
 
 	BackupSessionGUCs(globalFile)
 	BackupTablespaces(globalFile, objectCounts)
-	BackupCreateDatabase(globalFile, objectCounts)
+	BackupCreateDatabase(globalFile)
 	BackupDatabaseGUCs(globalFile, objectCounts)
 
 	if len(includeSchemas) == 0 {
@@ -131,7 +131,7 @@ func backupGlobal(objectCounts map[string]int) {
 			BackupResourceGroups(globalFile, objectCounts)
 		}
 		BackupRoles(globalFile, objectCounts)
-		BackupRoleGrants(globalFile, objectCounts)
+		BackupRoleGrants(globalFile)
 	}
 	logger.Info("Global database metadata backup complete")
 }
@@ -153,19 +153,19 @@ func backupPredata(tables []Relation, tableDefs map[uint32]TableDefinition, obje
 		BackupProceduralLanguages(predataFile, objectCounts, procLangs, langFuncs, functionMetadata, funcInfoMap)
 	}
 
-	BackupShellTypes(predataFile, objectCounts, types)
+	BackupShellTypes(predataFile, types)
 	if connection.Version.AtLeast("5") {
-		BackupEnumTypes(predataFile, objectCounts, types, typeMetadata)
+		BackupEnumTypes(predataFile, typeMetadata)
 	}
 
 	relationMetadata := GetMetadataForObjectType(connection, TYPE_RELATION)
 	sequences := GetAllSequences(connection)
 	BackupCreateSequences(predataFile, objectCounts, sequences, relationMetadata)
 
-	constraints, conMetadata := RetrieveConstraints(objectCounts)
+	constraints, conMetadata := RetrieveConstraints()
 
 	BackupFunctionsAndTypesAndTables(predataFile, otherFuncs, types, tables, functionMetadata, typeMetadata, relationMetadata, tableDefs, constraints)
-	BackupAlterSequences(predataFile, objectCounts, sequences)
+	BackupAlterSequences(predataFile, sequences)
 
 	if len(includeSchemas) == 0 {
 		BackupProtocols(predataFile, objectCounts, funcInfoMap)
@@ -188,7 +188,7 @@ func backupPredata(tables []Relation, tableDefs map[uint32]TableDefinition, obje
 	BackupAggregates(predataFile, objectCounts, funcInfoMap)
 	BackupCasts(predataFile, objectCounts)
 	BackupViews(predataFile, objectCounts, relationMetadata)
-	BackupConstraints(predataFile, objectCounts, constraints, conMetadata)
+	BackupConstraints(predataFile, constraints, conMetadata)
 	logger.Info("Pre-data metadata backup complete")
 }
 
@@ -202,10 +202,10 @@ func backupTablePredata(tables []Relation, tableDefs map[uint32]TableDefinition,
 
 	relationMetadata := GetMetadataForObjectType(connection, TYPE_RELATION)
 
-	constraints, conMetadata := RetrieveConstraints(objectCounts, tables...)
+	constraints, conMetadata := RetrieveConstraints(tables...)
 
 	BackupTables(predataFile, tables, relationMetadata, tableDefs, constraints)
-	BackupConstraints(predataFile, objectCounts, constraints, conMetadata)
+	BackupConstraints(predataFile, constraints, conMetadata)
 	logger.Info("Table metadata backup complete")
 }
 

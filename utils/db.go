@@ -88,8 +88,7 @@ func (dbconn *DBConn) Commit() {
 	if dbconn.Tx == nil {
 		logger.Fatal(errors.New("Cannot commit transaction; there is no transaction in progress"), "")
 	}
-	var err error
-	err = dbconn.Tx.Commit()
+	err := dbconn.Tx.Commit()
 	CheckError(err)
 	dbconn.Tx = nil
 }

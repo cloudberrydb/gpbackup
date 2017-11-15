@@ -172,8 +172,8 @@ var _ = Describe("backup end to end integration tests", func() {
 				Fail(fmt.Sprintf("%v", err))
 			}
 			connStr := []string{
-				"-d", fmt.Sprintf("%s", "testdb"),
-				"-f", fmt.Sprintf("%s", "all_objects.sql"),
+				"-d", "testdb",
+				"-f", "all_objects.sql",
 				"-q",
 			}
 			exec.Command("psql", connStr...)

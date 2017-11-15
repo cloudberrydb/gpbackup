@@ -25,7 +25,6 @@ var (
  */
 var (
 	backupDir         *string
-	backupGlobals     *bool
 	dataOnly          *bool
 	dbname            *string
 	debug             *bool

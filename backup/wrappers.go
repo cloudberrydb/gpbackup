@@ -129,7 +129,7 @@ func RetrieveTypes(objectCounts map[string]int) ([]Type, MetadataMap, map[uint32
 	return types, typeMetadata, funcInfoMap
 }
 
-func RetrieveConstraints(objectCounts map[string]int, tables ...Relation) ([]Constraint, MetadataMap) {
+func RetrieveConstraints(tables ...Relation) ([]Constraint, MetadataMap) {
 	constraints := GetConstraints(connection, tables...)
 	conMetadata := GetCommentsForObjectType(connection, TYPE_CONSTRAINT)
 	return constraints, conMetadata
@@ -162,7 +162,7 @@ func BackupTablespaces(globalFile *utils.FileWithByteCount, objectCounts map[str
 	PrintCreateTablespaceStatements(globalFile, globalTOC, tablespaces, tablespaceMetadata)
 }
 
-func BackupCreateDatabase(globalFile *utils.FileWithByteCount, objectCounts map[string]int) {
+func BackupCreateDatabase(globalFile *utils.FileWithByteCount) {
 	logger.Verbose("Writing CREATE DATABASE statement to global file")
 	db := GetDatabaseName(connection)
 	dbMetadata := GetMetadataForObjectType(connection, TYPE_DATABASE)
@@ -200,7 +200,7 @@ func BackupRoles(globalFile *utils.FileWithByteCount, objectCounts map[string]in
 	PrintCreateRoleStatements(globalFile, globalTOC, roles, roleMetadata)
 }
 
-func BackupRoleGrants(globalFile *utils.FileWithByteCount, objectCounts map[string]int) {
+func BackupRoleGrants(globalFile *utils.FileWithByteCount) {
 	logger.Verbose("Writing GRANT ROLE statements to global file")
 	roleMembers := GetRoleMembers(connection)
 	PrintRoleMembershipStatements(globalFile, globalTOC, roleMembers)
@@ -228,14 +228,15 @@ func BackupProceduralLanguages(predataFile *utils.FileWithByteCount, objectCount
 	PrintCreateLanguageStatements(predataFile, globalTOC, procLangs, funcInfoMap, procLangMetadata)
 }
 
-func BackupShellTypes(predataFile *utils.FileWithByteCount, objectCounts map[string]int, types []Type) {
+func BackupShellTypes(predataFile *utils.FileWithByteCount, types []Type) {
 	logger.Verbose("Writing CREATE TYPE statements for shell types to predata file")
 	PrintCreateShellTypeStatements(predataFile, globalTOC, types)
 }
 
-func BackupEnumTypes(predataFile *utils.FileWithByteCount, objectCounts map[string]int, types []Type, typeMetadata MetadataMap) {
+func BackupEnumTypes(predataFile *utils.FileWithByteCount, typeMetadata MetadataMap) {
 	enums := GetEnumTypes(connection)
 	logger.Verbose("Writing CREATE TYPE statements for enum types to predata file")
+	objectCounts["Types"] += len(enums)
 	PrintCreateEnumTypeStatements(predataFile, globalTOC, enums, typeMetadata)
 }
 
@@ -268,7 +269,7 @@ func BackupTables(predataFile *utils.FileWithByteCount, tables []Relation, relat
 	PrintCreateDependentTypeAndFunctionAndTablesStatements(predataFile, globalTOC, sortedSlice, relationMetadata, tableDefs, constraints)
 }
 
-func BackupAlterSequences(predataFile *utils.FileWithByteCount, objectCounts map[string]int, sequences []Sequence) {
+func BackupAlterSequences(predataFile *utils.FileWithByteCount, sequences []Sequence) {
 	logger.Verbose("Writing ALTER SEQUENCE statements to predata file")
 	sequenceColumnOwners := GetSequenceColumnOwnerMap(connection)
 	PrintAlterSequenceStatements(predataFile, globalTOC, sequences, sequenceColumnOwners)
@@ -371,7 +372,7 @@ func BackupViews(predataFile *utils.FileWithByteCount, objectCounts map[string]i
 	PrintCreateViewStatements(predataFile, globalTOC, views, relationMetadata)
 }
 
-func BackupConstraints(predataFile *utils.FileWithByteCount, objectCounts map[string]int, constraints []Constraint, conMetadata MetadataMap) {
+func BackupConstraints(predataFile *utils.FileWithByteCount, constraints []Constraint, conMetadata MetadataMap) {
 	logger.Verbose("Writing ADD CONSTRAINT statements to predata file")
 	PrintConstraintStatements(predataFile, globalTOC, constraints, conMetadata)
 }
