@@ -74,7 +74,7 @@ clean :
 		rm -f $(BIN_DIR)/$(RESTORE)
 		# Test artifacts
 		rm -rf /tmp/go-build*
-		rm -rf /tmp/ginkgo*
+		rm -rf /tmp/gexec_artifacts*
 		rm -rf /tmp/ginkgo*
 		# Code coverage files
 		rm -rf /tmp/cover*

@@ -160,9 +160,12 @@ var _ = Describe("backup end to end integration tests", func() {
 			backupdir := "/tmp/with_stats"
 			timestamp := gpbackup(gpbackupPath, "-with-stats", "-backupdir", backupdir)
 			files, _ := filepath.Glob(filepath.Join(backupdir, "*-1/backups/*", timestamp, "*statistics.sql"))
+
 			Expect(len(files)).To(Equal(1))
 			output := gprestore(gprestorePath, timestamp, "-redirect", "restoredb", "-with-stats", "-backupdir", backupdir)
+
 			Expect(strings.Contains(string(output), "Query planner statistics restore complete")).To(BeTrue())
+			os.RemoveAll(backupdir)
 		})
 		It("runs gpbackup and gprestore on database with all objects", func() {
 			backupConn.Close()
