@@ -19,6 +19,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			extTableEmpty backup.ExternalTableDefinition
 			testTable     backup.Relation
 			tableDef      backup.TableDefinition
+			tableDefs     map[uint32]backup.TableDefinition
 			/*
 			 * We need to construct partitionDef and partTemplateDef piecemeal like this,
 			 * or go fmt will remove the trailing whitespace and prevent literal comparison.
@@ -68,6 +69,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			extTableEmpty = backup.ExternalTableDefinition{Oid: 0, Type: -2, Protocol: -2, Location: "", ExecLocation: "ALL_SEGMENTS", FormatType: "t", FormatOpts: "", Options: "", Command: "", RejectLimit: 0, RejectLimitType: "", ErrTable: "", Encoding: "UTF-8", Writable: false, URIs: nil}
 			testTable = backup.BasicRelation("public", "testtable")
 			tableDef = backup.TableDefinition{DistPolicy: "DISTRIBUTED RANDOMLY", ExtTableDef: extTableEmpty}
+			tableDefs = map[uint32]backup.TableDefinition{}
 		})
 		AfterEach(func() {
 			testTable.DependsUpon = []string{}
@@ -126,6 +128,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			rowTwo := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "gender", NotNull: false, HasDefault: false, Type: "text", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: ""}
 			tableDef.PartDef = partitionDef
 			tableDef.ColumnDefs = []backup.ColumnDefinition{rowOne, rowTwo}
+			tableDef.PartitionType = "p"
 
 			backup.PrintRegularTableCreateStatement(backupfile, toc, testTable, tableDef)
 
@@ -140,6 +143,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			tableDef.PartDef = subpartitionDef
 			tableDef.PartTemplateDef = partTemplateDef
 			tableDef.ColumnDefs = []backup.ColumnDefinition{rowOne, rowTwo}
+			tableDef.PartitionType = "p"
 
 			backup.PrintRegularTableCreateStatement(backupfile, toc, testTable, tableDef)
 
@@ -175,7 +179,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE public.testtable")
 			testTable.Oid = testutils.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
 			tables := []backup.Relation{testTable}
-			tables = backup.ConstructTableDependencies(connection, tables, false)
+			tables = backup.ConstructTableDependencies(connection, tables, tableDefs, false)
 
 			Expect(len(tables)).To(Equal(1))
 			Expect(len(tables[0].DependsUpon)).To(Equal(1))
@@ -198,7 +202,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE public.testtable")
 			testTable.Oid = testutils.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
 			tables := []backup.Relation{testTable}
-			tables = backup.ConstructTableDependencies(connection, tables, false)
+			tables = backup.ConstructTableDependencies(connection, tables, tableDefs, false)
 
 			sort.Strings(tables[0].DependsUpon)
 			sort.Strings(tables[0].Inherits)

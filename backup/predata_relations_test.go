@@ -683,7 +683,7 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 	})
 	Describe("SplitTablesByPartitionType", func() {
 		var tables []backup.Relation
-		var partTableMap map[uint32]string
+		var tableDefs map[uint32]backup.TableDefinition
 		var includeList []string
 		var expectedMetadataTables = []backup.Relation{
 			{Oid: 1, Schema: "public", Name: "part_parent1"},
@@ -701,7 +701,16 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 				{Oid: 7, Schema: "public", Name: "part_parent2_child2"},
 				{Oid: 8, Schema: "public", Name: "test_table"},
 			}
-			partTableMap = map[uint32]string{1: "p", 2: "p", 3: "i", 4: "l", 5: "l", 6: "l", 7: "l", 8: "n"}
+			tableDefs = map[uint32]backup.TableDefinition{
+				1: backup.TableDefinition{PartitionType: "p"},
+				2: backup.TableDefinition{PartitionType: "p"},
+				3: backup.TableDefinition{PartitionType: "i"},
+				4: backup.TableDefinition{PartitionType: "l"},
+				5: backup.TableDefinition{PartitionType: "l"},
+				6: backup.TableDefinition{PartitionType: "l"},
+				7: backup.TableDefinition{PartitionType: "l"},
+				8: backup.TableDefinition{PartitionType: "n"},
+			}
 		})
 		Context("leafPartitionData and includeTables", func() {
 			It("gets only parent partitions of included tables for metadata and only child partitions for data", func() {
@@ -709,7 +718,7 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 				backup.SetLeafPartitionData(true)
 				defer backup.SetLeafPartitionData(false)
 
-				metadataTables, dataTables := backup.SplitTablesByPartitionType(tables, partTableMap, includeList)
+				metadataTables, dataTables := backup.SplitTablesByPartitionType(tables, tableDefs, includeList)
 
 				Expect(metadataTables).To(Equal(expectedMetadataTables))
 
@@ -729,7 +738,7 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 				backup.SetLeafPartitionData(true)
 				defer backup.SetLeafPartitionData(false)
 				includeList = []string{}
-				metadataTables, dataTables := backup.SplitTablesByPartitionType(tables, partTableMap, includeList)
+				metadataTables, dataTables := backup.SplitTablesByPartitionType(tables, tableDefs, includeList)
 
 				Expect(metadataTables).To(Equal(expectedMetadataTables))
 
@@ -748,7 +757,7 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 			It("gets only parent partitions of included tables for metadata and only included tables for data", func() {
 				backup.SetLeafPartitionData(false)
 				includeList = []string{"public.part_parent1", "public.part_parent2_child1", "public.part_parent2_child2", "public.test_table"}
-				metadataTables, dataTables := backup.SplitTablesByPartitionType(tables, partTableMap, includeList)
+				metadataTables, dataTables := backup.SplitTablesByPartitionType(tables, tableDefs, includeList)
 
 				Expect(metadataTables).To(Equal(expectedMetadataTables))
 
@@ -771,10 +780,14 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 					backup.Relation{Oid: 2, Schema: "public", Name: "part_parent2"},
 					backup.Relation{Oid: 8, Schema: "public", Name: "test_table"},
 				}
-				partTableMap = map[uint32]string{1: "p", 2: "p", 8: "n"}
+				tableDefs = map[uint32]backup.TableDefinition{
+					1: backup.TableDefinition{PartitionType: "p"},
+					2: backup.TableDefinition{PartitionType: "p"},
+					8: backup.TableDefinition{PartitionType: "n"},
+				}
 				backup.SetLeafPartitionData(false)
 				backup.SetIncludeTables([]string{})
-				metadataTables, dataTables := backup.SplitTablesByPartitionType(tables, partTableMap, includeList)
+				metadataTables, dataTables := backup.SplitTablesByPartitionType(tables, tableDefs, includeList)
 
 				Expect(metadataTables).To(Equal(expectedMetadataTables))
 
@@ -788,6 +801,54 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 				Expect(len(dataTables)).To(Equal(3))
 				Expect(dataTableNames).To(Equal(expectedDataTables))
 			})
+			It("adds a suffix to external partition tables", func() {
+				includeList = []string{}
+				tables = []backup.Relation{
+					backup.Relation{Oid: 1, Schema: "public", Name: "part_parent1_prt_1"},
+					backup.Relation{Oid: 2, Schema: "public", Name: "long_naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaame"},
+				}
+				tableDefs = map[uint32]backup.TableDefinition{
+					1: backup.TableDefinition{PartitionType: "l", IsExternal: true},
+					2: backup.TableDefinition{PartitionType: "l", IsExternal: true},
+				}
+				backup.SetLeafPartitionData(false)
+				backup.SetIncludeTables([]string{})
+				metadataTables, _ := backup.SplitTablesByPartitionType(tables, tableDefs, includeList)
+
+				expectedTables := []backup.Relation{
+					backup.Relation{Oid: 1, Schema: "public", Name: "part_parent1_prt_1_ext_part_"},
+					backup.Relation{Oid: 2, Schema: "public", Name: "long_naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_ext_part_"},
+				}
+				Expect(len(metadataTables)).To(Equal(2))
+				testutils.ExpectStructsToMatch(&expectedTables[0], &metadataTables[0])
+				testutils.ExpectStructsToMatch(&expectedTables[1], &metadataTables[1])
+			})
+		})
+	})
+	Describe("AppendExtPartSuffix", func() {
+		It("adds a suffix to an unquoted external partition table", func() {
+			tablename := "name"
+			expectedName := "name_ext_part_"
+			suffixName := backup.AppendExtPartSuffix(tablename)
+			Expect(suffixName).To(Equal(expectedName))
+		})
+		It("adds a suffix to an unquoted external partition table that is too long", func() {
+			tablename := "long_naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaame"
+			expectedName := "long_naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_ext_part_"
+			suffixName := backup.AppendExtPartSuffix(tablename)
+			Expect(suffixName).To(Equal(expectedName))
+		})
+		It("adds a suffix to a quoted external partition table", func() {
+			tablename := `"!name"`
+			expectedName := `"!name_ext_part_"`
+			suffixName := backup.AppendExtPartSuffix(tablename)
+			Expect(suffixName).To(Equal(expectedName))
+		})
+		It("adds a suffix to a quoted external partition table that is too long", func() {
+			tablename := `"long!naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaame"`
+			expectedName := `"long!naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_ext_part_"`
+			suffixName := backup.AppendExtPartSuffix(tablename)
+			Expect(suffixName).To(Equal(expectedName))
 		})
 	})
 })

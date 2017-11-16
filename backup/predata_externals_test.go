@@ -445,4 +445,41 @@ REVOKE ALL ON PROTOCOL s3 FROM testrole;
 GRANT ALL ON PROTOCOL s3 TO testrole;`)
 		})
 	})
+	Describe("PrintExchangeExternalPartitionStatements", func() {
+		tables := []backup.Relation{
+			backup.Relation{Oid: 1, Schema: "public", Name: "partition_table_ext_part_"},
+			backup.Relation{Oid: 2, Schema: "public", Name: "partition_table"},
+		}
+		It("writes an alter statement for a named partition", func() {
+			externalPartition := backup.ExternalPartition{
+				Oid:                 1,
+				ParentOid:           2,
+				ParentSchema:        "public",
+				ParentName:          "partition_table",
+				PartitionToExchange: "partition_name",
+				Rank:                1,
+			}
+			externalPartitions := []backup.ExternalPartition{externalPartition}
+			backup.PrintExchangeExternalPartitionStatements(backupfile, toc, externalPartitions, tables)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `ALTER TABLE public.partition_table EXCHANGE PARTITION partition_name WITH TABLE public.partition_table_ext_part_ WITHOUT VALIDATION;
+
+DROP TABLE public.partition_table_ext_part_;`)
+		})
+		It("writes an alter statement using rank for an unnamed partition", func() {
+			externalPartition := backup.ExternalPartition{
+				Oid:                 1,
+				ParentOid:           2,
+				ParentSchema:        "public",
+				ParentName:          "partition_table",
+				PartitionToExchange: "",
+				Rank:                1,
+			}
+			externalPartitions := []backup.ExternalPartition{externalPartition}
+			backup.PrintExchangeExternalPartitionStatements(backupfile, toc, externalPartitions, tables)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `ALTER TABLE public.partition_table EXCHANGE PARTITION FOR (RANK(1)) WITH TABLE public.partition_table_ext_part_ WITHOUT VALIDATION;
+
+DROP TABLE public.partition_table_ext_part_;`)
+		})
+
+	})
 })

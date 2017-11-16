@@ -111,4 +111,58 @@ SEGMENT REJECT LIMIT 10 PERCENT
 			testutils.ExpectStructsToMatchExcluding(&protocolDef, &results[0], "Oid")
 		})
 	})
+	Describe("GetExternalPartitionInfo", func() {
+		AfterEach(func() {
+			testutils.AssertQueryRuns(connection, "DROP TABLE partition_table")
+			testutils.AssertQueryRuns(connection, "DROP TABLE partition_table_ext_part_")
+		})
+		It("returns a slice of external partition info for a named list partition", func() {
+			testutils.AssertQueryRuns(connection, `CREATE TABLE partition_table (id int, gender char(1))
+DISTRIBUTED BY (id)
+PARTITION BY LIST (gender)
+( PARTITION girls VALUES ('F'),
+  PARTITION boys VALUES ('M'),
+  DEFAULT PARTITION other );`)
+			testutils.AssertQueryRuns(connection, `CREATE EXTERNAL WEB TABLE partition_table_ext_part_ (like partition_table_1_prt_girls)
+EXECUTE 'echo -e "2\n1"' on host
+FORMAT 'csv';`)
+			testutils.AssertQueryRuns(connection, `ALTER TABLE public.partition_table EXCHANGE PARTITION girls WITH TABLE public.partition_table_ext_part_ WITHOUT VALIDATION;`)
+
+			results := backup.GetExternalPartitionInfo(connection)
+
+			expectedExternalPartition := backup.ExternalPartition{
+				Oid:                 1,
+				ParentOid:           2,
+				ParentSchema:        "public",
+				ParentName:          "partition_table",
+				PartitionToExchange: "girls",
+				Rank:                0,
+			}
+			Expect(len(results)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&expectedExternalPartition, &results[0], "Oid", "ParentOid")
+		})
+		It("returns a slice of external partition info for an unnamed range partition", func() {
+			testutils.AssertQueryRuns(connection, `CREATE TABLE partition_table (a int) 
+DISTRIBUTED BY (a)
+PARTITION BY RANGE (a)
+(start(1) end(3) every(1));`)
+			testutils.AssertQueryRuns(connection, `CREATE EXTERNAL WEB TABLE partition_table_ext_part_ (like partition_table_1_prt_1)
+EXECUTE 'echo -e "2\n1"' on host
+FORMAT 'csv';`)
+			testutils.AssertQueryRuns(connection, `ALTER TABLE public.partition_table EXCHANGE PARTITION FOR (RANK(1)) WITH TABLE public.partition_table_ext_part_ WITHOUT VALIDATION;`)
+
+			results := backup.GetExternalPartitionInfo(connection)
+
+			expectedExternalPartition := backup.ExternalPartition{
+				Oid:                 1,
+				ParentOid:           2,
+				ParentSchema:        "public",
+				ParentName:          "partition_table",
+				PartitionToExchange: "",
+				Rank:                1,
+			}
+			Expect(len(results)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&expectedExternalPartition, &results[0], "Oid", "ParentOid")
+		})
+	})
 })

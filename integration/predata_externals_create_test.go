@@ -156,4 +156,65 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&protocolReadWrite, &resultExternalProtocols[0], "Oid", "ReadFunction", "WriteFunction")
 		})
 	})
+	Describe("PrintExchangeExternalPartitionStatements", func() {
+		tables := []backup.Relation{
+			backup.Relation{Oid: 1, Schema: "public", Name: "partition_table_ext_part_"},
+			backup.Relation{Oid: 2, Schema: "public", Name: "partition_table"},
+		}
+		AfterEach(func() {
+			testutils.AssertQueryRuns(connection, "DROP TABLE partition_table")
+		})
+		It("writes an alter statement for a named list partition", func() {
+			externalPartition := backup.ExternalPartition{
+				Oid:                 1,
+				ParentOid:           2,
+				ParentSchema:        "public",
+				ParentName:          "partition_table",
+				PartitionToExchange: "girls",
+				Rank:                0,
+			}
+			testutils.AssertQueryRuns(connection, `CREATE TABLE partition_table (id int, gender char(1))
+DISTRIBUTED BY (id)
+PARTITION BY LIST (gender)
+( PARTITION girls VALUES ('F'),
+  PARTITION boys VALUES ('M'),
+  DEFAULT PARTITION other );`)
+			testutils.AssertQueryRuns(connection, `CREATE EXTERNAL WEB TABLE partition_table_ext_part_ (like partition_table_1_prt_girls)
+EXECUTE 'echo -e "2\n1"' on host
+FORMAT 'csv';`)
+			externalPartitions := []backup.ExternalPartition{externalPartition}
+
+			backup.PrintExchangeExternalPartitionStatements(backupfile, toc, externalPartitions, tables)
+			testutils.AssertQueryRuns(connection, buffer.String())
+
+			results := backup.GetExternalPartitionInfo(connection)
+			Expect(len(results)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&externalPartition, &results[0], "Oid", "ParentOid")
+		})
+		It("writes an alter statement for an unnamed range partition", func() {
+			externalPartition := backup.ExternalPartition{
+				Oid:                 1,
+				ParentOid:           2,
+				ParentSchema:        "public",
+				ParentName:          "partition_table",
+				PartitionToExchange: "",
+				Rank:                1,
+			}
+			testutils.AssertQueryRuns(connection, `CREATE TABLE partition_table (a int) 
+DISTRIBUTED BY (a)
+PARTITION BY RANGE (a)
+(start(1) end(3) every(1));`)
+			testutils.AssertQueryRuns(connection, `CREATE EXTERNAL WEB TABLE partition_table_ext_part_ (like partition_table_1_prt_1)
+EXECUTE 'echo -e "2\n1"' on host
+FORMAT 'csv';`)
+			externalPartitions := []backup.ExternalPartition{externalPartition}
+
+			backup.PrintExchangeExternalPartitionStatements(backupfile, toc, externalPartitions, tables)
+			testutils.AssertQueryRuns(connection, buffer.String())
+
+			results := backup.GetExternalPartitionInfo(connection)
+			Expect(len(results)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&externalPartition, &results[0], "Oid", "ParentOid")
+		})
+	})
 })

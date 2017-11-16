@@ -50,7 +50,7 @@ func executeStatement(statement utils.StatementWithType, showProgressBar bool, s
 			if *onErrorContinue {
 				return 1
 			}
-			logger.Fatal(errors.Errorf("%s; see log file %s for details.", err.Error(), logger.GetLogFilePath()), "Failed to execute statement:")
+			logger.Fatal(errors.Errorf("%s; see log file %s for details.", err.Error(), logger.GetLogFilePath()), "Failed to execute statement")
 		}
 	}
 	return 0

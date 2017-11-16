@@ -31,6 +31,116 @@ var _ = Describe("backup integration tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "Oid")
 			testutils.ExpectStructsToMatchExcluding(&tableTestTable, &tables[1], "SchemaOid", "Oid")
 		})
+		Context("Retrieving external partitions", func() {
+			It("returns external partition tables for an included parent table if the filter includes a parent partition table", func() {
+				backup.SetIncludeTables([]string{"public.partition_table"})
+				defer backup.SetIncludeTables([]string{})
+				testutils.AssertQueryRuns(connection, `CREATE TABLE partition_table (id int, gender char(1))
+DISTRIBUTED BY (id)
+PARTITION BY LIST (gender)
+( PARTITION girls VALUES ('F'),
+  PARTITION boys VALUES ('M'),
+  DEFAULT PARTITION other );`)
+				testutils.AssertQueryRuns(connection, `CREATE EXTERNAL WEB TABLE partition_table_ext_part_ (like partition_table_1_prt_girls)
+EXECUTE 'echo -e "2\n1"' on host
+FORMAT 'csv';`)
+				testutils.AssertQueryRuns(connection, `ALTER TABLE public.partition_table EXCHANGE PARTITION girls WITH TABLE public.partition_table_ext_part_ WITHOUT VALIDATION;`)
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE partition_table")
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE partition_table_ext_part_")
+
+				tables := backup.GetAllUserTables(connection)
+
+				expectedTableNames := []string{"public.partition_table", "public.partition_table_1_prt_girls"}
+				tableNames := make([]string, 0)
+				for _, table := range tables {
+					tableNames = append(tableNames, table.FQN())
+				}
+				sort.Strings(tableNames)
+
+				Expect(len(tables)).To(Equal(2))
+				Expect(tableNames).To(Equal(expectedTableNames))
+			})
+			It("returns parent and included external leaf partition table if the filter includes a leaf table", func() {
+				backup.SetIncludeTables([]string{"public.partition_table_1_prt_boys"})
+				defer backup.SetIncludeTables([]string{})
+				testutils.AssertQueryRuns(connection, `CREATE TABLE partition_table (id int, gender char(1))
+DISTRIBUTED BY (id)
+PARTITION BY LIST (gender)
+( PARTITION girls VALUES ('F'),
+  PARTITION boys VALUES ('M'),
+  DEFAULT PARTITION other );`)
+				testutils.AssertQueryRuns(connection, `CREATE EXTERNAL WEB TABLE partition_table_ext_part_ (like partition_table_1_prt_girls)
+EXECUTE 'echo -e "2\n1"' on host
+FORMAT 'csv';`)
+				testutils.AssertQueryRuns(connection, `ALTER TABLE public.partition_table EXCHANGE PARTITION girls WITH TABLE public.partition_table_ext_part_ WITHOUT VALIDATION;`)
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE partition_table")
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE partition_table_ext_part_")
+
+				tables := backup.GetAllUserTables(connection)
+
+				expectedTableNames := []string{"public.partition_table", "public.partition_table_1_prt_boys", "public.partition_table_1_prt_girls"}
+				tableNames := make([]string, 0)
+				for _, table := range tables {
+					tableNames = append(tableNames, table.FQN())
+				}
+				sort.Strings(tableNames)
+
+				Expect(len(tables)).To(Equal(3))
+				Expect(tableNames).To(Equal(expectedTableNames))
+			})
+			It("returns external partition tables for an included parent table if the filter includes a parent partition table", func() {
+				backup.SetIncludeTables([]string{"public.partition_table1", "public.partition_table2_1_prt_other"})
+				defer backup.SetIncludeTables([]string{})
+				testutils.AssertQueryRuns(connection, `CREATE TABLE partition_table1 (id int, gender char(1))
+DISTRIBUTED BY (id)
+PARTITION BY LIST (gender)
+( PARTITION girls VALUES ('F'),
+  PARTITION boys VALUES ('M'),
+  DEFAULT PARTITION other );`)
+				testutils.AssertQueryRuns(connection, `CREATE EXTERNAL WEB TABLE partition_table1_ext_part_ (like partition_table1_1_prt_boys)
+EXECUTE 'echo -e "2\n1"' on host
+FORMAT 'csv';`)
+				testutils.AssertQueryRuns(connection, `ALTER TABLE public.partition_table1 EXCHANGE PARTITION boys WITH TABLE public.partition_table1_ext_part_ WITHOUT VALIDATION;`)
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE partition_table1")
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE partition_table1_ext_part_")
+				testutils.AssertQueryRuns(connection, `CREATE TABLE partition_table2 (id int, gender char(1))
+DISTRIBUTED BY (id)
+PARTITION BY LIST (gender)
+( PARTITION girls VALUES ('F'),
+  PARTITION boys VALUES ('M'),
+  DEFAULT PARTITION other );`)
+				testutils.AssertQueryRuns(connection, `CREATE EXTERNAL WEB TABLE partition_table2_ext_part_ (like partition_table2_1_prt_girls)
+EXECUTE 'echo -e "2\n1"' on host
+FORMAT 'csv';`)
+				testutils.AssertQueryRuns(connection, `ALTER TABLE public.partition_table2 EXCHANGE PARTITION girls WITH TABLE public.partition_table2_ext_part_ WITHOUT VALIDATION;`)
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE partition_table2")
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE partition_table2_ext_part_")
+				testutils.AssertQueryRuns(connection, `CREATE TABLE partition_table3 (id int, gender char(1))
+DISTRIBUTED BY (id)
+PARTITION BY LIST (gender)
+( PARTITION girls VALUES ('F'),
+  PARTITION boys VALUES ('M'),
+  DEFAULT PARTITION other );`)
+				testutils.AssertQueryRuns(connection, `CREATE EXTERNAL WEB TABLE partition_table3_ext_part_ (like partition_table3_1_prt_girls)
+EXECUTE 'echo -e "2\n1"' on host
+FORMAT 'csv';`)
+				testutils.AssertQueryRuns(connection, `ALTER TABLE public.partition_table3 EXCHANGE PARTITION girls WITH TABLE public.partition_table3_ext_part_ WITHOUT VALIDATION;`)
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE partition_table3")
+				defer testutils.AssertQueryRuns(connection, "DROP TABLE partition_table3_ext_part_")
+
+				tables := backup.GetAllUserTables(connection)
+
+				expectedTableNames := []string{"public.partition_table1", "public.partition_table1_1_prt_boys", "public.partition_table2", "public.partition_table2_1_prt_girls", "public.partition_table2_1_prt_other"}
+				tableNames := make([]string, 0)
+				for _, table := range tables {
+					tableNames = append(tableNames, table.FQN())
+				}
+				sort.Strings(tableNames)
+
+				Expect(len(tables)).To(Equal(5))
+				Expect(tableNames).To(Equal(expectedTableNames))
+			})
+		})
 		Context("leafPartitionData flag", func() {
 			It("returns only parent partition tables if the leafPartitionData flag is not set and there are no include tables", func() {
 				createStmt := `CREATE TABLE rank (id int, rank int, year int, gender
@@ -584,6 +694,7 @@ SET SUBPARTITION TEMPLATE
 		child := backup.BasicRelation("public", "child")
 		childOne := backup.BasicRelation("public", "child_one")
 		childTwo := backup.BasicRelation("public", "child_two")
+		tableDefs := map[uint32]backup.TableDefinition{}
 		It("constructs dependencies correctly if there is one table dependent on one table", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE parent(i int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE parent")
@@ -593,7 +704,7 @@ SET SUBPARTITION TEMPLATE
 			child.Oid = testutils.OidFromObjectName(connection, "public", "child", backup.TYPE_RELATION)
 			tables := []backup.Relation{child}
 
-			tables = backup.ConstructTableDependencies(connection, tables, false)
+			tables = backup.ConstructTableDependencies(connection, tables, tableDefs, false)
 
 			Expect(len(tables)).To(Equal(1))
 			Expect(len(tables[0].DependsUpon)).To(Equal(1))
@@ -613,7 +724,7 @@ SET SUBPARTITION TEMPLATE
 			childTwo.Oid = testutils.OidFromObjectName(connection, "public", "child_two", backup.TYPE_RELATION)
 			tables := []backup.Relation{childOne, childTwo}
 
-			tables = backup.ConstructTableDependencies(connection, tables, false)
+			tables = backup.ConstructTableDependencies(connection, tables, tableDefs, false)
 
 			Expect(len(tables)).To(Equal(2))
 			Expect(len(tables[0].DependsUpon)).To(Equal(1))
@@ -636,7 +747,7 @@ SET SUBPARTITION TEMPLATE
 			child.Oid = testutils.OidFromObjectName(connection, "public", "child", backup.TYPE_RELATION)
 			tables := []backup.Relation{child}
 
-			tables = backup.ConstructTableDependencies(connection, tables, false)
+			tables = backup.ConstructTableDependencies(connection, tables, tableDefs, false)
 
 			sort.Strings(tables[0].DependsUpon)
 			sort.Strings(tables[0].Inherits)
@@ -650,7 +761,7 @@ SET SUBPARTITION TEMPLATE
 		})
 		It("constructs dependencies correctly if there are no table dependencies", func() {
 			tables := []backup.Relation{}
-			tables = backup.ConstructTableDependencies(connection, tables, false)
+			tables = backup.ConstructTableDependencies(connection, tables, tableDefs, false)
 			Expect(len(tables)).To(Equal(0))
 		})
 		It("constructs dependencies correctly if there are two dependent tables but one is not in the backup set", func() {
@@ -664,12 +775,37 @@ SET SUBPARTITION TEMPLATE
 			childOne.Oid = testutils.OidFromObjectName(connection, "public", "child_one", backup.TYPE_RELATION)
 			tables := []backup.Relation{childOne}
 
-			tables = backup.ConstructTableDependencies(connection, tables, true)
+			tables = backup.ConstructTableDependencies(connection, tables, tableDefs, true)
 
 			Expect(len(tables)).To(Equal(1))
 			Expect(len(tables[0].DependsUpon)).To(Equal(0))
 			Expect(len(tables[0].Inherits)).To(Equal(1))
 			Expect(tables[0].Inherits[0]).To(Equal("public.parent"))
+		})
+		It("does not record a dependency of an external leaf partition on a parent table", func() {
+			testutils.AssertQueryRuns(connection, `CREATE TABLE partition_table (id int, gender char(1))
+DISTRIBUTED BY (id)
+PARTITION BY LIST (gender)
+( PARTITION girls VALUES ('F'),
+  PARTITION boys VALUES ('M'),
+  DEFAULT PARTITION other );`)
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE partition_table")
+			testutils.AssertQueryRuns(connection, `CREATE EXTERNAL WEB TABLE partition_table_ext_part_ (like partition_table_1_prt_girls)
+EXECUTE 'echo -e "2\n1"' on host
+FORMAT 'csv';`)
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE partition_table_ext_part_")
+			testutils.AssertQueryRuns(connection, `ALTER TABLE public.partition_table EXCHANGE PARTITION girls WITH TABLE public.partition_table_ext_part_ WITHOUT VALIDATION;`)
+
+			partition := backup.BasicRelation("public", "partition_table_ext_part_")
+			partition.Oid = testutils.OidFromObjectName(connection, "public", "partition_table_ext_part_", backup.TYPE_RELATION)
+			tables := []backup.Relation{partition}
+			partTableDefs := map[uint32]backup.TableDefinition{partition.Oid: backup.TableDefinition{IsExternal: true, PartitionType: "l"}}
+
+			tables = backup.ConstructTableDependencies(connection, tables, partTableDefs, false)
+
+			Expect(len(tables)).To(Equal(1))
+			Expect(len(tables[0].DependsUpon)).To(Equal(0))
+			Expect(len(tables[0].Inherits)).To(Equal(0))
 		})
 	})
 	Describe("ConstructViewDependencies", func() {

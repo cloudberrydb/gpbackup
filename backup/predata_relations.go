@@ -68,7 +68,7 @@ func GetUniqueSchemas(schemas []Schema, tables []Relation) []Schema {
  * When the flag is not set, we want to back up both metadata and data for all
  * tables, so both returned arrays contain all tables.
  */
-func SplitTablesByPartitionType(tables []Relation, partTableMap map[uint32]string, includeList []string) ([]Relation, []Relation) {
+func SplitTablesByPartitionType(tables []Relation, tableDefs map[uint32]TableDefinition, includeList []string) ([]Relation, []Relation) {
 	metadataTables := make([]Relation, 0)
 	dataTables := make([]Relation, 0)
 	if *leafPartitionData || len(includeList) > 0 {
@@ -77,7 +77,11 @@ func SplitTablesByPartitionType(tables []Relation, partTableMap map[uint32]strin
 			includeMap[includeTable] = true
 		}
 		for _, table := range tables {
-			partType := partTableMap[table.Oid]
+			if tableDefs[table.Oid].IsExternal && tableDefs[table.Oid].PartitionType == "l" {
+				table.Name = AppendExtPartSuffix(table.Name)
+				metadataTables = append(metadataTables, table)
+			}
+			partType := tableDefs[table.Oid].PartitionType
 			if partType != "l" && partType != "i" {
 				metadataTables = append(metadataTables, table)
 			}
@@ -92,10 +96,30 @@ func SplitTablesByPartitionType(tables []Relation, partTableMap map[uint32]strin
 			}
 		}
 	} else {
-		metadataTables = tables
+		for _, table := range tables {
+			if tableDefs[table.Oid].IsExternal && tableDefs[table.Oid].PartitionType == "l" {
+				table.Name = AppendExtPartSuffix(table.Name)
+			}
+			metadataTables = append(metadataTables, table)
+		}
 		dataTables = tables
 	}
 	return metadataTables, dataTables
+}
+
+func AppendExtPartSuffix(name string) string {
+	const SUFFIX = "_ext_part_"
+	const MAX_LEN = 63 // MAX_DATA_LEN - 1 is the maximum length of a relation name
+	if name[len(name)-1] == '"' {
+		if len(name)+len(SUFFIX) > MAX_LEN+2 {
+			return name[0:MAX_LEN+2-len(SUFFIX)] + SUFFIX + `"`
+		}
+		return name[0:len(name)-1] + SUFFIX + `"`
+	}
+	if len(name)+len(SUFFIX) > MAX_LEN {
+		return name[0:MAX_LEN+1-len(SUFFIX)] + SUFFIX
+	}
+	return name + SUFFIX
 }
 
 type TableDefinition struct {
@@ -107,6 +131,7 @@ type TableDefinition struct {
 	ColumnDefs      []ColumnDefinition
 	IsExternal      bool
 	ExtTableDef     ExternalTableDefinition
+	PartitionType   string
 }
 
 /*
@@ -129,6 +154,7 @@ func ConstructDefinitionsForTables(connection *utils.DBConn, tables []Relation) 
 	tablespaceNames := GetTablespaceNames(connection)
 	logger.Verbose("Retrieving external table information")
 	extTableDefs := GetExternalTableDefinitions(connection)
+	partTableMap := GetPartitionTableMap(connection)
 
 	logger.Verbose("Constructing table definition map")
 	for _, table := range tables {
@@ -142,6 +168,7 @@ func ConstructDefinitionsForTables(connection *utils.DBConn, tables []Relation) 
 			columnDefs[oid],
 			(extTableDefs[oid].Oid != 0),
 			extTableDefs[oid],
+			partTableMap[oid],
 		}
 		tableDefinitionMap[oid] = tableDef
 	}
@@ -157,7 +184,7 @@ func ConstructDefinitionsForTables(connection *utils.DBConn, tables []Relation) 
 func PrintCreateTableStatement(predataFile *utils.FileWithByteCount, toc *utils.TOC, table Relation, tableDef TableDefinition, tableMetadata ObjectMetadata) {
 	start := predataFile.ByteCount
 	// We use an empty TOC below to keep count of the bytes for testing purposes.
-	if tableDef.IsExternal {
+	if tableDef.IsExternal && tableDef.PartitionType != "p" {
 		PrintExternalTableCreateStatement(predataFile, nil, table, tableDef)
 	} else {
 		PrintRegularTableCreateStatement(predataFile, nil, table, tableDef)

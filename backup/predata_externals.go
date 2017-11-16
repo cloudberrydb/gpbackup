@@ -246,3 +246,24 @@ func PrintCreateExternalProtocolStatements(predataFile *utils.FileWithByteCount,
 		toc.AddMetadataEntry("", protocol.Name, "PROTOCOL", start, predataFile)
 	}
 }
+
+func PrintExchangeExternalPartitionStatements(predataFile *utils.FileWithByteCount, toc *utils.TOC, externalPartitionInfo []ExternalPartition, tables []Relation) {
+	tableNameMap := make(map[uint32]string, len(tables))
+	for _, table := range tables {
+		tableNameMap[table.Oid] = table.FQN()
+	}
+	for _, externalPartition := range externalPartitionInfo {
+		externalPartitionName := tableNameMap[externalPartition.Oid]
+		parentRelationName := utils.MakeFQN(externalPartition.ParentSchema, externalPartition.ParentName)
+		start := predataFile.ByteCount
+		predataFile.MustPrintf("\n\nALTER TABLE %s ", parentRelationName)
+		if externalPartition.PartitionToExchange == "" {
+			predataFile.MustPrintf("EXCHANGE PARTITION FOR (RANK(%d)) ", externalPartition.Rank)
+		} else {
+			predataFile.MustPrintf("EXCHANGE PARTITION %s ", externalPartition.PartitionToExchange)
+		}
+		predataFile.MustPrintf("WITH TABLE %s WITHOUT VALIDATION;", externalPartitionName)
+		predataFile.MustPrintf("\n\nDROP TABLE %s;", externalPartitionName)
+		toc.AddMetadataEntry(externalPartition.ParentSchema, externalPartition.ParentName, "EXCHANGE PARTITION", start, predataFile)
+	}
+}

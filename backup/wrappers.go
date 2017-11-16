@@ -87,11 +87,14 @@ func RetrieveAndProcessTables() ([]Relation, []Relation, map[uint32]TableDefinit
 		}
 		includeTables = expandedIncludeTables
 	}
-
 	tableDefs := ConstructDefinitionsForTables(connection, tables)
-
-	partTableMap := GetPartitionTableMap(connection)
-	metadataTables, dataTables := SplitTablesByPartitionType(tables, partTableMap, userPassedIncludeTables)
+	extPartInfo := GetExternalPartitionInfo(connection)
+	for _, partInfo := range extPartInfo {
+		tableDef := tableDefs[partInfo.ParentOid]
+		tableDef.IsExternal = true
+		tableDefs[partInfo.ParentOid] = tableDef
+	}
+	metadataTables, dataTables := SplitTablesByPartitionType(tables, tableDefs, userPassedIncludeTables)
 	objectCounts["Tables"] = len(metadataTables)
 
 	return metadataTables, dataTables, tableDefs
@@ -251,22 +254,32 @@ func BackupFunctionsAndTypesAndTables(predataFile *utils.FileWithByteCount, othe
 	logger.Verbose("Writing CREATE FUNCTION statements to predata file")
 	logger.Verbose("Writing CREATE TYPE statements for base, composite, and domain types to predata file")
 	logger.Verbose("Writing CREATE TABLE statements to predata file")
-	tables = ConstructTableDependencies(connection, tables, false)
+	tables = ConstructTableDependencies(connection, tables, tableDefs, false)
 	sortedSlice := SortFunctionsAndTypesAndTablesInDependencyOrder(otherFuncs, types, tables)
 	filteredMetadata := ConstructFunctionAndTypeAndTableMetadataMap(functionMetadata, typeMetadata, relationMetadata)
 	PrintCreateDependentTypeAndFunctionAndTablesStatements(predataFile, globalTOC, sortedSlice, filteredMetadata, tableDefs, constraints)
+	extPartInfo := GetExternalPartitionInfo(connection)
+	if len(extPartInfo) > 0 {
+		logger.Verbose("Writing EXCHANGE PARTITION statements to predata file")
+		PrintExchangeExternalPartitionStatements(predataFile, globalTOC, extPartInfo, tables)
+	}
 }
 
 // This function should be used only with a table-only backup.  For an unfiltered backup, the above function is used.
 func BackupTables(predataFile *utils.FileWithByteCount, tables []Relation, relationMetadata MetadataMap, tableDefs map[uint32]TableDefinition, constraints []Constraint) {
 	logger.Verbose("Writing CREATE TABLE statements to predata file")
-	tables = ConstructTableDependencies(connection, tables, true)
+	tables = ConstructTableDependencies(connection, tables, tableDefs, true)
 	sortable := make([]Sortable, 0)
 	for _, table := range tables {
 		sortable = append(sortable, table)
 	}
 	sortedSlice := TopologicalSort(sortable)
 	PrintCreateDependentTypeAndFunctionAndTablesStatements(predataFile, globalTOC, sortedSlice, relationMetadata, tableDefs, constraints)
+	extPartInfo := GetExternalPartitionInfo(connection)
+	if len(extPartInfo) > 0 {
+		logger.Verbose("Writing EXCHANGE PARTITION statements to predata file")
+		PrintExchangeExternalPartitionStatements(predataFile, globalTOC, extPartInfo, tables)
+	}
 }
 
 func BackupAlterSequences(predataFile *utils.FileWithByteCount, sequences []Sequence) {
@@ -412,6 +425,7 @@ func BackupTriggers(postdataFile *utils.FileWithByteCount, objectCounts map[stri
 
 func BackupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
 	numExtTables := 0
+	numExtParts := 0
 	numRegTables := 1
 	totalExtTables := 0
 	for _, table := range tables {
@@ -420,11 +434,15 @@ func BackupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
 		}
 	}
 	totalRegTables := len(tables) - totalExtTables
-	dataProgressBar := utils.NewProgressBar(totalRegTables, "Tables backed up: ", logger.GetVerbosity() == utils.LOGINFO)
+	dataProgressBar := utils.NewProgressBar(totalRegTables, "Tables backed up: ", logger.GetVerbosity() == utils.LOGINFO && totalRegTables > 0)
 	dataProgressBar.Start()
 
 	for _, table := range tables {
-		if !tableDefs[table.Oid].IsExternal {
+		tableDef := tableDefs[table.Oid]
+		isExternal := tableDef.IsExternal
+		// A parent partition table has IsExternal set if it has any external partitions
+		hasExternalPartitions := isExternal && tableDef.PartitionType == "p"
+		if !isExternal {
 			if logger.GetVerbosity() > utils.LOGINFO {
 				// No progress bar at this log level, so we note table count here
 				logger.Verbose("Writing data for table %s to file (table %d of %d)", table.ToString(), numRegTables, totalRegTables)
@@ -435,7 +453,10 @@ func BackupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
 			CopyTableOut(connection, table, backupFile)
 			numRegTables++
 			dataProgressBar.Increment()
-		} else {
+		} else if hasExternalPartitions {
+			logger.Verbose("Skipping data backup of table %s because it has one or more external partitions.", table.ToString())
+			numExtParts++
+		} else if *leafPartitionData || tableDef.PartitionType != "l" {
 			logger.Verbose("Skipping data backup of table %s because it is an external table.", table.ToString())
 			numExtTables++
 		}
@@ -447,6 +468,16 @@ func BackupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
 			s = "s"
 		}
 		logger.Warn("Skipped data backup of %d external table%s.", numExtTables, s)
+	}
+	if numExtParts > 0 {
+		s := ""
+		if numExtParts > 1 {
+			s = "s"
+		}
+		logger.Warn("Skipped data backup of %d partition table%s.", numExtParts, s)
+		logger.Warn("Set the --leaf-partition-data flag to back up data in those tables.")
+	}
+	if numExtTables > 0 || numExtParts > 0 {
 		logger.Warn("See %s for a complete list of skipped tables.", logger.GetLogFilePath())
 	}
 }
