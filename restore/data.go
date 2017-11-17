@@ -14,15 +14,21 @@ var (
 	tableDelim = ","
 )
 
-func CopyTableIn(connection *utils.DBConn, tableName string, tableAttributes string, backupFile string) {
+func CopyTableIn(connection *utils.DBConn, tableName string, tableAttributes string, backupFile string, singleDataFile bool, index uint32) {
 	usingCompression, compressionProgram := utils.GetCompressionParameters()
-	copyCmdStr := ""
-	if usingCompression {
-		copyCmdStr = fmt.Sprintf("PROGRAM '%s < %s'", compressionProgram.DecompressCommand, backupFile)
+	tocFile := globalCluster.GetSegmentTOCFilePath("<SEG_DATA_DIR>", "<SEGID>")
+	helperCommand := fmt.Sprintf("$GPHOME/bin/gpbackup_helper --restore --toc-file=%s --index=%d", tocFile, index)
+	copyCommand := ""
+	if singleDataFile && usingCompression {
+		copyCommand = fmt.Sprintf("PROGRAM '%s %s | %s'", compressionProgram.DecompressCommand, backupFile, helperCommand)
+	} else if usingCompression {
+		copyCommand = fmt.Sprintf("PROGRAM '%s < %s'", compressionProgram.DecompressCommand, backupFile)
+	} else if singleDataFile {
+		copyCommand = fmt.Sprintf("PROGRAM '%s < %s'", helperCommand, backupFile)
 	} else {
-		copyCmdStr = fmt.Sprintf("'%s'", backupFile)
+		copyCommand = fmt.Sprintf("'%s'", backupFile)
 	}
-	query := fmt.Sprintf("COPY %s%s FROM %s WITH CSV DELIMITER '%s' ON SEGMENT;", tableName, tableAttributes, copyCmdStr, tableDelim)
+	query := fmt.Sprintf("COPY %s%s FROM %s WITH CSV DELIMITER '%s' ON SEGMENT;", tableName, tableAttributes, copyCommand, tableDelim)
 	_, err := connection.Exec(query)
 	if err != nil {
 		logger.Fatal(err, "Error loading data into table %s", tableName)

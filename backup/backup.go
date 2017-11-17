@@ -27,6 +27,7 @@ func initializeFlags() {
 	noCompression = flag.Bool("no-compression", false, "Disable compression of data files")
 	printVersion = flag.Bool("version", false, "Print version number and exit")
 	quiet = flag.Bool("quiet", false, "Suppress non-warning, non-error log messages")
+	singleDataFile = flag.Bool("single-data-file", false, "Back up all data to a single file instead of one per table")
 	verbose = flag.Bool("verbose", false, "Print verbose log messages")
 	withStats = flag.Bool("with-stats", false, "Back up query plan statistics")
 }
@@ -110,7 +111,7 @@ func DoBackup() {
 		backupStatistics(metadataTables)
 	}
 
-	globalTOC.WriteToFile(globalCluster.GetTOCFilePath())
+	globalTOC.WriteToFileAndMakeReadOnly(globalCluster.GetTOCFilePath())
 	connection.Commit()
 }
 
@@ -220,6 +221,9 @@ func backupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
 	logger.Info("Writing data to file")
 	BackupData(tables, tableDefs)
 	AddTableDataEntriesToTOC(tables, tableDefs)
+	if *singleDataFile {
+		globalCluster.MoveSegmentTOCsAndMakeReadOnly()
+	}
 	logger.Info("Data backup complete")
 }
 

@@ -9,6 +9,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/greenplum-db/gpbackup/backup"
+	"github.com/greenplum-db/gpbackup/helper"
 	"github.com/greenplum-db/gpbackup/restore"
 	"github.com/greenplum-db/gpbackup/utils"
 
@@ -56,13 +57,16 @@ func SetupTestLogger() (*utils.Logger, *gbytes.Buffer, *gbytes.Buffer, *gbytes.B
 	testLogfile := gbytes.NewBuffer()
 	testLogger := utils.NewLogger(testStdout, testStderr, testLogfile, "gbytes.Buffer", utils.LOGINFO, "testProgram:testUser:testHost:000000-[%s]:-")
 	backup.SetLogger(testLogger)
+	restore.SetLogger(testLogger)
 	utils.SetLogger(testLogger)
+	helper.SetLogger(testLogger)
 	return testLogger, testStdout, testStderr, testLogfile
 }
 
 func SetupTestCluster() {
 	testCluster := SetDefaultSegmentConfiguration()
 	backup.SetCluster(testCluster)
+	restore.SetCluster(testCluster)
 }
 
 func CreateMockDB() (*sqlx.DB, sqlmock.Sqlmock) {

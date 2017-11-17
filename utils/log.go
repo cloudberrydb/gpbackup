@@ -114,7 +114,7 @@ func InitializeLogging(program string, logdir string) *Logger {
 	CreateDirectoryOnMaster(logdir)
 
 	logfile := fmt.Sprintf("%s/%s_%s.log", logdir, program, CurrentTimestamp()[0:8])
-	logFileHandle := MustOpenFileForWriting(logfile)
+	logFileHandle := MustOpenFileForWriting(logfile, true)
 
 	logger := NewLogger(os.Stdout, os.Stderr, logFileHandle, logfile, LOGINFO, header)
 	SetLogger(logger)

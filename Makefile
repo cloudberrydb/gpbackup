@@ -4,12 +4,14 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := all
 BACKUP=gpbackup
 RESTORE=gprestore
+HELPER=gpbackup_helper
 DIR_PATH=$(shell dirname `pwd`)
 BIN_DIR=$(shell echo $${GOPATH:-~/go} | awk -F':' '{ print $$1 "/bin"}')
 
 GIT_VERSION := $(shell git describe --tags | perl -pe 's/(.*)-([0-9]*)-(g[0-9a-f]*)/\1+dev.\2.\3/')
 BACKUP_VERSION_STR="-X github.com/greenplum-db/gpbackup/backup.version=$(GIT_VERSION)"
 RESTORE_VERSION_STR="-X github.com/greenplum-db/gpbackup/restore.version=$(GIT_VERSION)"
+HELPER_VERSION_STR="-X github.com/greenplum-db/gpbackup/helper.version=$(GIT_VERSION)"
 
 DEST = .
 
@@ -41,7 +43,7 @@ lint :
 		gometalinter --config=gometalinter.config ./...
 
 unit :
-		ginkgo -r -randomizeSuites -noisySkippings=false -randomizeAllSpecs backup restore utils testutils 2>&1
+		ginkgo -r -randomizeSuites -noisySkippings=false -randomizeAllSpecs backup restore helper utils testutils 2>&1
 
 integration :
 		ginkgo -r -randomizeSuites -noisySkippings=false -randomizeAllSpecs integration 2>&1
@@ -59,19 +61,23 @@ depend : dependencies
 build :
 		go build -tags '$(BACKUP)' $(GOFLAGS) -o $(BIN_DIR)/$(BACKUP) -ldflags $(BACKUP_VERSION_STR)
 		go build -tags '$(RESTORE)' $(GOFLAGS) -o $(BIN_DIR)/$(RESTORE) -ldflags $(RESTORE_VERSION_STR)
+		go build -tags '$(HELPER)' $(GOFLAGS) -o $(BIN_DIR)/$(HELPER) -ldflags $(HELPER_VERSION_STR)
 
 build_linux :
 		env GOOS=linux GOARCH=amd64 go build -tags '$(BACKUP)' $(GOFLAGS) -o $(BIN_DIR)/$(BACKUP) -ldflags $(BACKUP_VERSION_STR)
 		env GOOS=linux GOARCH=amd64 go build -tags '$(RESTORE)' $(GOFLAGS) -o $(BIN_DIR)/$(RESTORE) -ldflags $(RESTORE_VERSION_STR)
+		env GOOS=linux GOARCH=amd64 go build -tags '$(HELPER)' $(GOFLAGS) -o $(BIN_DIR)/$(HELPER) -ldflags $(HELPER_VERSION_STR)
 
 build_mac :
 		env GOOS=darwin GOARCH=amd64 go build -tags '$(BACKUP)' $(GOFLAGS) -o $(BIN_DIR)/$(BACKUP) -ldflags $(BACKUP_VERSION_STR)
 		env GOOS=darwin GOARCH=amd64 go build -tags '$(RESTORE)' $(GOFLAGS) -o $(BIN_DIR)/$(RESTORE) -ldflags $(RESTORE_VERSION_STR)
+		env GOOS=darwin GOARCH=amd64 go build -tags '$(HELPER)' $(GOFLAGS) -o $(BIN_DIR)/$(HELPER) -ldflags $(HELPER_VERSION_STR)
 
 clean :
 		# Build artifacts
 		rm -f $(BIN_DIR)/$(BACKUP)
 		rm -f $(BIN_DIR)/$(RESTORE)
+		rm -f $(BIN_DIR)/$(HELPER)
 		# Test artifacts
 		rm -rf /tmp/go-build*
 		rm -rf /tmp/gexec_artifacts*

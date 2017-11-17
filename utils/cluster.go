@@ -29,7 +29,7 @@ type Compression struct {
 
 func InitializeCompressionParameters(compress bool) {
 	usingCompression = compress
-	compressionProgram = Compression{Name: "gzip", CompressCommand: "gzip -c", DecompressCommand: "gzip -d", Extension: ".gz"}
+	compressionProgram = Compression{Name: "gzip", CompressCommand: "gzip -c", DecompressCommand: "gzip -d -c", Extension: ".gz"}
 }
 
 func GetCompressionParameters() (bool, Compression) {
@@ -198,6 +198,68 @@ func (cluster *Cluster) CreateBackupDirectoriesOnAllHosts() {
 	cluster.LogFatalError("Unable to create directories", numErrors)
 }
 
+func (cluster *Cluster) MoveSegmentTOCsAndMakeReadOnly() {
+	logger.Verbose("Setting permissions on segment table of contents files")
+	logger.Verbose("Moving segment table of contents files to user-specified backup directory")
+	var commandMap map[int][]string
+	commandMap = cluster.GenerateSSHCommandMapForSegments(func(contentID int) string {
+		tocFile := cluster.GetSegmentTOCFilePath(cluster.SegDirMap[contentID], fmt.Sprintf("%d", contentID))
+		str := fmt.Sprintf("chmod 444 %s; mv %s %s/.", tocFile, tocFile, cluster.GetDirForContent(contentID))
+		return str
+	})
+	errMap := cluster.ExecuteClusterCommand(commandMap)
+	numErrors := len(errMap)
+	if numErrors == 0 {
+		return
+	}
+	for contentID := range errMap {
+		tocFile := cluster.GetSegmentTOCFilePath(cluster.SegDirMap[contentID], fmt.Sprintf("%d", contentID))
+		logger.Verbose("Unable to set permissions on or copy file %s on segment %d on host %s", tocFile, contentID, cluster.GetHostForContent(contentID))
+	}
+	cluster.LogFatalError("Unable to set permissions on or copy segment table of contents files", numErrors)
+}
+
+func (cluster *Cluster) CopySegmentTOCs() {
+	logger.Verbose("Copying segment table of contents files to segment data directories")
+	var commandMap map[int][]string
+	commandMap = cluster.GenerateSSHCommandMapForSegments(func(contentID int) string {
+		tocFile := cluster.GetSegmentTOCFilePath(cluster.SegDirMap[contentID], fmt.Sprintf("%d", contentID))
+		tocFilename := fmt.Sprintf("gpbackup_%d_%s_toc.yaml", contentID, cluster.Timestamp)
+		str := fmt.Sprintf("cp %s/%s %s", cluster.GetDirForContent(contentID), tocFilename, tocFile)
+		return str
+	})
+	errMap := cluster.ExecuteClusterCommand(commandMap)
+	numErrors := len(errMap)
+	if numErrors == 0 {
+		return
+	}
+	for contentID := range errMap {
+		tocFile := cluster.GetSegmentTOCFilePath(cluster.SegDirMap[contentID], fmt.Sprintf("%d", contentID))
+		logger.Verbose("Unable to move file %s on segment %d on host %s", tocFile, contentID, cluster.GetHostForContent(contentID))
+	}
+	cluster.LogFatalError("Unable to move segment table of contents files to segment data directories", numErrors)
+}
+
+func (cluster *Cluster) CleanUpSegmentTOCs() {
+	logger.Verbose("Removing segment table of contents files from segment data directories")
+	var commandMap map[int][]string
+	commandMap = cluster.GenerateSSHCommandMapForSegments(func(contentID int) string {
+		tocFile := cluster.GetSegmentTOCFilePath(cluster.SegDirMap[contentID], fmt.Sprintf("%d", contentID))
+		str := fmt.Sprintf("rm %s", tocFile)
+		return str
+	})
+	errMap := cluster.ExecuteClusterCommand(commandMap)
+	numErrors := len(errMap)
+	if numErrors == 0 {
+		return
+	}
+	for contentID := range errMap {
+		tocFile := cluster.GetSegmentTOCFilePath(cluster.SegDirMap[contentID], fmt.Sprintf("%d", contentID))
+		logger.Verbose("Unable to remove file %s on segment %d on host %s", tocFile, contentID, cluster.GetHostForContent(contentID))
+	}
+	logger.Error("Unable to remove segment table of contents file(s). See %s for a complete list of segments with errors and remove manually.", logger.GetLogFilePath())
+}
+
 func (cluster *Cluster) LogFatalError(errMessage string, numErrors int) {
 	s := ""
 	if numErrors != 1 {
@@ -222,14 +284,17 @@ func (cluster *Cluster) GetDirForContent(contentID int) string {
 	return path.Join(cluster.SegDirMap[contentID], "backups", cluster.Timestamp[0:8], cluster.Timestamp)
 }
 
-func (cluster *Cluster) GetTableBackupFilePath(contentID int, tableOid uint32) string {
-	templateFilePath := cluster.GetTableBackupFilePathForCopyCommand(tableOid)
+func (cluster *Cluster) GetTableBackupFilePath(contentID int, tableOid uint32, singleDataFile bool) string {
+	templateFilePath := cluster.GetTableBackupFilePathForCopyCommand(tableOid, singleDataFile)
 	filePath := strings.Replace(templateFilePath, "<SEG_DATA_DIR>", cluster.SegDirMap[contentID], -1)
 	return strings.Replace(filePath, "<SEGID>", strconv.Itoa(contentID), -1)
 }
 
-func (cluster *Cluster) GetTableBackupFilePathForCopyCommand(tableOid uint32) string {
-	backupFilePath := fmt.Sprintf("gpbackup_<SEGID>_%s_%d", cluster.Timestamp, tableOid)
+func (cluster *Cluster) GetTableBackupFilePathForCopyCommand(tableOid uint32, singleDataFile bool) string {
+	backupFilePath := fmt.Sprintf("gpbackup_<SEGID>_%s", cluster.Timestamp)
+	if !singleDataFile {
+		backupFilePath += fmt.Sprintf("_%d", tableOid)
+	}
 	if usingCompression {
 		backupFilePath += compressionProgram.Extension
 	}
@@ -284,6 +349,14 @@ func (cluster *Cluster) GetReportFilePath() string {
 
 func (cluster *Cluster) GetConfigFilePath() string {
 	return cluster.GetBackupFilePath("config")
+}
+
+/*
+ * This is the temporary location of the segment TOC file before it is moved
+ * to its final location in the actual backup directory
+ */
+func (cluster *Cluster) GetSegmentTOCFilePath(topDir string, contentStr string) string {
+	return path.Join(topDir, fmt.Sprintf("gpbackup_%s_%s_toc.yaml", contentStr, cluster.Timestamp))
 }
 
 func (cluster *Cluster) VerifyMetadataFilePaths(dataOnly bool, withStats bool, tableFiltered bool) {

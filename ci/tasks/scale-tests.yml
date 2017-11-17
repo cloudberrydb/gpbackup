@@ -52,6 +52,7 @@ run:
 
     cd \$GOPATH/src/github.com/greenplum-db/gpbackup
     make build
+    scp \$GOPATH/bin/gpbackup_helper sdw1:\$GPHOME/bin/gpbackup_helper
 
     log_file=/tmp/gpbackup.log
     time pg_dump -s scaledb > /data/gpdata/pg_dump.sql

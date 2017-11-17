@@ -55,7 +55,7 @@ func InitializeBackupReport() {
 	utils.InitializeCompressionParameters(!*noCompression)
 	isSchemaFiltered := len(includeSchemas) > 0 || len(excludeSchemas) > 0
 	isTableFiltered := len(includeTables) > 0 || len(excludeTables) > 0
-	backupReport.SetBackupTypeFromFlags(*dataOnly, *metadataOnly, *noCompression, isSchemaFiltered, isTableFiltered, *withStats)
+	backupReport.SetBackupTypeFromFlags(*dataOnly, *metadataOnly, *noCompression, isSchemaFiltered, isTableFiltered, *singleDataFile, *withStats)
 }
 
 func InitializeFilterLists() {
@@ -449,7 +449,7 @@ func BackupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
 			} else {
 				logger.Verbose("Writing data for table %s to file", table.ToString())
 			}
-			backupFile := globalCluster.GetTableBackupFilePathForCopyCommand(table.Oid)
+			backupFile := globalCluster.GetTableBackupFilePathForCopyCommand(table.Oid, *singleDataFile)
 			CopyTableOut(connection, table, backupFile)
 			numRegTables++
 			dataProgressBar.Increment()

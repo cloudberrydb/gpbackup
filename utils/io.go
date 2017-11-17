@@ -51,8 +51,12 @@ func SliceToQuotedString(slice []string) string {
  * Generic file/directory manipulation functions
  */
 
-func MustOpenFileForWriting(filename string) io.WriteCloser {
-	fileHandle, err := System.OpenFileWrite(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+func MustOpenFileForWriting(filename string, allowAppend ...bool) io.WriteCloser {
+	flags := os.O_CREATE | os.O_WRONLY
+	if len(allowAppend) == 1 && allowAppend[0] {
+		flags = os.O_APPEND | flags
+	}
+	fileHandle, err := System.OpenFileWrite(filename, flags, 0644)
 	if err != nil {
 		logger.Fatal(err, "Unable to create or open file for writing")
 	}

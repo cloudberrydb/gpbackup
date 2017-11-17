@@ -7,6 +7,7 @@ package utils
 
 import (
 	"io"
+	"io/ioutil"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -82,7 +83,10 @@ type SystemFunctions struct {
 	Now           func() time.Time
 	OpenFileRead  func(name string, flag int, perm os.FileMode) (ReadCloserAt, error)
 	OpenFileWrite func(name string, flag int, perm os.FileMode) (io.WriteCloser, error)
+	ReadFile      func(filename string) ([]byte, error)
 	Stat          func(name string) (os.FileInfo, error)
+	Stdin         ReadCloserAt
+	Stdout        io.WriteCloser
 }
 
 func InitializeSystemFunctions() *SystemFunctions {
@@ -98,6 +102,9 @@ func InitializeSystemFunctions() *SystemFunctions {
 		Now:           time.Now,
 		OpenFileRead:  OpenFileRead,
 		OpenFileWrite: OpenFileWrite,
+		ReadFile:      ioutil.ReadFile,
 		Stat:          os.Stat,
+		Stdin:         os.Stdin,
+		Stdout:        os.Stdout,
 	}
 }

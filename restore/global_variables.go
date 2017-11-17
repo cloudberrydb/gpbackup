@@ -47,6 +47,10 @@ func SetConnection(conn *utils.DBConn) {
 	connection = conn
 }
 
+func SetCluster(cluster utils.Cluster) {
+	globalCluster = cluster
+}
+
 func SetLogger(log *utils.Logger) {
 	logger = log
 }

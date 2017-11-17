@@ -24,6 +24,7 @@ type BackupConfig struct {
 	TableFiltered   bool
 	MetadataOnly    bool
 	WithStatistics  bool
+	SingleDataFile  bool
 }
 
 /*
@@ -48,7 +49,7 @@ func ParseErrorMessage(errStr string) (string, int) {
 	return errMsg, exitCode
 }
 
-func (report *Report) SetBackupTypeFromFlags(dataOnly bool, ddlOnly bool, noCompression bool, isSchemaFiltered bool, isTableFiltered bool, withStats bool) {
+func (report *Report) SetBackupTypeFromFlags(dataOnly bool, ddlOnly bool, noCompression bool, isSchemaFiltered bool, isTableFiltered bool, singleDataFile bool, withStats bool) {
 	filterStr := "Unfiltered"
 	if isSchemaFiltered {
 		report.SchemaFiltered = true
@@ -72,12 +73,17 @@ func (report *Report) SetBackupTypeFromFlags(dataOnly bool, ddlOnly bool, noComp
 		report.MetadataOnly = true
 		sectionStr = " Metadata-Only"
 	}
+	filesStr := ""
+	if singleDataFile {
+		report.SingleDataFile = true
+		filesStr = " With One Data File Per Segment"
+	}
 	statsStr := ""
 	if withStats {
 		report.WithStatistics = true
 		statsStr = " With Statistics"
 	}
-	report.BackupType = fmt.Sprintf("%s %s Full%s Backup%s", filterStr, compressStr, sectionStr, statsStr)
+	report.BackupType = fmt.Sprintf("%s %s Full%s Backup%s%s", filterStr, compressStr, sectionStr, filesStr, statsStr)
 }
 
 func ReadConfigFile(filename string) *BackupConfig {

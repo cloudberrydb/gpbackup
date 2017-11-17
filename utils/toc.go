@@ -3,19 +3,19 @@ package utils
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"regexp"
 
 	yaml "gopkg.in/yaml.v2"
 )
 
 type TOC struct {
-	metadataEntryMap  map[string]*[]MetadataEntry
-	GlobalEntries     []MetadataEntry
-	PredataEntries    []MetadataEntry
-	PostdataEntries   []MetadataEntry
-	StatisticsEntries []MetadataEntry
-	DataEntries       []DataEntry
+	metadataEntryMap   map[string]*[]MetadataEntry
+	GlobalEntries      []MetadataEntry
+	PredataEntries     []MetadataEntry
+	PostdataEntries    []MetadataEntry
+	StatisticsEntries  []MetadataEntry
+	MasterDataEntries  []MasterDataEntry
+	SegmentDataEntries []SegmentDataEntry
 }
 
 type MetadataEntry struct {
@@ -26,24 +26,34 @@ type MetadataEntry struct {
 	EndByte    uint64
 }
 
-type DataEntry struct {
+type MasterDataEntry struct {
 	Schema          string
 	Name            string
 	Oid             uint32
 	AttributeString string
 }
 
+type SegmentDataEntry struct {
+	Oid       uint // We use uint since the flags package does not have a uint32 flag
+	StartByte uint64
+	EndByte   uint64
+}
+
 func NewTOC(filename string) *TOC {
 	toc := &TOC{}
-	contents, err := ioutil.ReadFile(filename)
+	contents, err := System.ReadFile(filename)
 	CheckError(err)
 	err = yaml.Unmarshal(contents, toc)
 	CheckError(err)
 	return toc
 }
 
-func (toc *TOC) WriteToFile(filename string) {
+func (toc *TOC) WriteToFileAndMakeReadOnly(filename string) {
 	defer System.Chmod(filename, 0444)
+	toc.WriteToFile(filename)
+}
+
+func (toc *TOC) WriteToFile(filename string) {
 	tocFile := MustOpenFileForWriting(filename)
 	tocContents, _ := yaml.Marshal(toc)
 	MustPrintBytes(tocFile, tocContents)
@@ -117,6 +127,10 @@ func (toc *TOC) AddMetadataEntry(schema string, name string, objectType string, 
 	*toc.metadataEntryMap[file.Filename] = append(*toc.metadataEntryMap[file.Filename], MetadataEntry{schema, name, objectType, start, file.ByteCount})
 }
 
-func (toc *TOC) AddDataEntry(schema string, name string, oid uint32, attributeString string) {
-	toc.DataEntries = append(toc.DataEntries, DataEntry{schema, name, oid, attributeString})
+func (toc *TOC) AddMasterDataEntry(schema string, name string, oid uint32, attributeString string) {
+	toc.MasterDataEntries = append(toc.MasterDataEntries, MasterDataEntry{schema, name, oid, attributeString})
+}
+
+func (toc *TOC) AddSegmentDataEntry(oid uint, startByte uint64, endByte uint64) {
+	toc.SegmentDataEntries = append(toc.SegmentDataEntries, SegmentDataEntry{oid, startByte, endByte})
 }

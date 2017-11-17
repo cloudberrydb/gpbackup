@@ -20,3 +20,4 @@ class GpbackupConan(ConanFile):
     def package(self):
         self.copy("gpbackup", dst="bin", src="bin")
         self.copy("gprestore", dst="bin", src="bin")
+        self.copy("gpbackup_helper", dst="bin", src="bin")

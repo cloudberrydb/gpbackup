@@ -77,6 +77,7 @@ func ValidateFlagCombinations() {
 	utils.CheckExclusiveFlags("exclude-schema", "exclude-table-file", "include-table-file")
 	utils.CheckExclusiveFlags("exclude-table-file", "leaf-partition-data")
 	utils.CheckExclusiveFlags("metadata-only", "leaf-partition-data")
+	utils.CheckExclusiveFlags("metadata-only", "single-data-file")
 }
 
 func ValidateFQNs(fqns []string) {

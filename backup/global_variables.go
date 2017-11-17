@@ -39,6 +39,7 @@ var (
 	noCompression     *bool
 	printVersion      *bool
 	quiet             *bool
+	singleDataFile    *bool
 	verbose           *bool
 	withStats         *bool
 )
@@ -77,6 +78,10 @@ func SetLeafPartitionData(which bool) {
 
 func SetLogger(log *utils.Logger) {
 	logger = log
+}
+
+func SetSingleDataFile(which bool) {
+	singleDataFile = &which
 }
 
 func SetTOC(toc *utils.TOC) {

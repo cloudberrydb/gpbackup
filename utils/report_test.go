@@ -112,56 +112,36 @@ types                        1000`))
 		BeforeEach(func() {
 			backupReport = &utils.Report{}
 		})
-		DescribeTable("Backup type classification", func(dataOnly bool, ddlOnly bool, noCompression bool, isSchemaFiltered bool, isTableFiltered bool, withStats bool, expectedType string) {
-			backupReport.SetBackupTypeFromFlags(dataOnly, ddlOnly, noCompression, isSchemaFiltered, isTableFiltered, withStats)
+		DescribeTable("Backup type classification", func(dataOnly bool, ddlOnly bool, noCompression bool, isSchemaFiltered bool, isTableFiltered bool, singleDataFile bool, withStats bool, expectedType string) {
+			backupReport.SetBackupTypeFromFlags(dataOnly, ddlOnly, noCompression, isSchemaFiltered, isTableFiltered, singleDataFile, withStats)
 			Expect(backupReport.BackupType).To(Equal(expectedType))
 		},
 			Entry("classifies a default backup",
-				false, false, false, false, false, false, "Unfiltered Compressed Full Backup"),
+				false, false, false, false, false, false, false, "Unfiltered Compressed Full Backup"),
 			Entry("classifies a default backup with stats",
-				false, false, false, false, false, true, "Unfiltered Compressed Full Backup With Statistics"),
+				false, false, false, false, false, false, true, "Unfiltered Compressed Full Backup With Statistics"),
+			Entry("classifies a default backup with a single data file",
+				false, false, false, false, false, true, false, "Unfiltered Compressed Full Backup With One Data File Per Segment"),
+			Entry("classifies a default backup with statistics and a single data file",
+				false, false, false, false, false, true, true, "Unfiltered Compressed Full Backup With One Data File Per Segment With Statistics"),
 			Entry("classifies a metadata-only backup",
-				false, true, false, false, false, false, "Unfiltered Compressed Full Metadata-Only Backup"),
+				false, true, false, false, false, false, false, "Unfiltered Compressed Full Metadata-Only Backup"),
 			Entry("classifies a data-only backup",
-				true, false, false, false, false, false, "Unfiltered Compressed Full Data-Only Backup"),
+				true, false, false, false, false, false, false, "Unfiltered Compressed Full Data-Only Backup"),
 			Entry("classifies an uncompressed backup",
-				false, false, true, false, false, false, "Unfiltered Uncompressed Full Backup"),
-			Entry("classifies an uncompressed metadata-only backup",
-				false, true, true, false, false, false, "Unfiltered Uncompressed Full Metadata-Only Backup"),
-			Entry("classifies an uncompressed data-only backup",
-				true, false, true, false, false, false, "Unfiltered Uncompressed Full Data-Only Backup"),
+				false, false, true, false, false, false, false, "Unfiltered Uncompressed Full Backup"),
 			Entry("classifies a schema-filtered backup",
-				false, false, false, true, false, false, "Schema-Filtered Compressed Full Backup"),
-			Entry("classifies a schema-filtered metadata-only backup",
-				false, true, false, true, false, false, "Schema-Filtered Compressed Full Metadata-Only Backup"),
-			Entry("classifies a schema-filtered data-only backup",
-				true, false, false, true, false, false, "Schema-Filtered Compressed Full Data-Only Backup"),
-			Entry("classifies an uncompressed schema-filtered backup",
-				false, false, true, true, false, false, "Schema-Filtered Uncompressed Full Backup"),
-			Entry("classifies an uncompressed schema-filtered metadata-only backup",
-				false, true, true, true, false, false, "Schema-Filtered Uncompressed Full Metadata-Only Backup"),
-			Entry("classifies an uncompressed schema-filtered data-only backup",
-				true, false, true, true, false, false, "Schema-Filtered Uncompressed Full Data-Only Backup"),
+				false, false, false, true, false, false, false, "Schema-Filtered Compressed Full Backup"),
 			Entry("classifies a table-filtered backup",
-				false, false, false, false, true, false, "Table-Filtered Compressed Full Backup"),
-			Entry("classifies a table-filtered metadata-only backup",
-				false, true, false, false, true, false, "Table-Filtered Compressed Full Metadata-Only Backup"),
-			Entry("classifies a table-filtered data-only backup",
-				true, false, false, false, true, false, "Table-Filtered Compressed Full Data-Only Backup"),
-			Entry("classifies an uncompressed table-filtered backup",
-				false, false, true, false, true, false, "Table-Filtered Uncompressed Full Backup"),
-			Entry("classifies an uncompressed table-filtered metadata-only backup",
-				false, true, true, false, true, false, "Table-Filtered Uncompressed Full Metadata-Only Backup"),
-			Entry("classifies an uncompressed table-filtered data-only backup",
-				true, false, true, false, true, false, "Table-Filtered Uncompressed Full Data-Only Backup"),
+				false, false, false, false, true, false, false, "Table-Filtered Compressed Full Backup"),
 		)
 		It("sets properties on the report struct with various flag combinations", func() {
-			backupReport.SetBackupTypeFromFlags(true, false, true, false, true, false)
-			expectedBackupConfig := utils.BackupConfig{Compressed: false, DataOnly: true, SchemaFiltered: false, TableFiltered: true, MetadataOnly: false, WithStatistics: false}
+			backupReport.SetBackupTypeFromFlags(true, false, true, false, true, true, false)
+			expectedBackupConfig := utils.BackupConfig{Compressed: false, DataOnly: true, SchemaFiltered: false, TableFiltered: true, MetadataOnly: false, SingleDataFile: true, WithStatistics: false}
 			testutils.ExpectStructsToMatch(expectedBackupConfig, backupReport.BackupConfig)
 			backupReport = &utils.Report{}
-			backupReport.SetBackupTypeFromFlags(false, true, false, true, false, true)
-			expectedBackupConfig = utils.BackupConfig{Compressed: true, DataOnly: false, SchemaFiltered: true, TableFiltered: false, MetadataOnly: true, WithStatistics: true}
+			backupReport.SetBackupTypeFromFlags(false, true, false, true, false, false, true)
+			expectedBackupConfig = utils.BackupConfig{Compressed: true, DataOnly: false, SchemaFiltered: true, TableFiltered: false, MetadataOnly: true, SingleDataFile: false, WithStatistics: true}
 			testutils.ExpectStructsToMatch(expectedBackupConfig, backupReport.BackupConfig)
 		})
 	})

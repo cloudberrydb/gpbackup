@@ -167,6 +167,13 @@ var _ = Describe("backup end to end integration tests", func() {
 			Expect(strings.Contains(string(output), "Query planner statistics restore complete")).To(BeTrue())
 			os.RemoveAll(backupdir)
 		})
+		It("runs gpbackup and gprestore with single-data-file flag", func() {
+			backupdir := "/tmp/single_data_file"
+			timestamp := gpbackup(gpbackupPath, "-single-data-file", "-backupdir", backupdir)
+			gprestore(gprestorePath, timestamp, "-redirect", "restoredb", "-backupdir", backupdir)
+
+			os.RemoveAll(backupdir)
+		})
 		It("runs gpbackup and gprestore on database with all objects", func() {
 			backupConn.Close()
 			exec.Command("dropdb", "testdb").Run()

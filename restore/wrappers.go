@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/greenplum-db/gpbackup/utils"
+	"github.com/pkg/errors"
 )
 
 /*
@@ -44,6 +45,9 @@ func InitializeBackupConfig() {
 	utils.InitializeCompressionParameters(backupConfig.Compressed)
 	utils.EnsureBackupVersionCompatibility(backupConfig.BackupVersion, version)
 	utils.EnsureDatabaseVersionCompatibility(backupConfig.DatabaseVersion, connection.Version)
+	if backupConfig.SingleDataFile && *numJobs != 1 {
+		logger.Fatal(errors.Errorf("Cannot use --jobs flag when restoring backups with a single data file per segment."), "")
+	}
 }
 
 /*
@@ -82,7 +86,7 @@ func setGUCsBeforeDataRestore() {
 	utils.CheckError(err)
 }
 
-func restoreSingleTableData(entry utils.DataEntry, tableNum uint32, totalTables int) {
+func restoreSingleTableData(entry utils.MasterDataEntry, tableNum uint32, totalTables int) {
 	name := utils.MakeFQN(entry.Schema, entry.Name)
 	if logger.GetVerbosity() > utils.LOGINFO {
 		// No progress bar at this log level, so we note table count here
@@ -90,6 +94,6 @@ func restoreSingleTableData(entry utils.DataEntry, tableNum uint32, totalTables 
 	} else {
 		logger.Verbose("Reading data for table %s from file", name)
 	}
-	backupFile := globalCluster.GetTableBackupFilePathForCopyCommand(entry.Oid)
-	CopyTableIn(connection, name, entry.AttributeString, backupFile)
+	backupFile := globalCluster.GetTableBackupFilePathForCopyCommand(entry.Oid, backupConfig.SingleDataFile)
+	CopyTableIn(connection, name, entry.AttributeString, backupFile, backupConfig.SingleDataFile, tableNum-1)
 }

@@ -105,7 +105,10 @@ func DoRestore() {
 	}
 
 	if !backupConfig.MetadataOnly {
-		backupFileCount := len(globalTOC.DataEntries)
+		backupFileCount := 2 // 1 for the actual data file, 1 for the segment TOC file
+		if !backupConfig.SingleDataFile {
+			backupFileCount = len(globalTOC.MasterDataEntries)
+		}
 		globalCluster.VerifyBackupFileCountOnSegments(backupFileCount)
 		restoreData()
 	}
@@ -151,22 +154,26 @@ func restorePredata() {
 }
 
 func restoreData() {
+	if backupConfig.SingleDataFile {
+		globalCluster.CopySegmentTOCs()
+		defer globalCluster.CleanUpSegmentTOCs()
+	}
 	setParallelRestore()
 	defer setSerialRestore()
 	logger.Info("Restoring data")
-	totalTables := len(globalTOC.DataEntries)
+	totalTables := len(globalTOC.MasterDataEntries)
 	dataProgressBar := utils.NewProgressBar(totalTables, "Tables restored: ", logger.GetVerbosity() == utils.LOGINFO)
 	dataProgressBar.Start()
 
 	if *numJobs == 1 {
 		setGUCsBeforeDataRestore()
-		for i, entry := range globalTOC.DataEntries {
+		for i, entry := range globalTOC.MasterDataEntries {
 			restoreSingleTableData(entry, uint32(i)+1, totalTables)
 			dataProgressBar.Increment()
 		}
 	} else {
 		var tableNum uint32 = 1
-		tasks := make(chan utils.DataEntry, totalTables)
+		tasks := make(chan utils.MasterDataEntry, totalTables)
 		var workerPool sync.WaitGroup
 		for i := 0; i < *numJobs; i++ {
 			workerPool.Add(1)
@@ -180,7 +187,7 @@ func restoreData() {
 				workerPool.Done()
 			}()
 		}
-		for _, entry := range globalTOC.DataEntries {
+		for _, entry := range globalTOC.MasterDataEntries {
 			tasks <- entry
 		}
 		close(tasks)
