@@ -28,7 +28,7 @@ run:
     source /usr/local/greenplum-db-devel/greenplum_path.sh
     export PGPORT=5432
     export MASTER_DATA_DIRECTORY=/data/gpdata/master/gpseg-1
-    export PATH=\$GOPATH/bin:/usr/local/go/bin:$PATH
+    export PATH=\$GOPATH/bin:/usr/local/go/bin:\$PATH
 
     pushd \$GOPATH/src/github.com/greenplum-db/gpbackup
         make depend
