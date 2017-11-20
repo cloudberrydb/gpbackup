@@ -129,9 +129,10 @@ EXECUTE 'echo -e "2\n1"' on host
 FORMAT 'csv';`)
 			testutils.AssertQueryRuns(connection, `ALTER TABLE public.part_tbl EXCHANGE PARTITION girls WITH TABLE public.part_tbl_ext_part_ WITHOUT VALIDATION;`)
 
-			results := backup.GetExternalPartitionInfo(connection)
+			resultExtPartitions, resultPartInfoMap := backup.GetExternalPartitionInfo(connection)
 
-			Expect(len(results)).To(Equal(3))
+			Expect(len(resultExtPartitions)).To(Equal(1))
+			Expect(len(resultPartInfoMap)).To(Equal(3))
 			expectedExternalPartition := backup.PartitionInfo{
 				PartitionRuleOid:       1,
 				PartitionParentRuleOid: 0,
@@ -143,15 +144,7 @@ FORMAT 'csv';`)
 				PartitionRank:          0,
 				IsExternal:             true,
 			}
-			var resultExtPart backup.PartitionInfo
-			for _, res := range results {
-				if res.IsExternal {
-					resultExtPart = res
-					break
-				}
-			}
-			Expect(resultExtPart).ToNot(Equal(nil))
-			testutils.ExpectStructsToMatchExcluding(&expectedExternalPartition, &resultExtPart, "PartitionRuleOid", "RelationOid", "ParentRelationOid")
+			testutils.ExpectStructsToMatchExcluding(&expectedExternalPartition, &resultExtPartitions[0], "PartitionRuleOid", "RelationOid", "ParentRelationOid")
 		})
 		It("returns a slice of external partition info for an unnamed range partition", func() {
 			testutils.AssertQueryRuns(connection, `
@@ -165,9 +158,10 @@ EXECUTE 'echo -e "2\n1"' on host
 FORMAT 'csv';`)
 			testutils.AssertQueryRuns(connection, `ALTER TABLE public.part_tbl EXCHANGE PARTITION FOR (RANK(1)) WITH TABLE public.part_tbl_ext_part_ WITHOUT VALIDATION;`)
 
-			results := backup.GetExternalPartitionInfo(connection)
+			resultExtPartitions, resultPartInfoMap := backup.GetExternalPartitionInfo(connection)
 
-			Expect(len(results)).To(Equal(2))
+			Expect(len(resultExtPartitions)).To(Equal(1))
+			Expect(len(resultPartInfoMap)).To(Equal(2))
 			expectedExternalPartition := backup.PartitionInfo{
 				PartitionRuleOid:       1,
 				PartitionParentRuleOid: 0,
@@ -179,17 +173,10 @@ FORMAT 'csv';`)
 				PartitionRank:          1,
 				IsExternal:             true,
 			}
-			var resultExtPart backup.PartitionInfo
-			for _, res := range results {
-				if res.IsExternal {
-					resultExtPart = res
-					break
-				}
-			}
-			Expect(resultExtPart).ToNot(Equal(nil))
-			testutils.ExpectStructsToMatchExcluding(&expectedExternalPartition, &resultExtPart, "PartitionRuleOid", "RelationOid", "ParentRelationOid")
+			testutils.ExpectStructsToMatchExcluding(&expectedExternalPartition, &resultExtPartitions[0], "PartitionRuleOid", "RelationOid", "ParentRelationOid")
 		})
 		It("returns a slice of info for a two level partition", func() {
+			testutils.SkipIf4(connection)
 			testutils.AssertQueryRuns(connection, `
 CREATE TABLE part_tbl (a int,b date,c text,d int)
 DISTRIBUTED BY (a)
@@ -209,8 +196,9 @@ SUBPARTITION eur values ('eur'))
 			testutils.AssertQueryRuns(connection, `CREATE EXTERNAL TABLE part_tbl_ext_part_ (a int,b date,c text,d int) LOCATION ('gpfdist://127.0.0.1/apj') FORMAT 'text';`)
 			testutils.AssertQueryRuns(connection, `ALTER TABLE public.part_tbl ALTER PARTITION Dec16 EXCHANGE PARTITION apj WITH TABLE public.part_tbl_ext_part_ WITHOUT VALIDATION;`)
 
-			results := backup.GetExternalPartitionInfo(connection)
+			resultExtPartitions, _ := backup.GetExternalPartitionInfo(connection)
 
+			Expect(len(resultExtPartitions)).To(Equal(1))
 			expectedExternalPartition := backup.PartitionInfo{
 				PartitionRuleOid:       1,
 				PartitionParentRuleOid: 0,
@@ -222,28 +210,10 @@ SUBPARTITION eur values ('eur'))
 				PartitionRank:          0,
 				IsExternal:             true,
 			}
-			var resultExtPart backup.PartitionInfo
-			for _, res := range results {
-				if res.IsExternal {
-					resultExtPart = res
-					break
-				}
-			}
-			Expect(resultExtPart).ToNot(Equal(nil))
-			testutils.ExpectStructsToMatchExcluding(&expectedExternalPartition, &resultExtPart, "PartitionRuleOid", "PartitionParentRuleOid", "ParentRelationOid")
+			testutils.ExpectStructsToMatchExcluding(&expectedExternalPartition, &resultExtPartitions[0], "PartitionRuleOid", "PartitionParentRuleOid", "ParentRelationOid")
 		})
 		It("returns a slice of info for a three level partition", func() {
-			externalPartition := backup.PartitionInfo{
-				PartitionRuleOid:       10,
-				PartitionParentRuleOid: 11,
-				ParentRelationOid:      2,
-				ParentSchema:           "public",
-				ParentRelationName:     "part_tbl",
-				RelationOid:            1,
-				PartitionName:          "europe",
-				PartitionRank:          0,
-				IsExternal:             true,
-			}
+			testutils.SkipIf4(connection)
 			testutils.AssertQueryRuns(connection, `
 CREATE TABLE part_tbl (id int, year int, month int, day int, region text)
 DISTRIBUTED BY (id)
@@ -263,19 +233,22 @@ PARTITION BY RANGE (year)
 			testutils.AssertQueryRuns(connection, `CREATE EXTERNAL TABLE part_tbl_ext_part_ (like part_tbl_1_prt_3_2_prt_1_3_prt_europe) LOCATION ('gpfdist://127.0.0.1/apj') FORMAT 'text';`)
 			testutils.AssertQueryRuns(connection, `ALTER TABLE public.part_tbl ALTER PARTITION FOR (RANK(3)) ALTER PARTITION FOR (RANK(1)) EXCHANGE PARTITION europe WITH TABLE public.part_tbl_ext_part_ WITHOUT VALIDATION;`)
 
-			results := backup.GetExternalPartitionInfo(connection)
+			resultExtPartitions, _ := backup.GetExternalPartitionInfo(connection)
 
-			Expect(len(results)).To(Equal(39))
-			externalPartition.RelationOid = testutils.OidFromObjectName(connection, "public", "part_tbl_1_prt_3_2_prt_1_3_prt_europe", backup.TYPE_RELATION)
-			var resultExtPart backup.PartitionInfo
-			for _, res := range results {
-				if res.IsExternal {
-					resultExtPart = res
-					break
-				}
+			Expect(len(resultExtPartitions)).To(Equal(1))
+			expectedExternalPartition := backup.PartitionInfo{
+				PartitionRuleOid:       10,
+				PartitionParentRuleOid: 11,
+				ParentRelationOid:      2,
+				ParentSchema:           "public",
+				ParentRelationName:     "part_tbl",
+				RelationOid:            1,
+				PartitionName:          "europe",
+				PartitionRank:          0,
+				IsExternal:             true,
 			}
-			Expect(resultExtPart).ToNot(Equal(nil))
-			testutils.ExpectStructsToMatchExcluding(&externalPartition, &resultExtPart, "PartitionRuleOid", "PartitionParentRuleOid", "ParentRelationOid")
+			expectedExternalPartition.RelationOid = testutils.OidFromObjectName(connection, "public", "part_tbl_1_prt_3_2_prt_1_3_prt_europe", backup.TYPE_RELATION)
+			testutils.ExpectStructsToMatchExcluding(&expectedExternalPartition, &resultExtPartitions[0], "PartitionRuleOid", "PartitionParentRuleOid", "ParentRelationOid")
 		})
 	})
 })

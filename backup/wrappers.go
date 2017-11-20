@@ -88,7 +88,7 @@ func RetrieveAndProcessTables() ([]Relation, []Relation, map[uint32]TableDefinit
 		includeTables = expandedIncludeTables
 	}
 	tableDefs := ConstructDefinitionsForTables(connection, tables)
-	extPartInfo := GetExternalPartitionInfo(connection)
+	extPartInfo, _ := GetExternalPartitionInfo(connection)
 	for _, partInfo := range extPartInfo {
 		tableDef := tableDefs[partInfo.ParentRelationOid]
 		tableDef.IsExternal = true
@@ -258,10 +258,10 @@ func BackupFunctionsAndTypesAndTables(predataFile *utils.FileWithByteCount, othe
 	sortedSlice := SortFunctionsAndTypesAndTablesInDependencyOrder(otherFuncs, types, tables)
 	filteredMetadata := ConstructFunctionAndTypeAndTableMetadataMap(functionMetadata, typeMetadata, relationMetadata)
 	PrintCreateDependentTypeAndFunctionAndTablesStatements(predataFile, globalTOC, sortedSlice, filteredMetadata, tableDefs, constraints)
-	extPartInfo := GetExternalPartitionInfo(connection)
+	extPartInfo, partInfoMap := GetExternalPartitionInfo(connection)
 	if len(extPartInfo) > 0 {
 		logger.Verbose("Writing EXCHANGE PARTITION statements to predata file")
-		PrintExchangeExternalPartitionStatements(predataFile, globalTOC, extPartInfo, tables)
+		PrintExchangeExternalPartitionStatements(predataFile, globalTOC, extPartInfo, partInfoMap, tables)
 	}
 }
 
@@ -275,10 +275,10 @@ func BackupTables(predataFile *utils.FileWithByteCount, tables []Relation, relat
 	}
 	sortedSlice := TopologicalSort(sortable)
 	PrintCreateDependentTypeAndFunctionAndTablesStatements(predataFile, globalTOC, sortedSlice, relationMetadata, tableDefs, constraints)
-	extPartInfo := GetExternalPartitionInfo(connection)
+	extPartInfo, partInfoMap := GetExternalPartitionInfo(connection)
 	if len(extPartInfo) > 0 {
 		logger.Verbose("Writing EXCHANGE PARTITION statements to predata file")
-		PrintExchangeExternalPartitionStatements(predataFile, globalTOC, extPartInfo, tables)
+		PrintExchangeExternalPartitionStatements(predataFile, globalTOC, extPartInfo, partInfoMap, tables)
 	}
 }
 

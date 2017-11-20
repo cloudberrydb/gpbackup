@@ -110,7 +110,7 @@ type PartitionInfo struct {
 	IsExternal             bool
 }
 
-func GetExternalPartitionInfo(connection *utils.DBConn) []PartitionInfo {
+func GetExternalPartitionInfo(connection *utils.DBConn) ([]PartitionInfo, map[uint32]PartitionInfo) {
 	results := make([]PartitionInfo, 0)
 	query := `
 SELECT
@@ -161,5 +161,15 @@ FROM (
 `
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
-	return results
+
+	extPartitions := make([]PartitionInfo, 0)
+	partInfoMap := make(map[uint32]PartitionInfo, len(results))
+	for _, partInfo := range results {
+		if partInfo.IsExternal {
+			extPartitions = append(extPartitions, partInfo)
+		}
+		partInfoMap[partInfo.PartitionRuleOid] = partInfo
+	}
+	return extPartitions, partInfoMap
+
 }

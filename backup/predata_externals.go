@@ -247,18 +247,10 @@ func PrintCreateExternalProtocolStatements(predataFile *utils.FileWithByteCount,
 	}
 }
 
-func PrintExchangeExternalPartitionStatements(predataFile *utils.FileWithByteCount, toc *utils.TOC, partitionInfo []PartitionInfo, tables []Relation) {
+func PrintExchangeExternalPartitionStatements(predataFile *utils.FileWithByteCount, toc *utils.TOC, extPartitions []PartitionInfo, partInfoMap map[uint32]PartitionInfo, tables []Relation) {
 	tableNameMap := make(map[uint32]string, len(tables))
-	extPartitions := make([]PartitionInfo, 0)
-	partInfoMap := make(map[uint32]PartitionInfo, len(partitionInfo))
 	for _, table := range tables {
 		tableNameMap[table.Oid] = table.FQN()
-	}
-	for _, partInfo := range partitionInfo {
-		if partInfo.IsExternal {
-			extPartitions = append(extPartitions, partInfo)
-		}
-		partInfoMap[partInfo.PartitionRuleOid] = partInfo
 	}
 	for _, externalPartition := range extPartitions {
 		extPartRelationName := tableNameMap[externalPartition.RelationOid]

@@ -161,6 +161,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			backup.Relation{Oid: 1, Schema: "public", Name: "part_tbl_ext_part_"},
 			backup.Relation{Oid: 2, Schema: "public", Name: "part_tbl"},
 		}
+		emptyPartInfoMap := make(map[uint32]backup.PartitionInfo, 0)
 		AfterEach(func() {
 			testutils.AssertQueryRuns(connection, "DROP TABLE part_tbl")
 		})
@@ -189,20 +190,13 @@ EXECUTE 'echo -e "2\n1"' on host
 FORMAT 'csv';`)
 			externalPartitions := []backup.PartitionInfo{externalPartition}
 
-			backup.PrintExchangeExternalPartitionStatements(backupfile, toc, externalPartitions, tables)
+			backup.PrintExchangeExternalPartitionStatements(backupfile, toc, externalPartitions, emptyPartInfoMap, tables)
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			results := backup.GetExternalPartitionInfo(connection)
-			Expect(len(results)).To(Equal(3))
-			var resultExtPart backup.PartitionInfo
-			for _, res := range results {
-				if res.IsExternal {
-					resultExtPart = res
-					break
-				}
-			}
-			Expect(resultExtPart).ToNot(Equal(nil))
-			testutils.ExpectStructsToMatchExcluding(&externalPartition, &resultExtPart, "PartitionRuleOid", "RelationOid", "ParentRelationOid")
+			resultExtPartitions, resultPartInfoMap := backup.GetExternalPartitionInfo(connection)
+			Expect(len(resultExtPartitions)).To(Equal(1))
+			Expect(len(resultPartInfoMap)).To(Equal(3))
+			testutils.ExpectStructsToMatchExcluding(&externalPartition, &resultExtPartitions[0], "PartitionRuleOid", "RelationOid", "ParentRelationOid")
 		})
 		It("writes an alter statement for an unnamed range partition", func() {
 			externalPartition := backup.PartitionInfo{
@@ -227,22 +221,16 @@ EXECUTE 'echo -e "2\n1"' on host
 FORMAT 'csv';`)
 			externalPartitions := []backup.PartitionInfo{externalPartition}
 
-			backup.PrintExchangeExternalPartitionStatements(backupfile, toc, externalPartitions, tables)
+			backup.PrintExchangeExternalPartitionStatements(backupfile, toc, externalPartitions, emptyPartInfoMap, tables)
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			results := backup.GetExternalPartitionInfo(connection)
-			Expect(len(results)).To(Equal(2))
-			var resultExtPart backup.PartitionInfo
-			for _, res := range results {
-				if res.IsExternal {
-					resultExtPart = res
-					break
-				}
-			}
-			Expect(resultExtPart).ToNot(Equal(nil))
-			testutils.ExpectStructsToMatchExcluding(&externalPartition, &resultExtPart, "PartitionRuleOid", "RelationOid", "ParentRelationOid")
+			resultExtPartitions, resultPartInfoMap := backup.GetExternalPartitionInfo(connection)
+			Expect(len(resultExtPartitions)).To(Equal(1))
+			Expect(len(resultPartInfoMap)).To(Equal(2))
+			testutils.ExpectStructsToMatchExcluding(&externalPartition, &resultExtPartitions[0], "PartitionRuleOid", "RelationOid", "ParentRelationOid")
 		})
 		It("writes an alter statement for a two level partition", func() {
+			testutils.SkipIf4(connection)
 			externalPartition := backup.PartitionInfo{
 				PartitionRuleOid:       10,
 				PartitionParentRuleOid: 11,
@@ -282,25 +270,19 @@ SUBPARTITION eur values ('eur'))
 `)
 
 			testutils.AssertQueryRuns(connection, `CREATE EXTERNAL TABLE part_tbl_ext_part_ (a int,b date,c text,d int) LOCATION ('gpfdist://127.0.0.1/apj') FORMAT 'text';`)
-			externalPartitions := []backup.PartitionInfo{externalPartition, externalPartitionParent}
+			partInfoMap := map[uint32]backup.PartitionInfo{externalPartitionParent.PartitionRuleOid: externalPartitionParent}
+			externalPartitions := []backup.PartitionInfo{externalPartition}
 
-			backup.PrintExchangeExternalPartitionStatements(backupfile, toc, externalPartitions, tables)
+			backup.PrintExchangeExternalPartitionStatements(backupfile, toc, externalPartitions, partInfoMap, tables)
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			results := backup.GetExternalPartitionInfo(connection)
-
+			resultExtPartitions, _ := backup.GetExternalPartitionInfo(connection)
 			externalPartition.RelationOid = testutils.OidFromObjectName(connection, "public", "part_tbl_1_prt_dec16_2_prt_apj", backup.TYPE_RELATION)
-			var resultExtPart backup.PartitionInfo
-			for _, res := range results {
-				if res.IsExternal {
-					resultExtPart = res
-					break
-				}
-			}
-			Expect(resultExtPart).ToNot(Equal(nil))
-			testutils.ExpectStructsToMatchExcluding(&externalPartition, &resultExtPart, "PartitionRuleOid", "PartitionParentRuleOid", "ParentRelationOid")
+			Expect(len(resultExtPartitions)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&externalPartition, &resultExtPartitions[0], "PartitionRuleOid", "PartitionParentRuleOid", "ParentRelationOid")
 		})
 		It("writes an alter statement for a three level partition", func() {
+			testutils.SkipIf4(connection)
 			externalPartition := backup.PartitionInfo{
 				PartitionRuleOid:       10,
 				PartitionParentRuleOid: 11,
@@ -351,23 +333,16 @@ PARTITION BY RANGE (year)
 `)
 
 			testutils.AssertQueryRuns(connection, `CREATE EXTERNAL TABLE part_tbl_ext_part_ (like part_tbl_1_prt_3_2_prt_1_3_prt_europe) LOCATION ('gpfdist://127.0.0.1/apj') FORMAT 'text';`)
-			externalPartitions := []backup.PartitionInfo{externalPartition, externalPartitionParent1, externalPartitionParent2}
+			partInfoMap := map[uint32]backup.PartitionInfo{externalPartitionParent1.PartitionRuleOid: externalPartitionParent1, externalPartitionParent2.PartitionRuleOid: externalPartitionParent2}
+			externalPartitions := []backup.PartitionInfo{externalPartition}
 
-			backup.PrintExchangeExternalPartitionStatements(backupfile, toc, externalPartitions, tables)
+			backup.PrintExchangeExternalPartitionStatements(backupfile, toc, externalPartitions, partInfoMap, tables)
 			testutils.AssertQueryRuns(connection, buffer.String())
 
-			results := backup.GetExternalPartitionInfo(connection)
-
+			resultExtPartitions, _ := backup.GetExternalPartitionInfo(connection)
 			externalPartition.RelationOid = testutils.OidFromObjectName(connection, "public", "part_tbl_1_prt_3_2_prt_1_3_prt_europe", backup.TYPE_RELATION)
-			var resultExtPart backup.PartitionInfo
-			for _, res := range results {
-				if res.IsExternal {
-					resultExtPart = res
-					break
-				}
-			}
-			Expect(resultExtPart).ToNot(Equal(nil))
-			testutils.ExpectStructsToMatchExcluding(&externalPartition, &resultExtPart, "PartitionRuleOid", "PartitionParentRuleOid", "ParentRelationOid")
+			Expect(len(resultExtPartitions)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&externalPartition, &resultExtPartitions[0], "PartitionRuleOid", "PartitionParentRuleOid", "ParentRelationOid")
 		})
 	})
 })
