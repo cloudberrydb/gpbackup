@@ -26,24 +26,22 @@ run:
     set -ex
         cat << ENV_SCRIPT > env.sh
         export GOPATH=/home/gpadmin/go
-        export PATH=\\\$GOPATH/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/go/bin
         source /usr/local/greenplum-db-devel/greenplum_path.sh
         export PGPORT=5432
         export MASTER_DATA_DIRECTORY=/data/gpdata/master/gpseg-1
+        export PATH=\\\$GOPATH/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/go/bin
     ENV_SCRIPT
+
+    export GOPATH=/home/gpadmin/go
+    chown gpadmin:gpadmin -R \$GOPATH
     chmod +x env.sh
     source env.sh
+    gpconfig --skipvalidation -c fsync -v off
+    gpstop -u
 
     pushd \$GOPATH/src/github.com/greenplum-db/gpbackup
         make depend
     popd
-
-    chown gpadmin:gpadmin -R \$GOPATH
-    source /usr/local/greenplum-db-devel/greenplum_path.sh
-    export PGPORT=5432
-    export MASTER_DATA_DIRECTORY=/data/gpdata/master/gpseg-1
-    gpconfig --skipvalidation -c fsync -v off
-    gpstop -u
 
     tar -xvf scale_db1.tgz
     createdb scaledb

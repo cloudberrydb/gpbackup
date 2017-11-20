@@ -22,19 +22,21 @@ run:
     ccp_src/aws/setup_ssh_to_cluster.sh
 
     cat <<SCRIPT > /tmp/run_tests.bash
+    set -ex
     export GOPATH=/home/gpadmin/go
+    chown gpadmin:gpadmin -R \$GOPATH
+    source /usr/local/greenplum-db-devel/greenplum_path.sh
+    export PGPORT=5432
+    export MASTER_DATA_DIRECTORY=/data/gpdata/master/gpseg-1
     export PATH=\$GOPATH/bin:/usr/local/go/bin:$PATH
 
     pushd \$GOPATH/src/github.com/greenplum-db/gpbackup
         make depend
     popd
 
-    chown gpadmin:gpadmin -R \$GOPATH
-    source /usr/local/greenplum-db-devel/greenplum_path.sh
-    export PGPORT=5432
-    export MASTER_DATA_DIRECTORY=/data/gpdata/master/gpseg-1
-
     cd \$GOPATH/src/github.com/greenplum-db/gpbackup
+    make build
+    scp \$GOPATH/bin/gpbackup_helper sdw1:\$GPHOME/bin/gpbackup_helper
     make integration
     make end_to_end
     SCRIPT
