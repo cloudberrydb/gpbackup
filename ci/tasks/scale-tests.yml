@@ -26,10 +26,10 @@ run:
     set -ex
         cat << ENV_SCRIPT > env.sh
         export GOPATH=/home/gpadmin/go
-        source /usr/local/greenplum-db-devel/greenplum_path.sh
         export PGPORT=5432
         export MASTER_DATA_DIRECTORY=/data/gpdata/master/gpseg-1
-        export PATH=\\\$GOPATH/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/go/bin
+        export PATH=\\\$GOPATH/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/go/bin:\\\$PATH
+        source /usr/local/greenplum-db-devel/greenplum_path.sh
     ENV_SCRIPT
 
     export GOPATH=/home/gpadmin/go
