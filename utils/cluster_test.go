@@ -414,4 +414,48 @@ var _ = Describe("utils/cluster tests", func() {
 			Expect(utils.ParseSegPrefix("/tmp/foo")).To(Equal("gpseg"))
 		})
 	})
+	Describe("InitializeCompressionParameters", func() {
+		It("initializes properly when passed no compression", func() {
+			useCompress, compression := utils.GetCompressionParameters()
+			defer utils.SetCompressionParameters(useCompress, compression)
+			expectedCompress := utils.Compression{
+				Name:              "gzip",
+				CompressCommand:   "gzip -c -3",
+				DecompressCommand: "gzip -d -c",
+				Extension:         ".gz",
+			}
+			utils.InitializeCompressionParameters(false, 3)
+			resultUseCompress, resultCompression := utils.GetCompressionParameters()
+			Expect(resultUseCompress).To(BeFalse())
+			testutils.ExpectStructsToMatch(&expectedCompress, &resultCompression)
+		})
+		It("initializes properly when passed compression", func() {
+			useCompress, compression := utils.GetCompressionParameters()
+			defer utils.SetCompressionParameters(useCompress, compression)
+			expectedCompress := utils.Compression{
+				Name:              "gzip",
+				CompressCommand:   "gzip -c -7",
+				DecompressCommand: "gzip -d -c",
+				Extension:         ".gz",
+			}
+			utils.InitializeCompressionParameters(true, 7)
+			resultUseCompress, resultCompression := utils.GetCompressionParameters()
+			Expect(resultUseCompress).To(BeTrue())
+			testutils.ExpectStructsToMatch(&expectedCompress, &resultCompression)
+		})
+		It("uses default gzip command when passed compression level 0", func() {
+			useCompress, compression := utils.GetCompressionParameters()
+			defer utils.SetCompressionParameters(useCompress, compression)
+			expectedCompress := utils.Compression{
+				Name:              "gzip",
+				CompressCommand:   "gzip -c",
+				DecompressCommand: "gzip -d -c",
+				Extension:         ".gz",
+			}
+			utils.InitializeCompressionParameters(true, 0)
+			resultUseCompress, resultCompression := utils.GetCompressionParameters()
+			Expect(resultUseCompress).To(BeTrue())
+			testutils.ExpectStructsToMatch(&expectedCompress, &resultCompression)
+		})
+	})
 })

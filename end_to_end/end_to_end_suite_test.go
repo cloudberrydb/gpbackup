@@ -115,8 +115,8 @@ var _ = Describe("backup end to end integration tests", func() {
 			tableCount := backup.SelectString(restoreConn, countQuery)
 			Expect(tableCount).To(Equal("14"))
 		})
-		It("runs gpbackup and gprestore with include-schema flag", func() {
-			timestamp := gpbackup(gpbackupPath, "-include-schema", "public")
+		It("runs gpbackup and gprestore with include-schema flag and compression level", func() {
+			timestamp := gpbackup(gpbackupPath, "-include-schema", "public", "-compression-level", "2")
 			gprestore(gprestorePath, timestamp, "-redirect", "restoredb")
 			tableCount := backup.SelectString(restoreConn, countQuery)
 			Expect(tableCount).To(Equal("15"))

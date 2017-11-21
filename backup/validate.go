@@ -78,6 +78,7 @@ func ValidateFlagCombinations() {
 	utils.CheckExclusiveFlags("exclude-table-file", "leaf-partition-data")
 	utils.CheckExclusiveFlags("metadata-only", "leaf-partition-data")
 	utils.CheckExclusiveFlags("metadata-only", "single-data-file")
+	utils.CheckExclusiveFlags("no-compression", "compression-level")
 }
 
 func ValidateFQNs(fqns []string) {
@@ -90,4 +91,16 @@ func ValidateFQNs(fqns []string) {
 			logger.Fatal(errors.Errorf(`Table %s is not correctly fully-qualified.  Please ensure that it is in the format schema.table, it is quoted appropriately, and it has no preceding or trailing whitespace.`, fqn), "")
 		}
 	}
+}
+
+func ValidateCompressionLevel(compressionLevel int) {
+	//We treat 0 as a default value and so assume the flag is not set if it is 0
+	if compressionLevel < 0 || compressionLevel > 9 {
+		logger.Fatal(errors.Errorf("Compression level must be between 1 and 9"), "")
+	}
+}
+
+func ValidateFlagValues() {
+	utils.ValidateBackupDir(*backupDir)
+	ValidateCompressionLevel(*compressionLevel)
 }

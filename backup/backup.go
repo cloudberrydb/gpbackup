@@ -15,6 +15,7 @@ import (
  */
 func initializeFlags() {
 	backupDir = flag.String("backupdir", "", "The absolute path of the directory to which all backup files will be written")
+	compressionLevel = flag.Int("compression-level", 0, "Level of compression to use during data backup. Valid values are between 1 and 9.")
 	dataOnly = flag.Bool("data-only", false, "Only back up data, do not back up metadata")
 	dbname = flag.String("dbname", "", "The database to be backed up")
 	debug = flag.Bool("debug", false, "Print verbose and debug log messages")
@@ -49,7 +50,7 @@ func DoFlagValidation() {
 		os.Exit(0)
 	}
 	ValidateFlagCombinations()
-	utils.ValidateBackupDir(*backupDir)
+	ValidateFlagValues()
 }
 
 // This function handles setup that must be done after parsing flags.

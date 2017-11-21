@@ -27,9 +27,15 @@ type Compression struct {
 	Extension         string
 }
 
-func InitializeCompressionParameters(compress bool) {
+func InitializeCompressionParameters(compress bool, compressionLevel int) {
 	usingCompression = compress
-	compressionProgram = Compression{Name: "gzip", CompressCommand: "gzip -c", DecompressCommand: "gzip -d -c", Extension: ".gz"}
+	compressCommand := ""
+	if compressionLevel == 0 {
+		compressCommand = "gzip -c"
+	} else {
+		compressCommand = fmt.Sprintf("gzip -c -%d", compressionLevel)
+	}
+	compressionProgram = Compression{Name: "gzip", CompressCommand: compressCommand, DecompressCommand: "gzip -d -c", Extension: ".gz"}
 }
 
 func GetCompressionParameters() (bool, Compression) {

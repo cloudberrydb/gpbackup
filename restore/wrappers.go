@@ -42,7 +42,7 @@ func InitializeConnection(dbname string) {
 
 func InitializeBackupConfig() {
 	backupConfig = utils.ReadConfigFile(globalCluster.GetConfigFilePath())
-	utils.InitializeCompressionParameters(backupConfig.Compressed)
+	utils.InitializeCompressionParameters(backupConfig.Compressed, 0)
 	utils.EnsureBackupVersionCompatibility(backupConfig.BackupVersion, version)
 	utils.EnsureDatabaseVersionCompatibility(backupConfig.DatabaseVersion, connection.Version)
 	if backupConfig.SingleDataFile && *numJobs != 1 {

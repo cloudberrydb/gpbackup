@@ -25,6 +25,7 @@ var (
  */
 var (
 	backupDir         *string
+	compressionLevel  *int
 	dataOnly          *bool
 	dbname            *string
 	debug             *bool
