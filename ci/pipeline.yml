@@ -1,11 +1,5 @@
 ---
 resource_types:
-- name: slack-notification
-  type: docker-image
-  source:
-    repository: cfcommunity/slack-notification-resource
-    tag: latest
-
 - name: terraform
   type: docker-image
   source:
@@ -17,16 +11,6 @@ resources:
   source:
     uri: https://github.com/greenplum-db/gpbackup
     branch: master
-    ignore_paths:
-    - ci
-
-- name: gpbackup-ci
-  type: git
-  source:
-    uri: https://github.com/greenplum-db/gpbackup
-    branch: master
-    paths:
-    - ci
 
 - name: gpdb_src
   type: git
@@ -68,7 +52,7 @@ resources:
     branch: {{ccp-git-branch}}
     private_key: {{ccp-git-key}}
     uri: {{ccp-git-remote}}
-    tag_filter: 1.4.2
+    tag_filter: 1.4.7
 
 - name: terraform
   type: terraform
@@ -99,9 +83,8 @@ jobs:
   - aggregate:
     - get: gpbackup
       trigger: true
-    - get: gpbackup-ci
   - task: unit-tests
-    file: gpbackup-ci/ci/tasks/unit-tests.yml
+    file: gpbackup/ci/tasks/unit-tests.yml
 
 - name: integrations-master
   plan:
@@ -109,8 +92,6 @@ jobs:
     - get: gpbackup
       tags: ["ccp"]
       trigger: true
-    - get: gpbackup-ci
-      tags: ["ccp"]
     - get: bin_gpdb_master
       tags: ["ccp"]
     - get: ccp_src
@@ -135,7 +116,7 @@ jobs:
       <<: *ccp_destroy
   - task: integration-tests
     tags: ["ccp"]
-    file: gpbackup-ci/ci/tasks/integration-tests.yml
+    file: gpbackup/ci/tasks/integration-tests.yml
     on_failure:
       <<: *debug_sleep
   - *ccp_destroy
@@ -146,8 +127,6 @@ jobs:
     - get: gpbackup
       tags: ["ccp"]
       trigger: true
-    - get: gpbackup-ci
-      tags: ["ccp"]
     - get: bin_gpdb_5x_stable
       tags: ["ccp"]
     - get: ccp_src
@@ -172,7 +151,7 @@ jobs:
       <<: *ccp_destroy
   - task: integration-tests
     tags: ["ccp"]
-    file: gpbackup-ci/ci/tasks/integration-tests.yml
+    file: gpbackup/ci/tasks/integration-tests.yml
     on_failure:
       <<: *debug_sleep
   - *ccp_destroy
@@ -183,8 +162,6 @@ jobs:
     - get: gpbackup
       tags: ["ccp"]
       trigger: true
-    - get: gpbackup-ci
-      tags: ["ccp"]
     - get: bin_gpdb_43_stable
       tags: ["ccp"]
     - get: ccp_src
@@ -209,7 +186,7 @@ jobs:
       <<: *ccp_destroy
   - task: integration-tests
     tags: ["ccp"]
-    file: gpbackup-ci/ci/tasks/integration-tests.yml
+    file: gpbackup/ci/tasks/integration-tests.yml
     on_failure:
       <<: *debug_sleep
   - *ccp_destroy
@@ -218,8 +195,6 @@ jobs:
   plan:
   - aggregate:
     - get: gpbackup
-      tags: ["ccp"]
-    - get: gpbackup-ci
       tags: ["ccp"]
     - get: bin_gpdb_master
       tags: ["ccp"]
@@ -250,7 +225,7 @@ jobs:
       <<: *ccp_destroy
   - task: scale-tests
     tags: ["ccp"]
-    file: gpbackup-ci/ci/tasks/scale-tests.yml
+    file: gpbackup/ci/tasks/scale-tests.yml
     on_failure:
       <<: *debug_sleep
   - *ccp_destroy
@@ -259,8 +234,6 @@ jobs:
   plan:
   - aggregate:
     - get: gpbackup
-      tags: ["ccp"]
-    - get: gpbackup-ci
       tags: ["ccp"]
     - get: bin_gpdb_5x_stable
       tags: ["ccp"]
@@ -291,7 +264,7 @@ jobs:
       <<: *ccp_destroy
   - task: scale-tests
     tags: ["ccp"]
-    file: gpbackup-ci/ci/tasks/scale-tests.yml
+    file: gpbackup/ci/tasks/scale-tests.yml
     on_failure:
       <<: *debug_sleep
   - *ccp_destroy
@@ -300,8 +273,6 @@ jobs:
   plan:
   - aggregate:
     - get: gpbackup
-      tags: ["ccp"]
-    - get: gpbackup-ci
       tags: ["ccp"]
     - get: bin_gpdb_43_stable
       tags: ["ccp"]
@@ -332,7 +303,7 @@ jobs:
       <<: *ccp_destroy
   - task: scale-tests
     tags: ["ccp"]
-    file: gpbackup-ci/ci/tasks/scale-tests.yml
+    file: gpbackup/ci/tasks/scale-tests.yml
     on_failure:
       <<: *debug_sleep
   - *ccp_destroy
