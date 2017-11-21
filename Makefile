@@ -51,7 +51,7 @@ integration :
 test : lint unit integration
 
 end_to_end :
-		ginkgo -r -randomizeSuites -noisySkippings=false -randomizeAllSpecs end_to_end 2>&1
+		ginkgo -r -randomizeSuites -slowSpecThreshold=10 -noisySkippings=false -randomizeAllSpecs end_to_end 2>&1
 
 coverage :
 		@./show_coverage.sh
