@@ -9,7 +9,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
 	"github.com/greenplum-db/gpbackup/utils"
 	. "github.com/onsi/ginkgo"
@@ -112,13 +111,13 @@ var _ = Describe("backup end to end integration tests", func() {
 		It("runs gpbackup and gprestore with exclude-schema flag", func() {
 			timestamp := gpbackup(gpbackupPath, "-exclude-schema", "public")
 			gprestore(gprestorePath, timestamp, "-redirect", "restoredb")
-			tableCount := backup.SelectString(restoreConn, countQuery)
+			tableCount := utils.SelectString(restoreConn, countQuery)
 			Expect(tableCount).To(Equal("14"))
 		})
 		It("runs gpbackup and gprestore with include-schema flag and compression level", func() {
 			timestamp := gpbackup(gpbackupPath, "-include-schema", "public", "-compression-level", "2")
 			gprestore(gprestorePath, timestamp, "-redirect", "restoredb")
-			tableCount := backup.SelectString(restoreConn, countQuery)
+			tableCount := utils.SelectString(restoreConn, countQuery)
 			Expect(tableCount).To(Equal("15"))
 		})
 		It("runs gpbackup and gprestore with exclude-table-file flag", func() {
@@ -126,7 +125,7 @@ var _ = Describe("backup end to end integration tests", func() {
 			utils.MustPrintln(excludeFile, "schema2.foo2\nschema2.returns\npublic.sales")
 			timestamp := gpbackup(gpbackupPath, "-exclude-table-file", "/tmp/exclude-tables.txt")
 			gprestore(gprestorePath, timestamp, "-redirect", "restoredb")
-			tableCount := backup.SelectString(restoreConn, countQuery)
+			tableCount := utils.SelectString(restoreConn, countQuery)
 			Expect(tableCount).To(Equal("2"))
 			os.Remove("/tmp/exclude-tables.txt")
 		})
@@ -135,7 +134,7 @@ var _ = Describe("backup end to end integration tests", func() {
 			utils.MustPrintln(includeFile, "public.sales")
 			timestamp := gpbackup(gpbackupPath, "-include-table-file", "/tmp/include-tables.txt")
 			gprestore(gprestorePath, timestamp, "-redirect", "restoredb")
-			tableCount := backup.SelectString(restoreConn, countQuery)
+			tableCount := utils.SelectString(restoreConn, countQuery)
 			Expect(tableCount).To(Equal("13"))
 			os.Remove("/tmp/include-tables.txt")
 		})
@@ -171,6 +170,16 @@ var _ = Describe("backup end to end integration tests", func() {
 			backupdir := "/tmp/single_data_file"
 			timestamp := gpbackup(gpbackupPath, "-single-data-file", "-backupdir", backupdir)
 			gprestore(gprestorePath, timestamp, "-redirect", "restoredb", "-backupdir", backupdir)
+
+			os.RemoveAll(backupdir)
+		})
+
+		It("runs gpbackup and gprestore with include-schema restore flag", func() {
+			backupdir := "/tmp/single_data_file"
+			timestamp := gpbackup(gpbackupPath, "-backupdir", backupdir)
+			gprestore(gprestorePath, timestamp, "-redirect", "restoredb", "-backupdir", backupdir, "-include-schema", "schema2")
+			tableCount := utils.SelectString(restoreConn, countQuery)
+			Expect(tableCount).To(Equal("14"))
 
 			os.RemoveAll(backupdir)
 		})

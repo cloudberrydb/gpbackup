@@ -81,7 +81,7 @@ func PrintCreateSchemaStatements(backupfile *utils.FileWithByteCount, toc *utils
 			backupfile.MustPrintf("\nCREATE SCHEMA %s;", schema.Name)
 		}
 		PrintObjectMetadata(backupfile, schemaMetadata[schema.Oid], schema.Name, "SCHEMA")
-		toc.AddMetadataEntry("", schema.Name, "SCHEMA", start, backupfile)
+		toc.AddMetadataEntry(schema.Name, schema.Name, "SCHEMA", start, backupfile)
 	}
 }
 

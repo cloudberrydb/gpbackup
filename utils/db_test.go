@@ -1,6 +1,7 @@
 package utils_test
 
 import (
+	"database/sql/driver"
 	"fmt"
 	"os"
 	"time"
@@ -261,6 +262,57 @@ var _ = Describe("utils/db tests", func() {
 			versionString := sqlmock.NewRows([]string{"versionstring"}).AddRow(" PostgreSQL 8.4.23 (Greenplum Database 6.0.0-beta.9+dev.129.g4bd4e41 build dev) on x86_64-apple-darwin14.5.0, compiled by GCC Apple LLVM version 6.0 (clang-600.0.57) (based on LLVM 3.5svn) compiled on Sep  1 2017 16:57:41")
 			mock.ExpectQuery("SELECT (.*)").WillReturnRows(versionString)
 			connection.SetDatabaseVersion()
+		})
+	})
+	Describe("SelectString", func() {
+		header := []string{"string"}
+		rowOne := []driver.Value{"one"}
+		rowTwo := []driver.Value{"two"}
+
+		It("returns a single string if the query selects a single string", func() {
+			fakeResult := sqlmock.NewRows(header).AddRow(rowOne...)
+			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
+			result := utils.SelectString(connection, "SELECT foo FROM bar")
+			Expect(result).To(Equal("one"))
+		})
+		It("returns an empty string if the query selects no strings", func() {
+			fakeResult := sqlmock.NewRows(header)
+			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
+			result := utils.SelectString(connection, "SELECT foo FROM bar")
+			Expect(result).To(Equal(""))
+		})
+		It("panics if the query selects multiple strings", func() {
+			fakeResult := sqlmock.NewRows(header).AddRow(rowOne...).AddRow(rowTwo...)
+			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
+			defer testutils.ShouldPanicWithMessage("Too many rows returned from query: got 2 rows, expected 1 row")
+			utils.SelectString(connection, "SELECT foo FROM bar")
+		})
+	})
+	Describe("SelectStringSlice", func() {
+		header := []string{"string"}
+		rowOne := []driver.Value{"one"}
+		rowTwo := []driver.Value{"two"}
+
+		It("returns a slice containing a single string if the query selects a single string", func() {
+			fakeResult := sqlmock.NewRows(header).AddRow(rowOne...)
+			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
+			results := utils.SelectStringSlice(connection, "SELECT foo FROM bar")
+			Expect(len(results)).To(Equal(1))
+			Expect(results[0]).To(Equal("one"))
+		})
+		It("returns an empty slice if the query selects no strings", func() {
+			fakeResult := sqlmock.NewRows(header)
+			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
+			results := utils.SelectStringSlice(connection, "SELECT foo FROM bar")
+			Expect(len(results)).To(Equal(0))
+		})
+		It("returns a slice containing multiple strings if the query selects multiple strings", func() {
+			fakeResult := sqlmock.NewRows(header).AddRow(rowOne...).AddRow(rowTwo...)
+			mock.ExpectQuery("SELECT (.*)").WillReturnRows(fakeResult)
+			results := utils.SelectStringSlice(connection, "SELECT foo FROM bar")
+			Expect(len(results)).To(Equal(2))
+			Expect(results[0]).To(Equal("one"))
+			Expect(results[1]).To(Equal("two"))
 		})
 	})
 })

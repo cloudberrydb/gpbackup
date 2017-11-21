@@ -166,3 +166,34 @@ func (dbconn *DBConn) validateGPDBVersionCompatibility() {
 		logger.Fatal(errors.Errorf(`GPDB version %s is not supported. Please upgrade to GPDB %s or later.`, dbconn.Version.VersionString, MINIMUM_GPDB5_VERSION), "")
 	}
 }
+
+/*
+ * This is a convenience function for Select() when we're selecting single string
+ * that may be NULL or not exist.  We can't use Get() because that expects exactly
+ * one string and will panic if no rows are returned, even if using a sql.NullString.
+ */
+func SelectString(connection *DBConn, query string) string {
+	results := make([]struct{ String string }, 0)
+	err := connection.Select(&results, query)
+	CheckError(err)
+	if len(results) == 1 {
+		return results[0].String
+	} else if len(results) > 1 {
+		logger.Fatal(errors.Errorf("Too many rows returned from query: got %d rows, expected 1 row", len(results)), "")
+	}
+	return ""
+}
+
+// This is a convenience function for Select() when we're selecting single strings.
+func SelectStringSlice(connection *DBConn, query string) []string {
+	results := make([]struct{ String string }, 0)
+	err := connection.Select(&results, query)
+	CheckError(err)
+	retval := make([]string, 0)
+	for _, str := range results {
+		if str.String != "" {
+			retval = append(retval, str.String)
+		}
+	}
+	return retval
+}

@@ -39,7 +39,7 @@ AND i.indisunique = 't'
 AND i.indisprimary = 'f';
 `
 	indexNameMap := make(map[string]bool, 0)
-	indexNames := SelectStringSlice(connection, query)
+	indexNames := utils.SelectStringSlice(connection, query)
 	for _, name := range indexNames {
 		indexNameMap[name] = true
 	}

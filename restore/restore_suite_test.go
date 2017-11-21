@@ -26,6 +26,7 @@ var (
 	stdout        *gbytes.Buffer
 	stderr        *gbytes.Buffer
 	logfile       *gbytes.Buffer
+	buffer        *gbytes.Buffer
 	gprestorePath = ""
 )
 
@@ -47,4 +48,5 @@ func TestRestore(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	connection, mock, logger, stdout, stderr, logfile = testutils.SetupTestEnvironment()
+	buffer = gbytes.NewBuffer()
 })

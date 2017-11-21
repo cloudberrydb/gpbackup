@@ -64,15 +64,30 @@ type StatementWithType struct {
 	Statement  string
 }
 
-func (toc *TOC) GetSQLStatementForObjectTypes(filename string, metadataFile io.ReaderAt, objectTypes ...string) []StatementWithType {
+func (toc *TOC) GetSQLStatementForObjectTypes(filename string, metadataFile io.ReaderAt, objectTypes []string, includeSchemas []string) []StatementWithType {
 	entries := *toc.metadataEntryMap[filename]
-	objectHashes := make(map[string]bool, len(objectTypes))
-	for _, objectType := range objectTypes {
-		objectHashes[objectType] = true
+	var objectHashes, schemaHashes map[string]bool
+	restoreAllSchemas := len(includeSchemas) == 0
+	if !restoreAllSchemas {
+		schemaHashes = make(map[string]bool, len(includeSchemas))
+		for _, schema := range includeSchemas {
+			schemaHashes[schema] = true
+		}
+	}
+	restoreAllObjects := len(objectTypes) == 0
+	if !restoreAllObjects {
+		objectHashes = make(map[string]bool, len(objectTypes))
+		for _, objectType := range objectTypes {
+			objectHashes[objectType] = true
+		}
 	}
 	statements := make([]StatementWithType, 0)
 	for _, entry := range entries {
-		if _, ok := objectHashes[entry.ObjectType]; ok {
+		_, validObject := objectHashes[entry.ObjectType]
+		validObject = restoreAllObjects || validObject
+		_, validSchema := schemaHashes[entry.Schema]
+		validSchema = restoreAllSchemas || validSchema
+		if validObject && validSchema {
 			contents := make([]byte, entry.EndByte-entry.StartByte)
 			_, err := metadataFile.ReadAt(contents, int64(entry.StartByte))
 			CheckError(err)
@@ -92,6 +107,26 @@ func (toc *TOC) GetAllSQLStatements(filename string, metadataFile io.ReaderAt) [
 		statements = append(statements, StatementWithType{ObjectType: entry.ObjectType, Statement: string(contents)})
 	}
 	return statements
+}
+
+func (toc *TOC) GetDataEntriesMatching(includeSchemas []string) []MasterDataEntry {
+	restoreAllSchemas := len(includeSchemas) == 0
+	var schemaHashes map[string]bool
+	if !restoreAllSchemas {
+		schemaHashes = make(map[string]bool, len(includeSchemas))
+		for _, schema := range includeSchemas {
+			schemaHashes[schema] = true
+		}
+	}
+	matchingEntries := make([]MasterDataEntry, 0)
+	for _, entry := range toc.MasterDataEntries {
+		_, validSchema := schemaHashes[entry.Schema]
+		validSchema = restoreAllSchemas || validSchema
+		if validSchema {
+			matchingEntries = append(matchingEntries, entry)
+		}
+	}
+	return matchingEntries
 }
 
 func SubstituteRedirectDatabaseInStatements(statements []StatementWithType, oldName string, newName string) []StatementWithType {

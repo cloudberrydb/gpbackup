@@ -94,14 +94,14 @@ func setupTestFilespace(cluster utils.Cluster) {
 	if err != nil {
 		Fail(fmt.Sprintf("Cannot create test filespace: %s: %s", out, err.Error()))
 	}
-	filespaceName := backup.SelectString(connection, "SELECT fsname AS string FROM pg_filespace WHERE fsname = 'test_filespace';")
+	filespaceName := utils.SelectString(connection, "SELECT fsname AS string FROM pg_filespace WHERE fsname = 'test_filespace';")
 	if filespaceName != "test_filespace" {
 		Fail("Filespace test_filespace was not successfully created")
 	}
 }
 
 func destroyTestFilespace() {
-	filespaceName := backup.SelectString(connection, "SELECT fsname AS string FROM pg_filespace WHERE fsname = 'test_filespace';")
+	filespaceName := utils.SelectString(connection, "SELECT fsname AS string FROM pg_filespace WHERE fsname = 'test_filespace';")
 	if filespaceName != "test_filespace" {
 		return
 	}

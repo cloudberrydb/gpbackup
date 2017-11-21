@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/greenplum-db/gpbackup/utils"
-	"github.com/pkg/errors"
 )
 
 /*
@@ -45,20 +44,17 @@ func InitializeBackupConfig() {
 	utils.InitializeCompressionParameters(backupConfig.Compressed, 0)
 	utils.EnsureBackupVersionCompatibility(backupConfig.BackupVersion, version)
 	utils.EnsureDatabaseVersionCompatibility(backupConfig.DatabaseVersion, connection.Version)
-	if backupConfig.SingleDataFile && *numJobs != 1 {
-		logger.Fatal(errors.Errorf("Cannot use --jobs flag when restoring backups with a single data file per segment."), "")
-	}
 }
 
 /*
  * Metadata and/or data restore wrapper functions
  */
 
-func GetRestoreMetadataStatements(filename string, objectTypes ...string) []utils.StatementWithType {
+func GetRestoreMetadataStatements(filename string, objectTypes []string, includeSchemas []string) []utils.StatementWithType {
 	metadataFile := utils.MustOpenFileForReading(filename)
 	var statements []utils.StatementWithType
-	if len(objectTypes) > 0 {
-		statements = globalTOC.GetSQLStatementForObjectTypes(filename, metadataFile, objectTypes...)
+	if len(objectTypes) > 0 || len(includeSchemas) > 0 {
+		statements = globalTOC.GetSQLStatementForObjectTypes(filename, metadataFile, objectTypes, includeSchemas)
 	} else {
 		statements = globalTOC.GetAllSQLStatements(filename, metadataFile)
 	}
@@ -73,12 +69,12 @@ func ExecuteRestoreMetadataStatements(statements []utils.StatementWithType, obje
 	}
 }
 
-func setGUCsBeforeDataRestore() {
+func setGUCsForConnection() {
 	objectTypes := []string{"SESSION GUCS"}
 	if connection.Version.Before("5") {
 		objectTypes = append(objectTypes, "GPDB4 SESSION GUCS")
 	}
-	gucStatements := GetRestoreMetadataStatements(globalCluster.GetPredataFilePath(), objectTypes...)
+	gucStatements := GetRestoreMetadataStatements(globalCluster.GetPredataFilePath(), objectTypes, []string{})
 	ExecuteRestoreMetadataStatements(gucStatements, "", false)
 
 	query := fmt.Sprintf("SET gp_enable_segment_copy_checking TO false;")

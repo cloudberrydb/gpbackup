@@ -359,7 +359,7 @@ func OidFromObjectName(dbconn *utils.DBConn, schemaName string, objectName strin
 }
 
 func GetUserByID(dbconn *utils.DBConn, oid uint32) string {
-	return backup.SelectString(dbconn, fmt.Sprintf("SELECT rolname AS string FROM pg_roles WHERE oid = %d", oid))
+	return utils.SelectString(dbconn, fmt.Sprintf("SELECT rolname AS string FROM pg_roles WHERE oid = %d", oid))
 }
 
 func SkipIf4(dbconn *utils.DBConn) {

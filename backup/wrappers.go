@@ -434,7 +434,7 @@ func BackupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
 		}
 	}
 	totalRegTables := len(tables) - totalExtTables
-	dataProgressBar := utils.NewProgressBar(totalRegTables, "Tables backed up: ", logger.GetVerbosity() == utils.LOGINFO && totalRegTables > 0)
+	dataProgressBar := utils.NewProgressBar(totalRegTables, "Tables backed up: ", logger.GetVerbosity() == utils.LOGINFO)
 	dataProgressBar.Start()
 
 	for _, table := range tables {

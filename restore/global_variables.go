@@ -28,6 +28,7 @@ var (
 	backupDir       *string
 	createdb        *bool
 	debug           *bool
+	includeSchemas  utils.ArrayFlags
 	numJobs         *int
 	onErrorContinue *bool
 	printVersion    *bool
@@ -42,6 +43,10 @@ var (
 /*
  * Setter functions
  */
+
+func SetBackupConfig(config *utils.BackupConfig) {
+	backupConfig = config
+}
 
 func SetConnection(conn *utils.DBConn) {
 	connection = conn

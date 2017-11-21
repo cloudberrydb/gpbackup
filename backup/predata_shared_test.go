@@ -149,7 +149,7 @@ COMMENT ON CONSTRAINT tablename_i_key ON public.tablename IS 'This is a constrai
 			emptyMetadataMap := backup.MetadataMap{}
 
 			backup.PrintCreateSchemaStatements(backupfile, toc, schemas, emptyMetadataMap)
-			testutils.ExpectEntry(toc.PredataEntries, 0, "", "schemaname", "SCHEMA")
+			testutils.ExpectEntry(toc.PredataEntries, 0, "schemaname", "schemaname", "SCHEMA")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, "CREATE SCHEMA schemaname;")
 		})
 		It("can print a schema with privileges, an owner, and a comment", func() {

@@ -18,6 +18,12 @@ var _ = Describe("utils/toc tests", func() {
 	role1Len := uint64(len(role1.Statement))
 	role2 := utils.StatementWithType{ObjectType: "ROLE", Statement: "CREATE ROLE somerole2;\n"}
 	role2Len := uint64(len(role2.Statement))
+	sequence := utils.StatementWithType{ObjectType: "SEQUENCE", Statement: "CREATE SEQUENCE schema.somesequence"}
+	sequenceLen := uint64(len(sequence.Statement))
+	table1 := utils.StatementWithType{ObjectType: "TABLE", Statement: "CREATE TABLE schema.table1"}
+	table1Len := uint64(len(table1.Statement))
+	table2 := utils.StatementWithType{ObjectType: "TABLE", Statement: "CREATE TABLE schema.table2"}
+	table2Len := uint64(len(table2.Statement))
 	BeforeEach(func() {
 		toc, backupfile = testutils.InitializeTestTOC(buffer, "global")
 	})
@@ -27,11 +33,11 @@ var _ = Describe("utils/toc tests", func() {
 			toc.AddMetadataEntry("", "somedatabase", "DATABASE", commentLen, backupfile)
 
 			globalFile := bytes.NewReader([]byte(comment.Statement + create.Statement))
-			statements := toc.GetSQLStatementForObjectTypes("global", globalFile, "DATABASE")
+			statements := toc.GetSQLStatementForObjectTypes("global", globalFile, []string{"DATABASE"}, []string{})
 
 			Expect(statements).To(Equal([]utils.StatementWithType{create}))
 		})
-		It("returns statement for a multiple object types", func() {
+		It("returns statement for multiple object types", func() {
 			backupfile.ByteCount = commentLen + createLen
 			toc.AddMetadataEntry("", "somedatabase", "DATABASE", commentLen, backupfile)
 			backupfile.ByteCount += role1Len
@@ -40,7 +46,7 @@ var _ = Describe("utils/toc tests", func() {
 			toc.AddMetadataEntry("", "somerole2", "ROLE", commentLen+createLen+role1Len, backupfile)
 
 			globalFile := bytes.NewReader([]byte(comment.Statement + create.Statement + role1.Statement + role2.Statement))
-			statements := toc.GetSQLStatementForObjectTypes("global", globalFile, "DATABASE", "ROLE")
+			statements := toc.GetSQLStatementForObjectTypes("global", globalFile, []string{"DATABASE", "ROLE"}, []string{})
 
 			Expect(statements).To(Equal([]utils.StatementWithType{create, role1, role2}))
 		})
@@ -49,11 +55,53 @@ var _ = Describe("utils/toc tests", func() {
 			toc.AddMetadataEntry("", "somedatabase", "DATABASE", commentLen, backupfile)
 
 			globalFile := bytes.NewReader([]byte(comment.Statement + create.Statement))
-			statements := toc.GetSQLStatementForObjectTypes("global", globalFile, "TABLE")
+			statements := toc.GetSQLStatementForObjectTypes("global", globalFile, []string{"TABLE"}, []string{})
 
 			Expect(statements).To(Equal([]utils.StatementWithType{}))
 		})
+		It("returns statement for a single object type with matching schema", func() {
+			backupfile.ByteCount = table1Len
+			toc.AddMetadataEntry("schema", "table1", "TABLE", 0, backupfile)
+			backupfile.ByteCount += table2Len
+			toc.AddMetadataEntry("schema2", "table2", "TABLE", table1Len, backupfile)
+			backupfile.ByteCount += sequenceLen
+			toc.AddMetadataEntry("schema", "somesequence", "SEQUENCE", table1Len+table2Len, backupfile)
+
+			globalFile := bytes.NewReader([]byte(table1.Statement + table2.Statement + sequence.Statement))
+			statements := toc.GetSQLStatementForObjectTypes("global", globalFile, []string{"TABLE"}, []string{"schema"})
+
+			Expect(statements).To(Equal([]utils.StatementWithType{table1}))
+		})
+		It("returns statement for any object type with matching schema", func() {
+			backupfile.ByteCount = table1Len
+			toc.AddMetadataEntry("schema", "table1", "TABLE", 0, backupfile)
+			backupfile.ByteCount += table2Len
+			toc.AddMetadataEntry("schema2", "table2", "TABLE", table1Len, backupfile)
+			backupfile.ByteCount += sequenceLen
+			toc.AddMetadataEntry("schema", "somesequence", "SEQUENCE", table1Len+table2Len, backupfile)
+
+			globalFile := bytes.NewReader([]byte(table1.Statement + table2.Statement + sequence.Statement))
+			statements := toc.GetSQLStatementForObjectTypes("global", globalFile, []string{}, []string{"schema"})
+
+			Expect(statements).To(Equal([]utils.StatementWithType{table1, sequence}))
+		})
 	})
+	Context("GetDataEntriesMatching", func() {
+		It("returns matching entry on schema", func() {
+			includeSchemas := []string{"schema1"}
+			toc.AddMasterDataEntry("schema1", "table1", 1, "(i)")
+			toc.AddMasterDataEntry("schema2", "table2", 1, "(i)")
+			matchingEntries := toc.GetDataEntriesMatching(includeSchemas)
+			Expect(matchingEntries).To(Equal([]utils.MasterDataEntry{{Schema: "schema1", Name: "table1", Oid: 1, AttributeString: "(i)"}}))
+		})
+		It("returns all entries when not schema-filtered", func() {
+			toc.AddMasterDataEntry("schema1", "table1", 1, "(i)")
+			toc.AddMasterDataEntry("schema2", "table2", 1, "(i)")
+			matchingEntries := toc.GetDataEntriesMatching([]string{})
+			Expect(matchingEntries).To(Equal([]utils.MasterDataEntry{{Schema: "schema1", Name: "table1", Oid: 1, AttributeString: "(i)"}, {Schema: "schema2", Name: "table2", Oid: 1, AttributeString: "(i)"}}))
+		})
+	})
+
 	Context("GetAllSqlStatements", func() {
 		It("returns statement for a single object type", func() {
 			backupfile.ByteCount = createLen

@@ -12,8 +12,6 @@ import (
 	"strings"
 
 	"github.com/greenplum-db/gpbackup/utils"
-
-	"github.com/pkg/errors"
 )
 
 /*
@@ -337,39 +335,4 @@ SELECT
 		}
 	}
 	return metadataMap
-}
-
-/*
- * Helper functions
- */
-
-/*
- * This is a convenience function for Select() when we're selecting single string
- * that may be NULL or not exist.  We can't use Get() because that expects exactly
- * one string and will panic if no rows are returned, even if using a sql.NullString.
- */
-func SelectString(connection *utils.DBConn, query string) string {
-	results := make([]struct{ String string }, 0)
-	err := connection.Select(&results, query)
-	utils.CheckError(err)
-	if len(results) == 1 {
-		return results[0].String
-	} else if len(results) > 1 {
-		logger.Fatal(errors.Errorf("Too many rows returned from query: got %d rows, expected 1 row", len(results)), "")
-	}
-	return ""
-}
-
-// This is a convenience function for Select() when we're selecting single strings.
-func SelectStringSlice(connection *utils.DBConn, query string) []string {
-	results := make([]struct{ String string }, 0)
-	err := connection.Select(&results, query)
-	utils.CheckError(err)
-	retval := make([]string, 0)
-	for _, str := range results {
-		if str.String != "" {
-			retval = append(retval, str.String)
-		}
-	}
-	return retval
 }

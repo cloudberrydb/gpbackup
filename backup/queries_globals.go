@@ -61,7 +61,7 @@ END AS string
 FROM pg_options_to_table(
 	(SELECT datconfig FROM pg_database WHERE datname = '%s')
 );`, connection.DBName)
-	return SelectStringSlice(connection, query)
+	return utils.SelectStringSlice(connection, query)
 }
 
 type ResourceQueue struct {

@@ -16,7 +16,7 @@ func ValidateFilterSchemas(connection *utils.DBConn, schemaList utils.ArrayFlags
 	if len(schemaList) > 0 {
 		quotedSchemasStr := utils.SliceToQuotedString(schemaList)
 		query := fmt.Sprintf("SELECT nspname AS string FROM pg_namespace WHERE nspname IN (%s)", quotedSchemasStr)
-		resultSchemas := SelectStringSlice(connection, query)
+		resultSchemas := utils.SelectStringSlice(connection, query)
 		if len(resultSchemas) < len(schemaList) {
 			schemaMap := make(map[string]bool)
 			for _, schema := range resultSchemas {
