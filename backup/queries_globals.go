@@ -124,18 +124,13 @@ SELECT g.oid,
 	t3.proposed AS memorylimit,
 	t4.proposed AS memorysharedquota,
 	t5.proposed AS memoryspillratio
-FROM pg_resgroup g,
-	pg_resgroupcapability t1,
-	pg_resgroupcapability t2,
-	pg_resgroupcapability t3,
-	pg_resgroupcapability t4,
-	pg_resgroupcapability t5
-WHERE g.oid = t1.resgroupid AND
-	g.oid = t2.resgroupid AND
-	g.oid = t3.resgroupid AND
-	g.oid = t4.resgroupid AND
-	g.oid = t5.resgroupid AND
-	t1.reslimittype = 1 AND
+FROM pg_resgroup g
+	JOIN pg_resgroupcapability t1 ON t1.resgroupid = g.oid
+	JOIN pg_resgroupcapability t2 ON t2.resgroupid = g.oid
+	JOIN pg_resgroupcapability t3 ON t3.resgroupid = g.oid
+	JOIN pg_resgroupcapability t4 ON t4.resgroupid = g.oid
+	JOIN pg_resgroupcapability t5 ON t5.resgroupid = g.oid
+WHERE t1.reslimittype = 1 AND
 	t2.reslimittype = 2 AND
 	t3.reslimittype = 3 AND
 	t4.reslimittype = 4 AND

@@ -53,8 +53,7 @@ AND relkind = 'r'
 AND c.oid NOT IN (SELECT
 	p.parchildrelid
 FROM pg_partition_rule p
-LEFT
-JOIN pg_exttable e
+LEFT JOIN pg_exttable e
 	ON p.parchildrelid = e.reloid
 WHERE e.reloid IS NULL)
 ORDER BY n.nspname, c.relname;`, tableAndSchemaFilterClause())

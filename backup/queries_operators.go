@@ -200,10 +200,10 @@ SELECT
 	amopstrategy AS strategynumber,
 	amopopr::pg_catalog.regoperator AS operator,
 	amopreqcheck AS recheck
-FROM pg_catalog.pg_amop ao, pg_catalog.pg_depend
+FROM pg_catalog.pg_amop ao
+JOIN pg_catalog.pg_depend d ON d.objid = ao.oid
 WHERE refclassid = 'pg_catalog.pg_opclass'::pg_catalog.regclass
 AND classid = 'pg_catalog.pg_amop'::pg_catalog.regclass
-AND objid = ao.oid
 ORDER BY amopstrategy
 `)
 
@@ -212,10 +212,10 @@ SELECT
 	refobjid AS classoid,
 	amopstrategy AS strategynumber,
 	amopopr::pg_catalog.regoperator AS operator
-FROM pg_catalog.pg_amop ao, pg_catalog.pg_depend
+FROM pg_catalog.pg_amop ao
+JOIN pg_catalog.pg_depend d ON d.objid = ao.oid
 WHERE refclassid = 'pg_catalog.pg_opclass'::pg_catalog.regclass
 AND classid = 'pg_catalog.pg_amop'::pg_catalog.regclass
-AND objid = ao.oid
 ORDER BY amopstrategy
 `)
 	var err error
@@ -257,10 +257,10 @@ SELECT
 	refobjid AS classoid,
 	amprocnum AS supportnumber,
 	amproc::regprocedure::text AS functionname
-FROM pg_catalog.pg_amproc ap, pg_catalog.pg_depend
+FROM pg_catalog.pg_amproc ap
+JOIN pg_catalog.pg_depend d ON d.objid = ap.oid
 WHERE refclassid = 'pg_catalog.pg_opclass'::pg_catalog.regclass
 AND classid = 'pg_catalog.pg_amproc'::pg_catalog.regclass
-AND objid = ap.oid
 ORDER BY amprocnum
 `)
 
