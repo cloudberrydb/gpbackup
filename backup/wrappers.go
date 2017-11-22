@@ -1,6 +1,8 @@
 package backup
 
 import (
+	"fmt"
+
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
@@ -38,8 +40,10 @@ func InitializeConnection() {
 }
 
 func InitializeBackupReport() {
+
+	dbname := utils.SelectString(connection, fmt.Sprintf("select quote_ident(datname) AS string FROM pg_database where datname='%s'", connection.DBName))
 	config := utils.BackupConfig{
-		DatabaseName:    connection.DBName,
+		DatabaseName:    dbname,
 		DatabaseVersion: connection.Version.VersionString,
 		BackupVersion:   version,
 	}

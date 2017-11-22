@@ -133,7 +133,7 @@ func SubstituteRedirectDatabaseInStatements(statements []StatementWithType, oldN
 	shouldReplace := map[string]bool{"DATABASE GUC": true, "DATABASE": true, "DATABASE METADATA": true}
 	originalDatabase := regexp.QuoteMeta(oldName)
 	newDatabase := newName
-	pattern := regexp.MustCompile(fmt.Sprintf("DATABASE %s(;| OWNER| SET)", originalDatabase))
+	pattern := regexp.MustCompile(fmt.Sprintf("DATABASE %s(;| OWNER| SET| TABLESPACE| TO| FROM| IS)", originalDatabase))
 	for i := range statements {
 		if shouldReplace[statements[i].ObjectType] {
 			statements[i].Statement = pattern.ReplaceAllString(statements[i].Statement, fmt.Sprintf("DATABASE %s$1", newDatabase))
