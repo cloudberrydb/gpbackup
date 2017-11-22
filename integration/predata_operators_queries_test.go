@@ -25,7 +25,7 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
 			defer testutils.AssertQueryRuns(connection, "DROP SCHEMA testschema")
 
-			testutils.AssertQueryRuns(connection, `CREATE FUNCTION testschema."testFunc"(path,path) RETURNS path AS 'SELECT $1' LANGUAGE SQL IMMUTABLE`)
+			testutils.AssertQueryRuns(connection, `CREATE FUNCTION testschema."testFunc"(path,path) RETURNS BOOLEAN AS 'SELECT true' LANGUAGE SQL IMMUTABLE`)
 			defer testutils.AssertQueryRuns(connection, `DROP FUNCTION testschema."testFunc"(path,path)`)
 
 			testutils.AssertQueryRuns(connection, `
