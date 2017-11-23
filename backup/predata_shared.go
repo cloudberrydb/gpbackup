@@ -69,7 +69,7 @@ func PrintConstraintStatements(predataFile *utils.FileWithByteCount, toc *utils.
 		}
 		predataFile.MustPrintf(alterStr, objStr, constraint.OwningObject, constraint.Name, constraint.ConDef)
 		PrintObjectMetadata(predataFile, conMetadata[constraint.Oid], constraint.Name, "CONSTRAINT", constraint.OwningObject)
-		toc.AddMetadataEntry("", constraint.Name, "CONSTRAINT", start, predataFile)
+		toc.AddMetadataEntry(constraint.Schema, constraint.Name, "CONSTRAINT", start, predataFile)
 	}
 }
 

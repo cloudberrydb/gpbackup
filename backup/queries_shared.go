@@ -50,6 +50,7 @@ ORDER BY name;`, SchemaFilterClause("n"))
 
 type Constraint struct {
 	Oid                uint32
+	Schema             string
 	Name               string
 	ConType            string
 	ConDef             string
@@ -63,6 +64,7 @@ func GetConstraints(connection *utils.DBConn, tables ...Relation) []Constraint {
 	tableQuery := `
 SELECT
 	c.oid,
+	quote_ident(n.nspname) AS schema,
 	quote_ident(conname) AS name,
 	contype,
 	pg_get_constraintdef(c.oid, TRUE) AS condef,
@@ -84,6 +86,7 @@ GROUP BY c.oid, conname, contype, r.relname, n.nspname, pt.parrelid`
 
 	nonTableQuery := fmt.Sprintf(`SELECT
 	c.oid,
+	quote_ident(n.nspname) AS schema,
 	quote_ident(conname) AS name,
 	contype,
 	pg_get_constraintdef(c.oid, TRUE) AS condef,
