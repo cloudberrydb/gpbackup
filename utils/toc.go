@@ -64,14 +64,21 @@ type StatementWithType struct {
 	Statement  string
 }
 
-func (toc *TOC) GetSQLStatementForObjectTypes(filename string, metadataFile io.ReaderAt, objectTypes []string, includeSchemas []string) []StatementWithType {
+func (toc *TOC) GetSQLStatementForObjectTypes(filename string, metadataFile io.ReaderAt, objectTypes []string, includeSchemas []string, includeTables []string) []StatementWithType {
 	entries := *toc.metadataEntryMap[filename]
-	var objectHashes, schemaHashes map[string]bool
+	var objectHashes, schemaHashes, tableHashes map[string]bool
 	restoreAllSchemas := len(includeSchemas) == 0
 	if !restoreAllSchemas {
 		schemaHashes = make(map[string]bool, len(includeSchemas))
 		for _, schema := range includeSchemas {
 			schemaHashes[schema] = true
+		}
+	}
+	restoreAllTables := len(includeTables) == 0
+	if !restoreAllTables {
+		tableHashes = make(map[string]bool, len(includeTables))
+		for _, table := range includeTables {
+			tableHashes[table] = true
 		}
 	}
 	restoreAllObjects := len(objectTypes) == 0
@@ -87,7 +94,10 @@ func (toc *TOC) GetSQLStatementForObjectTypes(filename string, metadataFile io.R
 		validObject = restoreAllObjects || validObject
 		_, validSchema := schemaHashes[entry.Schema]
 		validSchema = restoreAllSchemas || validSchema
-		if validObject && validSchema {
+		tableFQN := MakeFQN(entry.Schema, entry.Name)
+		_, validTable := tableHashes[tableFQN]
+		validTable = restoreAllTables || (validTable && entry.ObjectType == "TABLE")
+		if validObject && validSchema && validTable {
 			contents := make([]byte, entry.EndByte-entry.StartByte)
 			_, err := metadataFile.ReadAt(contents, int64(entry.StartByte))
 			CheckError(err)
@@ -109,7 +119,7 @@ func (toc *TOC) GetAllSQLStatements(filename string, metadataFile io.ReaderAt) [
 	return statements
 }
 
-func (toc *TOC) GetDataEntriesMatching(includeSchemas []string) []MasterDataEntry {
+func (toc *TOC) GetDataEntriesMatching(includeSchemas []string, includeTables []string) []MasterDataEntry {
 	restoreAllSchemas := len(includeSchemas) == 0
 	var schemaHashes map[string]bool
 	if !restoreAllSchemas {
@@ -118,11 +128,22 @@ func (toc *TOC) GetDataEntriesMatching(includeSchemas []string) []MasterDataEntr
 			schemaHashes[schema] = true
 		}
 	}
+	restoreAllTables := len(includeTables) == 0
+	var tableHashes map[string]bool
+	if !restoreAllTables {
+		tableHashes = make(map[string]bool, len(includeTables))
+		for _, table := range includeTables {
+			tableHashes[table] = true
+		}
+	}
 	matchingEntries := make([]MasterDataEntry, 0)
 	for _, entry := range toc.MasterDataEntries {
 		_, validSchema := schemaHashes[entry.Schema]
 		validSchema = restoreAllSchemas || validSchema
-		if validSchema {
+		tableFQN := MakeFQN(entry.Schema, entry.Name)
+		_, validTable := tableHashes[tableFQN]
+		validTable = restoreAllTables || validTable
+		if validSchema && validTable {
 			matchingEntries = append(matchingEntries, entry)
 		}
 	}

@@ -61,7 +61,7 @@ func DoSetup() {
 
 	InitializeFilterLists()
 	InitializeBackupReport()
-	validateSetup()
+	validateFilterLists()
 
 	segConfig := utils.GetSegmentConfiguration(connection)
 	timestamp := utils.CurrentTimestamp()
@@ -71,18 +71,6 @@ func DoSetup() {
 	globalCluster.CreateBackupDirectoriesOnAllHosts()
 	globalTOC = &utils.TOC{}
 	globalTOC.InitializeEntryMapFromCluster(globalCluster)
-}
-
-/*
- * This function handles validation that must be done after parsing flags.
- * It should only validate, and either error out or complete without side effects;
- * initialization with any sort of side effects should go in DoInit or DoSetup.
- */
-func validateSetup() {
-	ValidateFilterSchemas(connection, excludeSchemas)
-	ValidateFilterSchemas(connection, includeSchemas)
-	ValidateFilterTables(connection, excludeTables)
-	ValidateFilterTables(connection, includeTables)
 }
 
 func DoBackup() {

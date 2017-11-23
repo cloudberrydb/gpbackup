@@ -174,8 +174,20 @@ var _ = Describe("backup end to end integration tests", func() {
 			os.RemoveAll(backupdir)
 		})
 
+		It("runs gpbackup and gprestore with include-table-file restore flag", func() {
+			includeFile := utils.MustOpenFileForWriting("/tmp/include-tables.txt")
+			utils.MustPrintln(includeFile, "public.sales")
+			backupdir := "/tmp/include_table_file"
+			timestamp := gpbackup(gpbackupPath, "-backupdir", backupdir)
+			gprestore(gprestorePath, timestamp, "-redirect", "restoredb", "-backupdir", backupdir, "-include-table-file", "/tmp/include-tables.txt")
+			tableCount := utils.SelectString(restoreConn, countQuery)
+			Expect(tableCount).To(Equal("13"))
+
+			os.RemoveAll(backupdir)
+			os.Remove("/tmp/include-tables.txt")
+		})
 		It("runs gpbackup and gprestore with include-schema restore flag", func() {
-			backupdir := "/tmp/single_data_file"
+			backupdir := "/tmp/include_schema"
 			timestamp := gpbackup(gpbackupPath, "-backupdir", backupdir)
 			gprestore(gprestorePath, timestamp, "-redirect", "restoredb", "-backupdir", backupdir, "-include-schema", "schema2")
 			tableCount := utils.SelectString(restoreConn, countQuery)

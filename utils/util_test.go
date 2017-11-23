@@ -3,6 +3,7 @@ package utils_test
 import (
 	"time"
 
+	"github.com/greenplum-db/gpbackup/testutils"
 	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
@@ -42,6 +43,44 @@ var _ = Describe("utils/util tests", func() {
 			expected := "$_$message$text_$_$"
 			actual := utils.DollarQuoteString(testStr)
 			Expect(actual).To(Equal(expected))
+		})
+	})
+	Describe("ValidateFQNs", func() {
+		It("validates an unquoted string", func() {
+			testStrings := []string{`schemaname.tablename`}
+			utils.ValidateFQNs(testStrings)
+		})
+		It("validates a string with a quoted schema", func() {
+			testStrings := []string{`"schema,name".tablename`}
+			utils.ValidateFQNs(testStrings)
+		})
+		It("validates a string with a quoted table", func() {
+			testStrings := []string{`schemaname."table,name"`}
+			utils.ValidateFQNs(testStrings)
+		})
+		It("validates a string with both schema and table quoted", func() {
+			testStrings := []string{`"schema,name"."table,name"`}
+			utils.ValidateFQNs(testStrings)
+		})
+		It("panics if given a string without a schema", func() {
+			testStrings := []string{`tablename`}
+			defer testutils.ShouldPanicWithMessage(`tablename is not correctly fully-qualified.`)
+			utils.ValidateFQNs(testStrings)
+		})
+		It("panics if given an invalid string", func() {
+			testStrings := []string{`schema"name.table.name`}
+			defer testutils.ShouldPanicWithMessage(`schema"name.table.name is not correctly fully-qualified.`)
+			utils.ValidateFQNs(testStrings)
+		})
+		It("panics if given a string with preceding whitespace", func() {
+			testStrings := []string{`  schemaname.tablename`}
+			defer testutils.ShouldPanicWithMessage(`  schemaname.tablename is not correctly fully-qualified.`)
+			utils.ValidateFQNs(testStrings)
+		})
+		It("panics if given a string with trailing whitespace", func() {
+			testStrings := []string{`schemaname.tablename  `}
+			defer testutils.ShouldPanicWithMessage(`schemaname.tablename   is not correctly fully-qualified.`)
+			utils.ValidateFQNs(testStrings)
 		})
 	})
 })

@@ -25,19 +25,21 @@ var (
  */
 
 var (
-	backupDir       *string
-	createdb        *bool
-	debug           *bool
-	includeSchemas  utils.ArrayFlags
-	numJobs         *int
-	onErrorContinue *bool
-	printVersion    *bool
-	quiet           *bool
-	redirect        *string
-	restoreGlobals  *bool
-	timestamp       *string
-	verbose         *bool
-	withStats       *bool
+	backupDir        *string
+	createdb         *bool
+	debug            *bool
+	includeSchemas   utils.ArrayFlags
+	includeTableFile *string
+	includeTables    utils.ArrayFlags
+	numJobs          *int
+	onErrorContinue  *bool
+	printVersion     *bool
+	quiet            *bool
+	redirect         *string
+	restoreGlobals   *bool
+	timestamp        *string
+	verbose          *bool
+	withStats        *bool
 )
 
 /*

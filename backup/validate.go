@@ -2,7 +2,6 @@ package backup
 
 import (
 	"fmt"
-	"regexp"
 
 	"github.com/greenplum-db/gpbackup/utils"
 	"github.com/pkg/errors"
@@ -11,6 +10,13 @@ import (
 /*
  * This file contains functions related to validating user input.
  */
+
+func validateFilterLists() {
+	ValidateFilterSchemas(connection, excludeSchemas)
+	ValidateFilterSchemas(connection, includeSchemas)
+	ValidateFilterTables(connection, excludeTables)
+	ValidateFilterTables(connection, includeTables)
+}
 
 func ValidateFilterSchemas(connection *utils.DBConn, schemaList utils.ArrayFlags) {
 	if len(schemaList) > 0 {
@@ -34,7 +40,7 @@ func ValidateFilterSchemas(connection *utils.DBConn, schemaList utils.ArrayFlags
 
 func ValidateFilterTables(connection *utils.DBConn, tableList utils.ArrayFlags) {
 	if len(tableList) > 0 {
-		ValidateFQNs(tableList)
+		utils.ValidateFQNs(tableList)
 		quotedTablesStr := utils.SliceToQuotedString(tableList)
 		query := fmt.Sprintf(`
 SELECT
@@ -79,18 +85,6 @@ func ValidateFlagCombinations() {
 	utils.CheckExclusiveFlags("metadata-only", "leaf-partition-data")
 	utils.CheckExclusiveFlags("metadata-only", "single-data-file")
 	utils.CheckExclusiveFlags("no-compression", "compression-level")
-}
-
-func ValidateFQNs(fqns []string) {
-	unquotedIdentString := "[a-z_][a-z0-9_]*"
-	validIdentString := fmt.Sprintf("(?:\"(.*)\"|(%s))", unquotedIdentString)
-	validFormat := regexp.MustCompile(fmt.Sprintf(`^%s\.%s$`, validIdentString, validIdentString))
-	var matches []string
-	for _, fqn := range fqns {
-		if matches = validFormat.FindStringSubmatch(fqn); len(matches) == 0 {
-			logger.Fatal(errors.Errorf(`Table %s is not correctly fully-qualified.  Please ensure that it is in the format schema.table, it is quoted appropriately, and it has no preceding or trailing whitespace.`, fqn), "")
-		}
-	}
 }
 
 func ValidateCompressionLevel(compressionLevel int) {

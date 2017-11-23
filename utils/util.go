@@ -7,6 +7,8 @@ package utils
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
+	"regexp"
 	"strings"
 )
 
@@ -69,4 +71,16 @@ func DollarQuoteString(literal string) string {
 // This function assumes that all identifiers are already appropriately quoted
 func MakeFQN(schema string, object string) string {
 	return fmt.Sprintf("%s.%s", schema, object)
+}
+
+func ValidateFQNs(fqns []string) {
+	unquotedIdentString := "[a-z_][a-z0-9_]*"
+	validIdentString := fmt.Sprintf("(?:\"(.*)\"|(%s))", unquotedIdentString)
+	validFormat := regexp.MustCompile(fmt.Sprintf(`^%s\.%s$`, validIdentString, validIdentString))
+	var matches []string
+	for _, fqn := range fqns {
+		if matches = validFormat.FindStringSubmatch(fqn); len(matches) == 0 {
+			logger.Fatal(errors.Errorf(`Table %s is not correctly fully-qualified.  Please ensure that it is in the format schema.table, it is quoted appropriately, and it has no preceding or trailing whitespace.`, fqn), "")
+		}
+	}
 }

@@ -46,15 +46,59 @@ func InitializeBackupConfig() {
 	utils.EnsureDatabaseVersionCompatibility(backupConfig.DatabaseVersion, connection.Version)
 }
 
+func InitializeFilterLists() {
+	if *includeTableFile != "" {
+		includeTables = utils.ReadLinesFromFile(*includeTableFile)
+	}
+}
+
+/*
+ * This function is for any validation that requires a database connection but
+ * does not specifically need to connect to the restore database.
+ */
+func DoPostgresValidation() {
+	InitializeFilterLists()
+
+	logger.Verbose("Gathering information on backup directories")
+	segConfig := utils.GetSegmentConfiguration(connection)
+	globalCluster = utils.NewCluster(segConfig, *backupDir, *timestamp, "")
+	globalCluster.UserSpecifiedSegPrefix = utils.ParseSegPrefix(*backupDir)
+	globalCluster.VerifyBackupDirectoriesExistOnAllHosts()
+
+	InitializeBackupConfig()
+	ValidateBackupFlagCombinations()
+	globalCluster.VerifyMetadataFilePaths(backupConfig.DataOnly, *withStats, backupConfig.TableFiltered)
+
+	tocFilename := globalCluster.GetTOCFilePath()
+	globalTOC = utils.NewTOC(tocFilename)
+	globalTOC.InitializeEntryMapFromCluster(globalCluster)
+
+	validateFilterListsInBackupSet()
+}
+
+func ConnectToRestoreDatabase() {
+	restoreDatabase := ""
+	if *redirect != "" {
+		restoreDatabase = *redirect
+	} else {
+		restoreDatabase = backupConfig.DatabaseName
+	}
+	InitializeConnection(restoreDatabase)
+}
+
+func DoRestoreDatabaseValidation() {
+	validateFilterListsInRestoreDatabase()
+}
+
 /*
  * Metadata and/or data restore wrapper functions
  */
 
-func GetRestoreMetadataStatements(filename string, objectTypes []string, includeSchemas []string) []utils.StatementWithType {
+func GetRestoreMetadataStatements(filename string, objectTypes []string, includeSchemas []string, includeTables []string) []utils.StatementWithType {
 	metadataFile := utils.MustOpenFileForReading(filename)
 	var statements []utils.StatementWithType
-	if len(objectTypes) > 0 || len(includeSchemas) > 0 {
-		statements = globalTOC.GetSQLStatementForObjectTypes(filename, metadataFile, objectTypes, includeSchemas)
+	if len(objectTypes) > 0 || len(includeSchemas) > 0 || len(includeTables) > 0 {
+		statements = globalTOC.GetSQLStatementForObjectTypes(filename, metadataFile, objectTypes, includeSchemas, includeTables)
 	} else {
 		statements = globalTOC.GetAllSQLStatements(filename, metadataFile)
 	}
@@ -74,7 +118,7 @@ func setGUCsForConnection() {
 	if connection.Version.Before("5") {
 		objectTypes = append(objectTypes, "GPDB4 SESSION GUCS")
 	}
-	gucStatements := GetRestoreMetadataStatements(globalCluster.GetPredataFilePath(), objectTypes, []string{})
+	gucStatements := GetRestoreMetadataStatements(globalCluster.GetPredataFilePath(), objectTypes, []string{}, []string{})
 	ExecuteRestoreMetadataStatements(gucStatements, "", false)
 
 	query := fmt.Sprintf("SET gp_enable_segment_copy_checking TO false;")

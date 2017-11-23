@@ -12,9 +12,14 @@ import (
  * This file contains functions related to validating user input.
  */
 
-func ValidateFilterSchemas(connection *utils.DBConn, schemaList utils.ArrayFlags) {
-	ValidateFilterSchemasInRestoreDatabase(connection, schemaList)
-	ValidateFilterSchemasInBackupSet(schemaList)
+func validateFilterListsInRestoreDatabase() {
+	ValidateFilterSchemasInRestoreDatabase(connection, includeSchemas)
+	ValidateFilterTablesInRestoreDatabase(connection, includeTables)
+}
+
+func validateFilterListsInBackupSet() {
+	ValidateFilterSchemasInBackupSet(includeSchemas)
+	ValidateFilterTablesInBackupSet(includeTables)
 }
 
 func ValidateFilterSchemasInRestoreDatabase(connection *utils.DBConn, schemaList utils.ArrayFlags) {
@@ -53,29 +58,95 @@ func ValidateFilterSchemasInBackupSet(schemaList utils.ArrayFlags) {
 				}
 			}
 		}
+	} else {
+		return
 	}
-	keys := make([]string, len(schemaMap))
 
+	keys := make([]string, len(schemaMap))
 	i := 0
 	for k := range schemaMap {
 		keys[i] = k
 		i++
 	}
-	if len(schemaList) > 0 {
-		logger.Fatal(errors.Errorf("Could not find the following schema(s) in the backup set: %s", strings.Join(keys, ", ")), "")
+	logger.Fatal(errors.Errorf("Could not find the following schema(s) in the backup set: %s", strings.Join(keys, ", ")), "")
+}
+
+func ValidateFilterTablesInRestoreDatabase(connection *utils.DBConn, tableList utils.ArrayFlags) {
+	if len(tableList) > 0 {
+		utils.ValidateFQNs(tableList)
+		quotedTablesStr := utils.SliceToQuotedString(tableList)
+		query := fmt.Sprintf(`
+SELECT
+	n.nspname || '.' || c.relname AS string
+FROM pg_namespace n
+JOIN pg_class c ON n.oid = c.relnamespace
+WHERE quote_ident(n.nspname) || '.' || quote_ident(c.relname) IN (%s)`, quotedTablesStr)
+		resultTables := utils.SelectStringSlice(connection, query)
+		if len(resultTables) > 0 {
+			logger.Fatal(nil, "Table %s already exists", resultTables[0])
+		}
 	}
 }
 
-func ValidateBackupFlagCombinations() {
-	if backupConfig.SingleDataFile && *numJobs != 1 {
-		logger.Fatal(errors.Errorf("Cannot use jobs flag when restoring backups with a single data file per segment."), "")
+func ValidateFilterTablesInBackupSet(tableList utils.ArrayFlags) {
+	tableMap := make(map[string]bool, len(tableList))
+	for _, table := range tableList {
+		tableMap[table] = true
 	}
-	if backupConfig.SingleDataFile && len(includeSchemas) > 0 {
-		logger.Fatal(errors.Errorf("Cannot use include-schema flag when restoring backups with a single data file per segment."), "")
+	if len(tableList) > 0 {
+		if !backupConfig.DataOnly {
+			for _, entry := range globalTOC.PredataEntries {
+				if entry.ObjectType != "TABLE" {
+					continue
+				}
+				fqn := utils.MakeFQN(entry.Schema, entry.Name)
+				if _, ok := tableMap[fqn]; ok {
+					delete(tableMap, fqn)
+				}
+				if len(tableMap) == 0 {
+					return
+				}
+			}
+		} else {
+			for _, entry := range globalTOC.MasterDataEntries {
+				fqn := utils.MakeFQN(entry.Schema, entry.Name)
+				if _, ok := tableMap[fqn]; ok {
+					delete(tableMap, fqn)
+				}
+				if len(tableMap) == 0 {
+					return
+				}
+			}
+		}
+	} else {
+		return
+	}
+
+	keys := make([]string, len(tableMap))
+	i := 0
+	for k := range tableMap {
+		keys[i] = k
+		i++
+	}
+	logger.Fatal(errors.Errorf("Could not find the following table(s) in the backup set: %s", strings.Join(keys, ", ")), "")
+}
+
+func ValidateBackupFlagCombinations() {
+	if backupConfig.SingleDataFile {
+		if *numJobs != 1 {
+			logger.Fatal(errors.Errorf("Cannot use jobs flag when restoring backups with a single data file per segment."), "")
+		}
+		if len(includeSchemas) > 0 {
+			logger.Fatal(errors.Errorf("Cannot use include-schema flag when restoring backups with a single data file per segment."), "")
+		}
+		if *includeTableFile != "" {
+			logger.Fatal(errors.Errorf("Cannot use include-table-file flag when restoring backups with a single data file per segment."), "")
+		}
 	}
 }
 
 func ValidateFlagCombinations() {
 	utils.CheckMandatoryFlags("timestamp")
 	utils.CheckExclusiveFlags("debug", "quiet", "verbose")
+	utils.CheckExclusiveFlags("include-table-file", "include-schema")
 }
