@@ -376,13 +376,13 @@ type Dependency struct {
 }
 
 func ConstructTableDependencies(connection *utils.DBConn, tables []Relation, tableDefs map[uint32]TableDefinition, isTableFiltered bool) []Relation {
-	var tableNameMap map[string]bool
+	var tableNameSet *utils.FilterSet
 	var tableOidList []string
 	if isTableFiltered {
-		tableNameMap = make(map[string]bool, len(tables))
+		tableNameSet = utils.NewEmptyIncludeSet()
 		tableOidList = make([]string, len(tables))
 		for i, table := range tables {
-			tableNameMap[table.ToString()] = true
+			tableNameSet.Add(table.ToString())
 			tableOidList[i] = fmt.Sprintf("%d", table.Oid)
 		}
 	}
@@ -429,7 +429,7 @@ JOIN pg_class c ON d.objid = c.oid AND c.relkind = 'r'`
 		if dependency.IsTable {
 			inheritanceMap[dependency.Oid] = append(inheritanceMap[dependency.Oid], dependency.ReferencedObject)
 		}
-		if isTableFiltered && !tableNameMap[dependency.ReferencedObject] {
+		if isTableFiltered && !tableNameSet.MatchesFilter(dependency.ReferencedObject) {
 			continue
 		}
 		dependencyMap[dependency.Oid] = append(dependencyMap[dependency.Oid], dependency.ReferencedObject)

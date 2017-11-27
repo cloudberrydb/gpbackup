@@ -106,11 +106,13 @@ func GetRestoreMetadataStatements(filename string, objectTypes []string, include
 }
 
 func ExecuteRestoreMetadataStatements(statements []utils.StatementWithType, objectsTitle string, showProgressBar bool) {
+	var shouldExecute *utils.FilterSet
 	if connection.Version.AtLeast("5") {
-		ExecuteAllStatementsExcept(statements, objectsTitle, showProgressBar, "GPDB4 SESSION GUCS")
+		shouldExecute = utils.NewExcludeSet([]string{"GPDB4 SESSION GUCS"})
 	} else {
-		ExecuteAllStatements(statements, objectsTitle, showProgressBar)
+		shouldExecute = utils.NewEmptyIncludeSet()
 	}
+	ExecuteStatements(statements, objectsTitle, showProgressBar, shouldExecute)
 }
 
 func setGUCsForConnection() {

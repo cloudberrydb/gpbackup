@@ -21,7 +21,7 @@ import (
  * to get indexes, but multiple unique indexes can be created on the
  * same column so we only want to filter out the implicit ones.
  */
-func ConstructImplicitIndexNames(connection *utils.DBConn) map[string]bool {
+func ConstructImplicitIndexNames(connection *utils.DBConn) *utils.FilterSet {
 	query := `
 SELECT DISTINCT
 	n.nspname || '.' || t.relname || '_' || a.attname || '_key' AS string
@@ -38,12 +38,9 @@ WHERE a.attnum > 0
 AND i.indisunique = 't'
 AND i.indisprimary = 'f';
 `
-	indexNameMap := make(map[string]bool, 0)
 	indexNames := utils.SelectStringSlice(connection, query)
-	for _, name := range indexNames {
-		indexNameMap[name] = true
-	}
-	return indexNameMap
+	indexNameSet := utils.NewExcludeSet(indexNames)
+	return indexNameSet
 }
 
 /*
@@ -61,7 +58,7 @@ type QuerySimpleDefinition struct {
 	Def          string
 }
 
-func GetIndexes(connection *utils.DBConn, indexNameMap map[string]bool) []QuerySimpleDefinition {
+func GetIndexes(connection *utils.DBConn, indexNameSet *utils.FilterSet) []QuerySimpleDefinition {
 	query := fmt.Sprintf(`
 SELECT DISTINCT
 	i.indexrelid AS oid,
@@ -93,7 +90,7 @@ ORDER BY name;`, SchemaFilterClause("n"))
 	for _, index := range results {
 		// We don't want to quote the index name to use it as a map key, just prepend the schema
 		indexFQN := fmt.Sprintf("%s.%s", index.OwningSchema, index.Name)
-		if !indexNameMap[indexFQN] {
+		if indexNameSet.MatchesFilter(indexFQN) {
 			filteredIndexes = append(filteredIndexes, index)
 		}
 	}

@@ -101,11 +101,11 @@ func TopologicalSort(slice []Sortable) []Sortable {
 	isDependentOn := make(map[string][]string, 0)
 	queue := make([]Sortable, 0)
 	sorted := make([]Sortable, 0)
-	notVisited := make(map[string]bool)
+	notVisited := utils.NewEmptyIncludeSet()
 	for i, item := range slice {
 		name := item.FQN()
 		deps := item.Dependencies()
-		notVisited[name] = true
+		notVisited.Add(name)
 		inDegrees[name] = len(deps)
 		for _, dep := range deps {
 			isDependentOn[dep] = append(isDependentOn[dep], name)
@@ -119,7 +119,7 @@ func TopologicalSort(slice []Sortable) []Sortable {
 		item := queue[0]
 		queue = queue[1:]
 		sorted = append(sorted, item)
-		delete(notVisited, item.FQN())
+		notVisited.Delete(item.FQN())
 		for _, dep := range isDependentOn[item.FQN()] {
 			inDegrees[dep]--
 			if inDegrees[dep] == 0 {
@@ -131,7 +131,7 @@ func TopologicalSort(slice []Sortable) []Sortable {
 		logger.Verbose("Failed to sort dependencies.")
 		logger.Verbose("Not yet visited:")
 		for _, item := range slice {
-			if notVisited[item.FQN()] {
+			if notVisited.MatchesFilter(item.FQN()) {
 				logger.Verbose("Object: %s; Dependencies: %s", item.FQN(), item.Dependencies())
 			}
 		}

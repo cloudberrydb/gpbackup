@@ -24,13 +24,9 @@ func ValidateFilterSchemas(connection *utils.DBConn, schemaList utils.ArrayFlags
 		query := fmt.Sprintf("SELECT nspname AS string FROM pg_namespace WHERE nspname IN (%s)", quotedSchemasStr)
 		resultSchemas := utils.SelectStringSlice(connection, query)
 		if len(resultSchemas) < len(schemaList) {
-			schemaMap := make(map[string]bool)
-			for _, schema := range resultSchemas {
-				schemaMap[schema] = true
-			}
-
+			schemaSet := utils.NewIncludeSet(resultSchemas)
 			for _, schema := range schemaList {
-				if _, ok := schemaMap[schema]; !ok {
+				if !schemaSet.MatchesFilter(schema) {
 					logger.Fatal(nil, "Schema %s does not exist", schema)
 				}
 			}

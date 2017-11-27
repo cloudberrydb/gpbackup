@@ -66,38 +66,16 @@ type StatementWithType struct {
 
 func (toc *TOC) GetSQLStatementForObjectTypes(filename string, metadataFile io.ReaderAt, objectTypes []string, includeSchemas []string, includeTables []string) []StatementWithType {
 	entries := *toc.metadataEntryMap[filename]
-	var objectHashes, schemaHashes, tableHashes map[string]bool
-	restoreAllSchemas := len(includeSchemas) == 0
-	if !restoreAllSchemas {
-		schemaHashes = make(map[string]bool, len(includeSchemas))
-		for _, schema := range includeSchemas {
-			schemaHashes[schema] = true
-		}
-	}
-	restoreAllTables := len(includeTables) == 0
-	if !restoreAllTables {
-		tableHashes = make(map[string]bool, len(includeTables))
-		for _, table := range includeTables {
-			tableHashes[table] = true
-		}
-	}
-	restoreAllObjects := len(objectTypes) == 0
-	if !restoreAllObjects {
-		objectHashes = make(map[string]bool, len(objectTypes))
-		for _, objectType := range objectTypes {
-			objectHashes[objectType] = true
-		}
-	}
+	objectSet := NewIncludeSet(objectTypes)
+	schemaSet := NewIncludeSet(includeSchemas)
+	tableSet := NewIncludeSet(includeTables)
 	statements := make([]StatementWithType, 0)
 	for _, entry := range entries {
-		_, validObject := objectHashes[entry.ObjectType]
-		validObject = restoreAllObjects || validObject
-		_, validSchema := schemaHashes[entry.Schema]
-		validSchema = restoreAllSchemas || validSchema
+		shouldIncludeObject := objectSet.MatchesFilter(entry.ObjectType)
+		shouldIncludeSchema := schemaSet.MatchesFilter(entry.Schema)
 		tableFQN := MakeFQN(entry.Schema, entry.Name)
-		_, validTable := tableHashes[tableFQN]
-		validTable = restoreAllTables || (validTable && entry.ObjectType == "TABLE")
-		if validObject && validSchema && validTable {
+		shouldIncludeTable := len(includeTables) == 0 || (entry.ObjectType == "TABLE" && tableSet.MatchesFilter(tableFQN))
+		if shouldIncludeObject && shouldIncludeSchema && shouldIncludeTable {
 			contents := make([]byte, entry.EndByte-entry.StartByte)
 			_, err := metadataFile.ReadAt(contents, int64(entry.StartByte))
 			CheckError(err)

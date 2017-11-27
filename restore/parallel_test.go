@@ -25,20 +25,18 @@ var _ = Describe("restore/parallel tests", func() {
 			BeforeEach(func() {
 				restore.SetNumJobs(1)
 			})
-			Context("Dbconn.ExecuteAllStatements", func() {
-				It("can execute all statements in the list serially", func() {
-					mock.ExpectExec(commentStr).WillReturnResult(sqlmock.NewResult(0, 0))
-					mock.ExpectExec(createStr).WillReturnResult(sqlmock.NewResult(1, 0))
-					mock.ExpectExec(gucStr).WillReturnResult(sqlmock.NewResult(0, 1))
-					restore.ExecuteAllStatements(statements, "", false)
-				})
+			It("can execute all statements in the list serially", func() {
+				shouldExecute := utils.NewEmptyIncludeSet()
+				mock.ExpectExec(commentStr).WillReturnResult(sqlmock.NewResult(0, 0))
+				mock.ExpectExec(createStr).WillReturnResult(sqlmock.NewResult(1, 0))
+				mock.ExpectExec(gucStr).WillReturnResult(sqlmock.NewResult(0, 1))
+				restore.ExecuteStatements(statements, "", false, shouldExecute)
 			})
-			Context("Dbconn.ExecuteAllStatementsExcept", func() {
-				It("can execute all statements in the list that are not of the specified object type serially", func() {
-					mock.ExpectExec(commentStr).WillReturnResult(sqlmock.NewResult(0, 0))
-					mock.ExpectExec(gucStr).WillReturnResult(sqlmock.NewResult(0, 1))
-					restore.ExecuteAllStatementsExcept(statements, "", false, "DATABASE")
-				})
+			It("can execute all statements in the list that are not of the specified object type serially", func() {
+				shouldExecute := utils.NewExcludeSet([]string{"DATABASE"})
+				mock.ExpectExec(commentStr).WillReturnResult(sqlmock.NewResult(0, 0))
+				mock.ExpectExec(gucStr).WillReturnResult(sqlmock.NewResult(0, 1))
+				restore.ExecuteStatements(statements, "", false, shouldExecute)
 			})
 		})
 		Context("Parallel execution", func() {
@@ -49,20 +47,18 @@ var _ = Describe("restore/parallel tests", func() {
 			AfterEach(func() {
 				mock.MatchExpectationsInOrder(true)
 			})
-			Context("Dbconn.ExecuteAllStatements", func() {
-				It("can execute all statements in the list in parallel", func() {
-					mock.ExpectExec(commentStr).WillReturnResult(sqlmock.NewResult(0, 0))
-					mock.ExpectExec(createStr).WillReturnResult(sqlmock.NewResult(1, 0))
-					mock.ExpectExec(gucStr).WillReturnResult(sqlmock.NewResult(0, 1))
-					restore.ExecuteAllStatements(statements, "", false)
-				})
+			It("can execute all statements in the list in parallel", func() {
+				shouldExecute := utils.NewEmptyIncludeSet()
+				mock.ExpectExec(commentStr).WillReturnResult(sqlmock.NewResult(0, 0))
+				mock.ExpectExec(createStr).WillReturnResult(sqlmock.NewResult(1, 0))
+				mock.ExpectExec(gucStr).WillReturnResult(sqlmock.NewResult(0, 1))
+				restore.ExecuteStatements(statements, "", false, shouldExecute)
 			})
-			Context("Dbconn.ExecuteAllStatementsExcept", func() {
-				It("can execute all statements in the list that are not of the specified object type in parallel", func() {
-					mock.ExpectExec(commentStr).WillReturnResult(sqlmock.NewResult(0, 0))
-					mock.ExpectExec(gucStr).WillReturnResult(sqlmock.NewResult(0, 1))
-					restore.ExecuteAllStatementsExcept(statements, "", false, "DATABASE")
-				})
+			It("can execute all statements in the list that are not of the specified object type in parallel", func() {
+				shouldExecute := utils.NewExcludeSet([]string{"DATABASE"})
+				mock.ExpectExec(commentStr).WillReturnResult(sqlmock.NewResult(0, 0))
+				mock.ExpectExec(gucStr).WillReturnResult(sqlmock.NewResult(0, 1))
+				restore.ExecuteStatements(statements, "", false, shouldExecute)
 			})
 		})
 	})

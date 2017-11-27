@@ -32,15 +32,11 @@ func setSerialRestore() {
 }
 
 /*
- * The shouldExec function should accept a StatementWithType and return whether
- * it should be executed.  This allows the ExecuteAllStatements*() functions
- * below to filter statements before execution.
- *
  * The return value for this function is the number of errors encountered, not
  * an error code.
  */
-func executeStatement(statement utils.StatementWithType, showProgressBar bool, shouldExec func(statement utils.StatementWithType) bool) uint32 {
-	if shouldExec(statement) {
+func executeStatement(statement utils.StatementWithType, showProgressBar bool, shouldExecute *utils.FilterSet) uint32 {
+	if shouldExecute.MatchesFilter(statement.ObjectType) {
 		_, err := connection.Exec(statement.Statement)
 		if err != nil {
 			if showProgressBar {
@@ -60,13 +56,13 @@ func executeStatement(statement utils.StatementWithType, showProgressBar bool, s
  * This function creates a worker pool of N goroutines to be able to execute up
  * to N statements in parallel.
  */
-func executeStatements(statements []utils.StatementWithType, showProgressBar bool, objectsTitle string, shouldExec func(statement utils.StatementWithType) bool) {
+func ExecuteStatements(statements []utils.StatementWithType, objectsTitle string, showProgressBar bool, shouldExecute *utils.FilterSet) {
 	var numErrors uint32
 	progressBar := utils.NewProgressBar(len(statements), fmt.Sprintf("%s restored: ", objectsTitle), showProgressBar)
 	progressBar.Start()
 	if !executeInParallel {
 		for _, statement := range statements {
-			atomic.AddUint32(&numErrors, executeStatement(statement, showProgressBar, shouldExec))
+			atomic.AddUint32(&numErrors, executeStatement(statement, showProgressBar, shouldExecute))
 			progressBar.Increment()
 		}
 	} else {
@@ -76,7 +72,7 @@ func executeStatements(statements []utils.StatementWithType, showProgressBar boo
 			workerPool.Add(1)
 			go func() {
 				for statement := range tasks {
-					atomic.AddUint32(&numErrors, executeStatement(statement, showProgressBar, shouldExec))
+					atomic.AddUint32(&numErrors, executeStatement(statement, showProgressBar, shouldExecute))
 					progressBar.Increment()
 				}
 				workerPool.Done()
@@ -98,22 +94,4 @@ func executeStatements(statements []utils.StatementWithType, showProgressBar boo
 	if numErrors > 0 {
 		logger.Error("Encountered %d errors during metadata restore; see log file %s for a list of failed statements.", numErrors, logger.GetLogFilePath())
 	}
-}
-
-func ExecuteAllStatements(statements []utils.StatementWithType, objectsTitle string, showProgressBar bool) {
-	shouldExec := func(statement utils.StatementWithType) bool {
-		return true
-	}
-	executeStatements(statements, showProgressBar, objectsTitle, shouldExec)
-}
-
-func ExecuteAllStatementsExcept(statements []utils.StatementWithType, objectsTitle string, showProgressBar bool, objectTypes ...string) {
-	shouldNotExecute := make(map[string]bool, len(objectTypes))
-	for _, obj := range objectTypes {
-		shouldNotExecute[obj] = true
-	}
-	shouldExec := func(statement utils.StatementWithType) bool {
-		return !shouldNotExecute[statement.ObjectType]
-	}
-	executeStatements(statements, showProgressBar, objectsTitle, shouldExec)
 }

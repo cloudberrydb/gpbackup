@@ -72,10 +72,7 @@ func SplitTablesByPartitionType(tables []Relation, tableDefs map[uint32]TableDef
 	metadataTables := make([]Relation, 0)
 	dataTables := make([]Relation, 0)
 	if *leafPartitionData || len(includeList) > 0 {
-		includeMap := make(map[string]bool)
-		for _, includeTable := range includeList {
-			includeMap[includeTable] = true
-		}
+		includeSet := utils.NewIncludeSet(includeList)
 		for _, table := range tables {
 			if tableDefs[table.Oid].IsExternal && tableDefs[table.Oid].PartitionType == "l" {
 				table.Name = AppendExtPartSuffix(table.Name)
@@ -90,7 +87,7 @@ func SplitTablesByPartitionType(tables []Relation, tableDefs map[uint32]TableDef
 					dataTables = append(dataTables, table)
 				}
 			} else if len(includeList) > 0 {
-				if includeMap[table.ToString()] {
+				if includeSet.MatchesFilter(table.ToString()) {
 					dataTables = append(dataTables, table)
 				}
 			}
