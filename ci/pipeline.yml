@@ -52,7 +52,7 @@ resources:
     branch: {{ccp-git-branch}}
     private_key: {{ccp-git-key}}
     uri: {{ccp-git-remote}}
-    tag_filter: 1.4.7
+    tag_filter: 1.4.10
 
 - name: terraform
   type: terraform
@@ -67,6 +67,19 @@ resources:
       bucket: gpdb5-pipeline-dynamic-terraform
       bucket_path: prod/gpbackup/
 
+- name: boostfs_terraform
+  type: terraform
+  source:
+    env:
+      AWS_ACCESS_KEY_ID: {{gpdb4-tf-machine-access-key-id}}
+      AWS_SECRET_ACCESS_KEY: {{gpdb4-tf-machine-secret-access-key}}
+    storage:
+      access_key_id: {{gpdb4-tf-machine-access-key-id}}
+      secret_access_key: {{gpdb4-tf-machine-secret-access-key}}
+      region_name: {{aws-region}}
+      bucket: pivotal-pa-toolsmiths-pipeline-dynamic-terraform
+      bucket_path: {{tf-bucket-path}}
+
 - name: scale_schema
   type: s3
   source:
@@ -76,6 +89,14 @@ resources:
     secret_access_key: {{gpdb4-bucket-secret-access-key}}
     versioned_file: scale-schemas/scale_db1.tgz
 
+- name: boostfs_installer
+  type: s3
+  source:
+    access_key_id: {{gpdb4-bucket-access-key-id}}
+    bucket: {{netbackup_installer_bucket}}
+    region_name: {{aws-region}}
+    secret_access_key: {{gpdb4-bucket-secret-access-key}}
+    versioned_file: DDBoostFS-1.1.0.1-565598.rhel.x86_64.rpm
 
 jobs:
 - name: units
@@ -230,44 +251,78 @@ jobs:
       <<: *debug_sleep
   - *ccp_destroy
 
+# This job has a different configuration because it is set up for use with boostfs
 - name: scale-5x-stable
   plan:
   - aggregate:
     - get: gpbackup
-      tags: ["ccp"]
+      tags: ["ddboost"]
     - get: bin_gpdb_5x_stable
-      tags: ["ccp"]
+      tags: ["ddboost"]
     - get: ccp_src
-      tags: ["ccp"]
+      tags: ["ddboost"]
     - get: gpdb_src
-      tags: ["ccp"]
+      tags: ["ddboost"]
     - get: scale_schema
-      tags: ["ccp"]
-  - put: terraform
-    tags: ["ccp"]
+      tags: ["ddboost"]
+    - get: boostfs_installer
+      tags: ["ddboost"]
+  - put: boostfs_terraform
+    tags: ["ddboost"]
     params:
       <<: *ccp_create_params
-      terraform_source: ccp_src/aws-nvme-block-device/
+      terraform_source: ccp_src/aws-pivotal-pa-toolsmiths/
       vars:
-        aws_instance-node-instance_type: i3.large
+        aws_instance-node-instance_type: m4.large
         aws_ebs_volume_type: gp2
-        number_of_nodes: 1
+        aws_ebs_volume_size: 128
+        number_of_nodes: 3
   - task: gen_cluster
     params:
-      <<: *ccp_gen_cluster_default_params
-    tags: ["ccp"]
+      <<: *boostfs_ccp_gen_cluster_default_params
+    tags: ["ddboost"]
     file: ccp_src/ci/tasks/gen_cluster.yml
     input_mapping:
+      terraform: boostfs_terraform
       gpdb_binary: bin_gpdb_5x_stable
       gpdb_src: gpdb_src
     on_failure:
-      <<: *ccp_destroy
+      <<: *boostfs_ccp_destroy
+  - task: boostfs_installation
+    tags: ["ddboost"]
+    config:
+      platform: linux
+      inputs:
+       - name: ccp_src
+       - name: cluster_env_files
+       - name: boostfs_installer
+       - name: gpbackup
+      image_resource:
+        type: docker-image
+        source:
+          repository: pivotaldata/ccp
+          tag: '7'
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -ex
+          ccp_src/aws/setup_ssh_to_cluster.sh
+          export DD_IP={{datadomain_source_host}}
+          export DD_USER={{datadomain_user}}
+          export DD_PASSWORD={{datadomain_password}}
+          chmod +x gpbackup/ci/scripts/setup_boostfs.sh
+          gpbackup/ci/scripts/setup_boostfs.sh
+    on_failure:
+      <<: *boostfs_debug_sleep
+
   - task: scale-tests
-    tags: ["ccp"]
+    tags: ["ddboost"]
     file: gpbackup/ci/tasks/scale-tests.yml
     on_failure:
-      <<: *debug_sleep
-  - *ccp_destroy
+      <<: *boostfs_debug_sleep
+  - *boostfs_ccp_destroy
 
 - name: scale-43-stable
   plan:
@@ -326,6 +381,12 @@ ccp_gen_cluster_default_params_anchor: &ccp_gen_cluster_default_params
   BUCKET_NAME: gpdb5-pipeline-dynamic-terraform
   BUCKET_PATH: prod/gpbackup/
 
+boostfs_ccp_gen_cluster_default_params_anchor: &boostfs_ccp_gen_cluster_default_params
+  AWS_ACCESS_KEY_ID: {{gpdb4-tf-machine-access-key-id}}
+  AWS_SECRET_ACCESS_KEY: {{gpdb4-tf-machine-secret-access-key}}
+  AWS_DEFAULT_REGION: {{aws-region}}
+  BUCKET_PATH: {{tf-bucket-path}}
+  BUCKET_NAME: pivotal-pa-toolsmiths-pipeline-dynamic-terraform
 
 ccp_destroy_anchor: &ccp_destroy
   put: terraform
@@ -338,6 +399,18 @@ ccp_destroy_anchor: &ccp_destroy
       aws_instance-node-instance_type: t2.micro
   get_params:
     action: destroy
+
+boostfs_ccp_destroy_anchor: &boostfs_ccp_destroy
+  put: boostfs_terraform
+  params:
+    action: destroy
+    env_name_file: boostfs_terraform/name
+    terraform_source: ccp_src/aws-pivotal-pa-toolsmiths/
+    vars:
+      aws_instance-node-instance_type: t2.micro #t2.micro is ignored in destroy, but aws_instance-node-instance_type is required.
+  get_params:
+    action: destroy
+
 
 debug_sleep_anchor: &debug_sleep
   do:
@@ -355,3 +428,19 @@ debug_sleep_anchor: &debug_sleep
         args: ['-c', 'sleep 2h']
   ensure:
     <<: *ccp_destroy
+
+boostfs_debug_sleep_anchor: &boostfs_debug_sleep
+  do:
+  - task: debug_sleep
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: alpine
+          tag: latest
+      run:
+        path: 'sh'
+        args: ['-c', 'sleep 2h']
+    ensure:
+      <<: *boostfs_ccp_destroy
