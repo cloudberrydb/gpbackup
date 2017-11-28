@@ -9,7 +9,6 @@ import (
 )
 
 var (
-	index   *uint
 	logger  *utils.Logger
 	oid     *uint
 	restore *bool
@@ -31,7 +30,6 @@ func DoHelper() {
 
 func InitializeGlobals() {
 	logger = utils.InitializeLogging("gpbackup_helper", "")
-	index = flag.Uint("index", 0, "Index of the table to be restored in the TOC file")
 	oid = flag.Uint("oid", 0, "Oid of the table being processed")
 	restore = flag.Bool("restore", false, "Read in table according to offset in table of contents file")
 	tocFile = flag.String("toc-file", "", "Absolute path to the table of contents file")
@@ -47,8 +45,8 @@ func SetLogger(log *utils.Logger) {
 	logger = log
 }
 
-func SetIndex(tableIndex uint) {
-	index = &tableIndex
+func SetOid(newoid uint) {
+	oid = &newoid
 }
 
 /*
@@ -58,19 +56,21 @@ func SetIndex(tableIndex uint) {
 func doBackupHelper() {
 	toc, lastRead := ReadOrCreateTOC()
 	numBytes := ReadAndCountBytes()
-	toc.AddSegmentDataEntry(*oid, lastRead, lastRead+numBytes)
+	lastProcessed := lastRead + numBytes
+	toc.AddSegmentDataEntry(*oid, lastRead, lastProcessed)
+	toc.LastByteRead = lastProcessed
 	toc.WriteToFile(*tocFile)
 }
 
-func ReadOrCreateTOC() (*utils.TOC, uint64) {
-	var toc *utils.TOC
+func ReadOrCreateTOC() (*utils.SegmentTOC, uint64) {
+	var toc *utils.SegmentTOC
 	var lastRead uint64
 	if utils.FileExistsAndIsReadable(*tocFile) {
-		toc = utils.NewTOC(*tocFile)
-		// We always expect the TOC file to contain at least 1 segment data entry
-		lastRead = toc.SegmentDataEntries[len(toc.SegmentDataEntries)-1].EndByte
+		toc = utils.NewSegmentTOC(*tocFile)
+		lastRead = toc.LastByteRead
 	} else {
-		toc = &utils.TOC{}
+		toc = &utils.SegmentTOC{}
+		toc.DataEntries = make(map[uint]utils.SegmentDataEntry, 1)
 		lastRead = 0
 	}
 	return toc, lastRead
@@ -87,13 +87,13 @@ func ReadAndCountBytes() uint64 {
  */
 
 func doRestoreHelper() {
-	toc := utils.NewTOC(*tocFile)
+	toc := utils.NewSegmentTOC(*tocFile)
 	startByte, endByte := GetBoundsForTable(toc)
 	CopyByteRange(startByte, endByte)
 }
 
-func GetBoundsForTable(toc *utils.TOC) (int64, int64) {
-	segmentDataEntry := toc.SegmentDataEntries[*index]
+func GetBoundsForTable(toc *utils.SegmentTOC) (int64, int64) {
+	segmentDataEntry := toc.DataEntries[*oid]
 	startByte := int64(segmentDataEntry.StartByte)
 	endByte := int64(segmentDataEntry.EndByte)
 	return startByte, endByte

@@ -41,14 +41,14 @@ var _ = Describe("backup/data tests", func() {
 			tables := []backup.Relation{{Oid: 1, Schema: "public", Name: "table"}}
 			backup.AddTableDataEntriesToTOC(tables, tableDefs)
 			expectedDataEntries := []utils.MasterDataEntry{{Schema: "public", Name: "table", Oid: 1, AttributeString: "(a)"}}
-			Expect(toc.MasterDataEntries).To(Equal(expectedDataEntries))
+			Expect(toc.DataEntries).To(Equal(expectedDataEntries))
 		})
 		It("does not add an entry for an external table to the TOC", func() {
 			columnDefs := []backup.ColumnDefinition{{Oid: 1, Name: "a"}}
 			tableDefs := map[uint32]backup.TableDefinition{1: {ColumnDefs: columnDefs, IsExternal: true}}
 			tables := []backup.Relation{{Oid: 1, Schema: "public", Name: "table"}}
 			backup.AddTableDataEntriesToTOC(tables, tableDefs)
-			Expect(toc.MasterDataEntries).To(BeNil())
+			Expect(toc.DataEntries).To(BeNil())
 		})
 	})
 	Describe("CopyTableOut", func() {

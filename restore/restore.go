@@ -93,7 +93,7 @@ func DoRestore() {
 	if !backupConfig.MetadataOnly {
 		backupFileCount := 2 // 1 for the actual data file, 1 for the segment TOC file
 		if !backupConfig.SingleDataFile {
-			backupFileCount = len(globalTOC.MasterDataEntries)
+			backupFileCount = len(globalTOC.DataEntries)
 		}
 		globalCluster.VerifyBackupFileCountOnSegments(backupFileCount)
 		restoreData()

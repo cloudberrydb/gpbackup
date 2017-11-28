@@ -52,30 +52,26 @@ var _ = Describe("helper/helper", func() {
 				}
 				utils.System.OpenFileRead = func(name string, flag int, perm os.FileMode) (utils.ReadCloserAt, error) { return tocFileRead, nil }
 				utils.System.ReadFile = func(filename string) ([]byte, error) {
-					return []byte(`globalentries: []
-predataentries: []
-postdataentries: []
-statisticsentries: []
-masterdataentries: []
-segmentdataentries:
-- oid: 1
-  startbyte: 0
-  endbyte: 5
-- oid: 2
-  startbyte: 5
-  endbyte: 10
-- oid: 3
-  startbyte: 10
-  endbyte: 15`), nil
+					return []byte(`lastbyteread: 15
+dataentries:
+  1:
+    startbyte: 0
+    endbyte: 5
+  2:
+    startbyte: 5
+    endbyte: 10
+  3:
+    startbyte: 10
+    endbyte: 15`), nil
 				}
-				expectedSegmentDataEntries := []utils.SegmentDataEntry{
-					{Oid: 1, StartByte: 0, EndByte: 5},
-					{Oid: 2, StartByte: 5, EndByte: 10},
-					{Oid: 3, StartByte: 10, EndByte: 15},
+				expectedDataEntries := map[uint]utils.SegmentDataEntry{
+					1: {StartByte: 0, EndByte: 5},
+					2: {StartByte: 5, EndByte: 10},
+					3: {StartByte: 10, EndByte: 15},
 				}
 				toc, lastRead := helper.ReadOrCreateTOC()
-				Expect(lastRead).To(BeNumerically("==", 15))
-				Expect((*toc).SegmentDataEntries).To(Equal(expectedSegmentDataEntries))
+				Expect(lastRead).To(Equal(uint64(15)))
+				Expect((*toc).DataEntries).To(Equal(expectedDataEntries))
 			})
 			It("returns a new TOC when no TOC file exists", func() {
 				helper.SetFilename("filename")
@@ -84,19 +80,19 @@ segmentdataentries:
 				}
 				toc, lastRead := helper.ReadOrCreateTOC()
 				Expect(lastRead).To(Equal(uint64(0)))
-				Expect((*toc).SegmentDataEntries).To(BeNil())
+				Expect((*toc).DataEntries).To(Not(BeNil()))
 			})
 		})
 		Describe("GetBoundsForTable", func() {
 			It("returns the start and end byte from the TOC", func() {
 				helper.SetFilename("filename")
-				helper.SetIndex(2)
-				toc := &utils.TOC{}
-				toc.SegmentDataEntries = []utils.SegmentDataEntry{
-					{Oid: 1, StartByte: 0, EndByte: 5},
-					{Oid: 2, StartByte: 5, EndByte: 10},
-					{Oid: 3, StartByte: 10, EndByte: 15},
+				toc := &utils.SegmentTOC{}
+				toc.DataEntries = map[uint]utils.SegmentDataEntry{
+					1: {StartByte: 0, EndByte: 5},
+					2: {StartByte: 5, EndByte: 10},
+					3: {StartByte: 10, EndByte: 15},
 				}
+				helper.SetOid(3)
 				startByte, endByte := helper.GetBoundsForTable(toc)
 				Expect(startByte).To(Equal(int64(10)))
 				Expect(endByte).To(Equal(int64(15)))

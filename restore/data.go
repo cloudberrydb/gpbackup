@@ -14,10 +14,10 @@ var (
 	tableDelim = ","
 )
 
-func CopyTableIn(connection *utils.DBConn, tableName string, tableAttributes string, backupFile string, singleDataFile bool, index uint32) {
+func CopyTableIn(connection *utils.DBConn, tableName string, tableAttributes string, backupFile string, singleDataFile bool, oid uint32) {
 	usingCompression, compressionProgram := utils.GetCompressionParameters()
 	tocFile := globalCluster.GetSegmentTOCFilePath("<SEG_DATA_DIR>", "<SEGID>")
-	helperCommand := fmt.Sprintf("$GPHOME/bin/gpbackup_helper --restore --toc-file=%s --index=%d", tocFile, index)
+	helperCommand := fmt.Sprintf("$GPHOME/bin/gpbackup_helper --restore --toc-file=%s --oid=%d", tocFile, oid)
 	copyCommand := ""
 	if singleDataFile && usingCompression {
 		copyCommand = fmt.Sprintf("PROGRAM '%s %s | %s'", compressionProgram.DecompressCommand, backupFile, helperCommand)

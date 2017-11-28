@@ -9,13 +9,17 @@ import (
 )
 
 type TOC struct {
-	metadataEntryMap   map[string]*[]MetadataEntry
-	GlobalEntries      []MetadataEntry
-	PredataEntries     []MetadataEntry
-	PostdataEntries    []MetadataEntry
-	StatisticsEntries  []MetadataEntry
-	MasterDataEntries  []MasterDataEntry
-	SegmentDataEntries []SegmentDataEntry
+	metadataEntryMap  map[string]*[]MetadataEntry
+	GlobalEntries     []MetadataEntry
+	PredataEntries    []MetadataEntry
+	PostdataEntries   []MetadataEntry
+	StatisticsEntries []MetadataEntry
+	DataEntries       []MasterDataEntry
+}
+
+type SegmentTOC struct {
+	LastByteRead uint64
+	DataEntries  map[uint]SegmentDataEntry
 }
 
 type MetadataEntry struct {
@@ -34,7 +38,6 @@ type MasterDataEntry struct {
 }
 
 type SegmentDataEntry struct {
-	Oid       uint // We use uint since the flags package does not have a uint32 flag
 	StartByte uint64
 	EndByte   uint64
 }
@@ -48,12 +51,27 @@ func NewTOC(filename string) *TOC {
 	return toc
 }
 
+func NewSegmentTOC(filename string) *SegmentTOC {
+	toc := &SegmentTOC{}
+	contents, err := System.ReadFile(filename)
+	CheckError(err)
+	err = yaml.Unmarshal(contents, toc)
+	CheckError(err)
+	return toc
+}
+
 func (toc *TOC) WriteToFileAndMakeReadOnly(filename string) {
 	defer System.Chmod(filename, 0444)
 	toc.WriteToFile(filename)
 }
 
 func (toc *TOC) WriteToFile(filename string) {
+	tocFile := MustOpenFileForWriting(filename)
+	tocContents, _ := yaml.Marshal(toc)
+	MustPrintBytes(tocFile, tocContents)
+}
+
+func (toc *SegmentTOC) WriteToFile(filename string) {
 	tocFile := MustOpenFileForWriting(filename)
 	tocContents, _ := yaml.Marshal(toc)
 	MustPrintBytes(tocFile, tocContents)
@@ -115,7 +133,7 @@ func (toc *TOC) GetDataEntriesMatching(includeSchemas []string, includeTables []
 		}
 	}
 	matchingEntries := make([]MasterDataEntry, 0)
-	for _, entry := range toc.MasterDataEntries {
+	for _, entry := range toc.DataEntries {
 		_, validSchema := schemaHashes[entry.Schema]
 		validSchema = restoreAllSchemas || validSchema
 		tableFQN := MakeFQN(entry.Schema, entry.Name)
@@ -162,9 +180,10 @@ func (toc *TOC) AddMetadataEntry(schema string, name string, objectType string, 
 }
 
 func (toc *TOC) AddMasterDataEntry(schema string, name string, oid uint32, attributeString string) {
-	toc.MasterDataEntries = append(toc.MasterDataEntries, MasterDataEntry{schema, name, oid, attributeString})
+	toc.DataEntries = append(toc.DataEntries, MasterDataEntry{schema, name, oid, attributeString})
 }
 
-func (toc *TOC) AddSegmentDataEntry(oid uint, startByte uint64, endByte uint64) {
-	toc.SegmentDataEntries = append(toc.SegmentDataEntries, SegmentDataEntry{oid, startByte, endByte})
+func (toc *SegmentTOC) AddSegmentDataEntry(oid uint, startByte uint64, endByte uint64) {
+	// We use uint for oid since the flags package does not have a uint32 flag
+	toc.DataEntries[oid] = SegmentDataEntry{startByte, endByte}
 }

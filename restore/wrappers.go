@@ -137,5 +137,5 @@ func restoreSingleTableData(entry utils.MasterDataEntry, tableNum uint32, totalT
 		logger.Verbose("Reading data for table %s from file", name)
 	}
 	backupFile := globalCluster.GetTableBackupFilePathForCopyCommand(entry.Oid, backupConfig.SingleDataFile)
-	CopyTableIn(connection, name, entry.AttributeString, backupFile, backupConfig.SingleDataFile, tableNum-1)
+	CopyTableIn(connection, name, entry.AttributeString, backupFile, backupConfig.SingleDataFile, entry.Oid)
 }

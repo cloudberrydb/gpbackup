@@ -49,7 +49,7 @@ func ValidateFilterSchemasInBackupSet(schemaList utils.ArrayFlags) {
 				}
 			}
 		} else {
-			for _, entry := range globalTOC.MasterDataEntries {
+			for _, entry := range globalTOC.DataEntries {
 				if _, ok := schemaMap[entry.Schema]; ok {
 					delete(schemaMap, entry.Schema)
 				}
@@ -108,7 +108,7 @@ func ValidateFilterTablesInBackupSet(tableList utils.ArrayFlags) {
 				}
 			}
 		} else {
-			for _, entry := range globalTOC.MasterDataEntries {
+			for _, entry := range globalTOC.DataEntries {
 				fqn := utils.MakeFQN(entry.Schema, entry.Name)
 				if _, ok := tableMap[fqn]; ok {
 					delete(tableMap, fqn)
@@ -135,12 +135,6 @@ func ValidateBackupFlagCombinations() {
 	if backupConfig.SingleDataFile {
 		if *numJobs != 1 {
 			logger.Fatal(errors.Errorf("Cannot use jobs flag when restoring backups with a single data file per segment."), "")
-		}
-		if len(includeSchemas) > 0 {
-			logger.Fatal(errors.Errorf("Cannot use include-schema flag when restoring backups with a single data file per segment."), "")
-		}
-		if *includeTableFile != "" {
-			logger.Fatal(errors.Errorf("Cannot use include-table-file flag when restoring backups with a single data file per segment."), "")
 		}
 	}
 }
