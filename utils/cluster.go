@@ -31,7 +31,7 @@ func InitializeCompressionParameters(compress bool, compressionLevel int) {
 	usingCompression = compress
 	compressCommand := ""
 	if compressionLevel == 0 {
-		compressCommand = "gzip -c"
+		compressCommand = "gzip -c -1"
 	} else {
 		compressCommand = fmt.Sprintf("gzip -c -%d", compressionLevel)
 	}

@@ -448,7 +448,7 @@ var _ = Describe("utils/cluster tests", func() {
 			defer utils.SetCompressionParameters(useCompress, compression)
 			expectedCompress := utils.Compression{
 				Name:              "gzip",
-				CompressCommand:   "gzip -c",
+				CompressCommand:   "gzip -c -1",
 				DecompressCommand: "gzip -d -c",
 				Extension:         ".gz",
 			}
