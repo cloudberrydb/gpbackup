@@ -4,7 +4,6 @@ import os
 
 class GpbackupConan(ConanFile):
     name = "gpbackup"
-    version = "1.0.0-alpha.1"
     license = "Apache License v2.0"
     url = "https://github.com/greenplum-db/gpbackup"
     description = "Greenplum DB backup and restore utilities"
