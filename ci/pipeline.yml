@@ -138,9 +138,12 @@ jobs:
   - task: integration-tests
     tags: ["ccp"]
     file: gpbackup/ci/tasks/integration-tests.yml
+    on_success:
+      <<: *ccp_destroy
     on_failure:
-      <<: *debug_sleep
-  - *ccp_destroy
+      <<: *set_failed
+  ensure:
+    <<: *set_failed
 
 - name: integrations-GPDB5
   plan:
@@ -173,9 +176,12 @@ jobs:
   - task: integration-tests
     tags: ["ccp"]
     file: gpbackup/ci/tasks/integration-tests.yml
+    on_success:
+      <<: *ccp_destroy
     on_failure:
-      <<: *debug_sleep
-  - *ccp_destroy
+      <<: *set_failed
+  ensure:
+    <<: *set_failed
 
 - name: integrations-GPDB4.3
   plan:
@@ -208,9 +214,12 @@ jobs:
   - task: integration-tests
     tags: ["ccp"]
     file: gpbackup/ci/tasks/integration-tests.yml
+    on_success:
+      <<: *ccp_destroy
     on_failure:
-      <<: *debug_sleep
-  - *ccp_destroy
+      <<: *set_failed
+  ensure:
+    <<: *set_failed
 
 - name: scale-master
   plan:
@@ -247,9 +256,12 @@ jobs:
   - task: scale-tests
     tags: ["ccp"]
     file: gpbackup/ci/tasks/scale-tests.yml
+    on_success:
+      <<: *ccp_destroy
     on_failure:
-      <<: *debug_sleep
-  - *ccp_destroy
+      <<: *set_failed
+  ensure:
+    <<: *set_failed
 
 # This job has a different configuration because it is set up for use with boostfs
 - name: scale-5x-stable
@@ -359,9 +371,12 @@ jobs:
   - task: scale-tests
     tags: ["ccp"]
     file: gpbackup/ci/tasks/scale-tests.yml
+    on_success:
+      <<: *ccp_destroy
     on_failure:
-      <<: *debug_sleep
-  - *ccp_destroy
+      <<: *set_failed
+  ensure:
+    <<: *set_failed
 
 ccp_create_params_anchor: &ccp_create_params
   action: create
@@ -411,23 +426,28 @@ boostfs_ccp_destroy_anchor: &boostfs_ccp_destroy
   get_params:
     action: destroy
 
-
-debug_sleep_anchor: &debug_sleep
+set_failed_anchor: &set_failed
   do:
-  - task: debug_sleep
+  - task: on_failure_set_failed
     tags: ["ccp"]
     config:
       platform: linux
       image_resource:
         type: docker-image
         source:
-          repository: alpine
-          tag: latest
+          repository: toolsmiths/ccp
+          tag: "7"
+      inputs:
+        - name: ccp_src
+        - name: terraform
       run:
-        path: 'sh'
-        args: ['-c', 'sleep 2h']
-  ensure:
-    <<: *ccp_destroy
+        path: 'ccp_src/aws/ccp_failed_test.sh'
+      params:
+        AWS_ACCESS_KEY_ID: {{tf-machine-access-key-id}}
+        AWS_SECRET_ACCESS_KEY: {{tf-machine-secret-access-key}}
+        AWS_DEFAULT_REGION: {{tf-machine-region}}
+        BUCKET_PATH: {{tf-bucket-path}}
+        BUCKET_NAME: {{tf-bucket-name}}
 
 boostfs_debug_sleep_anchor: &boostfs_debug_sleep
   do:
