@@ -123,7 +123,7 @@ func createDatabase() {
 }
 
 func restoreGlobal() {
-	objectTypes := []string{"SESSION GUCS", "GPDB4 SESSION GUCS", "RESOURCE QUEUE", "RESOURCE GROUP", "ROLE", "ROLE GRANT", "TABLESPACE"}
+	objectTypes := []string{"SESSION GUCS", "GPDB4 SESSION GUCS", "DATABASE GUC", "DATABASE METADATA", "RESOURCE QUEUE", "RESOURCE GROUP", "ROLE", "ROLE GRANT", "TABLESPACE"}
 	globalFilename := globalCluster.GetGlobalFilePath()
 	logger.Info("Restoring global metadata from %s", globalCluster.GetGlobalFilePath())
 	statements := GetRestoreMetadataStatements(globalFilename, objectTypes, []string{}, []string{})
