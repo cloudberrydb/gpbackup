@@ -65,7 +65,7 @@ resources:
       secret_access_key: {{tf-machine-secret-access-key}}
       region_name: {{aws-region}}
       bucket: gpdb5-pipeline-dynamic-terraform
-      bucket_path: prod/gpbackup/
+      bucket_path: {{tf-bucket-path}}
 
 - name: boostfs_terraform
   type: terraform
@@ -394,7 +394,7 @@ ccp_gen_cluster_default_params_anchor: &ccp_gen_cluster_default_params
   AWS_SECRET_ACCESS_KEY: {{tf-machine-secret-access-key}}
   AWS_DEFAULT_REGION: {{aws-region}}
   BUCKET_NAME: gpdb5-pipeline-dynamic-terraform
-  BUCKET_PATH: prod/gpbackup/
+  BUCKET_PATH: {{tf-bucket-path}}
 
 boostfs_ccp_gen_cluster_default_params_anchor: &boostfs_ccp_gen_cluster_default_params
   AWS_ACCESS_KEY_ID: {{gpdb4-tf-machine-access-key-id}}
