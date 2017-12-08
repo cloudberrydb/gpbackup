@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"regexp"
 	"strings"
 
@@ -324,6 +325,22 @@ func ShouldPanicWithMessage(message string) {
 func AssertQueryRuns(dbconn *utils.DBConn, query string) {
 	_, err := dbconn.Exec(query)
 	Expect(err).To(BeNil(), "%s", query)
+}
+
+func ExecuteSQLFile(dbconn *utils.DBConn, filename string) {
+	connStr := []string{
+		"-U", dbconn.User,
+		"-d", dbconn.DBName,
+		"-h", dbconn.Host,
+		"-p", fmt.Sprintf("%d", dbconn.Port),
+		"-f", filename,
+		"-v", "ON_ERROR_STOP=1",
+		"-q",
+	}
+	out, err := exec.Command("psql", connStr...).CombinedOutput()
+	if err != nil {
+		Fail(fmt.Sprintf("Execution of SQL file encountered an error: %s", out))
+	}
 }
 
 func BufferLength(buffer *gbytes.Buffer) uint64 {

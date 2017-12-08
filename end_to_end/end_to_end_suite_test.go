@@ -65,9 +65,15 @@ var _ = Describe("backup end to end integration tests", func() {
 		if err != nil {
 			Fail(fmt.Sprintf("%v", err))
 		}
+		err = exec.Command("createdb", "restoredb").Run()
+		if err != nil {
+			Fail(fmt.Sprintf("%v", err))
+		}
 		backupConn = utils.NewDBConn("testdb")
 		backupConn.Connect()
-		utils.ExecuteSQLFile(backupConn, "test_tables.sql")
+		restoreConn = utils.NewDBConn("restoredb")
+		restoreConn.Connect()
+		testutils.ExecuteSQLFile(backupConn, "test_tables.sql")
 	})
 	AfterSuite(func() {
 		backupConn.Close()
@@ -80,16 +86,7 @@ var _ = Describe("backup end to end integration tests", func() {
 	Describe("end to end gpbackup and gprestore tests", func() {
 		countQuery := `SELECT count(*) AS string FROM pg_tables WHERE schemaname IN ('public','schema2')`
 		BeforeEach(func() {
-			if restoreConn != nil {
-				restoreConn.Close()
-			}
-			exec.Command("dropdb", "restoredb").Run()
-			err := exec.Command("createdb", "restoredb").Run()
-			if err != nil {
-				Fail(fmt.Sprintf("%v", err))
-			}
-			restoreConn = utils.NewDBConn("restoredb")
-			restoreConn.Connect()
+			testutils.AssertQueryRuns(restoreConn, "DROP SCHEMA IF EXISTS schema2 CASCADE; DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
 		})
 		It("runs gpbackup and gprestore without redirecting restore to another db", func() {
 			timestamp := gpbackup(gpbackupPath)
@@ -225,30 +222,16 @@ var _ = Describe("backup end to end integration tests", func() {
 			os.RemoveAll(backupdir)
 		})
 		It("runs gpbackup and gprestore on database with all objects", func() {
-			backupConn.Close()
-			exec.Command("dropdb", "testdb").Run()
-			err := exec.Command("createdb", "testdb").Run()
-			if err != nil {
-				Fail(fmt.Sprintf("%v", err))
-			}
-			connStr := []string{
-				"-d", "testdb",
-				"-f", "all_objects.sql",
-				"-q",
-			}
-			exec.Command("psql", connStr...)
-
+			testutils.AssertQueryRuns(backupConn, "DROP SCHEMA IF EXISTS schema2 CASCADE; DROP SCHEMA public CASCADE; CREATE SCHEMA public; DROP PROCEDURAL LANGUAGE IF EXISTS plpythonu;")
+			/* We do not check the error code since there are some objects we
+			 * expect to fail during creation between DB versions
+			 */
+			exec.Command("psql", "-d", "testdb", "-f", "all_objects.sql", "-q")
 			timestamp := gpbackup(gpbackupPath)
 			gprestore(gprestorePath, timestamp, "-redirect", "restoredb")
 
-			exec.Command("dropdb", "testdb").Run()
-			err = exec.Command("createdb", "testdb").Run()
-			if err != nil {
-				Fail(fmt.Sprintf("%v", err))
-			}
-			backupConn = utils.NewDBConn("testdb")
-			backupConn.Connect()
-			utils.ExecuteSQLFile(backupConn, "test_tables.sql")
+			testutils.AssertQueryRuns(backupConn, "DROP SCHEMA IF EXISTS schema2 CASCADE; DROP SCHEMA public CASCADE; CREATE SCHEMA public; DROP PROCEDURAL LANGUAGE IF EXISTS plpythonu;")
+			testutils.ExecuteSQLFile(backupConn, "test_tables.sql")
 		})
 	})
 })

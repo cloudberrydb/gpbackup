@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"regexp"
 	"strings"
 
@@ -98,22 +97,6 @@ func GetUserAndHostInfo() (string, string, string) {
 	userDir := currentUser.HomeDir
 	hostname, _ := System.Hostname()
 	return userName, userDir, hostname
-}
-
-func ExecuteSQLFile(dbconn *DBConn, filename string) {
-	connStr := []string{
-		"-U", dbconn.User,
-		"-d", dbconn.DBName,
-		"-h", dbconn.Host,
-		"-p", fmt.Sprintf("%d", dbconn.Port),
-		"-f", filename,
-		"-v", "ON_ERROR_STOP=1",
-		"-q",
-	}
-	out, err := exec.Command("psql", connStr...).CombinedOutput()
-	if err != nil {
-		logger.Fatal(errors.Errorf("Execution of SQL file encountered an error: %s", out), "")
-	}
 }
 
 func MustPrintf(file io.Writer, s string, v ...interface{}) uint64 {
