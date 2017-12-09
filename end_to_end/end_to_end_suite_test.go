@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/greenplum-db/gpbackup/testutils"
@@ -42,6 +43,19 @@ func gprestore(gprestorePath string, timestamp string, args ...string) []byte {
 		Fail(fmt.Sprintf("%v", err))
 	}
 	return output
+}
+
+func assertDataRestored(conn *utils.DBConn, tableToTupleCount map[string]int) {
+	for name, numTuples := range tableToTupleCount {
+		tupleCount := utils.SelectString(conn, fmt.Sprintf("SELECT count(*) AS string from %s", name))
+		Expect(tupleCount).To(Equal(strconv.Itoa(numTuples)))
+	}
+}
+
+func assertTablesCreated(conn *utils.DBConn, numTables int) {
+	countQuery := `SELECT count(*) AS string FROM pg_tables WHERE schemaname IN ('public','schema2')`
+	tableCount := utils.SelectString(conn, countQuery)
+	Expect(tableCount).To(Equal(strconv.Itoa(numTables)))
 }
 
 func TestEndToEnd(t *testing.T) {
@@ -84,7 +98,8 @@ var _ = Describe("backup end to end integration tests", func() {
 	})
 
 	Describe("end to end gpbackup and gprestore tests", func() {
-		countQuery := `SELECT count(*) AS string FROM pg_tables WHERE schemaname IN ('public','schema2')`
+		publicSchemaTupleCounts := map[string]int{"public.foo": 40000, "public.holds": 50000, "public.sales": 13}
+		schema2TupleCounts := map[string]int{"schema2.returns": 6, "schema2.foo2": 0, "schema2.foo3": 100}
 		BeforeEach(func() {
 			testutils.AssertQueryRuns(restoreConn, "DROP SCHEMA IF EXISTS schema2 CASCADE; DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
 		})
@@ -103,43 +118,58 @@ var _ = Describe("backup end to end integration tests", func() {
 			timestamp := gpbackup(gpbackupPath, "-metadata-only")
 			timestamp2 := gpbackup(gpbackupPath, "-data-only")
 			gprestore(gprestorePath, timestamp, "-redirect", "restoredb")
+			assertDataRestored(restoreConn, map[string]int{"public.foo": 0, "schema2.foo3": 0})
+			assertTablesCreated(restoreConn, 30)
 			gprestore(gprestorePath, timestamp2, "-redirect", "restoredb")
+
+			assertDataRestored(restoreConn, publicSchemaTupleCounts)
+			assertDataRestored(restoreConn, schema2TupleCounts)
 		})
 		It("runs gpbackup and gprestore with exclude-schema flag", func() {
 			timestamp := gpbackup(gpbackupPath, "-exclude-schema", "public")
 			gprestore(gprestorePath, timestamp, "-redirect", "restoredb")
-			tableCount := utils.SelectString(restoreConn, countQuery)
-			Expect(tableCount).To(Equal("14"))
+
+			assertTablesCreated(restoreConn, 15)
+			assertDataRestored(restoreConn, schema2TupleCounts)
 		})
 		It("runs gpbackup and gprestore with include-schema flag and compression level", func() {
 			timestamp := gpbackup(gpbackupPath, "-include-schema", "public", "-compression-level", "2")
 			gprestore(gprestorePath, timestamp, "-redirect", "restoredb")
-			tableCount := utils.SelectString(restoreConn, countQuery)
-			Expect(tableCount).To(Equal("15"))
+
+			assertTablesCreated(restoreConn, 15)
+			assertDataRestored(restoreConn, publicSchemaTupleCounts)
 		})
 		It("runs gpbackup and gprestore with exclude-table-file flag", func() {
 			excludeFile := utils.MustOpenFileForWriting("/tmp/exclude-tables.txt")
-			utils.MustPrintln(excludeFile, "schema2.foo2\nschema2.returns\npublic.sales")
+			utils.MustPrintln(excludeFile, "schema2.foo2\nschema2.foo3\nschema2.returns\npublic.sales")
 			timestamp := gpbackup(gpbackupPath, "-exclude-table-file", "/tmp/exclude-tables.txt")
 			gprestore(gprestorePath, timestamp, "-redirect", "restoredb")
-			tableCount := utils.SelectString(restoreConn, countQuery)
-			Expect(tableCount).To(Equal("2"))
+
+			assertTablesCreated(restoreConn, 2)
+			assertDataRestored(restoreConn, map[string]int{"public.foo": 40000, "public.holds": 50000})
+
 			os.Remove("/tmp/exclude-tables.txt")
 		})
 		It("runs gpbackup and gprestore with include-table-file flag", func() {
 			includeFile := utils.MustOpenFileForWriting("/tmp/include-tables.txt")
-			utils.MustPrintln(includeFile, "public.sales")
+			utils.MustPrintln(includeFile, "public.sales\npublic.foo")
 			timestamp := gpbackup(gpbackupPath, "-include-table-file", "/tmp/include-tables.txt")
 			gprestore(gprestorePath, timestamp, "-redirect", "restoredb")
-			tableCount := utils.SelectString(restoreConn, countQuery)
-			Expect(tableCount).To(Equal("13"))
+
+			assertTablesCreated(restoreConn, 14)
+			assertDataRestored(restoreConn, map[string]int{"public.sales": 13, "public.foo": 40000})
+
 			os.Remove("/tmp/include-tables.txt")
 		})
 		It("runs gpbackup and gprestore with leaf-partition-data and backupdir flags", func() {
 			backupdir := "/tmp/leaf_partition_data"
 			timestamp := gpbackup(gpbackupPath, "-leaf-partition-data", "-backupdir", backupdir)
 			output := gprestore(gprestorePath, timestamp, "-redirect", "restoredb", "-backupdir", backupdir)
-			Expect(strings.Contains(string(output), "Tables restored:  27 / 27")).To(BeTrue())
+			Expect(strings.Contains(string(output), "Tables restored:  28 / 28")).To(BeTrue())
+
+			assertDataRestored(restoreConn, publicSchemaTupleCounts)
+			assertDataRestored(restoreConn, schema2TupleCounts)
+
 			os.RemoveAll(backupdir)
 		})
 		It("runs gpbackup and gprestore with no-compression flag", func() {
@@ -150,6 +180,10 @@ var _ = Describe("backup end to end integration tests", func() {
 			contents, _ := ioutil.ReadFile(configFile[0])
 
 			Expect(strings.Contains(string(contents), "compressed: false")).To(BeTrue())
+			assertTablesCreated(restoreConn, 30)
+			assertDataRestored(restoreConn, publicSchemaTupleCounts)
+			assertDataRestored(restoreConn, schema2TupleCounts)
+
 			os.RemoveAll(backupdir)
 		})
 		It("runs gpbackup and gprestore with with-stats flag", func() {
@@ -161,12 +195,19 @@ var _ = Describe("backup end to end integration tests", func() {
 			output := gprestore(gprestorePath, timestamp, "-redirect", "restoredb", "-with-stats", "-backupdir", backupdir)
 
 			Expect(strings.Contains(string(output), "Query planner statistics restore complete")).To(BeTrue())
+			assertDataRestored(restoreConn, publicSchemaTupleCounts)
+			assertDataRestored(restoreConn, schema2TupleCounts)
+
 			os.RemoveAll(backupdir)
 		})
 		It("runs gpbackup and gprestore with single-data-file flag", func() {
 			backupdir := "/tmp/single_data_file"
 			timestamp := gpbackup(gpbackupPath, "-single-data-file", "-backupdir", backupdir)
 			gprestore(gprestorePath, timestamp, "-redirect", "restoredb", "-backupdir", backupdir)
+
+			assertTablesCreated(restoreConn, 30)
+			assertDataRestored(restoreConn, publicSchemaTupleCounts)
+			assertDataRestored(restoreConn, schema2TupleCounts)
 
 			os.RemoveAll(backupdir)
 		})
@@ -181,34 +222,49 @@ var _ = Describe("backup end to end integration tests", func() {
 
 		It("runs gpbackup and gprestore with include-table-file restore flag", func() {
 			includeFile := utils.MustOpenFileForWriting("/tmp/include-tables.txt")
-			utils.MustPrintln(includeFile, "public.sales")
+			utils.MustPrintln(includeFile, "public.sales\npublic.foo")
 			backupdir := "/tmp/include_table_file"
 			timestamp := gpbackup(gpbackupPath, "-backupdir", backupdir)
 			gprestore(gprestorePath, timestamp, "-redirect", "restoredb", "-backupdir", backupdir, "-include-table-file", "/tmp/include-tables.txt")
-			tableCount := utils.SelectString(restoreConn, countQuery)
-			Expect(tableCount).To(Equal("13"))
+
+			assertTablesCreated(restoreConn, 14)
+			assertDataRestored(restoreConn, map[string]int{"public.sales": 13, "public.foo": 40000})
 
 			os.RemoveAll(backupdir)
 			os.Remove("/tmp/include-tables.txt")
 		})
+
 		It("runs gpbackup and gprestore with include-table-file restore flag with a single data file", func() {
 			includeFile := utils.MustOpenFileForWriting("/tmp/include-tables.txt")
-			utils.MustPrintln(includeFile, "public.sales")
+			utils.MustPrintln(includeFile, "public.sales\npublic.foo")
 			backupdir := "/tmp/include_table_file"
 			timestamp := gpbackup(gpbackupPath, "-backupdir", backupdir, "-single-data-file")
 			gprestore(gprestorePath, timestamp, "-redirect", "restoredb", "-backupdir", backupdir, "-include-table-file", "/tmp/include-tables.txt")
-			tableCount := utils.SelectString(restoreConn, countQuery)
-			Expect(tableCount).To(Equal("13"))
+			assertTablesCreated(restoreConn, 14)
+			assertDataRestored(restoreConn, map[string]int{"public.sales": 13, "public.foo": 40000})
 
 			os.RemoveAll(backupdir)
 			os.Remove("/tmp/include-tables.txt")
 		})
+
 		It("runs gpbackup and gprestore with include-schema restore flag", func() {
 			backupdir := "/tmp/include_schema"
 			timestamp := gpbackup(gpbackupPath, "-backupdir", backupdir)
 			gprestore(gprestorePath, timestamp, "-redirect", "restoredb", "-backupdir", backupdir, "-include-schema", "schema2")
-			tableCount := utils.SelectString(restoreConn, countQuery)
-			Expect(tableCount).To(Equal("14"))
+
+			assertTablesCreated(restoreConn, 15)
+			assertDataRestored(restoreConn, schema2TupleCounts)
+
+			os.RemoveAll(backupdir)
+		})
+		It("runs gpbackup and gprestore with jobs flag", func() {
+			backupdir := "/tmp/parallel"
+			timestamp := gpbackup(gpbackupPath, "-backupdir", backupdir)
+			gprestore(gprestorePath, timestamp, "-redirect", "restoredb", "-backupdir", backupdir, "-jobs", "4")
+
+			assertTablesCreated(restoreConn, 30)
+			assertDataRestored(restoreConn, schema2TupleCounts)
+			assertDataRestored(restoreConn, publicSchemaTupleCounts)
 
 			os.RemoveAll(backupdir)
 		})
@@ -216,8 +272,9 @@ var _ = Describe("backup end to end integration tests", func() {
 			backupdir := "/tmp/include_schema"
 			timestamp := gpbackup(gpbackupPath, "-backupdir", backupdir, "-single-data-file")
 			gprestore(gprestorePath, timestamp, "-redirect", "restoredb", "-backupdir", backupdir, "-include-schema", "schema2")
-			tableCount := utils.SelectString(restoreConn, countQuery)
-			Expect(tableCount).To(Equal("14"))
+
+			assertTablesCreated(restoreConn, 15)
+			assertDataRestored(restoreConn, schema2TupleCounts)
 
 			os.RemoveAll(backupdir)
 		})

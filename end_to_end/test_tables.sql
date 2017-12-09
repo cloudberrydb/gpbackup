@@ -33,130 +33,21 @@ CREATE TABLE foo (
 --
 --
 
-COPY foo (i) FROM stdin;
-1
-3
-8
-2
-4
-9
-13
-5
-10
-14
-6
-11
-15
-7
-12
-16
-18
-23
-17
-19
-24
-28
-20
-25
-29
-21
-26
-30
-22
-27
-31
-38
-32
-33
-39
-43
-34
-40
-44
-35
-41
-45
-36
-42
-46
-37
-53
-47
-48
-54
-58
-49
-55
-59
-50
-56
-60
-51
-57
-61
-52
-73
-62
-63
-74
-64
-68
-75
-65
-69
-76
-66
-70
-77
-67
-71
-87
-78
-72
-88
-79
-83
-89
-80
-84
-90
-81
-85
-91
-82
-86
-96
-92
-97
-93
-94
-95
-98
-99
-100
-\.
-
+INSERT INTO foo SELECT generate_series(1,40000);
 
 --
 --
 
 CREATE TABLE holds (
-    id integer,
-    date date,
-    amt numeric(10,2)
-) DISTRIBUTED BY (id);
+    i integer
+) DISTRIBUTED BY (i);
 
 
-
---
---
-
-COPY holds (id, date, amt) FROM stdin;
-\.
-
+INSERT INTO holds SELECT generate_series(1,50000);
 
 --
 --
+
 
 CREATE TABLE sales (
     id integer,
@@ -214,109 +105,18 @@ CREATE TABLE foo2 (
 --
 --
 
-COPY foo2 (i) FROM stdin;
-1
-3
-8
-2
-4
-9
-13
-5
-10
-14
-6
-11
-15
-7
-12
-16
-18
-23
-17
-19
-24
-28
-20
-25
-29
-21
-26
-30
-22
-27
-31
-38
-32
-33
-39
-43
-34
-40
-44
-35
-41
-45
-36
-42
-46
-37
-53
-47
-48
-54
-58
-49
-55
-59
-50
-56
-60
-51
-57
-61
-52
-73
-62
-63
-74
-64
-68
-75
-65
-69
-76
-66
-70
-77
-67
-71
-87
-78
-72
-88
-79
-83
-89
-80
-84
-90
-81
-85
-91
-82
-86
-96
-92
-97
-93
-94
-95
-98
-99
-100
-\.
 
+
+CREATE TABLE foo3 (
+    i integer
+) DISTRIBUTED BY (i);
+
+
+
+--
+--
+
+INSERT INTO foo3 SELECT generate_series(201,300);
 
 --
 --
