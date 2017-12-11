@@ -93,12 +93,6 @@ func RetrieveAndProcessTables() ([]Relation, []Relation, map[uint32]TableDefinit
 		includeTables = expandedIncludeTables
 	}
 	tableDefs := ConstructDefinitionsForTables(connection, tables)
-	extPartInfo, _ := GetExternalPartitionInfo(connection)
-	for _, partInfo := range extPartInfo {
-		tableDef := tableDefs[partInfo.ParentRelationOid]
-		tableDef.IsExternal = true
-		tableDefs[partInfo.ParentRelationOid] = tableDef
-	}
 	metadataTables, dataTables := SplitTablesByPartitionType(tables, tableDefs, userPassedIncludeTables)
 	objectCounts["Tables"] = len(metadataTables)
 

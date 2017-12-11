@@ -56,5 +56,6 @@ var _ = BeforeSuite(func() {
 
 var _ = BeforeEach(func() {
 	buffer = gbytes.NewBuffer()
+	connection, mock = testutils.CreateAndConnectMockDB()
 	connection.Version = baseVersion
 })

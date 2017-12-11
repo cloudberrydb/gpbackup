@@ -106,10 +106,12 @@ func SplitTablesByPartitionType(tables []Relation, tableDefs map[uint32]TableDef
 
 func AppendExtPartSuffix(name string) string {
 	const SUFFIX = "_ext_part_"
-	const MAX_LEN = 63 // MAX_DATA_LEN - 1 is the maximum length of a relation name
+	const MAX_LEN = 63                 // MAX_DATA_LEN - 1 is the maximum length of a relation name
+	const QUOTED_MAX_LEN = MAX_LEN + 2 // We add 2 to account for a double quote on each end
 	if name[len(name)-1] == '"' {
-		if len(name)+len(SUFFIX) > MAX_LEN+2 {
-			return name[0:MAX_LEN+2-len(SUFFIX)] + SUFFIX + `"`
+
+		if len(name)+len(SUFFIX) > QUOTED_MAX_LEN {
+			return name[0:QUOTED_MAX_LEN-len(SUFFIX)] + SUFFIX + `"`
 		}
 		return name[0:len(name)-1] + SUFFIX + `"`
 	}

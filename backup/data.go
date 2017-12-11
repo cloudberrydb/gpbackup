@@ -53,14 +53,13 @@ func CopyTableOut(connection *utils.DBConn, table Relation, backupFile string) {
 	} else {
 		copyCommand = fmt.Sprintf("'%s'", backupFile)
 	}
-	query := fmt.Sprintf("COPY %s TO %s WITH CSV DELIMITER '%s' ON SEGMENT;", table.ToString(), copyCommand, tableDelim)
+	query := fmt.Sprintf("COPY %s TO %s WITH CSV DELIMITER '%s' ON SEGMENT IGNORE EXTERNAL PARTITIONS;", table.ToString(), copyCommand, tableDelim)
 	_, err := connection.Exec(query)
 	utils.CheckError(err)
 }
 
 func BackupDataForAllTables(tables []Relation, tableDefs map[uint32]TableDefinition) {
 	numExtTables := 0
-	numExtParts := 0
 	numRegTables := 1
 	totalExtTables := 0
 	for _, table := range tables {
@@ -79,8 +78,6 @@ func BackupDataForAllTables(tables []Relation, tableDefs map[uint32]TableDefinit
 	for _, table := range tables {
 		tableDef := tableDefs[table.Oid]
 		isExternal := tableDef.IsExternal
-		// A parent partition table has IsExternal set if it has any external partitions
-		hasExternalPartitions := isExternal && tableDef.PartitionType == "p"
 		if !isExternal {
 			if logger.GetVerbosity() > utils.LOGINFO {
 				// No progress bar at this log level, so we note table count here
@@ -94,19 +91,16 @@ func BackupDataForAllTables(tables []Relation, tableDefs map[uint32]TableDefinit
 			CopyTableOut(connection, table, backupFile)
 			numRegTables++
 			dataProgressBar.Increment()
-		} else if hasExternalPartitions {
-			logger.Verbose("Skipping data backup of table %s because it has one or more external partitions.", table.ToString())
-			numExtParts++
 		} else if *leafPartitionData || tableDef.PartitionType != "l" {
 			logger.Verbose("Skipping data backup of table %s because it is an external table.", table.ToString())
 			numExtTables++
 		}
 	}
 	dataProgressBar.Finish()
-	printDataBackupWarnings(numExtTables, numExtParts)
+	printDataBackupWarnings(numExtTables)
 }
 
-func printDataBackupWarnings(numExtTables int, numExtParts int) {
+func printDataBackupWarnings(numExtTables int) {
 	if numExtTables > 0 {
 		s := ""
 		if numExtTables > 1 {
@@ -114,15 +108,7 @@ func printDataBackupWarnings(numExtTables int, numExtParts int) {
 		}
 		logger.Warn("Skipped data backup of %d external table%s.", numExtTables, s)
 	}
-	if numExtParts > 0 {
-		s := ""
-		if numExtParts > 1 {
-			s = "s"
-		}
-		logger.Warn("Skipped data backup of %d partition table%s containing one or more external partitions.", numExtParts, s)
-		logger.Warn("Set the --leaf-partition-data flag to back up data in those tables.")
-	}
-	if numExtTables > 0 || numExtParts > 0 {
+	if numExtTables > 0 {
 		logger.Warn("See %s for a complete list of skipped tables.", logger.GetLogFilePath())
 	}
 }
