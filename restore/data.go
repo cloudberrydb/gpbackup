@@ -19,8 +19,10 @@ func CopyTableIn(connection *utils.DBConn, tableName string, tableAttributes str
 	tocFile := globalCluster.GetSegmentTOCFilePath("<SEG_DATA_DIR>", "<SEGID>")
 	helperCommand := fmt.Sprintf("$GPHOME/bin/gpbackup_helper --restore --toc-file=%s --oid=%d --content=<SEGID>", tocFile, oid)
 	copyCommand := ""
+	// Error code returned for broken pipe
+	const SIGPIPE = "141"
 	if singleDataFile && usingCompression {
-		copyCommand = fmt.Sprintf("PROGRAM 'set -o pipefail; %s %s | %s'", compressionProgram.DecompressCommand, backupFile, helperCommand)
+		copyCommand = fmt.Sprintf(`PROGRAM 'set -o pipefail; %s %s | %s || test $? -eq %s'`, compressionProgram.DecompressCommand, backupFile, helperCommand, SIGPIPE)
 	} else if usingCompression {
 		copyCommand = fmt.Sprintf("PROGRAM '%s < %s'", compressionProgram.DecompressCommand, backupFile)
 	} else if singleDataFile {
