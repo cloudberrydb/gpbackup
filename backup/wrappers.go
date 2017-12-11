@@ -429,62 +429,13 @@ func BackupTriggers(postdataFile *utils.FileWithByteCount, objectCounts map[stri
  */
 
 func BackupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
-	numExtTables := 0
-	numExtParts := 0
-	numRegTables := 1
-	totalExtTables := 0
-	for _, table := range tables {
-		if tableDefs[table.Oid].IsExternal {
-			totalExtTables++
-		}
+	if *singleDataFile {
+		globalCluster.CreateSegmentPipesOnAllHosts()
+		defer globalCluster.CleanUpSegmentPipesOnAllHosts()
+		globalCluster.ReadFromSegmentPipes()
+		defer globalCluster.CleanUpSegmentTailProcesses()
 	}
-	totalRegTables := len(tables) - totalExtTables
-	dataProgressBar := utils.NewProgressBar(totalRegTables, "Tables backed up: ", logger.GetVerbosity() == utils.LOGINFO)
-	dataProgressBar.Start()
-
-	for _, table := range tables {
-		tableDef := tableDefs[table.Oid]
-		isExternal := tableDef.IsExternal
-		// A parent partition table has IsExternal set if it has any external partitions
-		hasExternalPartitions := isExternal && tableDef.PartitionType == "p"
-		if !isExternal {
-			if logger.GetVerbosity() > utils.LOGINFO {
-				// No progress bar at this log level, so we note table count here
-				logger.Verbose("Writing data for table %s to file (table %d of %d)", table.ToString(), numRegTables, totalRegTables)
-			} else {
-				logger.Verbose("Writing data for table %s to file", table.ToString())
-			}
-			backupFile := globalCluster.GetTableBackupFilePathForCopyCommand(table.Oid, *singleDataFile)
-			CopyTableOut(connection, table, backupFile)
-			numRegTables++
-			dataProgressBar.Increment()
-		} else if hasExternalPartitions {
-			logger.Verbose("Skipping data backup of table %s because it has one or more external partitions.", table.ToString())
-			numExtParts++
-		} else if *leafPartitionData || tableDef.PartitionType != "l" {
-			logger.Verbose("Skipping data backup of table %s because it is an external table.", table.ToString())
-			numExtTables++
-		}
-	}
-	dataProgressBar.Finish()
-	if numExtTables > 0 {
-		s := ""
-		if numExtTables > 1 {
-			s = "s"
-		}
-		logger.Warn("Skipped data backup of %d external table%s.", numExtTables, s)
-	}
-	if numExtParts > 0 {
-		s := ""
-		if numExtParts > 1 {
-			s = "s"
-		}
-		logger.Warn("Skipped data backup of %d partition table%s containing one or more external partitions.", numExtParts, s)
-		logger.Warn("Set the --leaf-partition-data flag to back up data in those tables.")
-	}
-	if numExtTables > 0 || numExtParts > 0 {
-		logger.Warn("See %s for a complete list of skipped tables.", logger.GetLogFilePath())
-	}
+	BackupDataForAllTables(tables, tableDefs)
 }
 
 func BackupStatistics(statisticsFile *utils.FileWithByteCount, tables []Relation) {

@@ -3,12 +3,14 @@ package helper
 import (
 	"bufio"
 	"flag"
+	"fmt"
 	"io"
 
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
 var (
+	content *int
 	logger  *utils.Logger
 	oid     *uint
 	restore *bool
@@ -29,12 +31,17 @@ func DoHelper() {
 }
 
 func InitializeGlobals() {
+	content = flag.Int("content", -2, "Content ID of the corresponding segment")
 	logger = utils.InitializeLogging("gpbackup_helper", "")
 	oid = flag.Uint("oid", 0, "Oid of the table being processed")
 	restore = flag.Bool("restore", false, "Read in table according to offset in table of contents file")
 	tocFile = flag.String("toc-file", "", "Absolute path to the table of contents file")
 	flag.Parse()
 	utils.InitializeSystemFunctions()
+}
+
+func SetContent(id int) {
+	content = &id
 }
 
 func SetFilename(name string) {
@@ -101,6 +108,24 @@ func GetBoundsForTable(toc *utils.SegmentTOC) (int64, int64) {
 
 func CopyByteRange(startByte int64, endByte int64) {
 	reader := bufio.NewReader(utils.System.Stdin)
-	reader.Discard(int(startByte))
-	io.CopyN(utils.System.Stdout, reader, endByte-startByte)
+	discard := int(startByte)
+	count := endByte - startByte
+	log("Copying bytes for table with oid %d; discarding next %d bytes, copying %d bytes", *oid, discard, count)
+	reader.Discard(discard)
+	_, err := io.CopyN(utils.System.Stdout, reader, count)
+
+	log("Finished copying bytes for table with oid %d", *oid)
+	if err != nil {
+		logger.Fatal(nil, "Segment %d: Error copying table with oid %d: %s", *content, *oid, err.Error())
+	}
+
+}
+
+/*
+ * Shared helper functions
+ */
+
+func log(s string, v ...interface{}) {
+	s = fmt.Sprintf("Segment %d: %s", *content, s)
+	logger.Verbose(s, v...)
 }

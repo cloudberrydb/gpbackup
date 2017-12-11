@@ -70,20 +70,11 @@ var _ = Describe("backup/data tests", func() {
 			filename := "<SEG_DATA_DIR>/backups/20170101/20170101010101/gpbackup_<SEGID>_20170101010101_3456"
 			backup.CopyTableOut(connection, testTable, filename)
 		})
-		It("will back up a table to a single file with compression", func() {
-			backup.SetSingleDataFile(true)
-			utils.SetCompressionParameters(true, utils.Compression{Name: "gzip", CompressCommand: "gzip -c -1", DecompressCommand: "gzip -d -c", Extension: ".gz"})
-			testTable := backup.Relation{SchemaOid: 2345, Oid: 3456, Schema: "public", Name: "foo", DependsUpon: nil, Inherits: nil}
-			execStr := regexp.QuoteMeta("COPY public.foo TO PROGRAM 'set -o pipefail; $GPHOME/bin/gpbackup_helper --oid=3456 --toc-file=<SEG_DATA_DIR>/gpbackup_<SEGID>_20170101010101_toc.yaml | gzip -c -1 >> <SEG_DATA_DIR>/backups/20170101/20170101010101/gpbackup_<SEGID>_20170101010101.gz' WITH CSV DELIMITER ',' ON SEGMENT;")
-			mock.ExpectExec(execStr).WillReturnResult(sqlmock.NewResult(10, 0))
-			filename := "<SEG_DATA_DIR>/backups/20170101/20170101010101/gpbackup_<SEGID>_20170101010101.gz"
-			backup.CopyTableOut(connection, testTable, filename)
-		})
-		It("will back up a table to a single file without compression", func() {
+		It("will back up a table to a single file", func() {
 			backup.SetSingleDataFile(true)
 			utils.SetCompressionParameters(false, utils.Compression{})
 			testTable := backup.Relation{SchemaOid: 2345, Oid: 3456, Schema: "public", Name: "foo", DependsUpon: nil, Inherits: nil}
-			execStr := regexp.QuoteMeta("COPY public.foo TO PROGRAM '$GPHOME/bin/gpbackup_helper --oid=3456 --toc-file=<SEG_DATA_DIR>/gpbackup_<SEGID>_20170101010101_toc.yaml >> <SEG_DATA_DIR>/backups/20170101/20170101010101/gpbackup_<SEGID>_20170101010101' WITH CSV DELIMITER ',' ON SEGMENT;")
+			execStr := regexp.QuoteMeta("COPY public.foo TO PROGRAM '$GPHOME/bin/gpbackup_helper --oid=3456 --toc-file=<SEG_DATA_DIR>/gpbackup_<SEGID>_20170101010101_toc.yaml --content=<SEGID> >> <SEG_DATA_DIR>/backups/20170101/20170101010101/gpbackup_<SEGID>_20170101010101' WITH CSV DELIMITER ',' ON SEGMENT;")
 			mock.ExpectExec(execStr).WillReturnResult(sqlmock.NewResult(10, 0))
 			filename := "<SEG_DATA_DIR>/backups/20170101/20170101010101/gpbackup_<SEGID>_20170101010101"
 			backup.CopyTableOut(connection, testTable, filename)

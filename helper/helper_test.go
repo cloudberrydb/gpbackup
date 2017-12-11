@@ -13,7 +13,6 @@ import (
 )
 
 var _ = Describe("helper/helper", func() {
-	var stdout *gbytes.Buffer
 	var stdinRead, stdinWrite *os.File
 	var tocFileRead *os.File
 	BeforeEach(func() {
@@ -96,6 +95,26 @@ dataentries:
 				startByte, endByte := helper.GetBoundsForTable(toc)
 				Expect(startByte).To(Equal(int64(10)))
 				Expect(endByte).To(Equal(int64(15)))
+			})
+		})
+		Describe("CopyByteRange", func() {
+			BeforeEach(func() {
+				helper.SetContent(1)
+				helper.SetOid(3)
+			})
+			It("can copy a byte range without seeking", func() {
+				fmt.Fprintln(stdinWrite, "some text")
+				stdinWrite.Close()
+				helper.CopyByteRange(0, 5)
+				Expect(logfile).To(gbytes.Say("Copying bytes for table with oid 3; discarding next 0 bytes, copying 5 bytes"))
+				Expect(stdout).To(gbytes.Say("some "))
+			})
+			It("can copy a byte range with seeking", func() {
+				fmt.Fprintln(stdinWrite, "some text")
+				stdinWrite.Close()
+				helper.CopyByteRange(3, 5)
+				Expect(logfile).To(gbytes.Say("Copying bytes for table with oid 3; discarding next 3 bytes, copying 2 bytes"))
+				Expect(stdout).To(gbytes.Say("e "))
 			})
 		})
 	})
