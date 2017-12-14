@@ -84,9 +84,9 @@ func DoBackup() {
 		if isTableFiltered {
 			backupTablePredata(metadataTables, tableDefs)
 		} else {
-			backupGlobal(objectCounts)
-			backupPredata(metadataTables, tableDefs, objectCounts)
-			backupPostdata(objectCounts)
+			backupGlobal()
+			backupPredata(metadataTables, tableDefs)
+			backupPostdata()
 		}
 	} else {
 		backupSessionGUCs()
@@ -104,43 +104,43 @@ func DoBackup() {
 	connection.Commit()
 }
 
-func backupGlobal(objectCounts map[string]int) {
+func backupGlobal() {
 	globalFilename := globalCluster.GetGlobalFilePath()
 	logger.Info("Writing global database metadata to %s", globalFilename)
 	globalFile := utils.NewFileWithByteCountFromFile(globalFilename)
 	defer globalFile.Close()
 
 	BackupSessionGUCs(globalFile)
-	BackupTablespaces(globalFile, objectCounts)
+	BackupTablespaces(globalFile)
 	BackupCreateDatabase(globalFile)
-	BackupDatabaseGUCs(globalFile, objectCounts)
+	BackupDatabaseGUCs(globalFile)
 
 	if len(includeSchemas) == 0 {
-		BackupResourceQueues(globalFile, objectCounts)
+		BackupResourceQueues(globalFile)
 		if connection.Version.AtLeast("5") {
-			BackupResourceGroups(globalFile, objectCounts)
+			BackupResourceGroups(globalFile)
 		}
-		BackupRoles(globalFile, objectCounts)
+		BackupRoles(globalFile)
 		BackupRoleGrants(globalFile)
 	}
 	logger.Info("Global database metadata backup complete")
 }
 
-func backupPredata(tables []Relation, tableDefs map[uint32]TableDefinition, objectCounts map[string]int) {
+func backupPredata(tables []Relation, tableDefs map[uint32]TableDefinition) {
 	predataFilename := globalCluster.GetPredataFilePath()
 	logger.Info("Writing pre-data metadata to %s", predataFilename)
 	predataFile := utils.NewFileWithByteCountFromFile(predataFilename)
 	defer predataFile.Close()
 
 	BackupSessionGUCs(predataFile)
-	BackupSchemas(predataFile, objectCounts)
+	BackupSchemas(predataFile)
 
 	procLangs := GetProceduralLanguages(connection)
-	langFuncs, otherFuncs, functionMetadata := RetrieveFunctions(objectCounts, procLangs)
-	types, typeMetadata, funcInfoMap := RetrieveTypes(objectCounts)
+	langFuncs, otherFuncs, functionMetadata := RetrieveFunctions(procLangs)
+	types, typeMetadata, funcInfoMap := RetrieveTypes()
 
 	if len(includeSchemas) == 0 {
-		BackupProceduralLanguages(predataFile, objectCounts, procLangs, langFuncs, functionMetadata, funcInfoMap)
+		BackupProceduralLanguages(predataFile, procLangs, langFuncs, functionMetadata, funcInfoMap)
 	}
 
 	BackupShellTypes(predataFile, types)
@@ -150,7 +150,7 @@ func backupPredata(tables []Relation, tableDefs map[uint32]TableDefinition, obje
 
 	relationMetadata := GetMetadataForObjectType(connection, TYPE_RELATION)
 	sequences := GetAllSequences(connection)
-	BackupCreateSequences(predataFile, objectCounts, sequences, relationMetadata)
+	BackupCreateSequences(predataFile, sequences, relationMetadata)
 
 	constraints, conMetadata := RetrieveConstraints()
 
@@ -158,26 +158,26 @@ func backupPredata(tables []Relation, tableDefs map[uint32]TableDefinition, obje
 	BackupAlterSequences(predataFile, sequences)
 
 	if len(includeSchemas) == 0 {
-		BackupProtocols(predataFile, objectCounts, funcInfoMap)
+		BackupProtocols(predataFile, funcInfoMap)
 	}
 
 	if connection.Version.AtLeast("5") {
-		BackupTSParsers(predataFile, objectCounts)
-		BackupTSTemplates(predataFile, objectCounts)
-		BackupTSDictionaries(predataFile, objectCounts)
-		BackupTSConfigurations(predataFile, objectCounts)
+		BackupTSParsers(predataFile)
+		BackupTSTemplates(predataFile)
+		BackupTSDictionaries(predataFile)
+		BackupTSConfigurations(predataFile)
 	}
 
-	BackupOperators(predataFile, objectCounts)
+	BackupOperators(predataFile)
 	if connection.Version.AtLeast("5") {
-		BackupOperatorFamilies(predataFile, objectCounts)
+		BackupOperatorFamilies(predataFile)
 	}
-	BackupOperatorClasses(predataFile, objectCounts)
+	BackupOperatorClasses(predataFile)
 
-	BackupConversions(predataFile, objectCounts)
-	BackupAggregates(predataFile, objectCounts, funcInfoMap)
-	BackupCasts(predataFile, objectCounts)
-	BackupViews(predataFile, objectCounts, relationMetadata)
+	BackupConversions(predataFile)
+	BackupAggregates(predataFile, funcInfoMap)
+	BackupCasts(predataFile)
+	BackupViews(predataFile, relationMetadata)
 	BackupConstraints(predataFile, constraints, conMetadata)
 	logger.Info("Pre-data metadata backup complete")
 }
@@ -216,16 +216,16 @@ func backupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
 	logger.Info("Data backup complete")
 }
 
-func backupPostdata(objectCounts map[string]int) {
+func backupPostdata() {
 	postdataFilename := globalCluster.GetPostdataFilePath()
 	logger.Info("Writing post-data metadata to %s", postdataFilename)
 	postdataFile := utils.NewFileWithByteCountFromFile(postdataFilename)
 	defer postdataFile.Close()
 
 	BackupSessionGUCs(postdataFile)
-	BackupIndexes(postdataFile, objectCounts)
-	BackupRules(postdataFile, objectCounts)
-	BackupTriggers(postdataFile, objectCounts)
+	BackupIndexes(postdataFile)
+	BackupRules(postdataFile)
+	BackupTriggers(postdataFile)
 	logger.Info("Post-data metadata backup complete")
 }
 

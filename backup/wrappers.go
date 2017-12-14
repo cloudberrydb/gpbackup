@@ -98,7 +98,7 @@ func RetrieveAndProcessTables() ([]Relation, []Relation, map[uint32]TableDefinit
 	return metadataTables, dataTables, tableDefs
 }
 
-func RetrieveFunctions(objectCounts map[string]int, procLangs []ProceduralLanguage) ([]Function, []Function, MetadataMap) {
+func RetrieveFunctions(procLangs []ProceduralLanguage) ([]Function, []Function, MetadataMap) {
 	logger.Verbose("Retrieving function information")
 	functions := GetFunctions(connection)
 	objectCounts["Functions"] = len(functions)
@@ -108,7 +108,7 @@ func RetrieveFunctions(objectCounts map[string]int, procLangs []ProceduralLangua
 	return langFuncs, otherFuncs, functionMetadata
 }
 
-func RetrieveTypes(objectCounts map[string]int) ([]Type, MetadataMap, map[uint32]FunctionInfo) {
+func RetrieveTypes() ([]Type, MetadataMap, map[uint32]FunctionInfo) {
 	logger.Verbose("Retrieving type information")
 	shells := GetShellTypes(connection)
 	bases := GetBaseTypes(connection)
@@ -155,7 +155,7 @@ func BackupSessionGUCs(postdataFile *utils.FileWithByteCount) {
  * Global metadata wrapper functions
  */
 
-func BackupTablespaces(globalFile *utils.FileWithByteCount, objectCounts map[string]int) {
+func BackupTablespaces(globalFile *utils.FileWithByteCount) {
 	logger.Verbose("Writing CREATE TABLESPACE statements to global file")
 	tablespaces := GetTablespaces(connection)
 	objectCounts["Tablespaces"] = len(tablespaces)
@@ -170,14 +170,14 @@ func BackupCreateDatabase(globalFile *utils.FileWithByteCount) {
 	PrintCreateDatabaseStatement(globalFile, globalTOC, db, dbMetadata)
 }
 
-func BackupDatabaseGUCs(globalFile *utils.FileWithByteCount, objectCounts map[string]int) {
+func BackupDatabaseGUCs(globalFile *utils.FileWithByteCount) {
 	logger.Verbose("Writing database GUCs to global file")
 	databaseGucs := GetDatabaseGUCs(connection)
 	objectCounts["Database GUCs"] = len(databaseGucs)
 	PrintDatabaseGUCs(globalFile, globalTOC, databaseGucs, connection.DBName)
 }
 
-func BackupResourceQueues(globalFile *utils.FileWithByteCount, objectCounts map[string]int) {
+func BackupResourceQueues(globalFile *utils.FileWithByteCount) {
 	logger.Verbose("Writing CREATE RESOURCE QUEUE statements to global file")
 	resQueues := GetResourceQueues(connection)
 	objectCounts["Resource Queues"] = len(resQueues)
@@ -185,7 +185,7 @@ func BackupResourceQueues(globalFile *utils.FileWithByteCount, objectCounts map[
 	PrintCreateResourceQueueStatements(globalFile, globalTOC, resQueues, resQueueMetadata)
 }
 
-func BackupResourceGroups(globalFile *utils.FileWithByteCount, objectCounts map[string]int) {
+func BackupResourceGroups(globalFile *utils.FileWithByteCount) {
 	logger.Verbose("Writing CREATE RESOURCE GROUP statements to global file")
 	resGroups := GetResourceGroups(connection)
 	objectCounts["Resource Groups"] = len(resGroups)
@@ -193,7 +193,7 @@ func BackupResourceGroups(globalFile *utils.FileWithByteCount, objectCounts map[
 	PrintCreateResourceGroupStatements(globalFile, globalTOC, resGroups, resGroupMetadata)
 }
 
-func BackupRoles(globalFile *utils.FileWithByteCount, objectCounts map[string]int) {
+func BackupRoles(globalFile *utils.FileWithByteCount) {
 	logger.Verbose("Writing CREATE ROLE statements to global file")
 	roles := GetRoles(connection)
 	objectCounts["Roles"] = len(roles)
@@ -211,7 +211,7 @@ func BackupRoleGrants(globalFile *utils.FileWithByteCount) {
  * Predata wrapper functions
  */
 
-func BackupSchemas(predataFile *utils.FileWithByteCount, objectCounts map[string]int) {
+func BackupSchemas(predataFile *utils.FileWithByteCount) {
 	logger.Verbose("Writing CREATE SCHEMA statements to predata file")
 	schemas := GetAllUserSchemas(connection)
 	objectCounts["Schemas"] = len(schemas)
@@ -219,7 +219,7 @@ func BackupSchemas(predataFile *utils.FileWithByteCount, objectCounts map[string
 	PrintCreateSchemaStatements(predataFile, globalTOC, schemas, schemaMetadata)
 }
 
-func BackupProceduralLanguages(predataFile *utils.FileWithByteCount, objectCounts map[string]int, procLangs []ProceduralLanguage, langFuncs []Function, functionMetadata MetadataMap, funcInfoMap map[uint32]FunctionInfo) {
+func BackupProceduralLanguages(predataFile *utils.FileWithByteCount, procLangs []ProceduralLanguage, langFuncs []Function, functionMetadata MetadataMap, funcInfoMap map[uint32]FunctionInfo) {
 	logger.Verbose("Writing CREATE PROCEDURAL LANGUAGE statements to predata file")
 	objectCounts["Procedural Languages"] = len(procLangs)
 	for _, langFunc := range langFuncs {
@@ -241,7 +241,7 @@ func BackupEnumTypes(predataFile *utils.FileWithByteCount, typeMetadata Metadata
 	PrintCreateEnumTypeStatements(predataFile, globalTOC, enums, typeMetadata)
 }
 
-func BackupCreateSequences(predataFile *utils.FileWithByteCount, objectCounts map[string]int, sequences []Sequence, relationMetadata MetadataMap) {
+func BackupCreateSequences(predataFile *utils.FileWithByteCount, sequences []Sequence, relationMetadata MetadataMap) {
 	logger.Verbose("Writing CREATE SEQUENCE statements to predata file")
 	objectCounts["Sequences"] = len(sequences)
 	PrintCreateSequenceStatements(predataFile, globalTOC, sequences, relationMetadata)
@@ -286,7 +286,7 @@ func BackupAlterSequences(predataFile *utils.FileWithByteCount, sequences []Sequ
 	PrintAlterSequenceStatements(predataFile, globalTOC, sequences, sequenceColumnOwners)
 }
 
-func BackupProtocols(predataFile *utils.FileWithByteCount, objectCounts map[string]int, funcInfoMap map[uint32]FunctionInfo) {
+func BackupProtocols(predataFile *utils.FileWithByteCount, funcInfoMap map[uint32]FunctionInfo) {
 	logger.Verbose("Writing CREATE PROTOCOL statements to predata file")
 	protocols := GetExternalProtocols(connection)
 	objectCounts["Protocols"] = len(protocols)
@@ -294,7 +294,7 @@ func BackupProtocols(predataFile *utils.FileWithByteCount, objectCounts map[stri
 	PrintCreateExternalProtocolStatements(predataFile, globalTOC, protocols, funcInfoMap, protoMetadata)
 }
 
-func BackupTSParsers(predataFile *utils.FileWithByteCount, objectCounts map[string]int) {
+func BackupTSParsers(predataFile *utils.FileWithByteCount) {
 	logger.Verbose("Writing CREATE TEXT SEARCH PARSER statements to predata file")
 	parsers := GetTextSearchParsers(connection)
 	objectCounts["Text Search Parsers"] = len(parsers)
@@ -302,7 +302,7 @@ func BackupTSParsers(predataFile *utils.FileWithByteCount, objectCounts map[stri
 	PrintCreateTextSearchParserStatements(predataFile, globalTOC, parsers, parserMetadata)
 }
 
-func BackupTSTemplates(predataFile *utils.FileWithByteCount, objectCounts map[string]int) {
+func BackupTSTemplates(predataFile *utils.FileWithByteCount) {
 	logger.Verbose("Writing CREATE TEXT SEARCH TEMPLATE statements to predata file")
 	templates := GetTextSearchTemplates(connection)
 	objectCounts["Text Search Templates"] = len(templates)
@@ -310,7 +310,7 @@ func BackupTSTemplates(predataFile *utils.FileWithByteCount, objectCounts map[st
 	PrintCreateTextSearchTemplateStatements(predataFile, globalTOC, templates, templateMetadata)
 }
 
-func BackupTSDictionaries(predataFile *utils.FileWithByteCount, objectCounts map[string]int) {
+func BackupTSDictionaries(predataFile *utils.FileWithByteCount) {
 	logger.Verbose("Writing CREATE TEXT SEARCH DICTIONARY statements to predata file")
 	dictionaries := GetTextSearchDictionaries(connection)
 	objectCounts["Text Search Dictionaries"] = len(dictionaries)
@@ -318,7 +318,7 @@ func BackupTSDictionaries(predataFile *utils.FileWithByteCount, objectCounts map
 	PrintCreateTextSearchDictionaryStatements(predataFile, globalTOC, dictionaries, dictionaryMetadata)
 }
 
-func BackupTSConfigurations(predataFile *utils.FileWithByteCount, objectCounts map[string]int) {
+func BackupTSConfigurations(predataFile *utils.FileWithByteCount) {
 	logger.Verbose("Writing CREATE TEXT SEARCH CONFIGURATION statements to predata file")
 	configurations := GetTextSearchConfigurations(connection)
 	objectCounts["Text Search Configurations"] = len(configurations)
@@ -326,7 +326,7 @@ func BackupTSConfigurations(predataFile *utils.FileWithByteCount, objectCounts m
 	PrintCreateTextSearchConfigurationStatements(predataFile, globalTOC, configurations, configurationMetadata)
 }
 
-func BackupConversions(predataFile *utils.FileWithByteCount, objectCounts map[string]int) {
+func BackupConversions(predataFile *utils.FileWithByteCount) {
 	logger.Verbose("Writing CREATE CONVERSION statements to predata file")
 	conversions := GetConversions(connection)
 	objectCounts["Conversions"] = len(conversions)
@@ -334,7 +334,7 @@ func BackupConversions(predataFile *utils.FileWithByteCount, objectCounts map[st
 	PrintCreateConversionStatements(predataFile, globalTOC, conversions, convMetadata)
 }
 
-func BackupOperators(predataFile *utils.FileWithByteCount, objectCounts map[string]int) {
+func BackupOperators(predataFile *utils.FileWithByteCount) {
 	logger.Verbose("Writing CREATE OPERATOR statements to predata file")
 	operators := GetOperators(connection)
 	objectCounts["Operators"] = len(operators)
@@ -342,7 +342,7 @@ func BackupOperators(predataFile *utils.FileWithByteCount, objectCounts map[stri
 	PrintCreateOperatorStatements(predataFile, globalTOC, operators, operatorMetadata)
 }
 
-func BackupOperatorFamilies(predataFile *utils.FileWithByteCount, objectCounts map[string]int) {
+func BackupOperatorFamilies(predataFile *utils.FileWithByteCount) {
 	logger.Verbose("Writing CREATE OPERATOR FAMILY statements to predata file")
 	operatorFamilies := GetOperatorFamilies(connection)
 	objectCounts["Operator Families"] = len(operatorFamilies)
@@ -350,7 +350,7 @@ func BackupOperatorFamilies(predataFile *utils.FileWithByteCount, objectCounts m
 	PrintCreateOperatorFamilyStatements(predataFile, globalTOC, operatorFamilies, operatorFamilyMetadata)
 }
 
-func BackupOperatorClasses(predataFile *utils.FileWithByteCount, objectCounts map[string]int) {
+func BackupOperatorClasses(predataFile *utils.FileWithByteCount) {
 	logger.Verbose("Writing CREATE OPERATOR CLASS statements to predata file")
 	operatorClasses := GetOperatorClasses(connection)
 	objectCounts["Operator Classes"] = len(operatorClasses)
@@ -358,7 +358,7 @@ func BackupOperatorClasses(predataFile *utils.FileWithByteCount, objectCounts ma
 	PrintCreateOperatorClassStatements(predataFile, globalTOC, operatorClasses, operatorClassMetadata)
 }
 
-func BackupAggregates(predataFile *utils.FileWithByteCount, objectCounts map[string]int, funcInfoMap map[uint32]FunctionInfo) {
+func BackupAggregates(predataFile *utils.FileWithByteCount, funcInfoMap map[uint32]FunctionInfo) {
 	logger.Verbose("Writing CREATE AGGREGATE statements to predata file")
 	aggregates := GetAggregates(connection)
 	objectCounts["Aggregates"] = len(aggregates)
@@ -366,7 +366,7 @@ func BackupAggregates(predataFile *utils.FileWithByteCount, objectCounts map[str
 	PrintCreateAggregateStatements(predataFile, globalTOC, aggregates, funcInfoMap, aggMetadata)
 }
 
-func BackupCasts(predataFile *utils.FileWithByteCount, objectCounts map[string]int) {
+func BackupCasts(predataFile *utils.FileWithByteCount) {
 	logger.Verbose("Writing CREATE CAST statements to predata file")
 	casts := GetCasts(connection)
 	objectCounts["Casts"] = len(casts)
@@ -374,7 +374,7 @@ func BackupCasts(predataFile *utils.FileWithByteCount, objectCounts map[string]i
 	PrintCreateCastStatements(predataFile, globalTOC, casts, castMetadata)
 }
 
-func BackupViews(predataFile *utils.FileWithByteCount, objectCounts map[string]int, relationMetadata MetadataMap) {
+func BackupViews(predataFile *utils.FileWithByteCount, relationMetadata MetadataMap) {
 	logger.Verbose("Writing CREATE VIEW statements to predata file")
 	views := GetViews(connection)
 	objectCounts["Views"] = len(views)
@@ -392,7 +392,7 @@ func BackupConstraints(predataFile *utils.FileWithByteCount, constraints []Const
  * Postdata wrapper functions
  */
 
-func BackupIndexes(postdataFile *utils.FileWithByteCount, objectCounts map[string]int) {
+func BackupIndexes(postdataFile *utils.FileWithByteCount) {
 	logger.Verbose("Writing CREATE INDEX statements to postdata file")
 	indexNameMap := ConstructImplicitIndexNames(connection)
 	indexes := GetIndexes(connection, indexNameMap)
@@ -401,7 +401,7 @@ func BackupIndexes(postdataFile *utils.FileWithByteCount, objectCounts map[strin
 	PrintCreateIndexStatements(postdataFile, globalTOC, indexes, indexMetadata)
 }
 
-func BackupRules(postdataFile *utils.FileWithByteCount, objectCounts map[string]int) {
+func BackupRules(postdataFile *utils.FileWithByteCount) {
 	logger.Verbose("Writing CREATE RULE statements to postdata file")
 	rules := GetRules(connection)
 	objectCounts["Rules"] = len(rules)
@@ -409,7 +409,7 @@ func BackupRules(postdataFile *utils.FileWithByteCount, objectCounts map[string]
 	PrintCreateRuleStatements(postdataFile, globalTOC, rules, ruleMetadata)
 }
 
-func BackupTriggers(postdataFile *utils.FileWithByteCount, objectCounts map[string]int) {
+func BackupTriggers(postdataFile *utils.FileWithByteCount) {
 	logger.Verbose("Writing CREATE TRIGGER statements to postdata file")
 	triggers := GetTriggers(connection)
 	objectCounts["Triggers"] = len(triggers)
