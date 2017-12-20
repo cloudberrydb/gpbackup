@@ -73,7 +73,7 @@ JOIN pg_namespace n
 WHERE %s
 %s
 AND relkind = 'r'
-ORDER BY n.nspname, c.relname;`, tableAndSchemaFilterClause(), childPartitionFilter)
+ORDER BY c.oid;`, tableAndSchemaFilterClause(), childPartitionFilter)
 
 	results := make([]Relation, 0)
 	err := connection.Select(&results, query)
@@ -147,7 +147,7 @@ AND (
 	%s
 )
 AND relkind = 'r'
-ORDER BY n.nspname, c.relname;`, SchemaFilterClause("n"), oidStr, oidStr, oidStr, childPartitionFilter)
+ORDER BY c.oid;`, SchemaFilterClause("n"), oidStr, oidStr, oidStr, childPartitionFilter)
 
 	results := make([]Relation, 0)
 	err := connection.Select(&results, query)
