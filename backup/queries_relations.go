@@ -519,12 +519,11 @@ ORDER BY v2.oid, referencedobject;`, SchemaFilterClause("n"))
 
 func LockTables(connection *utils.DBConn, tables []Relation) {
 	logger.Info("Acquiring ACCESS SHARE locks on tables")
-	progressBar := utils.NewProgressBar(len(tables), "Locks acquired: ", true)
+	progressBar := utils.NewProgressBar(len(tables), "Locks acquired: ", utils.PB_VERBOSE)
 	progressBar.Start()
 	for _, table := range tables {
 		connection.MustExec(fmt.Sprintf("LOCK TABLE %s IN ACCESS SHARE MODE", table.ToString()))
 		progressBar.Increment()
 	}
 	progressBar.Finish()
-	logger.Verbose("All table locks acquired")
 }
