@@ -146,7 +146,7 @@ Backup Status: %s
 }
 
 func GetBackupTimeInfo(timestamp string, endTime time.Time) (string, string, string) {
-	startTime, _ := time.ParseInLocation("20060102150405", timestamp, time.Local)
+	startTime, _ := time.ParseInLocation("20060102150405", timestamp, System.Local)
 	duration := reformatDuration(endTime.Sub(startTime))
 	startTimestamp := startTime.Format("2006-01-02 15:04:05")
 	endTimestamp := endTime.Format("2006-01-02 15:04:05")

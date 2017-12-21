@@ -87,6 +87,7 @@ type SystemFunctions struct {
 	Stat          func(name string) (os.FileInfo, error)
 	Stdin         ReadCloserAt
 	Stdout        io.WriteCloser
+	Local         *time.Location
 }
 
 func InitializeSystemFunctions() *SystemFunctions {
@@ -106,5 +107,6 @@ func InitializeSystemFunctions() *SystemFunctions {
 		Stat:          os.Stat,
 		Stdin:         os.Stdin,
 		Stdout:        os.Stdout,
+		Local:         time.Local,
 	}
 }
