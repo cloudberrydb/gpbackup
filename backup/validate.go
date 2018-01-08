@@ -74,10 +74,10 @@ func ValidateFlagCombinations() {
 
 	utils.CheckExclusiveFlags("debug", "quiet", "verbose")
 	utils.CheckExclusiveFlags("data-only", "metadata-only")
-	utils.CheckExclusiveFlags("include-schema", "include-table-file")
+	utils.CheckExclusiveFlags("include-schema", "include-table", "include-table-file")
 	utils.CheckExclusiveFlags("exclude-schema", "include-schema")
-	utils.CheckExclusiveFlags("exclude-schema", "exclude-table-file", "include-table-file")
-	utils.CheckExclusiveFlags("exclude-table-file", "leaf-partition-data")
+	utils.CheckExclusiveFlags("exclude-schema", "exclude-table", "include-table", "exclude-table-file", "include-table-file")
+	utils.CheckExclusiveFlags("exclude-table", "exclude-table-file", "leaf-partition-data")
 	utils.CheckExclusiveFlags("metadata-only", "leaf-partition-data")
 	utils.CheckExclusiveFlags("metadata-only", "single-data-file")
 	utils.CheckExclusiveFlags("no-compression", "compression-level")
