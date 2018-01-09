@@ -36,7 +36,11 @@ var _ = Describe("backup integration tests", func() {
 	})
 	Describe("GetDatabaseInfo", func() {
 		It("returns a database info struct", func() {
-			testutils.AssertQueryRuns(connection, "CREATE TABLESPACE test_tablespace FILESPACE test_filespace")
+			if connection.Version.Before("6") {
+				testutils.AssertQueryRuns(connection, "CREATE TABLESPACE test_tablespace FILESPACE test_dir")
+			} else {
+				testutils.AssertQueryRuns(connection, "CREATE TABLESPACE test_tablespace LOCATION '/tmp/test_dir'")
+			}
 			defer testutils.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")
 
 			result := backup.GetDatabaseInfo(connection)
@@ -263,9 +267,15 @@ CREATEEXTTABLE (protocol='gphdfs', type='writable')`)
 	})
 	Describe("GetTablespaces", func() {
 		It("returns a tablespace", func() {
-			testutils.AssertQueryRuns(connection, "CREATE TABLESPACE test_tablespace FILESPACE test_filespace")
+			var expectedTablespace backup.Tablespace
+			if connection.Version.Before("6") {
+				testutils.AssertQueryRuns(connection, "CREATE TABLESPACE test_tablespace FILESPACE test_dir")
+				expectedTablespace = backup.Tablespace{Oid: 0, Tablespace: "test_tablespace", FileLocation: "test_dir"}
+			} else {
+				testutils.AssertQueryRuns(connection, "CREATE TABLESPACE test_tablespace LOCATION '/tmp/test_dir'")
+				expectedTablespace = backup.Tablespace{Oid: 0, Tablespace: "test_tablespace", FileLocation: "'/tmp/test_dir'"}
+			}
 			defer testutils.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")
-			expectedTablespace := backup.Tablespace{Oid: 0, Tablespace: "test_tablespace", Filespace: "test_filespace"}
 
 			resultTablespaces := backup.GetTablespaces(connection)
 

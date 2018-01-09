@@ -57,7 +57,11 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatch(&resultMetadata, &indexMetadata)
 		})
 		It("creates an index in a non-default tablespace", func() {
-			testutils.AssertQueryRuns(connection, "CREATE TABLESPACE test_tablespace FILESPACE test_filespace")
+			if connection.Version.Before("6") {
+				testutils.AssertQueryRuns(connection, "CREATE TABLESPACE test_tablespace FILESPACE test_dir")
+			} else {
+				testutils.AssertQueryRuns(connection, "CREATE TABLESPACE test_tablespace LOCATION '/tmp/test_dir'")
+			}
 			defer testutils.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")
 			indexes := []backup.QuerySimpleDefinition{{Oid: 0, Name: "index1", OwningSchema: "public", OwningTable: "testtable", Tablespace: "test_tablespace", Def: "CREATE INDEX index1 ON testtable USING btree (i)"}}
 			backup.PrintCreateIndexStatements(backupfile, toc, indexes, indexMetadataMap)

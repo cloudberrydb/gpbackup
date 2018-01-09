@@ -3,6 +3,7 @@ package integration
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"testing"
 
 	"os/exec"
@@ -50,8 +51,15 @@ var _ = BeforeSuite(func() {
 	testutils.AssertQueryRuns(connection, "DROP PROTOCOL IF EXISTS gphdfs")
 	testutils.AssertQueryRuns(connection, `SET standard_conforming_strings TO "on"`)
 	segConfig := utils.GetSegmentConfiguration(connection)
-	cluster := utils.NewCluster(segConfig, "/tmp/test_filespace", "20170101010101", "gpseg")
-	setupTestFilespace(cluster)
+	cluster := utils.NewCluster(segConfig, "/tmp/test_dir", "20170101010101", "gpseg")
+	if connection.Version.Before("6") {
+		setupTestFilespace(cluster)
+	} else {
+		err := os.Mkdir("/tmp/test_dir", 0777)
+		if err != nil {
+			Fail(fmt.Sprintf("Could not create test directory: %s", err.Error()))
+		}
+	}
 })
 
 var _ = BeforeEach(func() {
@@ -63,7 +71,14 @@ var _ = BeforeEach(func() {
 
 var _ = AfterSuite(func() {
 	gexec.CleanupBuildArtifacts()
-	destroyTestFilespace()
+	if connection.Version.Before("6") {
+		destroyTestFilespace()
+	} else {
+		err := os.RemoveAll("/tmp/test_dir")
+		if err != nil {
+			Fail(fmt.Sprintf("Could not remove test directory: %s", err.Error()))
+		}
+	}
 	if connection != nil {
 		connection.Close()
 		err := exec.Command("dropdb", "testdb").Run()
@@ -79,9 +94,9 @@ var _ = AfterSuite(func() {
 func setupTestFilespace(cluster utils.Cluster) {
 	cluster.CreateBackupDirectoriesOnAllHosts()
 	// Construct a filespace config like the one that gpfilespace generates
-	filespaceConfigQuery := `COPY (SELECT hostname || ':' || dbid || ':/tmp/test_filespace/' || preferred_role || content FROM gp_segment_configuration AS subselect) TO '/tmp/temp_filespace_config';`
+	filespaceConfigQuery := `COPY (SELECT hostname || ':' || dbid || ':/tmp/test_dir/' || preferred_role || content FROM gp_segment_configuration AS subselect) TO '/tmp/temp_filespace_config';`
 	testutils.AssertQueryRuns(connection, filespaceConfigQuery)
-	out, err := exec.Command("sh", "-c", "echo \"filespace:test_filespace\" > /tmp/filespace_config").CombinedOutput()
+	out, err := exec.Command("sh", "-c", "echo \"filespace:test_dir\" > /tmp/filespace_config").CombinedOutput()
 	if err != nil {
 		Fail(fmt.Sprintf("Cannot create test filespace configuration: %s: %s", out, err.Error()))
 	}
@@ -94,19 +109,19 @@ func setupTestFilespace(cluster utils.Cluster) {
 	if err != nil {
 		Fail(fmt.Sprintf("Cannot create test filespace: %s: %s", out, err.Error()))
 	}
-	filespaceName := utils.SelectString(connection, "SELECT fsname AS string FROM pg_filespace WHERE fsname = 'test_filespace';")
-	if filespaceName != "test_filespace" {
-		Fail("Filespace test_filespace was not successfully created")
+	filespaceName := utils.SelectString(connection, "SELECT fsname AS string FROM pg_filespace WHERE fsname = 'test_dir';")
+	if filespaceName != "test_dir" {
+		Fail("Filespace test_dir was not successfully created")
 	}
 }
 
 func destroyTestFilespace() {
-	filespaceName := utils.SelectString(connection, "SELECT fsname AS string FROM pg_filespace WHERE fsname = 'test_filespace';")
-	if filespaceName != "test_filespace" {
+	filespaceName := utils.SelectString(connection, "SELECT fsname AS string FROM pg_filespace WHERE fsname = 'test_dir';")
+	if filespaceName != "test_dir" {
 		return
 	}
-	testutils.AssertQueryRuns(connection, "DROP FILESPACE test_filespace")
-	out, err := exec.Command("sh", "-c", "rm -rf /tmp/test_filespace /tmp/filespace_config /tmp/temp_filespace_config").CombinedOutput()
+	testutils.AssertQueryRuns(connection, "DROP FILESPACE test_dir")
+	out, err := exec.Command("sh", "-c", "rm -rf /tmp/test_dir /tmp/filespace_config /tmp/temp_filespace_config").CombinedOutput()
 	if err != nil {
 		Fail(fmt.Sprintf("Could not remove test filespace directory and configuration files: %s: %s", out, err.Error()))
 	}

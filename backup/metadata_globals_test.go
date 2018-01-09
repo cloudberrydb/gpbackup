@@ -280,7 +280,7 @@ ALTER ROLE "testRole2" DENY BETWEEN DAY 5 TIME '00:00:00' AND DAY 5 TIME '24:00:
 		})
 	})
 	Describe("PrintCreateTablespaceStatements", func() {
-		expectedTablespace := backup.Tablespace{Oid: 1, Tablespace: "test_tablespace", Filespace: "test_filespace"}
+		expectedTablespace := backup.Tablespace{Oid: 1, Tablespace: "test_tablespace", FileLocation: "test_filespace"}
 		It("prints a basic tablespace", func() {
 			emptyMetadataMap := backup.MetadataMap{}
 			backup.PrintCreateTablespaceStatements(backupfile, toc, []backup.Tablespace{expectedTablespace}, emptyMetadataMap)
@@ -290,9 +290,8 @@ ALTER ROLE "testRole2" DENY BETWEEN DAY 5 TIME '00:00:00' AND DAY 5 TIME '24:00:
 		It("prints a tablespace with privileges, an owner, and a comment", func() {
 			tablespaceMetadataMap := testutils.DefaultMetadataMap("TABLESPACE", true, true, true)
 			backup.PrintCreateTablespaceStatements(backupfile, toc, []backup.Tablespace{expectedTablespace}, tablespaceMetadataMap)
-			testutils.AssertBufferContents(toc.GlobalEntries, buffer, `CREATE TABLESPACE test_tablespace FILESPACE test_filespace;
-
-COMMENT ON TABLESPACE test_tablespace IS 'This is a tablespace comment.';
+			testutils.AssertBufferContents(toc.GlobalEntries, buffer, `CREATE TABLESPACE test_tablespace FILESPACE test_filespace;`,
+				`COMMENT ON TABLESPACE test_tablespace IS 'This is a tablespace comment.';
 
 
 ALTER TABLESPACE test_tablespace OWNER TO testrole;

@@ -154,7 +154,11 @@ SET SUBPARTITION TEMPLATE  ` + `
 		})
 		It("creates a table with a non-default tablespace", func() {
 			testTable = backup.BasicRelation("public", "testtable2")
-			testutils.AssertQueryRuns(connection, "CREATE TABLESPACE test_tablespace FILESPACE test_filespace")
+			if connection.Version.Before("6") {
+				testutils.AssertQueryRuns(connection, "CREATE TABLESPACE test_tablespace FILESPACE test_dir")
+			} else {
+				testutils.AssertQueryRuns(connection, "CREATE TABLESPACE test_tablespace LOCATION '/tmp/test_dir'")
+			}
 			defer testutils.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")
 			tableDef.TablespaceName = "test_tablespace"
 

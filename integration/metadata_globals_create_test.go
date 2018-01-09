@@ -8,6 +8,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("backup integration create statement tests", func() {
@@ -249,7 +250,14 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 	})
 	Describe("PrintCreateTablespaceStatements", func() {
-		expectedTablespace := backup.Tablespace{Oid: 1, Tablespace: "test_tablespace", Filespace: "test_filespace"}
+		expectedTablespace := backup.Tablespace{Oid: 1, Tablespace: "test_tablespace"}
+		BeforeEach(func() {
+			if connection.Version.Before("6") {
+				expectedTablespace.FileLocation = "test_dir"
+			} else {
+				expectedTablespace.FileLocation = "'/tmp/test_dir'"
+			}
+		})
 		It("creates a basic tablespace", func() {
 			numTablespaces := len(backup.GetTablespaces(connection))
 			emptyMetadataMap := backup.MetadataMap{}
@@ -274,8 +282,22 @@ var _ = Describe("backup integration create statement tests", func() {
 			tablespaceMetadata := tablespaceMetadataMap[1]
 			backup.PrintCreateTablespaceStatements(backupfile, toc, []backup.Tablespace{expectedTablespace}, tablespaceMetadataMap)
 
-			testutils.AssertQueryRuns(connection, buffer.String())
-			defer testutils.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")
+			if connection.Version.AtLeast("6") {
+				/*
+				 * In GPDB 6 and later, a CREATE TABLESPACE statement can't be run in a multi-command string
+				 * with other statements, so we execute it separately from the metadata statements.
+				 */
+				gbuffer := gbytes.BufferWithBytes([]byte(buffer.String()))
+				entries, _ := testutils.SliceBufferByEntries(toc.GlobalEntries, gbuffer)
+				Expect(len(entries)).To(Equal(2))
+				create, metadata := entries[0], entries[1]
+				testutils.AssertQueryRuns(connection, create)
+				defer testutils.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")
+				testutils.AssertQueryRuns(connection, metadata)
+			} else {
+				testutils.AssertQueryRuns(connection, buffer.String())
+				defer testutils.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")
+			}
 
 			resultTablespaces := backup.GetTablespaces(connection)
 			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_TABLESPACE)

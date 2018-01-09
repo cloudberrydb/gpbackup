@@ -100,7 +100,11 @@ PARTITION BY RANGE (date)
 			testutils.ExpectStructsToMatchExcluding(&index1, &results[0], "Oid")
 		})
 		It("returns a slice containing an index in a non-default tablespace", func() {
-			testutils.AssertQueryRuns(connection, "CREATE TABLESPACE test_tablespace FILESPACE test_filespace")
+			if connection.Version.Before("6") {
+				testutils.AssertQueryRuns(connection, "CREATE TABLESPACE test_tablespace FILESPACE test_dir")
+			} else {
+				testutils.AssertQueryRuns(connection, "CREATE TABLESPACE test_tablespace LOCATION '/tmp/test_dir'")
+			}
 			defer testutils.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")
 			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int, j int, k int)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")

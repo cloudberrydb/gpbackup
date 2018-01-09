@@ -554,7 +554,9 @@ func (cluster *Cluster) VerifyMetadataFilePaths(dataOnly bool, withStats bool) {
  */
 
 func GetSegmentConfiguration(connection *DBConn) []SegConfig {
-	query := `
+	query := ""
+	if connection.Version.Before("6") {
+		query = `
 SELECT
 	s.content as contentid,
 	s.hostname,
@@ -564,6 +566,16 @@ JOIN pg_filespace_entry e ON s.dbid = e.fsedbid
 JOIN pg_filespace f ON e.fsefsoid = f.oid
 WHERE s.role = 'p' AND f.fsname = 'pg_system'
 ORDER BY s.content;`
+	} else {
+		query = `
+SELECT
+	content as contentid,
+	hostname,
+	datadir
+FROM gp_segment_configuration
+WHERE role = 'p'
+ORDER BY content;`
+	}
 
 	results := make([]SegConfig, 0)
 	err := connection.Select(&results, query)
@@ -572,7 +584,12 @@ ORDER BY s.content;`
 }
 
 func GetSegPrefix(connection *DBConn) string {
-	query := "SELECT fselocation FROM pg_filespace_entry WHERE fsedbid = 1;"
+	query := ""
+	if connection.Version.Before("6") {
+		query = "SELECT fselocation FROM pg_filespace_entry WHERE fsedbid = 1;"
+	} else {
+		query = "SELECT datadir FROM gp_segment_configuration WHERE dbid = 1;"
+	}
 	result := ""
 	err := connection.Get(&result, query)
 	CheckError(err)

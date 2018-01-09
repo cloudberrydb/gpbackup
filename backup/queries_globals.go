@@ -277,21 +277,34 @@ ORDER BY roleid, member;`
 }
 
 type Tablespace struct {
-	Oid        uint32
-	Tablespace string
-	Filespace  string
+	Oid          uint32
+	Tablespace   string
+	FileLocation string // FILESPACE in 4.3 and 5, LOCATION in 6 and later
 }
 
 func GetTablespaces(connection *utils.DBConn) []Tablespace {
-	query := `
+	query := ""
+	if connection.Version.Before("6") {
+		query = `
 SELECT
 	t.oid,
-	quote_ident(spcname) AS tablespace,
-	quote_ident(fsname) AS filespace
+	quote_ident(t.spcname) AS tablespace,
+	quote_ident(f.fsname) AS filelocation
 FROM pg_tablespace t
 JOIN pg_filespace f
 ON t.spcfsoid = f.oid
-WHERE fsname != 'pg_system';`
+WHERE spcname != 'pg_default'
+AND spcname != 'pg_global';`
+	} else {
+		query = `
+SELECT
+	oid,
+	quote_ident(spcname) AS tablespace,
+	'''' || spclocation || '''' AS filelocation
+FROM pg_tablespace
+WHERE spcname != 'pg_default'
+AND spcname != 'pg_global';`
+	}
 
 	results := make([]Tablespace, 0)
 	err := connection.Select(&results, query)

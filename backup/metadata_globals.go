@@ -262,8 +262,18 @@ func PrintRoleMembershipStatements(metadataFile *utils.FileWithByteCount, toc *u
 func PrintCreateTablespaceStatements(metadataFile *utils.FileWithByteCount, toc *utils.TOC, tablespaces []Tablespace, tablespaceMetadata MetadataMap) {
 	for _, tablespace := range tablespaces {
 		start := metadataFile.ByteCount
-		metadataFile.MustPrintf("\n\nCREATE TABLESPACE %s FILESPACE %s;", tablespace.Tablespace, tablespace.Filespace)
-		PrintObjectMetadata(metadataFile, tablespaceMetadata[tablespace.Oid], tablespace.Tablespace, "TABLESPACE")
+		fileLocStr := ""
+		if connection.Version.Before("6") {
+			fileLocStr = "FILESPACE"
+		} else {
+			fileLocStr = "LOCATION"
+		}
+		metadataFile.MustPrintf("\n\nCREATE TABLESPACE %s %s %s;", tablespace.Tablespace, fileLocStr, tablespace.FileLocation)
 		toc.AddGlobalEntry("", tablespace.Tablespace, "TABLESPACE", start, metadataFile)
+		start = metadataFile.ByteCount
+		PrintObjectMetadata(metadataFile, tablespaceMetadata[tablespace.Oid], tablespace.Tablespace, "TABLESPACE")
+		if metadataFile.ByteCount > start {
+			toc.AddGlobalEntry("", tablespace.Tablespace, "TABLESPACE METADATA", start, metadataFile)
+		}
 	}
 }
