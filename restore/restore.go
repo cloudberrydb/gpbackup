@@ -145,13 +145,18 @@ func restorePredata(metadataFilename string) {
 }
 
 func restoreData(gucStatements []utils.StatementWithType) {
+	filteredMasterDataEntries := globalTOC.GetDataEntriesMatching(includeSchemas, includeTables)
 	if backupConfig.SingleDataFile {
 		globalCluster.CopySegmentTOCs()
 		defer globalCluster.CleanUpSegmentTOCs()
+		globalCluster.CreateSegmentPipesOnAllHosts()
+		defer globalCluster.CleanUpSegmentPipesOnAllHosts()
+		globalCluster.WriteOidListToSegments(filteredMasterDataEntries)
+		defer globalCluster.CleanUpHelperFilesOnAllHosts()
+		globalCluster.WriteToSegmentPipes()
 	}
 	logger.Info("Restoring data")
 
-	filteredMasterDataEntries := globalTOC.GetDataEntriesMatching(includeSchemas, includeTables)
 	totalTables := len(filteredMasterDataEntries)
 	dataProgressBar := utils.NewProgressBar(totalTables, "Tables restored: ", utils.PB_INFO)
 	dataProgressBar.Start()
