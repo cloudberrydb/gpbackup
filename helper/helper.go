@@ -10,7 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
+	"syscall"
 
 	"github.com/greenplum-db/gpbackup/utils"
 )
@@ -102,7 +102,7 @@ func ReadAndCountBytes() uint64 {
 }
 
 /*
- * Backup helper functions
+ * Restore helper functions
  */
 
 func getOidListFromFile() []int {
@@ -122,7 +122,49 @@ func doRestoreAgent() {
 	tocEntries := utils.NewSegmentTOC(*tocFile).DataEntries
 	lastByte := uint64(0)
 	oidList := getOidListFromFile()
+	reader := getPipeReader()
 
+	lastPipe := ""
+	currentPipe := ""
+	nextPipe := fmt.Sprintf("%s_%d", *pipeFile, oidList[0])
+	err := syscall.Mkfifo(nextPipe, 0777)
+	for i, oid := range oidList {
+		log(fmt.Sprintf("Restoring table with oid %d", oid))
+		lastPipe = currentPipe
+		currentPipe = nextPipe
+		if i < len(oidList)-1 {
+			nextPipe = fmt.Sprintf("%s_%d", *pipeFile, oidList[i+1])
+			err := syscall.Mkfifo(nextPipe, 0777)
+			utils.CheckError(err)
+		} else {
+			nextPipe = ""
+		}
+		if fileExists(lastPipe) {
+			err = os.Remove(lastPipe)
+			utils.CheckError(err)
+		}
+
+		writer, writeHandle := getPipeWriter(currentPipe)
+		start := tocEntries[uint(oid)].StartByte
+		end := tocEntries[uint(oid)].EndByte
+		log(fmt.Sprintf("Start Byte: %d; End Byte: %d; Last Byte: %d", start, end, lastByte))
+		reader.Discard(int(start - lastByte))
+		log(fmt.Sprintf("Discarded %d bytes", start-lastByte))
+		bytesRead, err := io.CopyN(writer, reader, int64(end-start))
+		log(fmt.Sprintf("Read %d bytes", bytesRead))
+		utils.CheckError(err)
+		err = writer.Flush()
+		utils.CheckError(err)
+		closePipe(writeHandle)
+		lastByte = end
+	}
+	if fileExists(currentPipe) {
+		err = os.Remove(currentPipe)
+		utils.CheckError(err)
+	}
+}
+
+func getPipeReader() *bufio.Reader {
 	readHandle, err := os.Open(*dataFile)
 	utils.CheckError(err)
 	var reader *bufio.Reader
@@ -133,32 +175,26 @@ func doRestoreAgent() {
 	} else {
 		reader = bufio.NewReader(readHandle)
 	}
+	return reader
+}
 
-	for _, oid := range oidList {
-		log(fmt.Sprintf("Restoring table with oid %d", oid))
-		writeHandle, err := os.OpenFile(*pipeFile, os.O_WRONLY, os.ModeNamedPipe)
-		utils.CheckError(err)
-		writer := bufio.NewWriter(writeHandle)
+func getPipeWriter(currentPipe string) (*bufio.Writer, *os.File) {
+	log(fmt.Sprintf("Opening pipe for oid %d", oid))
+	writeHandle, err := os.OpenFile(currentPipe, os.O_WRONLY, os.ModeNamedPipe)
+	utils.CheckError(err)
+	writer := bufio.NewWriter(writeHandle)
+	return writer, writeHandle
+}
 
-		start := tocEntries[uint(oid)].StartByte
-		end := tocEntries[uint(oid)].EndByte
-		log(fmt.Sprintf("Start Byte: %d; End Byte: %d; Last Byte: %d", start, end, lastByte))
-		reader.Discard(int(start - lastByte))
-		log(fmt.Sprintf("Discarded %d bytes", start-lastByte))
+func closePipe(writeHandle *os.File) {
+	log(fmt.Sprintf("Closing pipe for oid %d", oid))
+	err := writeHandle.Close()
+	utils.CheckError(err)
+}
 
-		bytesRead, err := io.CopyN(writer, reader, int64(end-start))
-		log(fmt.Sprintf("Read %d bytes", bytesRead))
-		utils.CheckError(err)
-		err = writer.Flush()
-		utils.CheckError(err)
-		err = writeHandle.Close()
-		utils.CheckError(err)
-		lastByte = end
-		/* We sleep for 100 milliseconds to let COPY disconnect before reopening the pipe
-		 * so each table gets only one table worth of data
-		 */
-		time.Sleep(100 * time.Millisecond)
-	}
+func fileExists(filename string) bool {
+	_, err := utils.System.Stat(filename)
+	return err == nil
 }
 
 /*

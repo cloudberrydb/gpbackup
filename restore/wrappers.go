@@ -144,5 +144,5 @@ func restoreSingleTableData(entry utils.MasterDataEntry, tableNum uint32, totalT
 	} else {
 		backupFile = globalCluster.GetTableBackupFilePathForCopyCommand(entry.Oid, backupConfig.SingleDataFile)
 	}
-	CopyTableIn(connection, name, entry.AttributeString, backupFile, backupConfig.SingleDataFile, whichConn)
+	CopyTableIn(connection, name, entry.AttributeString, backupFile, backupConfig.SingleDataFile, whichConn, entry.Oid)
 }

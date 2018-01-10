@@ -227,9 +227,21 @@ func (cluster *Cluster) CreateBackupDirectoriesOnAllHosts() {
 	})
 }
 
-func (cluster *Cluster) CreateSegmentPipesOnAllHosts() {
+/*
+ * This is used to create a pipe file during backup without an oid in the name,
+ * and the first table pipe for the restore agent with an oid in the name.
+ */
+func (cluster *Cluster) CreateSegmentPipesOnAllHosts(restoreOid ...uint32) {
+	var oid uint32
+	if len(restoreOid) > 0 {
+		oid = restoreOid[0]
+	}
 	remoteOutput := cluster.GenerateAndExecuteCommand("Creating segment data pipes", func(contentID int) string {
-		return fmt.Sprintf("mkfifo %s", cluster.GetSegmentPipeFilePath(contentID))
+		pipeName := cluster.GetSegmentPipeFilePath(contentID)
+		if oid > 0 {
+			pipeName = fmt.Sprintf("%s_%d", pipeName, oid)
+		}
+		return fmt.Sprintf("mkfifo %s", pipeName)
 	})
 	cluster.CheckClusterError(remoteOutput, "Unable to create segment data pipes", func(contentID int) string {
 		return "Unable to create segment data pipe"

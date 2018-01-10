@@ -14,12 +14,12 @@ var (
 	tableDelim = ","
 )
 
-func CopyTableIn(connection *utils.DBConn, tableName string, tableAttributes string, backupFile string, singleDataFile bool, whichConn int) {
+func CopyTableIn(connection *utils.DBConn, tableName string, tableAttributes string, backupFile string, singleDataFile bool, whichConn int, oid uint32) {
 	whichConn = connection.ValidateConnNum(whichConn)
 	usingCompression, compressionProgram := utils.GetCompressionParameters()
 	copyCommand := ""
 	if singleDataFile {
-		copyCommand = fmt.Sprintf("PROGRAM 'cat %s'", backupFile)
+		copyCommand = fmt.Sprintf("PROGRAM 'cat %s'", fmt.Sprintf("%s_%d", backupFile, oid))
 	} else if usingCompression && !singleDataFile {
 		copyCommand = fmt.Sprintf("PROGRAM '%s < %s'", compressionProgram.DecompressCommand, backupFile)
 	} else {
