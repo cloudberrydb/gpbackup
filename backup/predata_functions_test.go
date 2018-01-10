@@ -550,4 +550,37 @@ COMMENT ON CONVERSION public.conv_one IS 'This is a conversion comment.';
 ALTER CONVERSION public.conv_one OWNER TO testrole;`)
 		})
 	})
+	Describe("PrintCreateForeignDataWrapperStatements", func() {
+		funcInfoMap := map[uint32]backup.FunctionInfo{
+			1: {QualifiedName: "pg_catalog.postgresql_fdw_validator", Arguments: "", IsInternal: true},
+		}
+		It("prints a basic foreign data wrapper", func() {
+			foreignDataWrappers := []backup.ForeignDataWrapper{{Oid: 1, Name: "foreigndata"}}
+			backup.PrintCreateForeignDataWrapperStatements(backupfile, toc, foreignDataWrappers, funcInfoMap, backup.MetadataMap{})
+			testutils.ExpectEntry(toc.PredataEntries, 0, "", "foreigndata", "FOREIGN DATA WRAPPER")
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE FOREIGN DATA WRAPPER foreigndata;`)
+		})
+		It("prints a foreign data wrapper with a validator", func() {
+			foreignDataWrappers := []backup.ForeignDataWrapper{{Name: "foreigndata", Validator: 1}}
+			backup.PrintCreateForeignDataWrapperStatements(backupfile, toc, foreignDataWrappers, funcInfoMap, backup.MetadataMap{})
+			testutils.ExpectEntry(toc.PredataEntries, 0, "", "foreigndata", "FOREIGN DATA WRAPPER")
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE FOREIGN DATA WRAPPER foreigndata
+	VALIDATOR pg_catalog.postgresql_fdw_validator;`)
+		})
+		It("prints a foreign data wrapper with one option", func() {
+			foreignDataWrappers := []backup.ForeignDataWrapper{{Name: "foreigndata", Options: "debug 'true'"}}
+			backup.PrintCreateForeignDataWrapperStatements(backupfile, toc, foreignDataWrappers, funcInfoMap, backup.MetadataMap{})
+			testutils.ExpectEntry(toc.PredataEntries, 0, "", "foreigndata", "FOREIGN DATA WRAPPER")
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE FOREIGN DATA WRAPPER foreigndata
+	OPTIONS (debug 'true');`)
+		})
+		It("prints a foreign data wrapper with two options", func() {
+			foreignDataWrappers := []backup.ForeignDataWrapper{{Name: "foreigndata", Options: "debug 'true', host 'localhost'"}}
+			backup.PrintCreateForeignDataWrapperStatements(backupfile, toc, foreignDataWrappers, funcInfoMap, backup.MetadataMap{})
+			testutils.ExpectEntry(toc.PredataEntries, 0, "", "foreigndata", "FOREIGN DATA WRAPPER")
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE FOREIGN DATA WRAPPER foreigndata
+	OPTIONS (debug 'true', host 'localhost');`)
+		})
+
+	})
 })

@@ -3,7 +3,6 @@ package integration
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -484,6 +483,45 @@ LANGUAGE SQL`)
 			Expect(functions[0].DependsUpon[0]).To(Equal("public.composite_ints"))
 			Expect(functions[0].DependsUpon[1]).To(Equal("public.base_type"))
 			Expect(functions[0].DependsUpon[2]).To(Equal("public.composite_ints"))
+		})
+	})
+	Describe("GetForeignDataWrappers", func() {
+		It("returns a slice of foreign data wrappers", func() {
+			testutils.SkipIfBefore6(connection)
+			testutils.AssertQueryRuns(connection, "CREATE FOREIGN DATA WRAPPER foreigndatawrapper")
+			defer testutils.AssertQueryRuns(connection, "DROP FOREIGN DATA WRAPPER foreigndatawrapper")
+
+			expectedForeignDataWrapper := backup.ForeignDataWrapper{Oid: 0, Name: "foreigndatawrapper"}
+
+			resultForeignDataWrapper := backup.GetForeignDataWrappers(connection)
+
+			Expect(len(resultForeignDataWrapper)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&expectedForeignDataWrapper, &resultForeignDataWrapper[0], "Oid")
+		})
+		It("returns a slice of foreign data wrappers with a validator", func() {
+			testutils.SkipIfBefore6(connection)
+			testutils.AssertQueryRuns(connection, "CREATE FOREIGN DATA WRAPPER foreigndatawrapper VALIDATOR postgresql_fdw_validator")
+			defer testutils.AssertQueryRuns(connection, "DROP FOREIGN DATA WRAPPER foreigndatawrapper")
+
+			validatorOid := testutils.OidFromObjectName(connection, "pg_catalog", "postgresql_fdw_validator", backup.TYPE_FUNCTION)
+			expectedForeignDataWrapper := backup.ForeignDataWrapper{Oid: 0, Name: "foreigndatawrapper", Validator: validatorOid}
+
+			resultForeignDataWrapper := backup.GetForeignDataWrappers(connection)
+
+			Expect(len(resultForeignDataWrapper)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&expectedForeignDataWrapper, &resultForeignDataWrapper[0], "Oid")
+		})
+		It("returns a slice of foreign data wrappers with options", func() {
+			testutils.SkipIfBefore6(connection)
+			testutils.AssertQueryRuns(connection, "CREATE FOREIGN DATA WRAPPER foreigndatawrapper OPTIONS (dbname 'testdb', debug 'true')")
+			defer testutils.AssertQueryRuns(connection, "DROP FOREIGN DATA WRAPPER foreigndatawrapper")
+
+			expectedForeignDataWrapper := backup.ForeignDataWrapper{Oid: 0, Name: "foreigndatawrapper", Options: "dbname 'testdb', debug 'true'"}
+
+			resultForeignDataWrappers := backup.GetForeignDataWrappers(connection)
+
+			Expect(len(resultForeignDataWrappers)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&expectedForeignDataWrapper, &resultForeignDataWrappers[0], "Oid")
 		})
 	})
 })

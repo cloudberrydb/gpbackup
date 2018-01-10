@@ -338,4 +338,24 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatch(&convMetadata, &resultMetadata)
 		})
 	})
+	Describe("PrintCreateForeignDataWrapperStatements", func() {
+		emptyMetadataMap := backup.MetadataMap{}
+		funcInfoMap := map[uint32]backup.FunctionInfo{
+			1: {QualifiedName: "pg_catalog.postgresql_fdw_validator", Arguments: "", IsInternal: true},
+		}
+		It("creates a foreign data wrapper with a validator and options", func() {
+			testutils.SkipIfBefore6(connection)
+			foreignDataWrapper := backup.ForeignDataWrapper{Name: "foreigndata", Validator: 1, Options: "dbname 'testdb'"}
+
+			backup.PrintCreateForeignDataWrapperStatements(backupfile, toc, []backup.ForeignDataWrapper{foreignDataWrapper}, funcInfoMap, emptyMetadataMap)
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+			defer testutils.AssertQueryRuns(connection, "DROP FOREIGN DATA WRAPPER foreigndata")
+
+			resultWrappers := backup.GetForeignDataWrappers(connection)
+
+			Expect(len(resultWrappers)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&foreignDataWrapper, &resultWrappers[0], "Oid", "Validator")
+		})
+	})
 })

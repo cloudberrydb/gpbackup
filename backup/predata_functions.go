@@ -231,3 +231,20 @@ func PrintCreateConversionStatements(metadataFile *utils.FileWithByteCount, toc 
 		toc.AddPredataEntry(conversion.Schema, conversion.Name, "CONVERSION", start, metadataFile)
 	}
 }
+
+func PrintCreateForeignDataWrapperStatements(metadataFile *utils.FileWithByteCount, toc *utils.TOC, wrappers []ForeignDataWrapper, funcInfoMap map[uint32]FunctionInfo, fdwMetadata MetadataMap) {
+	for _, fdw := range wrappers {
+		start := metadataFile.ByteCount
+		metadataFile.MustPrintf("\n\nCREATE FOREIGN DATA WRAPPER %s", fdw.Name)
+
+		if fdw.Validator != 0 {
+			metadataFile.MustPrintf("\n\tVALIDATOR %s", funcInfoMap[fdw.Validator].QualifiedName)
+		}
+		if fdw.Options != "" {
+			metadataFile.MustPrintf("\n\tOPTIONS (%s)", fdw.Options)
+		}
+		metadataFile.MustPrintf(";")
+		PrintObjectMetadata(metadataFile, fdwMetadata[fdw.Oid], fdw.Name, "FOREIGN DATA WRAPPER")
+		toc.AddPredataEntry("", fdw.Name, "FOREIGN DATA WRAPPER", start, metadataFile)
+	}
+}

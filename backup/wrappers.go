@@ -244,6 +244,14 @@ func BackupProceduralLanguages(metadataFile *utils.FileWithByteCount, procLangs 
 	PrintCreateLanguageStatements(metadataFile, globalTOC, procLangs, funcInfoMap, procLangMetadata)
 }
 
+func BackupForeignDataWrappers(metadataFile *utils.FileWithByteCount, funcInfoMap map[uint32]FunctionInfo) {
+	logger.Verbose("Writing CREATE FOREIGN DATA WRAPPER statements to metadata file")
+	wrappers := GetForeignDataWrappers(connection)
+	objectCounts["Foreign Data Wrappers"] = len(wrappers)
+	fdwMetadata := GetMetadataForObjectType(connection, TYPE_FOREIGNDATAWRAPPER)
+	PrintCreateForeignDataWrapperStatements(metadataFile, globalTOC, wrappers, funcInfoMap, fdwMetadata)
+}
+
 func BackupShellTypes(metadataFile *utils.FileWithByteCount, types []Type) {
 	logger.Verbose("Writing CREATE TYPE statements for shell types to metadata file")
 	PrintCreateShellTypeStatements(metadataFile, globalTOC, types)

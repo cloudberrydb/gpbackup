@@ -510,6 +510,19 @@ LANGUAGE SQL`)
 				resultMetadata := resultMetadataMap[oid]
 				testutils.ExpectStructsToMatch(&configurationMetadata, &resultMetadata)
 			})
+			It("returns a slice of default metadata for a foreign data wrapper", func() {
+				testutils.AssertQueryRuns(connection, "CREATE FOREIGN DATA WRAPPER foreignwrapper")
+				defer testutils.AssertQueryRuns(connection, "DROP FOREIGN DATA WRAPPER foreignwrapper")
+
+				testutils.AssertQueryRuns(connection, "GRANT ALL ON FOREIGN DATA WRAPPER foreignwrapper TO testrole")
+
+				resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_FOREIGNDATAWRAPPER)
+
+				oid := testutils.OidFromObjectName(connection, "", "foreignwrapper", backup.TYPE_FOREIGNDATAWRAPPER)
+				expectedMetadata := testutils.DefaultMetadataMap("FOREIGN DATA WRAPPER", true, true, false)[1]
+				resultMetadata := resultMetadataMap[oid]
+				testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
+			})
 		})
 		Context("metadata for objects in a specific schema", func() {
 			It("returns a slice of default metadata for a table in a specific schema", func() {

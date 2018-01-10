@@ -567,3 +567,30 @@ AND t.typsend != p.oid%s;`, SchemaFilterClause("n"), modStr)
 	}
 	return functions
 }
+
+type ForeignDataWrapper struct {
+	Oid       uint32
+	Name      string
+	Validator uint32 `db:"fdwvalidator"`
+	Options   string
+}
+
+func GetForeignDataWrappers(connection *utils.DBConn) []ForeignDataWrapper {
+	results := make([]ForeignDataWrapper, 0)
+	query := fmt.Sprintf(`
+SELECT
+	oid,
+	quote_ident (fdwname) AS name,
+	fdwvalidator,
+	(
+		array_to_string(ARRAY(SELECT pg_catalog.quote_ident(option_name) || ' ' || pg_catalog.quote_literal(option_value)
+		FROM pg_options_to_table(fdwoptions)
+		ORDER BY option_name), ', ')
+	) AS options
+FROM pg_foreign_data_wrapper
+;`)
+
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
+}
