@@ -511,6 +511,7 @@ LANGUAGE SQL`)
 				testutils.ExpectStructsToMatch(&configurationMetadata, &resultMetadata)
 			})
 			It("returns a slice of default metadata for a foreign data wrapper", func() {
+				testutils.SkipIfBefore6(connection)
 				testutils.AssertQueryRuns(connection, "CREATE FOREIGN DATA WRAPPER foreignwrapper")
 				defer testutils.AssertQueryRuns(connection, "DROP FOREIGN DATA WRAPPER foreignwrapper")
 
@@ -524,6 +525,7 @@ LANGUAGE SQL`)
 				testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 			})
 			It("returns a slice of default metadata for a foreign server", func() {
+				testutils.SkipIfBefore6(connection)
 				testutils.AssertQueryRuns(connection, "CREATE FOREIGN DATA WRAPPER foreignwrapper")
 				defer testutils.AssertQueryRuns(connection, "DROP FOREIGN DATA WRAPPER foreignwrapper CASCADE")
 				testutils.AssertQueryRuns(connection, "CREATE SERVER foreignserver FOREIGN DATA WRAPPER foreignwrapper")
