@@ -86,6 +86,8 @@ func DoBackup() {
 	logger.Info("Metadata will be written to %s", metadataFilename)
 	metadataFile := utils.NewFileWithByteCountFromFile(metadataFilename)
 	defer metadataFile.Close()
+
+	BackupSessionGUCs(metadataFile)
 	if !*dataOnly {
 		isTableFiltered := len(includeTables) > 0 || len(excludeTables) > 0
 		if isTableFiltered {
@@ -95,8 +97,6 @@ func DoBackup() {
 			backupPredata(metadataFile, metadataTables, tableDefs)
 			backupPostdata(metadataFile)
 		}
-	} else {
-		BackupSessionGUCs(metadataFile)
 	}
 
 	if !backupReport.MetadataOnly {
@@ -114,7 +114,6 @@ func DoBackup() {
 func backupGlobal(metadataFile *utils.FileWithByteCount) {
 	logger.Info("Writing global database metadata")
 
-	BackupSessionGUCs(metadataFile)
 	BackupTablespaces(metadataFile)
 	BackupCreateDatabase(metadataFile)
 	BackupDatabaseGUCs(metadataFile)
@@ -133,7 +132,6 @@ func backupGlobal(metadataFile *utils.FileWithByteCount) {
 func backupPredata(metadataFile *utils.FileWithByteCount, tables []Relation, tableDefs map[uint32]TableDefinition) {
 	logger.Info("Writing pre-data metadata")
 
-	BackupSessionGUCs(metadataFile)
 	BackupSchemas(metadataFile)
 
 	procLangs := GetProceduralLanguages(connection)
@@ -191,8 +189,6 @@ func backupPredata(metadataFile *utils.FileWithByteCount, tables []Relation, tab
 func backupTablePredata(metadataFile *utils.FileWithByteCount, tables []Relation, tableDefs map[uint32]TableDefinition) {
 	logger.Info("Writing table metadata")
 
-	BackupSessionGUCs(metadataFile)
-
 	relationMetadata := GetMetadataForObjectType(connection, TYPE_RELATION)
 
 	constraints, conMetadata := RetrieveConstraints(tables...)
@@ -215,7 +211,6 @@ func backupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
 func backupPostdata(metadataFile *utils.FileWithByteCount) {
 	logger.Info("Writing post-data metadata")
 
-	BackupSessionGUCs(metadataFile)
 	BackupIndexes(metadataFile)
 	BackupRules(metadataFile)
 	BackupTriggers(metadataFile)
