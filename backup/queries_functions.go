@@ -594,3 +594,35 @@ FROM pg_foreign_data_wrapper
 	utils.CheckError(err)
 	return results
 }
+
+type ForeignServer struct {
+	Oid                uint32
+	Name               string
+	Type               string
+	Version            string
+	ForeignDataWrapper string
+	Options            string
+}
+
+func GetForeignServers(connection *utils.DBConn) []ForeignServer {
+	results := make([]ForeignServer, 0)
+	query := fmt.Sprintf(`
+SELECT
+	fs.oid,
+	quote_ident (fs.srvname) AS name,
+	coalesce(fs.srvtype, '') AS type,
+	coalesce(fs.srvversion, '') AS version,
+    quote_ident(fdw.fdwname) AS foreigndatawrapper,
+	(
+		array_to_string(ARRAY(SELECT pg_catalog.quote_ident(option_name) || ' ' || pg_catalog.quote_literal(option_value)
+		FROM pg_options_to_table(fs.srvoptions)
+		ORDER BY option_name), ', ')
+	) AS options
+FROM pg_foreign_server fs
+LEFT JOIN pg_foreign_data_wrapper fdw ON fdw.oid = srvfdw
+;`)
+
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
+}

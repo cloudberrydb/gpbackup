@@ -248,3 +248,25 @@ func PrintCreateForeignDataWrapperStatements(metadataFile *utils.FileWithByteCou
 		toc.AddPredataEntry("", fdw.Name, "FOREIGN DATA WRAPPER", start, metadataFile)
 	}
 }
+
+func PrintCreateServerStatements(metadataFile *utils.FileWithByteCount, toc *utils.TOC, servers []ForeignServer, serverMetadata MetadataMap) {
+	for _, server := range servers {
+		start := metadataFile.ByteCount
+		metadataFile.MustPrintf("\n\nCREATE SERVER %s", server.Name)
+		if server.Type != "" {
+			metadataFile.MustPrintf("\n\tTYPE '%s'", server.Type)
+		}
+		if server.Version != "" {
+			metadataFile.MustPrintf("\n\tVERSION '%s'", server.Version)
+		}
+		metadataFile.MustPrintf("\n\tFOREIGN DATA WRAPPER %s", server.ForeignDataWrapper)
+		if server.Options != "" {
+			metadataFile.MustPrintf("\n\tOPTIONS (%s)", server.Options)
+		}
+		metadataFile.MustPrintf(";")
+
+		//NOTE: We must specify SERVER when creating and dropping, but FOREIGN SERVER when granting and revoking
+		PrintObjectMetadata(metadataFile, serverMetadata[server.Oid], server.Name, "FOREIGN SERVER")
+		toc.AddPredataEntry("", server.Name, "FOREIGN SERVER", start, metadataFile)
+	}
+}

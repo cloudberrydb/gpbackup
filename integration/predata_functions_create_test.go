@@ -358,4 +358,22 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&foreignDataWrapper, &resultWrappers[0], "Oid", "Validator")
 		})
 	})
+	Describe("PrintCreateServerStatements", func() {
+		emptyMetadataMap := backup.MetadataMap{}
+		It("creates a foreign server with all options", func() {
+			testutils.SkipIfBefore6(connection)
+			foreignServer := backup.ForeignServer{Name: "foreignserver", Type: "mytype", Version: "myversion", ForeignDataWrapper: "foreigndatawrapper", Options: "dbname 'testdb', host 'localhost'"}
+
+			backup.PrintCreateServerStatements(backupfile, toc, []backup.ForeignServer{foreignServer}, emptyMetadataMap)
+
+			testutils.AssertQueryRuns(connection, "CREATE FOREIGN DATA WRAPPER foreigndatawrapper")
+			defer testutils.AssertQueryRuns(connection, "DROP FOREIGN DATA WRAPPER foreigndatawrapper CASCADE")
+			testutils.AssertQueryRuns(connection, buffer.String())
+
+			resultServers := backup.GetForeignServers(connection)
+
+			Expect(len(resultServers)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&foreignServer, &resultServers[0], "Oid")
+		})
+	})
 })

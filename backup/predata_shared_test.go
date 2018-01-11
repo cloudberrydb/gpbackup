@@ -322,6 +322,19 @@ GRANT ALL ON TABLE public.tablename TO anothertestrole;
 GRANT SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES ON TABLE public.tablename TO testrole;
 GRANT TRIGGER ON TABLE public.tablename TO PUBLIC;`)
 		})
+		It("prints SERVER for ALTER and FOREIGN SERVER for GRANT/REVOKE for a foreign server", func() {
+			serverPrivileges := testutils.DefaultACLForType("testrole", "FOREIGN SERVER")
+			serverMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{serverPrivileges}, Owner: "testrole"}
+			backup.PrintObjectMetadata(backupfile, serverMetadata, "foreignserver", "FOREIGN SERVER")
+			testutils.ExpectRegexp(buffer, `
+
+ALTER SERVER foreignserver OWNER TO testrole;
+
+
+REVOKE ALL ON FOREIGN SERVER foreignserver FROM PUBLIC;
+REVOKE ALL ON FOREIGN SERVER foreignserver FROM testrole;
+GRANT USAGE ON FOREIGN SERVER foreignserver TO testrole;`)
+		})
 	})
 	Describe("ParseACL", func() {
 		It("parses an ACL string representing default privileges", func() {

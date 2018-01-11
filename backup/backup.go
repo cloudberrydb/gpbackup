@@ -162,6 +162,7 @@ func backupPredata(metadataFile *utils.FileWithByteCount, tables []Relation, tab
 		BackupProtocols(metadataFile, funcInfoMap)
 		if connection.Version.AtLeast("6") {
 			BackupForeignDataWrappers(metadataFile, funcInfoMap)
+			BackupForeignServers(metadataFile)
 		}
 	}
 

@@ -524,4 +524,45 @@ LANGUAGE SQL`)
 			testutils.ExpectStructsToMatchExcluding(&expectedForeignDataWrapper, &resultForeignDataWrappers[0], "Oid")
 		})
 	})
+	Describe("GetForeignServers", func() {
+		It("returns a slice of foreign servers", func() {
+			testutils.SkipIfBefore6(connection)
+			testutils.AssertQueryRuns(connection, "CREATE FOREIGN DATA WRAPPER foreigndatawrapper")
+			defer testutils.AssertQueryRuns(connection, "DROP FOREIGN DATA WRAPPER foreigndatawrapper CASCADE")
+			testutils.AssertQueryRuns(connection, "CREATE SERVER foreignserver FOREIGN DATA WRAPPER foreigndatawrapper")
+
+			expectedServer := backup.ForeignServer{Oid: 1, Name: "foreignserver", ForeignDataWrapper: "foreigndatawrapper"}
+
+			resultServers := backup.GetForeignServers(connection)
+
+			Expect(len(resultServers)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&expectedServer, &resultServers[0], "Oid")
+		})
+		It("returns a slice of foreign servers with a type and version", func() {
+			testutils.SkipIfBefore6(connection)
+			testutils.AssertQueryRuns(connection, "CREATE FOREIGN DATA WRAPPER foreigndatawrapper")
+			defer testutils.AssertQueryRuns(connection, "DROP FOREIGN DATA WRAPPER foreigndatawrapper CASCADE")
+			testutils.AssertQueryRuns(connection, "CREATE SERVER foreignserver TYPE 'mytype' VERSION 'myversion' FOREIGN DATA WRAPPER foreigndatawrapper")
+
+			expectedServer := backup.ForeignServer{Oid: 1, Name: "foreignserver", Type: "mytype", Version: "myversion", ForeignDataWrapper: "foreigndatawrapper"}
+
+			resultServers := backup.GetForeignServers(connection)
+
+			Expect(len(resultServers)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&expectedServer, &resultServers[0], "Oid")
+		})
+		It("returns a slice of foreign servers with options", func() {
+			testutils.SkipIfBefore6(connection)
+			testutils.AssertQueryRuns(connection, "CREATE FOREIGN DATA WRAPPER foreigndatawrapper")
+			defer testutils.AssertQueryRuns(connection, "DROP FOREIGN DATA WRAPPER foreigndatawrapper CASCADE")
+			testutils.AssertQueryRuns(connection, "CREATE SERVER foreignserver FOREIGN DATA WRAPPER foreigndatawrapper OPTIONS (dbname 'testdb', host 'localhost')")
+
+			expectedServer := backup.ForeignServer{Oid: 1, Name: "foreignserver", ForeignDataWrapper: "foreigndatawrapper", Options: "dbname 'testdb', host 'localhost'"}
+
+			resultServers := backup.GetForeignServers(connection)
+
+			Expect(len(resultServers)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&expectedServer, &resultServers[0], "Oid")
+		})
+	})
 })

@@ -523,6 +523,20 @@ LANGUAGE SQL`)
 				resultMetadata := resultMetadataMap[oid]
 				testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 			})
+			It("returns a slice of default metadata for a foreign server", func() {
+				testutils.AssertQueryRuns(connection, "CREATE FOREIGN DATA WRAPPER foreignwrapper")
+				defer testutils.AssertQueryRuns(connection, "DROP FOREIGN DATA WRAPPER foreignwrapper CASCADE")
+				testutils.AssertQueryRuns(connection, "CREATE SERVER foreignserver FOREIGN DATA WRAPPER foreignwrapper")
+
+				testutils.AssertQueryRuns(connection, "GRANT ALL ON FOREIGN SERVER foreignserver TO testrole")
+
+				resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_FOREIGNSERVER)
+
+				oid := testutils.OidFromObjectName(connection, "", "foreignserver", backup.TYPE_FOREIGNSERVER)
+				expectedMetadata := testutils.DefaultMetadataMap("FOREIGN SERVER", true, true, false)[1]
+				resultMetadata := resultMetadataMap[oid]
+				testutils.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
+			})
 		})
 		Context("metadata for objects in a specific schema", func() {
 			It("returns a slice of default metadata for a table in a specific schema", func() {

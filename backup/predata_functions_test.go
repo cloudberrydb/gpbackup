@@ -581,6 +581,39 @@ ALTER CONVERSION public.conv_one OWNER TO testrole;`)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE FOREIGN DATA WRAPPER foreigndata
 	OPTIONS (debug 'true', host 'localhost');`)
 		})
-
+	})
+	Describe("PrintCreateServerStatements", func() {
+		It("prints a basic foreign server", func() {
+			foreignServers := []backup.ForeignServer{{Oid: 1, Name: "foreignserver", ForeignDataWrapper: "foreignwrapper"}}
+			backup.PrintCreateServerStatements(backupfile, toc, foreignServers, backup.MetadataMap{})
+			testutils.ExpectEntry(toc.PredataEntries, 0, "", "foreignserver", "FOREIGN SERVER")
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE SERVER foreignserver
+	FOREIGN DATA WRAPPER foreignwrapper;`)
+		})
+		It("prints a foreign server with one option", func() {
+			foreignServers := []backup.ForeignServer{{Oid: 1, Name: "foreignserver", ForeignDataWrapper: "foreignwrapper", Options: "host 'localhost'"}}
+			backup.PrintCreateServerStatements(backupfile, toc, foreignServers, backup.MetadataMap{})
+			testutils.ExpectEntry(toc.PredataEntries, 0, "", "foreignserver", "FOREIGN SERVER")
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE SERVER foreignserver
+	FOREIGN DATA WRAPPER foreignwrapper
+	OPTIONS (host 'localhost');`)
+		})
+		It("prints a foreign server with two options", func() {
+			foreignServers := []backup.ForeignServer{{Oid: 1, Name: "foreignserver", ForeignDataWrapper: "foreignwrapper", Options: "host 'localhost', dbname 'testdb'"}}
+			backup.PrintCreateServerStatements(backupfile, toc, foreignServers, backup.MetadataMap{})
+			testutils.ExpectEntry(toc.PredataEntries, 0, "", "foreignserver", "FOREIGN SERVER")
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE SERVER foreignserver
+	FOREIGN DATA WRAPPER foreignwrapper
+	OPTIONS (host 'localhost', dbname 'testdb');`)
+		})
+		It("prints a foreign server with type and version", func() {
+			foreignServers := []backup.ForeignServer{{Oid: 1, Name: "foreignserver", Type: "server type", Version: "server version", ForeignDataWrapper: "foreignwrapper"}}
+			backup.PrintCreateServerStatements(backupfile, toc, foreignServers, backup.MetadataMap{})
+			testutils.ExpectEntry(toc.PredataEntries, 0, "", "foreignserver", "FOREIGN SERVER")
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE SERVER foreignserver
+	TYPE 'server type'
+	VERSION 'server version'
+	FOREIGN DATA WRAPPER foreignwrapper;`)
+		})
 	})
 })

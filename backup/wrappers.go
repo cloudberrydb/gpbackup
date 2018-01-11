@@ -252,6 +252,14 @@ func BackupForeignDataWrappers(metadataFile *utils.FileWithByteCount, funcInfoMa
 	PrintCreateForeignDataWrapperStatements(metadataFile, globalTOC, wrappers, funcInfoMap, fdwMetadata)
 }
 
+func BackupForeignServers(metadataFile *utils.FileWithByteCount) {
+	logger.Verbose("Writing CREATE SERVER statements to metadata file")
+	servers := GetForeignServers(connection)
+	objectCounts["Foreign Servers"] = len(servers)
+	serverMetadata := GetMetadataForObjectType(connection, TYPE_FOREIGNSERVER)
+	PrintCreateServerStatements(metadataFile, globalTOC, servers, serverMetadata)
+}
+
 func BackupShellTypes(metadataFile *utils.FileWithByteCount, types []Type) {
 	logger.Verbose("Writing CREATE TYPE statements for shell types to metadata file")
 	PrintCreateShellTypeStatements(metadataFile, globalTOC, types)

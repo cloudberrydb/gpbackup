@@ -390,6 +390,8 @@ func (obj ObjectMetadata) GetOwnerStatement(objectName string, objectType string
 	typeStr := objectType
 	if objectType == "SEQUENCE" {
 		typeStr = "TABLE"
+	} else if objectType == "FOREIGN SERVER" {
+		typeStr = "SERVER"
 	}
 	ownerStr := ""
 	if obj.Owner != "" {

@@ -144,6 +144,7 @@ var (
 	TYPE_CONVERSION         MetadataQueryParams
 	TYPE_DATABASE           MetadataQueryParams
 	TYPE_FOREIGNDATAWRAPPER MetadataQueryParams
+	TYPE_FOREIGNSERVER      MetadataQueryParams
 	TYPE_FUNCTION           MetadataQueryParams
 	TYPE_INDEX              MetadataQueryParams
 	TYPE_PROCLANGUAGE       MetadataQueryParams
@@ -173,6 +174,7 @@ func InitializeMetadataParams(connection *utils.DBConn) {
 	TYPE_CONVERSION = MetadataQueryParams{NameField: "conname", OidField: "oid", SchemaField: "connamespace", OwnerField: "conowner", CatalogTable: "pg_conversion"}
 	TYPE_DATABASE = MetadataQueryParams{NameField: "datname", ACLField: "datacl", OwnerField: "datdba", CatalogTable: "pg_database", Shared: true}
 	TYPE_FOREIGNDATAWRAPPER = MetadataQueryParams{NameField: "fdwname", ACLField: "fdwacl", OwnerField: "fdwowner", CatalogTable: "pg_foreign_data_wrapper"}
+	TYPE_FOREIGNSERVER = MetadataQueryParams{NameField: "srvname", ACLField: "srvacl", OwnerField: "srvowner", CatalogTable: "pg_foreign_server"}
 	TYPE_FUNCTION = MetadataQueryParams{NameField: "proname", SchemaField: "pronamespace", ACLField: "proacl", OwnerField: "proowner", CatalogTable: "pg_proc"}
 	TYPE_INDEX = MetadataQueryParams{NameField: "relname", OidField: "indexrelid", OidTable: "pg_class", CommentTable: "pg_class", CatalogTable: "pg_index"}
 	TYPE_PROCLANGUAGE = MetadataQueryParams{NameField: "lanname", ACLField: "lanacl", CatalogTable: "pg_language"}
