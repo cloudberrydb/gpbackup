@@ -376,4 +376,38 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.ExpectStructsToMatchExcluding(&foreignServer, &resultServers[0], "Oid")
 		})
 	})
+	Describe("PrintCreateUserMappingStatements", func() {
+		It("creates a user mapping for a specific user with all options", func() {
+			testutils.SkipIfBefore6(connection)
+			testutils.AssertQueryRuns(connection, "CREATE FOREIGN DATA WRAPPER foreigndatawrapper")
+			defer testutils.AssertQueryRuns(connection, "DROP FOREIGN DATA WRAPPER foreigndatawrapper CASCADE")
+			testutils.AssertQueryRuns(connection, "CREATE SERVER server FOREIGN DATA WRAPPER foreigndatawrapper")
+			userMapping := backup.UserMapping{User: "testrole", Server: "server", Options: "dbname 'testdb', host 'localhost'"}
+
+			backup.PrintCreateUserMappingStatements(backupfile, toc, []backup.UserMapping{userMapping})
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+
+			resultMappings := backup.GetUserMappings(connection)
+
+			Expect(len(resultMappings)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&userMapping, &resultMappings[0], "Oid")
+		})
+		It("creates a user mapping for PUBLIC", func() {
+			testutils.SkipIfBefore6(connection)
+			testutils.AssertQueryRuns(connection, "CREATE FOREIGN DATA WRAPPER foreigndatawrapper")
+			defer testutils.AssertQueryRuns(connection, "DROP FOREIGN DATA WRAPPER foreigndatawrapper CASCADE")
+			testutils.AssertQueryRuns(connection, "CREATE SERVER server FOREIGN DATA WRAPPER foreigndatawrapper")
+			userMapping := backup.UserMapping{User: "PUBLIC", Server: "server"}
+
+			backup.PrintCreateUserMappingStatements(backupfile, toc, []backup.UserMapping{userMapping})
+
+			testutils.AssertQueryRuns(connection, buffer.String())
+
+			resultMappings := backup.GetUserMappings(connection)
+
+			Expect(len(resultMappings)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&userMapping, &resultMappings[0], "Oid")
+		})
+	})
 })

@@ -565,4 +565,34 @@ LANGUAGE SQL`)
 			testutils.ExpectStructsToMatchExcluding(&expectedServer, &resultServers[0], "Oid")
 		})
 	})
+	Describe("GetUserMappings", func() {
+		It("returns a slice of user mappings", func() {
+			testutils.SkipIfBefore6(connection)
+			testutils.AssertQueryRuns(connection, "CREATE FOREIGN DATA WRAPPER foreigndatawrapper")
+			defer testutils.AssertQueryRuns(connection, "DROP FOREIGN DATA WRAPPER foreigndatawrapper CASCADE")
+			testutils.AssertQueryRuns(connection, "CREATE SERVER foreignserver FOREIGN DATA WRAPPER foreigndatawrapper")
+			testutils.AssertQueryRuns(connection, "CREATE USER MAPPING FOR testrole SERVER foreignserver")
+
+			expectedMapping := backup.UserMapping{Oid: 1, User: "testrole", Server: "foreignserver"}
+
+			resultMappings := backup.GetUserMappings(connection)
+
+			Expect(len(resultMappings)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&expectedMapping, &resultMappings[0], "Oid")
+		})
+		It("returns a slice of user mappings with options", func() {
+			testutils.SkipIfBefore6(connection)
+			testutils.AssertQueryRuns(connection, "CREATE FOREIGN DATA WRAPPER foreigndatawrapper")
+			defer testutils.AssertQueryRuns(connection, "DROP FOREIGN DATA WRAPPER foreigndatawrapper CASCADE")
+			testutils.AssertQueryRuns(connection, "CREATE SERVER foreignserver FOREIGN DATA WRAPPER foreigndatawrapper")
+			testutils.AssertQueryRuns(connection, "CREATE USER MAPPING FOR PUBLIC SERVER foreignserver OPTIONS (dbname 'testdb', host 'localhost')")
+
+			expectedMapping := backup.UserMapping{Oid: 1, User: "PUBLIC", Server: "foreignserver", Options: "dbname 'testdb', host 'localhost'"}
+
+			resultMappings := backup.GetUserMappings(connection)
+
+			Expect(len(resultMappings)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&expectedMapping, &resultMappings[0], "Oid")
+		})
+	})
 })

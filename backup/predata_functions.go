@@ -270,3 +270,17 @@ func PrintCreateServerStatements(metadataFile *utils.FileWithByteCount, toc *uti
 		toc.AddPredataEntry("", server.Name, "FOREIGN SERVER", start, metadataFile)
 	}
 }
+
+func PrintCreateUserMappingStatements(metadataFile *utils.FileWithByteCount, toc *utils.TOC, mappings []UserMapping) {
+	for _, mapping := range mappings {
+		start := metadataFile.ByteCount
+		metadataFile.MustPrintf("\n\nCREATE USER MAPPING FOR %s\n\tSERVER %s", mapping.User, mapping.Server)
+		if mapping.Options != "" {
+			metadataFile.MustPrintf("\n\tOPTIONS (%s)", mapping.Options)
+		}
+		metadataFile.MustPrintf(";")
+		// User mappings don't have a unique name, so we construct an arbitrary identifier
+		mappingStr := fmt.Sprintf("%s ON %s", mapping.User, mapping.Server)
+		toc.AddPredataEntry("", mappingStr, "USER MAPPING", start, metadataFile)
+	}
+}

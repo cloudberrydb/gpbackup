@@ -616,4 +616,29 @@ ALTER CONVERSION public.conv_one OWNER TO testrole;`)
 	FOREIGN DATA WRAPPER foreignwrapper;`)
 		})
 	})
+	Describe("PrintCreateUserMappingStatements", func() {
+		It("prints a basic user mapping", func() {
+			userMappings := []backup.UserMapping{{Oid: 1, User: "testrole", Server: "foreignserver"}}
+			backup.PrintCreateUserMappingStatements(backupfile, toc, userMappings)
+			testutils.ExpectEntry(toc.PredataEntries, 0, "", "testrole ON foreignserver", "USER MAPPING")
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE USER MAPPING FOR testrole
+	SERVER foreignserver;`)
+		})
+		It("prints a user mapping with one option", func() {
+			userMappings := []backup.UserMapping{{Oid: 1, User: "testrole", Server: "foreignserver", Options: "host 'localhost'"}}
+			backup.PrintCreateUserMappingStatements(backupfile, toc, userMappings)
+			testutils.ExpectEntry(toc.PredataEntries, 0, "", "testrole ON foreignserver", "USER MAPPING")
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE USER MAPPING FOR testrole
+	SERVER foreignserver
+	OPTIONS (host 'localhost');`)
+		})
+		It("prints a user mapping with two options", func() {
+			userMappings := []backup.UserMapping{{Oid: 1, User: "testrole", Server: "foreignserver", Options: "host 'localhost', dbname 'testdb'"}}
+			backup.PrintCreateUserMappingStatements(backupfile, toc, userMappings)
+			testutils.ExpectEntry(toc.PredataEntries, 0, "", "testrole ON foreignserver", "USER MAPPING")
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE USER MAPPING FOR testrole
+	SERVER foreignserver
+	OPTIONS (host 'localhost', dbname 'testdb');`)
+		})
+	})
 })

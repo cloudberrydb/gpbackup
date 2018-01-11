@@ -260,6 +260,13 @@ func BackupForeignServers(metadataFile *utils.FileWithByteCount) {
 	PrintCreateServerStatements(metadataFile, globalTOC, servers, serverMetadata)
 }
 
+func BackupUserMappings(metadataFile *utils.FileWithByteCount) {
+	logger.Verbose("Writing CREATE USER MAPPING statements to metadata file")
+	mappings := GetUserMappings(connection)
+	objectCounts["User Mappings"] = len(mappings)
+	PrintCreateUserMappingStatements(metadataFile, globalTOC, mappings)
+}
+
 func BackupShellTypes(metadataFile *utils.FileWithByteCount, types []Type) {
 	logger.Verbose("Writing CREATE TYPE statements for shell types to metadata file")
 	PrintCreateShellTypeStatements(metadataFile, globalTOC, types)

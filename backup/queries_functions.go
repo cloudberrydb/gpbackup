@@ -626,3 +626,31 @@ LEFT JOIN pg_foreign_data_wrapper fdw ON fdw.oid = srvfdw
 	utils.CheckError(err)
 	return results
 }
+
+type UserMapping struct {
+	Oid     uint32
+	User    string
+	Server  string
+	Options string
+}
+
+func GetUserMappings(connection *utils.DBConn) []UserMapping {
+	results := make([]UserMapping, 0)
+	query := fmt.Sprintf(`
+SELECT
+	um.oid,
+	CASE WHEN um.umuser = 0 THEN 'PUBLIC' ELSE pg_get_userbyid(um.umuser) END AS user,
+	fs.srvname AS server,
+	(
+		array_to_string(ARRAY(SELECT pg_catalog.quote_ident(option_name) || ' ' || pg_catalog.quote_literal(option_value)
+		FROM pg_options_to_table(um.umoptions)
+		ORDER BY option_name), ', ')
+	) AS options
+FROM pg_user_mapping um
+JOIN pg_foreign_server fs
+ON um.umserver = fs.oid;`)
+
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	return results
+}
