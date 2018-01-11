@@ -73,6 +73,20 @@ build_mac :
 		env GOOS=darwin GOARCH=amd64 go build -tags '$(RESTORE)' $(GOFLAGS) -o $(BIN_DIR)/$(RESTORE) -ldflags $(RESTORE_VERSION_STR)
 		env GOOS=darwin GOARCH=amd64 go build -tags '$(HELPER)' $(GOFLAGS) -o $(BIN_DIR)/$(HELPER) -ldflags $(HELPER_VERSION_STR)
 
+install_helper :
+		@psql -t -d template1 -c 'select distinct hostname from gp_segment_configuration where content != -1' > /tmp/seg_hosts 2>/dev/null; \
+		if [ $$? -eq 0 ]; then \
+			gpscp -f /tmp/seg_hosts $(BIN_DIR)/$(HELPER) =:$(GPHOME)/bin/$(HELPER); \
+			if [ $$? -eq 0 ]; then \
+				echo 'Successfully copied gpbackup_helper to $(GPHOME) on all segments'; \
+			else \
+				echo 'Failed to copy gpbackup_helper to $(GPHOME)'; \
+			fi; \
+		else \
+			echo 'Database is not running, please start the database and run this make target again'; \
+		fi; \
+		rm /tmp/seg_hosts
+
 clean :
 		# Build artifacts
 		rm -f $(BIN_DIR)/$(BACKUP)

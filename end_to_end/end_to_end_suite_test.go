@@ -45,6 +45,25 @@ func gprestore(gprestorePath string, timestamp string, args ...string) []byte {
 	return output
 }
 
+func buildAndInstallBinaries(conn *utils.DBConn) (string, string) {
+	os.Chdir("..")
+	command := exec.Command("make", "build")
+	output, err := command.CombinedOutput()
+	if err != nil {
+		fmt.Printf("%s", output)
+		Fail(fmt.Sprintf("%v", err))
+	}
+	command = exec.Command("make", "install_helper")
+	output, err = command.CombinedOutput()
+	if err != nil {
+		fmt.Printf("%s", output)
+		Fail(fmt.Sprintf("%v", err))
+	}
+	os.Chdir("end_to_end")
+	binDir := fmt.Sprintf("%s/go/bin", utils.System.Getenv("HOME"))
+	return fmt.Sprintf("%s/gpbackup", binDir), fmt.Sprintf("%s/gprestore", binDir)
+}
+
 func assertDataRestored(conn *utils.DBConn, tableToTupleCount map[string]int) {
 	for name, numTuples := range tableToTupleCount {
 		tupleCount := utils.SelectString(conn, fmt.Sprintf("SELECT count(*) AS string from %s", name))
@@ -65,15 +84,11 @@ func TestEndToEnd(t *testing.T) {
 
 var _ = Describe("backup end to end integration tests", func() {
 
-	var gpbackupPath, gprestorePath string
 	var backupConn, restoreConn *utils.DBConn
+	var gpbackupPath, gprestorePath string
 	BeforeSuite(func() {
 		var err error
 		testutils.SetupTestLogger()
-		gpbackupPath, err = gexec.Build("github.com/greenplum-db/gpbackup", "-tags", "gpbackup", "-ldflags", "-X github.com/greenplum-db/gpbackup/backup.version=0.5.0")
-		Expect(err).ShouldNot(HaveOccurred())
-		gprestorePath, err = gexec.Build("github.com/greenplum-db/gpbackup", "-tags", "gprestore", "-ldflags", "-X github.com/greenplum-db/gpbackup/restore.version=0.5.0")
-		Expect(err).ShouldNot(HaveOccurred())
 		exec.Command("dropdb", "testdb").Run()
 		err = exec.Command("createdb", "testdb").Run()
 		if err != nil {
@@ -88,6 +103,7 @@ var _ = Describe("backup end to end integration tests", func() {
 		restoreConn = utils.NewDBConn("restoredb")
 		restoreConn.Connect(1)
 		testutils.ExecuteSQLFile(backupConn, "test_tables.sql")
+		gpbackupPath, gprestorePath = buildAndInstallBinaries(backupConn)
 	})
 	AfterSuite(func() {
 		backupConn.Close()
