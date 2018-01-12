@@ -30,7 +30,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				testutils.AssertQueryRuns(connection, buffer.String())
 				defer testutils.AssertQueryRuns(connection, "DROP FUNCTION add(integer, integer)")
 
-				resultFunctions := backup.GetFunctions(connection)
+				resultFunctions := backup.GetFunctionsAllVersions(connection)
 
 				Expect(len(resultFunctions)).To(Equal(1))
 				testutils.ExpectStructsToMatchExcluding(&addFunction, &resultFunctions[0], "Oid")
@@ -47,7 +47,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				testutils.AssertQueryRuns(connection, buffer.String())
 				defer testutils.AssertQueryRuns(connection, "DROP FUNCTION append(integer, integer)")
 
-				resultFunctions := backup.GetFunctions(connection)
+				resultFunctions := backup.GetFunctionsAllVersions(connection)
 
 				Expect(len(resultFunctions)).To(Equal(1))
 				testutils.ExpectStructsToMatchExcluding(&appendFunction, &resultFunctions[0], "Oid")
@@ -64,7 +64,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				testutils.AssertQueryRuns(connection, buffer.String())
 				defer testutils.AssertQueryRuns(connection, "DROP FUNCTION dup(integer)")
 
-				resultFunctions := backup.GetFunctions(connection)
+				resultFunctions := backup.GetFunctionsAllVersions(connection)
 
 				Expect(len(resultFunctions)).To(Equal(1))
 				testutils.ExpectStructsToMatchExcluding(&dupFunction, &resultFunctions[0], "Oid")
@@ -88,7 +88,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				testutils.AssertQueryRuns(connection, buffer.String())
 				defer testutils.AssertQueryRuns(connection, "DROP FUNCTION add(integer, integer)")
 
-				resultFunctions := backup.GetFunctions(connection)
+				resultFunctions := backup.GetFunctionsAllVersions(connection)
 
 				Expect(len(resultFunctions)).To(Equal(1))
 				testutils.ExpectStructsToMatchExcluding(&addFunction, &resultFunctions[0], "Oid")
@@ -106,7 +106,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				testutils.AssertQueryRuns(connection, buffer.String())
 				defer testutils.AssertQueryRuns(connection, "DROP FUNCTION append(integer, integer)")
 
-				resultFunctions := backup.GetFunctions(connection)
+				resultFunctions := backup.GetFunctionsAllVersions(connection)
 
 				Expect(len(resultFunctions)).To(Equal(1))
 				testutils.ExpectStructsToMatchExcluding(&appendFunction, &resultFunctions[0], "Oid")
@@ -124,10 +124,34 @@ var _ = Describe("backup integration create statement tests", func() {
 				testutils.AssertQueryRuns(connection, buffer.String())
 				defer testutils.AssertQueryRuns(connection, "DROP FUNCTION dup(integer)")
 
-				resultFunctions := backup.GetFunctions(connection)
+				resultFunctions := backup.GetFunctionsAllVersions(connection)
 
 				Expect(len(resultFunctions)).To(Equal(1))
 				testutils.ExpectStructsToMatchExcluding(&dupFunction, &resultFunctions[0], "Oid")
+			})
+		})
+		Context("Tests for GPDB 6", func() {
+			BeforeEach(func() {
+				testutils.SkipIfBefore6(connection)
+			})
+			funcMetadata := backup.ObjectMetadata{}
+			It("creates a function with GPDB 6 features", func() {
+				windowFunction := backup.Function{
+					Schema: "public", Name: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
+					BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "integer",
+					Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 0, DataAccess: "c",
+					Language: "sql", IsWindow: true,
+				}
+
+				backup.PrintCreateFunctionStatement(backupfile, toc, windowFunction, funcMetadata)
+
+				testutils.AssertQueryRuns(connection, buffer.String())
+				defer testutils.AssertQueryRuns(connection, "DROP FUNCTION add(integer, integer)")
+
+				resultFunctions := backup.GetFunctionsAllVersions(connection)
+
+				Expect(len(resultFunctions)).To(Equal(1))
+				testutils.ExpectStructsToMatchExcluding(&windowFunction, &resultFunctions[0], "Oid")
 			})
 		})
 	})

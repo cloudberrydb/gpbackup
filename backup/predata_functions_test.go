@@ -146,6 +146,11 @@ $_$`)
 				backup.PrintFunctionModifiers(backupfile, funcDef)
 				testutils.ExpectRegexp(buffer, "SECURITY DEFINER")
 			})
+			It("print 'WINDOW' if IsWindow is set", func() {
+				funcDef.IsWindow = true
+				backup.PrintFunctionModifiers(backupfile, funcDef)
+				testutils.ExpectRegexp(buffer, "WINDOW")
+			})
 			Context("Cost cases", func() {
 				/*
 				 * The default COST values are 1 for C and internal functions and
@@ -231,6 +236,7 @@ $_$`)
 				testutils.ExpectRegexp(buffer, "SET client_min_messages TO error")
 			})
 		})
+
 	})
 	Describe("PrintCreateAggregateStatements", func() {
 		aggDefs := make([]backup.Aggregate, 1)

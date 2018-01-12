@@ -32,7 +32,7 @@ MODIFIES SQL DATA
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION append(integer, integer)")
 			testutils.AssertQueryRuns(connection, "COMMENT ON FUNCTION append(integer, integer) IS 'this is a function comment'")
 
-			results := backup.GetFunctions5(connection)
+			results := backup.GetFunctionsMaster(connection)
 
 			addFunction := backup.Function{
 				Schema: "public", Name: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
@@ -67,10 +67,28 @@ LANGUAGE SQL`)
 				Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 0, DataAccess: "c",
 				Language: "sql"}
 			backup.SetIncludeSchemas([]string{"testschema"})
-			results := backup.GetFunctions5(connection)
+			results := backup.GetFunctionsMaster(connection)
 
 			Expect(len(results)).To(Equal(1))
 			testutils.ExpectStructsToMatchExcluding(&results[0], &addFunction, "Oid")
+		})
+		It("returns a window function", func() {
+			testutils.SkipIfBefore6(connection)
+			testutils.AssertQueryRuns(connection, `CREATE FUNCTION add(integer, integer) RETURNS integer
+AS 'SELECT $1 + $2'
+LANGUAGE SQL WINDOW`)
+			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION add(integer, integer)")
+
+			results := backup.GetFunctionsMaster(connection)
+
+			windowFunction := backup.Function{
+				Schema: "public", Name: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
+				BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "integer",
+				Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 0, DataAccess: "c",
+				Language: "sql", IsWindow: true}
+
+			Expect(len(results)).To(Equal(1))
+			testutils.ExpectStructsToMatchExcluding(&results[0], &windowFunction, "Oid")
 		})
 	})
 	Describe("GetFunctions4", func() {
@@ -421,7 +439,7 @@ LANGUAGE SQL`)
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION add(composite_ints) RETURNS integer STRICT IMMUTABLE LANGUAGE SQL AS 'SELECT ($1.one + $1.two);'")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION add(composite_ints)")
 
-			allFunctions := backup.GetFunctions(connection)
+			allFunctions := backup.GetFunctionsAllVersions(connection)
 			function := backup.Function{}
 			for _, funct := range allFunctions {
 				if funct.Name == "add" {
@@ -441,7 +459,7 @@ LANGUAGE SQL`)
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION compose(integer, integer) RETURNS composite_ints STRICT IMMUTABLE LANGUAGE PLPGSQL AS 'DECLARE comp composite_ints; BEGIN SELECT $1, $2 INTO comp; RETURN comp; END;';")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION compose(integer, integer)")
 
-			allFunctions := backup.GetFunctions(connection)
+			allFunctions := backup.GetFunctionsAllVersions(connection)
 			function := backup.Function{}
 			for _, funct := range allFunctions {
 				if funct.Name == "compose" {
@@ -466,7 +484,7 @@ LANGUAGE SQL`)
 			testutils.AssertQueryRuns(connection, "CREATE FUNCTION compose(base_type[], composite_ints) RETURNS composite_ints STRICT IMMUTABLE LANGUAGE PLPGSQL AS 'DECLARE comp composite_ints; BEGIN SELECT $1[0].one+$2.one, $1[0].two+$2.two INTO comp; RETURN comp; END;';")
 			defer testutils.AssertQueryRuns(connection, "DROP FUNCTION compose(base_type[], composite_ints)")
 
-			allFunctions := backup.GetFunctions(connection)
+			allFunctions := backup.GetFunctionsAllVersions(connection)
 			function := backup.Function{}
 			for _, funct := range allFunctions {
 				if funct.Name == "compose" {
