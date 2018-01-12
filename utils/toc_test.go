@@ -24,6 +24,8 @@ var _ = Describe("utils/toc tests", func() {
 	table1Len := uint64(len(table1.Statement))
 	table2 := utils.StatementWithType{ObjectType: "TABLE", Statement: "CREATE TABLE schema.table2"}
 	table2Len := uint64(len(table2.Statement))
+	index := utils.StatementWithType{ObjectType: "INDEX", Statement: "CREATE INDEX idx ON schema.table(i)", ReferenceObject: "schema.table"}
+	indexLen := uint64(len(index.Statement))
 	BeforeEach(func() {
 		toc, backupfile = testutils.InitializeTestTOC(buffer, "global")
 	})
@@ -104,13 +106,13 @@ var _ = Describe("utils/toc tests", func() {
 			toc.AddMetadataEntry("schema", "table1", "INDEX", "", 0, backupfile, "global")
 			backupfile.ByteCount += table2Len
 			toc.AddMetadataEntry("schema2", "table2", "TABLE", "", table1Len, backupfile, "global")
-			backupfile.ByteCount += sequenceLen
-			toc.AddMetadataEntry("schema", "somesequence", "SEQUENCE", "schema.tablefoo", table1Len+table2Len, backupfile, "global")
+			backupfile.ByteCount += indexLen
+			toc.AddMetadataEntry("schema", "someindex", "INDEX", "schema.table", table1Len+table2Len, backupfile, "global")
 
-			metadataFile := bytes.NewReader([]byte(table1.Statement + table2.Statement + sequence.Statement))
-			statements := toc.GetSQLStatementForObjectTypes("global", metadataFile, []string{}, []string{}, []string{"schema.tablefoo"})
+			metadataFile := bytes.NewReader([]byte(table1.Statement + table2.Statement + index.Statement))
+			statements := toc.GetSQLStatementForObjectTypes("global", metadataFile, []string{}, []string{}, []string{"schema.table"})
 
-			Expect(statements).To(Equal([]utils.StatementWithType{sequence}))
+			Expect(statements).To(Equal([]utils.StatementWithType{index}))
 
 		})
 		It("returns no statements for a non-table object with matching name from table list", func() {

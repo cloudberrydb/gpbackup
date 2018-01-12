@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/greenplum-db/gpbackup/utils"
 	"github.com/pkg/errors"
@@ -41,10 +40,8 @@ func executeStatement(statement utils.StatementWithType, showProgressBar int, sh
  * This function creates a worker pool of N goroutines to be able to execute up
  * to N statements in parallel.
  */
-func ExecuteStatements(statements []utils.StatementWithType, objectsTitle string, showProgressBar int, shouldExecute *utils.FilterSet, executeInParallel bool, whichConn ...int) {
+func ExecuteStatements(statements []utils.StatementWithType, progressBar utils.ProgressBar, showProgressBar int, shouldExecute *utils.FilterSet, executeInParallel bool, whichConn ...int) {
 	var numErrors uint32
-	progressBar := utils.NewProgressBar(len(statements), fmt.Sprintf("%s restored: ", objectsTitle), showProgressBar)
-	progressBar.Start()
 	if !executeInParallel {
 		connNum := connection.ValidateConnNum(whichConn...)
 		for _, statement := range statements {
@@ -66,18 +63,45 @@ func ExecuteStatements(statements []utils.StatementWithType, objectsTitle string
 		}
 		for _, statement := range statements {
 			tasks <- statement
-			/*
-			 * Attempting to execute certain statements such as CREATE INDEX on the same table
-			 * at the same time can cause a deadlock due to conflicting Access Exclusive locks,
-			 * so we add a small delay between statements to avoid the issue.
-			 */
-			time.Sleep(20 * time.Millisecond)
 		}
 		close(tasks)
 		workerPool.Wait()
 	}
-	progressBar.Finish()
 	if numErrors > 0 {
 		logger.Error("Encountered %d errors during metadata restore; see log file %s for a list of failed statements.", numErrors, logger.GetLogFilePath())
 	}
+}
+
+func ExecuteStatementsAndCreateProgressBar(statements []utils.StatementWithType, objectsTitle string, showProgressBar int, shouldExecute *utils.FilterSet, executeInParallel bool, whichConn ...int) {
+	progressBar := utils.NewProgressBar(len(statements), fmt.Sprintf("%s restored: ", objectsTitle), showProgressBar)
+	progressBar.Start()
+	ExecuteStatements(statements, progressBar, showProgressBar, shouldExecute, executeInParallel, whichConn...)
+	progressBar.Finish()
+}
+
+/*
+ *   There is an existing bug in Greenplum where creating indexes in parallel
+ *   on an AO table that didn't have any indexes previously can cause
+ *   deadlock.
+ *
+ *   We work around this issue by restoring post data objects in
+ *   two batches. The first batch takes one index from each table and
+ *   restores them in parallel (which has no possibility of deadlock) and
+ *   then the second restores all other postdata objects in parallel. After
+ *   each table has at least one index, there is no more risk of deadlock.
+ */
+func BatchPostdataStatements(statements []utils.StatementWithType) ([]utils.StatementWithType, []utils.StatementWithType) {
+	indexMap := make(map[string]bool, 0)
+	firstBatch := make([]utils.StatementWithType, 0)
+	secondBatch := make([]utils.StatementWithType, 0)
+	for _, statement := range statements {
+		_, tableIndexPresent := indexMap[statement.ReferenceObject]
+		if statement.ObjectType == "INDEX" && !tableIndexPresent {
+			indexMap[statement.ReferenceObject] = true
+			firstBatch = append(firstBatch, statement)
+		} else {
+			secondBatch = append(secondBatch, statement)
+		}
+	}
+	return firstBatch, secondBatch
 }

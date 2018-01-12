@@ -79,8 +79,9 @@ func (toc *SegmentTOC) WriteToFile(filename string) {
 }
 
 type StatementWithType struct {
-	ObjectType string
-	Statement  string
+	ObjectType      string
+	ReferenceObject string
+	Statement       string
 }
 
 func (toc *TOC) GetSQLStatementForObjectTypes(section string, metadataFile io.ReaderAt, objectTypes []string, includeSchemas []string, includeTables []string) []StatementWithType {
@@ -98,20 +99,20 @@ func (toc *TOC) GetSQLStatementForObjectTypes(section string, metadataFile io.Re
 			contents := make([]byte, entry.EndByte-entry.StartByte)
 			_, err := metadataFile.ReadAt(contents, int64(entry.StartByte))
 			CheckError(err)
-			statements = append(statements, StatementWithType{ObjectType: entry.ObjectType, Statement: string(contents)})
+			statements = append(statements, StatementWithType{ObjectType: entry.ObjectType, ReferenceObject: entry.ReferenceObject, Statement: string(contents)})
 		}
 	}
 	return statements
 }
 
-func (toc *TOC) GetAllSQLStatements(filename string, metadataFile io.ReaderAt) []StatementWithType {
-	entries := *toc.metadataEntryMap[filename]
+func (toc *TOC) GetAllSQLStatements(section string, metadataFile io.ReaderAt) []StatementWithType {
+	entries := *toc.metadataEntryMap[section]
 	statements := make([]StatementWithType, 0)
 	for _, entry := range entries {
 		contents := make([]byte, entry.EndByte-entry.StartByte)
 		_, err := metadataFile.ReadAt(contents, int64(entry.StartByte))
 		CheckError(err)
-		statements = append(statements, StatementWithType{ObjectType: entry.ObjectType, Statement: string(contents)})
+		statements = append(statements, StatementWithType{ObjectType: entry.ObjectType, ReferenceObject: entry.ReferenceObject, Statement: string(contents)})
 	}
 	return statements
 }

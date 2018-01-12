@@ -23,7 +23,7 @@ func initializeFlags() {
 	debug = flag.Bool("debug", false, "Print verbose and debug log messages")
 	flag.Var(&includeSchemas, "include-schema", "Restore only the specified schema(s). --include-schema can be specified multiple times.")
 	includeTableFile = flag.String("include-table-file", "", "A file containing a list of fully-qualified tables to be restored")
-	numJobs = flag.Int("jobs", 1, "Number of parallel connections to use when restoring table data")
+	numJobs = flag.Int("jobs", 1, "Number of parallel connections to use when restoring table data and post-data")
 	onErrorContinue = flag.Bool("on-error-continue", false, "Log errors and continue restore, instead of exiting on first error")
 	printVersion = flag.Bool("version", false, "Print version number and exit")
 	quiet = flag.Bool("quiet", false, "Suppress non-warning, non-error log messages")
@@ -122,7 +122,7 @@ func createDatabase(metadataFilename string) {
 	if *redirect != "" {
 		statements = utils.SubstituteRedirectDatabaseInStatements(statements, backupConfig.DatabaseName, *redirect)
 	}
-	ExecuteRestoreMetadataStatements(statements, "", utils.PB_NONE, false)
+	ExecuteRestoreMetadataStatements(statements, "", nil, utils.PB_NONE, false)
 	logger.Info("Database creation complete")
 }
 
@@ -133,14 +133,14 @@ func restoreGlobal(metadataFilename string) {
 	if *redirect != "" {
 		statements = utils.SubstituteRedirectDatabaseInStatements(statements, backupConfig.DatabaseName, *redirect)
 	}
-	ExecuteRestoreMetadataStatements(statements, "Global objects", utils.PB_VERBOSE, false)
+	ExecuteRestoreMetadataStatements(statements, "Global objects", nil, utils.PB_VERBOSE, false)
 	logger.Info("Global database metadata restore complete")
 }
 
 func restorePredata(metadataFilename string) {
 	logger.Info("Restoring pre-data metadata")
 	statements := GetRestoreMetadataStatements("predata", metadataFilename, []string{}, includeSchemas, includeTables)
-	ExecuteRestoreMetadataStatements(statements, "Pre-data objects", utils.PB_VERBOSE, false)
+	ExecuteRestoreMetadataStatements(statements, "Pre-data objects", nil, utils.PB_VERBOSE, false)
 	logger.Info("Pre-data metadata restore complete")
 }
 
@@ -197,7 +197,12 @@ func restoreData(gucStatements []utils.StatementWithType) {
 func restorePostdata(metadataFilename string) {
 	logger.Info("Restoring post-data metadata")
 	statements := GetRestoreMetadataStatements("postdata", metadataFilename, []string{}, includeSchemas, includeTables)
-	ExecuteRestoreMetadataStatements(statements, "Post-data objects", utils.PB_VERBOSE, false)
+	firstBatch, secondBatch := BatchPostdataStatements(statements)
+	progressBar := utils.NewProgressBar(len(statements), "Post-data objects restored: ", utils.PB_VERBOSE)
+	progressBar.Start()
+	ExecuteRestoreMetadataStatements(firstBatch, "", progressBar, utils.PB_VERBOSE, connection.NumConns > 1)
+	ExecuteRestoreMetadataStatements(secondBatch, "", progressBar, utils.PB_VERBOSE, connection.NumConns > 1)
+	progressBar.Finish()
 	logger.Info("Post-data metadata restore complete")
 }
 
@@ -205,7 +210,7 @@ func restoreStatistics() {
 	statisticsFilename := globalCluster.GetStatisticsFilePath()
 	logger.Info("Restoring query planner statistics from %s", statisticsFilename)
 	statements := GetRestoreMetadataStatements("statistics", statisticsFilename, []string{}, includeSchemas, []string{})
-	ExecuteRestoreMetadataStatements(statements, "Table statistics", utils.PB_VERBOSE, false)
+	ExecuteRestoreMetadataStatements(statements, "Table statistics", nil, utils.PB_VERBOSE, false)
 	logger.Info("Query planner statistics restore complete")
 }
 
