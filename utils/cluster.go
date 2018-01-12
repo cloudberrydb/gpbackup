@@ -381,6 +381,29 @@ func (cluster *Cluster) VerifyBackupFileCountOnSegments(fileCount int) {
 	}
 }
 
+func (cluster *Cluster) VerifyHelperVersionOnSegments(version string) {
+	remoteOutput := cluster.GenerateAndExecuteCommand("Verifying gpbackup_helper version", func(contentID int) string {
+		gphome := System.Getenv("GPHOME")
+		return fmt.Sprintf("%s/bin/gpbackup_helper --version", gphome)
+	})
+	cluster.CheckClusterError(remoteOutput, "Could not verify gpbackup_helper version", func(contentID int) string {
+		return "Could not verify gpbackup_helper version"
+	})
+
+	numIncorrect := 0
+	for contentID := range remoteOutput.Stdouts {
+		segVersion := strings.TrimSpace(remoteOutput.Stdouts[contentID])
+		segVersion = strings.Split(segVersion, " ")[1] // Format is "gpbackup_helper [version string]"
+		if segVersion != version {
+			logger.Verbose("Version mismatch for gpbackup_helper on segment %d on host %s: Expected version %s, found version %s.", contentID, cluster.GetHostForContent(contentID), version, segVersion)
+			numIncorrect++
+		}
+	}
+	if numIncorrect > 0 {
+		cluster.LogFatalError("The version of gpbackup_helper must match the version of gprestore, but found gpbackup_helper binaries with invalid version", numIncorrect)
+	}
+}
+
 func (cluster *Cluster) CleanUpSegmentTOCs() {
 	remoteOutput := cluster.GenerateAndExecuteCommand("Removing segment table of contents files from segment data directories", func(contentID int) string {
 		tocFile := cluster.GetSegmentTOCFilePath(cluster.SegDirMap[contentID], fmt.Sprintf("%d", contentID))

@@ -16,14 +16,16 @@ import (
 )
 
 var (
-	restoreAgent *bool
 	content      *int
 	dataFile     *string
 	logger       *utils.Logger
 	oid          *uint
-	pipeFile     *string
-	tocFile      *string
 	oidFile      *string
+	pipeFile     *string
+	printVersion *bool
+	restoreAgent *bool
+	tocFile      *string
+	version      string
 )
 
 /*
@@ -40,15 +42,20 @@ func DoHelper() {
 }
 
 func InitializeGlobals() {
-	restoreAgent = flag.Bool("restore-agent", false, "Use gpbackup_helper as an agent for restore")
 	content = flag.Int("content", -2, "Content ID of the corresponding segment")
+	dataFile = flag.String("data-file", "", "Absolute path to the data file")
 	logger = utils.InitializeLogging("gpbackup_helper", "")
 	oid = flag.Uint("oid", 0, "Oid of the table being processed")
-	tocFile = flag.String("toc-file", "", "Absolute path to the table of contents file")
 	oidFile = flag.String("oid-file", "", "Absolute path to the file containing a list of oids to restore")
 	pipeFile = flag.String("pipe-file", "", "Absolute path to the pipe file")
-	dataFile = flag.String("data-file", "", "Absolute path to the data file")
+	printVersion = flag.Bool("version", false, "Print version number and exit")
+	restoreAgent = flag.Bool("restore-agent", false, "Use gpbackup_helper as an agent for restore")
+	tocFile = flag.String("toc-file", "", "Absolute path to the table of contents file")
 	flag.Parse()
+	if *printVersion {
+		fmt.Printf("gpbackup_helper %s\n", version)
+		os.Exit(0)
+	}
 	utils.InitializeSystemFunctions()
 }
 
