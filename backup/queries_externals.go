@@ -6,15 +6,18 @@ package backup
  */
 
 import (
+	"fmt"
+
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
 func GetExternalTableDefinitions(connection *utils.DBConn) map[uint32]ExternalTableDefinition {
-	version4query := `
+	execOptions := "'ALL_SEGMENTS', 'HOST', 'MASTER_ONLY', 'PER_HOST', 'SEGMENT_ID', 'TOTAL_SEGS'"
+	version4query := fmt.Sprintf(`
 SELECT
 	reloid AS oid,
-	CASE WHEN location[1] NOT IN ('ALL_SEGMENTS', 'HOST', 'MASTER_ONLY', 'PER_HOST', 'SEGMENT_ID', 'TOTAL_SEGS') THEN unnest(location) ELSE '' END AS location,
-	CASE WHEN location[1] IN ('ALL_SEGMENTS', 'HOST', 'MASTER_ONLY', 'PER_HOST', 'SEGMENT_ID', 'TOTAL_SEGS') THEN unnest(location) ELSE 'ALL_SEGMENTS' END AS execlocation,
+	CASE WHEN split_part(location[1], ':', 1) NOT IN (%s) THEN unnest(location) ELSE '' END AS location,
+	CASE WHEN split_part(location[1], ':', 1) IN (%s) THEN unnest(location) ELSE 'ALL_SEGMENTS' END AS execlocation,
 	fmttype AS formattype,
 	fmtopts AS formatopts,
 	'' AS options,
@@ -24,7 +27,7 @@ SELECT
 	coalesce((SELECT relname FROM pg_class WHERE oid = fmterrtbl), '') AS errtable,
 	pg_encoding_to_char(encoding) AS encoding,
 	writable
-FROM pg_exttable;`
+FROM pg_exttable;`, execOptions, execOptions)
 
 	query := `
 SELECT
