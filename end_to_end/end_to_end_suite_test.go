@@ -45,7 +45,7 @@ func gprestore(gprestorePath string, timestamp string, args ...string) []byte {
 	return output
 }
 
-func buildAndInstallBinaries(conn *utils.DBConn) (string, string) {
+func buildAndInstallBinaries() (string, string) {
 	os.Chdir("..")
 	command := exec.Command("make", "build")
 	output, err := command.CombinedOutput()
@@ -103,7 +103,7 @@ var _ = Describe("backup end to end integration tests", func() {
 		restoreConn = utils.NewDBConn("restoredb")
 		restoreConn.Connect(1)
 		testutils.ExecuteSQLFile(backupConn, "test_tables.sql")
-		gpbackupPath, gprestorePath = buildAndInstallBinaries(backupConn)
+		gpbackupPath, gprestorePath = buildAndInstallBinaries()
 	})
 	AfterSuite(func() {
 		backupConn.Close()

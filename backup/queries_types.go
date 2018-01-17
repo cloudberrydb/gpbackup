@@ -174,18 +174,48 @@ SELECT
 	t.oid,
 	quote_ident(n.nspname) AS schema,
 	quote_ident(t.typname) AS name,
-	t.typtype,
-	array_agg(E'\t' || quote_ident(a.attname) || ' ' || pg_catalog.format_type(a.atttypid, NULL) ORDER BY a.attnum) AS attributes
+	t.typtype
 FROM pg_type t
-JOIN pg_attribute a ON t.typrelid = a.attrelid
 JOIN pg_namespace n ON t.typnamespace = n.oid`
 	groupBy := "t.oid, schema, name, t.typtype"
 	query := getTypeQuery(connection, selectClause, groupBy, "c")
 
-	results := make([]Type, 0)
+	compTypes := make([]Type, 0)
+	err := connection.Select(&compTypes, query)
+	utils.CheckError(err)
+
+	attributeMap := getCompositeTypeAttributes(connection)
+
+	for i, compType := range compTypes {
+		compTypes[i].Attributes = attributeMap[compType.Oid]
+	}
+	return compTypes
+}
+
+type Attributes struct {
+	TypeOid    uint32
+	Attributes pq.StringArray
+}
+
+func getCompositeTypeAttributes(connection *utils.DBConn) map[uint32]pq.StringArray {
+	query := `
+SELECT
+	t.oid AS typeoid,
+	array_agg(E'\t' || quote_ident(a.attname) || ' ' || pg_catalog.format_type(a.atttypid, NULL) ORDER BY a.attnum) AS attributes
+FROM pg_type t
+JOIN pg_attribute a ON t.typrelid = a.attrelid
+WHERE t.typtype = 'c'
+GROUP BY t.oid`
+
+	results := make([]Attributes, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
-	return results
+
+	attributeMap := make(map[uint32]pq.StringArray, 0)
+	for _, att := range results {
+		attributeMap[att.TypeOid] = att.Attributes
+	}
+	return attributeMap
 }
 
 func GetDomainTypes(connection *utils.DBConn) []Type {
