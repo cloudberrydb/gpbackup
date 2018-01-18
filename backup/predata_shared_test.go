@@ -333,7 +333,7 @@ ALTER SERVER foreignserver OWNER TO testrole;
 
 REVOKE ALL ON FOREIGN SERVER foreignserver FROM PUBLIC;
 REVOKE ALL ON FOREIGN SERVER foreignserver FROM testrole;
-GRANT USAGE ON FOREIGN SERVER foreignserver TO testrole;`)
+GRANT ALL ON FOREIGN SERVER foreignserver TO testrole;`)
 		})
 	})
 	Describe("ParseACL", func() {

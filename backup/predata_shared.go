@@ -265,6 +265,12 @@ func (obj ObjectMetadata) GetPrivilegesStatements(objectName string, objectType 
 			case "LANGUAGE":
 				hasAllPrivileges = acl.Usage
 				hasAllPrivilegesWithGrant = acl.UsageWithGrant
+			case "FOREIGN DATA WRAPPER":
+				hasAllPrivileges = acl.Usage
+				hasAllPrivilegesWithGrant = acl.UsageWithGrant
+			case "FOREIGN SERVER":
+				hasAllPrivileges = acl.Usage
+				hasAllPrivilegesWithGrant = acl.UsageWithGrant
 			case "PROTOCOL":
 				hasAllPrivileges = acl.Select && acl.Insert
 				hasAllPrivilegesWithGrant = acl.SelectWithGrant && acl.InsertWithGrant
