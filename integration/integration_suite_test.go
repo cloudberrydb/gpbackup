@@ -3,7 +3,6 @@ package integration
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"testing"
 
 	"os/exec"
@@ -22,6 +21,7 @@ var (
 	connection *utils.DBConn
 	toc        *utils.TOC
 	backupfile *utils.FileWithByteCount
+	cluster    utils.Cluster
 )
 
 func TestQueries(t *testing.T) {
@@ -51,13 +51,15 @@ var _ = BeforeSuite(func() {
 	testutils.AssertQueryRuns(connection, "DROP PROTOCOL IF EXISTS gphdfs")
 	testutils.AssertQueryRuns(connection, `SET standard_conforming_strings TO "on"`)
 	segConfig := utils.GetSegmentConfiguration(connection)
-	cluster := utils.NewCluster(segConfig, "/tmp/test_dir", "20170101010101", "gpseg")
+	cluster = utils.NewCluster(segConfig, "/tmp/test_dir", "20170101010101", "gpseg")
 	if connection.Version.Before("6") {
 		setupTestFilespace(cluster)
 	} else {
-		err := os.Mkdir("/tmp/test_dir", 0777)
-		if err != nil {
-			Fail(fmt.Sprintf("Could not create test directory: %s", err.Error()))
+		remoteOutput := cluster.GenerateAndExecuteCommand("Creating /tmp/test_dir directory on all hosts", func(contentID int) string {
+			return fmt.Sprintf("mkdir -p /tmp/test_dir")
+		}, true)
+		if remoteOutput.NumErrors != 0 {
+			Fail("Could not create /tmp/test_dir directory on 1 or more hosts")
 		}
 	}
 })
@@ -74,9 +76,11 @@ var _ = AfterSuite(func() {
 	if connection.Version.Before("6") {
 		destroyTestFilespace()
 	} else {
-		err := os.RemoveAll("/tmp/test_dir")
-		if err != nil {
-			Fail(fmt.Sprintf("Could not remove test directory: %s", err.Error()))
+		remoteOutput := cluster.GenerateAndExecuteCommand("Removing /tmp/test_dir directory on all hosts", func(contentID int) string {
+			return fmt.Sprintf("rm -rf /tmp/test_dir")
+		}, true)
+		if remoteOutput.NumErrors != 0 {
+			Fail("Could not remove /tmp/test_dir directory on 1 or more hosts")
 		}
 	}
 	if connection != nil {
