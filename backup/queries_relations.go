@@ -6,6 +6,7 @@ package backup
  */
 
 import (
+	"database/sql"
 	"fmt"
 	"strings"
 
@@ -201,6 +202,7 @@ type ColumnDefinition struct {
 	StorageType string
 	DefaultVal  string
 	Comment     string
+	ACL         *ObjectMetadata
 }
 
 var storageTypeCodes = map[string]string{
@@ -210,7 +212,7 @@ var storageTypeCodes = map[string]string{
 	"x": "EXTENDED",
 }
 
-func GetColumnDefinitions(connection *utils.DBConn) map[uint32][]ColumnDefinition {
+func GetColumnDefinitions(connection *utils.DBConn, columnMetadata map[uint32]map[string]ObjectMetadata) map[uint32][]ColumnDefinition {
 	// This query is adapted from the getTableAttrs() function in pg_dump.c.
 	query := fmt.Sprintf(`
 SELECT
@@ -243,9 +245,59 @@ ORDER BY a.attrelid, a.attnum;`, tableAndSchemaFilterClause())
 	resultMap := make(map[uint32][]ColumnDefinition, 0)
 	for _, result := range results {
 		result.StorageType = storageTypeCodes[result.StorageType]
+		if connection.Version.Before("6") {
+			result.ACL = &ObjectMetadata{Privileges: []ACL{}}
+		} else {
+			acl := columnMetadata[result.Oid][result.Name]
+			result.ACL = &acl
+		}
 		resultMap[result.Oid] = append(resultMap[result.Oid], result)
 	}
 	return resultMap
+}
+
+type ColumnPrivilegesQueryStruct struct {
+	TableOid   uint32
+	Name       string
+	Privileges sql.NullString
+	Kind       string
+	TableOwner string
+}
+
+func GetPrivilegesForColumns(connection *utils.DBConn) map[uint32]map[string]ObjectMetadata {
+	metadataMap := make(map[uint32]map[string]ObjectMetadata)
+	if connection.Version.Before("6") {
+		return metadataMap
+	}
+	query := fmt.Sprintf(`
+SELECT
+    a.attrelid AS tableoid,
+    quote_ident(a.attname) AS name,
+	CASE
+		WHEN a.attacl IS NULL OR array_upper(a.attacl, 1) = 0 THEN a.attacl[0]
+		ELSE unnest(a.attacl)
+	END AS privileges,
+	CASE
+		WHEN a.attacl IS NULL THEN 'Default'
+		WHEN array_upper(a.attacl, 1) = 0 THEN 'Empty'
+		ELSE ''
+	END AS kind,
+	pg_get_userbyid(c.relowner) AS tableowner
+FROM pg_attribute a
+JOIN pg_class c ON a.attrelid = c.oid
+JOIN pg_namespace n ON c.relnamespace = n.oid
+WHERE %s
+AND a.attnum > 0::pg_catalog.int2
+AND a.attisdropped = 'f'
+ORDER BY a.attrelid, a.attname;
+`, tableAndSchemaFilterClause())
+
+	results := make([]ColumnPrivilegesQueryStruct, 0)
+	err := connection.Select(&results, query)
+	utils.CheckError(err)
+	metadataMap = ConstructColumnPrivilegesMap(results)
+
+	return metadataMap
 }
 
 type DistributionPolicy struct {

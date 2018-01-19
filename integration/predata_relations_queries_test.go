@@ -337,6 +337,7 @@ PARTITION BY RANGE (year)
 		})
 	})
 	Describe("GetColumnDefinitions", func() {
+		emptyPrivilegeMap := make(map[uint32]map[string]backup.ObjectMetadata, 0)
 		It("returns table attribute information for a heap table", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE atttable(a float, b text, c text NOT NULL, d int DEFAULT(5), e text)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE atttable")
@@ -345,12 +346,12 @@ PARTITION BY RANGE (year)
 			testutils.AssertQueryRuns(connection, "ALTER TABLE atttable ALTER COLUMN e SET STORAGE PLAIN")
 			oid := testutils.OidFromObjectName(connection, "public", "atttable", backup.TYPE_RELATION)
 
-			tableAtts := backup.GetColumnDefinitions(connection)[oid]
+			tableAtts := backup.GetColumnDefinitions(connection, emptyPrivilegeMap)[oid]
 
-			columnA := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "a", NotNull: false, HasDefault: false, Type: "double precision", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "att comment"}
-			columnC := backup.ColumnDefinition{Oid: 0, Num: 3, Name: "c", NotNull: true, HasDefault: false, Type: "text", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: ""}
-			columnD := backup.ColumnDefinition{Oid: 0, Num: 4, Name: "d", NotNull: false, HasDefault: true, Type: "integer", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "5", Comment: ""}
-			columnE := backup.ColumnDefinition{Oid: 0, Num: 5, Name: "e", NotNull: false, HasDefault: false, Type: "text", Encoding: "", StatTarget: -1, StorageType: "PLAIN", DefaultVal: "", Comment: ""}
+			columnA := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "a", NotNull: false, HasDefault: false, Type: "double precision", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "att comment", ACL: &backup.ObjectMetadata{}}
+			columnC := backup.ColumnDefinition{Oid: 0, Num: 3, Name: "c", NotNull: true, HasDefault: false, Type: "text", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: &backup.ObjectMetadata{}}
+			columnD := backup.ColumnDefinition{Oid: 0, Num: 4, Name: "d", NotNull: false, HasDefault: true, Type: "integer", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "5", Comment: "", ACL: &backup.ObjectMetadata{}}
+			columnE := backup.ColumnDefinition{Oid: 0, Num: 5, Name: "e", NotNull: false, HasDefault: false, Type: "text", Encoding: "", StatTarget: -1, StorageType: "PLAIN", DefaultVal: "", Comment: "", ACL: &backup.ObjectMetadata{}}
 
 			Expect(len(tableAtts)).To(Equal(4))
 
@@ -364,10 +365,10 @@ PARTITION BY RANGE (year)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE co_atttable")
 			oid := testutils.OidFromObjectName(connection, "public", "co_atttable", backup.TYPE_RELATION)
 
-			tableAtts := backup.GetColumnDefinitions(connection)[oid]
+			tableAtts := backup.GetColumnDefinitions(connection, emptyPrivilegeMap)[oid]
 
-			columnA := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "a", NotNull: false, HasDefault: false, Type: "double precision", Encoding: "compresstype=none,blocksize=32768,compresslevel=0", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: ""}
-			columnB := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "b", NotNull: false, HasDefault: false, Type: "text", Encoding: "blocksize=65536,compresstype=none,compresslevel=0", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: ""}
+			columnA := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "a", NotNull: false, HasDefault: false, Type: "double precision", Encoding: "compresstype=none,blocksize=32768,compresslevel=0", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: &backup.ObjectMetadata{}}
+			columnB := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "b", NotNull: false, HasDefault: false, Type: "text", Encoding: "blocksize=65536,compresstype=none,compresslevel=0", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: &backup.ObjectMetadata{}}
 
 			Expect(len(tableAtts)).To(Equal(2))
 
@@ -379,9 +380,38 @@ PARTITION BY RANGE (year)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE nocol_atttable")
 			oid := testutils.OidFromObjectName(connection, "public", "nocol_atttable", backup.TYPE_RELATION)
 
-			tableAtts := backup.GetColumnDefinitions(connection)[oid]
+			tableAtts := backup.GetColumnDefinitions(connection, emptyPrivilegeMap)[oid]
 
 			Expect(len(tableAtts)).To(Equal(0))
+		})
+	})
+	Describe("GetPrivilegesForColumns", func() {
+		It("Default column", func() {
+			testutils.SkipIfBefore6(connection)
+			testutils.AssertQueryRuns(connection, "CREATE TABLE default_privileges(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE default_privileges")
+
+			metadataMap := backup.GetPrivilegesForColumns(connection)
+
+			oid := testutils.OidFromObjectName(connection, "public", "default_privileges", backup.TYPE_RELATION)
+			expectedObjectMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{}, Owner: "testrole"}
+			Expect(len(metadataMap)).To(Equal(1))
+			Expect(len(metadataMap[oid])).To(Equal(1))
+			Expect(metadataMap[oid]["i"]).To(Equal(expectedObjectMetadata))
+		})
+		It("Column with granted privileges", func() {
+			testutils.SkipIfBefore6(connection)
+			testutils.AssertQueryRuns(connection, "CREATE TABLE granted_privileges(i int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE granted_privileges")
+			testutils.AssertQueryRuns(connection, "GRANT SELECT (i) ON TABLE granted_privileges TO testrole")
+
+			metadataMap := backup.GetPrivilegesForColumns(connection)
+
+			oid := testutils.OidFromObjectName(connection, "public", "granted_privileges", backup.TYPE_RELATION)
+			expectedObjectMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "testrole", Select: true}}, Owner: "testrole"}
+			Expect(len(metadataMap)).To(Equal(1))
+			Expect(len(metadataMap[oid])).To(Equal(1))
+			Expect(metadataMap[oid]["i"]).To(Equal(expectedObjectMetadata))
 		})
 	})
 	Describe("GetDistributionPolicies", func() {

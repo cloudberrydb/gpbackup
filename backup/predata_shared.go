@@ -228,16 +228,22 @@ func ParseACL(aclStr string) *ACL {
 	return nil
 }
 
-func (obj ObjectMetadata) GetPrivilegesStatements(objectName string, objectType string) string {
+func (obj ObjectMetadata) GetPrivilegesStatements(objectName string, objectType string, columnName ...string) string {
 	statements := []string{}
 	typeStr := fmt.Sprintf("%s ", objectType)
 	if objectType == "VIEW" {
 		typeStr = ""
+	} else if objectType == "COLUMN" {
+		typeStr = "TABLE "
+	}
+	columnStr := ""
+	if len(columnName) == 1 {
+		columnStr = fmt.Sprintf("(%s) ", columnName[0])
 	}
 	if len(obj.Privileges) != 0 {
-		statements = append(statements, fmt.Sprintf("REVOKE ALL ON %s%s FROM PUBLIC;", typeStr, objectName))
+		statements = append(statements, fmt.Sprintf("REVOKE ALL %sON %s%s FROM PUBLIC;", columnStr, typeStr, objectName))
 		if obj.Owner != "" {
-			statements = append(statements, fmt.Sprintf("REVOKE ALL ON %s%s FROM %s;", typeStr, objectName, obj.Owner))
+			statements = append(statements, fmt.Sprintf("REVOKE ALL %sON %s%s FROM %s;", columnStr, typeStr, objectName, obj.Owner))
 		}
 		for _, acl := range obj.Privileges {
 			/*
@@ -256,19 +262,22 @@ func (obj ObjectMetadata) GetPrivilegesStatements(objectName string, objectType 
 				grantee = acl.Grantee
 			}
 			switch objectType {
+			case "COLUMN":
+				hasAllPrivileges = acl.Select && acl.Insert && acl.Update && acl.References
+				hasAllPrivilegesWithGrant = acl.SelectWithGrant && acl.InsertWithGrant && acl.UpdateWithGrant && acl.ReferencesWithGrant
 			case "DATABASE":
 				hasAllPrivileges = acl.Create && acl.Temporary && acl.Connect
 				hasAllPrivilegesWithGrant = acl.CreateWithGrant && acl.TemporaryWithGrant && acl.ConnectWithGrant
-			case "FUNCTION":
-				hasAllPrivileges = acl.Execute
-				hasAllPrivilegesWithGrant = acl.ExecuteWithGrant
-			case "LANGUAGE":
-				hasAllPrivileges = acl.Usage
-				hasAllPrivilegesWithGrant = acl.UsageWithGrant
 			case "FOREIGN DATA WRAPPER":
 				hasAllPrivileges = acl.Usage
 				hasAllPrivilegesWithGrant = acl.UsageWithGrant
 			case "FOREIGN SERVER":
+				hasAllPrivileges = acl.Usage
+				hasAllPrivilegesWithGrant = acl.UsageWithGrant
+			case "FUNCTION":
+				hasAllPrivileges = acl.Execute
+				hasAllPrivilegesWithGrant = acl.ExecuteWithGrant
+			case "LANGUAGE":
 				hasAllPrivileges = acl.Usage
 				hasAllPrivilegesWithGrant = acl.UsageWithGrant
 			case "PROTOCOL":
@@ -376,10 +385,10 @@ func (obj ObjectMetadata) GetPrivilegesStatements(objectName string, objectType 
 				privWithGrantStr = strings.Join(privWithGrantList, ",")
 			}
 			if privStr != "" {
-				statements = append(statements, fmt.Sprintf("GRANT %s ON %s%s TO %s;", privStr, typeStr, objectName, grantee))
+				statements = append(statements, fmt.Sprintf("GRANT %s %sON %s%s TO %s;", privStr, columnStr, typeStr, objectName, grantee))
 			}
 			if privWithGrantStr != "" {
-				statements = append(statements, fmt.Sprintf("GRANT %s ON %s%s TO %s WITH GRANT OPTION;", privWithGrantStr, typeStr, objectName, grantee))
+				statements = append(statements, fmt.Sprintf("GRANT %s %sON %s%s TO %s WITH GRANT OPTION;", privWithGrantStr, columnStr, typeStr, objectName, grantee))
 			}
 		}
 	}

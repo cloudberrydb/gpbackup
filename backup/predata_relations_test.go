@@ -1,6 +1,7 @@
 package backup_test
 
 import (
+	"database/sql"
 	"sort"
 
 	"github.com/greenplum-db/gpbackup/backup"
@@ -17,8 +18,10 @@ var _ = Describe("backup/predata_relations tests", func() {
 	distSingle := "DISTRIBUTED BY (i)"
 	distComposite := "DISTRIBUTED BY (i, j)"
 
-	rowOne := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", Type: "integer", StatTarget: -1}
-	rowTwo := backup.ColumnDefinition{Oid: 1, Num: 2, Name: "j", Type: "character varying(20)", StatTarget: -1}
+	emptyColumnMetadata := &backup.ObjectMetadata{}
+	emptyColumnMetadata.Privileges = []backup.ACL{}
+	rowOne := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", Type: "integer", StatTarget: -1, ACL: emptyColumnMetadata}
+	rowTwo := backup.ColumnDefinition{Oid: 1, Num: 2, Name: "j", Type: "character varying(20)", StatTarget: -1, ACL: emptyColumnMetadata}
 
 	heapOpts := ""
 	aoOpts := "appendonly=true"
@@ -420,9 +423,9 @@ SET SUBPARTITION TEMPLATE
 		})
 	})
 	Describe("PrintPostCreateTableStatements", func() {
+		rowCommentOne := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", Type: "integer", StatTarget: -1, Comment: "This is a column comment.", ACL: emptyColumnMetadata}
+		rowCommentTwo := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", Type: "integer", StatTarget: -1, Comment: "This is another column comment.", ACL: emptyColumnMetadata}
 		testTable := backup.BasicRelation("public", "tablename")
-		rowCommentOne := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", Type: "integer", StatTarget: -1, Comment: "This is a column comment."}
-		rowCommentTwo := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", Type: "integer", StatTarget: -1, Comment: "This is another column comment."}
 		tableDef := backup.TableDefinition{}
 		BeforeEach(func() {
 			tableDef = backup.TableDefinition{DistPolicy: distRandom, PartDef: partDefEmpty, PartTemplateDef: partTemplateDefEmpty, StorageOpts: heapOpts, ExtTableDef: extTableEmpty}
@@ -482,6 +485,29 @@ COMMENT ON COLUMN public.tablename.i IS 'This is a column comment.';
 
 
 COMMENT ON COLUMN public.tablename.j IS 'This is another column comment.';`)
+		})
+		It("prints a GRANT statement on a table column", func() {
+			columnOneMetadata := &backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "testrole", Select: true}}, Owner: "testrole"}
+			columnTwoMetadata := &backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "testrole2", Select: true, Insert: true, Update: true, References: true}}, Owner: "testrole"}
+			privilegesColumnOne := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", Type: "integer", StatTarget: -1, ACL: columnOneMetadata}
+			privilegesColumnTwo := backup.ColumnDefinition{Oid: 1, Num: 2, Name: "j", Type: "character varying(20)", StatTarget: -1, ACL: columnTwoMetadata}
+			col := []backup.ColumnDefinition{privilegesColumnOne, privilegesColumnTwo}
+			tableDef.ColumnDefs = col
+			tableMetadata := backup.ObjectMetadata{Owner: "testrole"}
+			backup.PrintPostCreateTableStatements(backupfile, testTable, tableDef, tableMetadata)
+			testutils.ExpectRegexp(buffer, `
+
+ALTER TABLE public.tablename OWNER TO testrole;
+
+
+REVOKE ALL (i) ON TABLE public.tablename FROM PUBLIC;
+REVOKE ALL (i) ON TABLE public.tablename FROM testrole;
+GRANT SELECT (i) ON TABLE public.tablename TO testrole;
+
+
+REVOKE ALL (j) ON TABLE public.tablename FROM PUBLIC;
+REVOKE ALL (j) ON TABLE public.tablename FROM testrole;
+GRANT ALL (j) ON TABLE public.tablename TO testrole2;`)
 		})
 	})
 	Describe("PrintCreateSequenceStatements", func() {
@@ -849,6 +875,71 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 			expectedName := `"long!naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_ext_part_"`
 			suffixName := backup.AppendExtPartSuffix(tablename)
 			Expect(suffixName).To(Equal(expectedName))
+		})
+	})
+	Describe("ConstructColumnPrivilegesMap", func() {
+		expectedObjectMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "gpadmin", Select: true}}}
+		colI := backup.ColumnPrivilegesQueryStruct{TableOid: 1, Name: "i", Privileges: sql.NullString{String: "gpadmin=r/gpadmin", Valid: true}, Kind: ""}
+		colJ := backup.ColumnPrivilegesQueryStruct{TableOid: 1, Name: "j", Privileges: sql.NullString{String: "gpadmin=r/gpadmin", Valid: true}, Kind: ""}
+		colK1 := backup.ColumnPrivilegesQueryStruct{TableOid: 2, Name: "k", Privileges: sql.NullString{String: "gpadmin=r/gpadmin", Valid: true}, Kind: ""}
+		colK2 := backup.ColumnPrivilegesQueryStruct{TableOid: 2, Name: "k", Privileges: sql.NullString{String: "testrole=r/testrole", Valid: true}, Kind: ""}
+		colDefault := backup.ColumnPrivilegesQueryStruct{TableOid: 2, Name: "l", Privileges: sql.NullString{String: "", Valid: false}, Kind: "Default"}
+		colEmpty := backup.ColumnPrivilegesQueryStruct{TableOid: 2, Name: "m", Privileges: sql.NullString{String: "", Valid: false}, Kind: "Empty"}
+		privileges := []backup.ColumnPrivilegesQueryStruct{}
+		BeforeEach(func() {
+			privileges = []backup.ColumnPrivilegesQueryStruct{}
+		})
+		It("No columns", func() {
+			metadataMap := backup.ConstructColumnPrivilegesMap(privileges)
+			Expect(len(metadataMap)).To(Equal(0))
+		})
+		It("One column", func() {
+			privileges = []backup.ColumnPrivilegesQueryStruct{colI}
+			metadataMap := backup.ConstructColumnPrivilegesMap(privileges)
+			Expect(len(metadataMap)).To(Equal(1))
+			Expect(len(metadataMap[1])).To(Equal(1))
+			Expect(metadataMap[1]["i"]).To(Equal(expectedObjectMetadata))
+		})
+		It("Multiple columns on same table", func() {
+			privileges = []backup.ColumnPrivilegesQueryStruct{colI, colJ}
+			metadataMap := backup.ConstructColumnPrivilegesMap(privileges)
+			Expect(len(metadataMap)).To(Equal(1))
+			Expect(len(metadataMap[1])).To(Equal(2))
+			Expect(metadataMap[1]["i"]).To(Equal(expectedObjectMetadata))
+			Expect(metadataMap[1]["j"]).To(Equal(expectedObjectMetadata))
+		})
+		It("Multiple columns on multiple tables", func() {
+			privileges = []backup.ColumnPrivilegesQueryStruct{colI, colJ, colK1, colK2}
+			metadataMap := backup.ConstructColumnPrivilegesMap(privileges)
+
+			expectedMetadataForK := backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "gpadmin", Select: true}, {Grantee: "testrole", Select: true}}}
+
+			Expect(len(metadataMap)).To(Equal(2))
+			Expect(len(metadataMap[1])).To(Equal(2))
+			Expect(len(metadataMap[2])).To(Equal(1))
+			Expect(metadataMap[1]["i"]).To(Equal(expectedObjectMetadata))
+			Expect(metadataMap[1]["j"]).To(Equal(expectedObjectMetadata))
+			Expect(metadataMap[2]["k"]).To(Equal(expectedMetadataForK))
+		})
+		It("Default kind", func() {
+			privileges = []backup.ColumnPrivilegesQueryStruct{colDefault}
+			metadataMap := backup.ConstructColumnPrivilegesMap(privileges)
+
+			expectedMetadataForDefaultKind := backup.ObjectMetadata{Privileges: []backup.ACL{}}
+
+			Expect(len(metadataMap)).To(Equal(1))
+			Expect(len(metadataMap[2])).To(Equal(1))
+			Expect(metadataMap[2]["l"]).To(Equal(expectedMetadataForDefaultKind))
+		})
+		It("'Empty' kind", func() {
+			privileges = []backup.ColumnPrivilegesQueryStruct{colEmpty}
+			metadataMap := backup.ConstructColumnPrivilegesMap(privileges)
+
+			expectedMetadataForEmptyKind := backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "GRANTEE"}}}
+
+			Expect(len(metadataMap)).To(Equal(1))
+			Expect(len(metadataMap[2])).To(Equal(1))
+			Expect(metadataMap[2]["m"]).To(Equal(expectedMetadataForEmptyKind))
 		})
 	})
 })

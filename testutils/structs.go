@@ -91,7 +91,6 @@ func StructMatcher(expected interface{}, actual interface{}, shouldFilter bool, 
 			filterMap[filterFields[i]] = true
 		}
 	}
-
 	expectedStruct := reflect.Indirect(reflect.ValueOf(expected))
 	actualStruct := reflect.Indirect(reflect.ValueOf(actual))
 	mismatches := []string{}

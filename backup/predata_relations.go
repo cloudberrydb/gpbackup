@@ -143,7 +143,8 @@ func ConstructDefinitionsForTables(connection *utils.DBConn, tables []Relation) 
 
 	logger.Info("Gathering additional table metadata")
 	logger.Verbose("Retrieving column information")
-	columnDefs := GetColumnDefinitions(connection)
+	columnMetadata := GetPrivilegesForColumns(connection)
+	columnDefs := GetColumnDefinitions(connection, columnMetadata)
 	distributionPolicies := GetDistributionPolicies(connection, tables)
 	logger.Verbose("Retrieving partition information")
 	partitionDefs := GetPartitionDefinitions(connection)
@@ -172,6 +173,51 @@ func ConstructDefinitionsForTables(connection *utils.DBConn, tables []Relation) 
 		tableDefinitionMap[oid] = tableDef
 	}
 	return tableDefinitionMap
+}
+
+func ConstructColumnPrivilegesMap(results []ColumnPrivilegesQueryStruct) map[uint32]map[string]ObjectMetadata {
+	metadataMap := make(map[uint32]map[string]ObjectMetadata)
+	var tableMetadata map[string]ObjectMetadata
+	var columnMetadata ObjectMetadata
+	if len(results) > 0 {
+		currentTable := uint32(0)
+		currentColumn := ""
+		/*
+		 * We group ACLs for each column into its own metadata object.
+		 * All column metadata objects are stored in the result map as
+		 * a nested map indexed by table oid.
+		 */
+		tableMetadata = make(map[string]ObjectMetadata, 0)
+		for _, result := range results {
+			privilegesStr := ""
+			if result.Kind == "Empty" {
+				privilegesStr = "GRANTEE=/GRANTOR"
+			} else if result.Privileges.Valid {
+				privilegesStr = result.Privileges.String
+			}
+			if result.TableOid != currentTable || result.Name != currentColumn {
+				if currentTable != 0 && currentColumn != "" {
+					tableMetadata[currentColumn] = sortACLs(columnMetadata)
+					if result.TableOid != currentTable {
+						metadataMap[currentTable] = tableMetadata
+						tableMetadata = make(map[string]ObjectMetadata, 0)
+					}
+				}
+				currentTable = result.TableOid
+				currentColumn = result.Name
+				columnMetadata = ObjectMetadata{}
+				columnMetadata.Privileges = make([]ACL, 0)
+			}
+			privileges := ParseACL(privilegesStr)
+			if privileges != nil {
+				columnMetadata.Privileges = append(columnMetadata.Privileges, *privileges)
+			}
+			columnMetadata.Owner = result.TableOwner
+		}
+		tableMetadata[currentColumn] = sortACLs(columnMetadata)
+		metadataMap[currentTable] = tableMetadata
+	}
+	return metadataMap
 }
 
 /*
@@ -262,6 +308,9 @@ func PrintPostCreateTableStatements(metadataFile *utils.FileWithByteCount, table
 	for _, att := range tableDef.ColumnDefs {
 		if att.Comment != "" {
 			metadataFile.MustPrintf("\n\nCOMMENT ON COLUMN %s.%s IS '%s';\n", table.ToString(), att.Name, att.Comment)
+		}
+		if columnPrivileges := att.ACL.GetPrivilegesStatements(table.ToString(), "COLUMN", att.Name); columnPrivileges != "" {
+			metadataFile.MustPrintln(columnPrivileges)
 		}
 	}
 }
