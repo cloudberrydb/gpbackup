@@ -878,13 +878,13 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 		})
 	})
 	Describe("ConstructColumnPrivilegesMap", func() {
-		expectedObjectMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "gpadmin", Select: true}}}
-		colI := backup.ColumnPrivilegesQueryStruct{TableOid: 1, Name: "i", Privileges: sql.NullString{String: "gpadmin=r/gpadmin", Valid: true}, Kind: ""}
-		colJ := backup.ColumnPrivilegesQueryStruct{TableOid: 1, Name: "j", Privileges: sql.NullString{String: "gpadmin=r/gpadmin", Valid: true}, Kind: ""}
-		colK1 := backup.ColumnPrivilegesQueryStruct{TableOid: 2, Name: "k", Privileges: sql.NullString{String: "gpadmin=r/gpadmin", Valid: true}, Kind: ""}
-		colK2 := backup.ColumnPrivilegesQueryStruct{TableOid: 2, Name: "k", Privileges: sql.NullString{String: "testrole=r/testrole", Valid: true}, Kind: ""}
-		colDefault := backup.ColumnPrivilegesQueryStruct{TableOid: 2, Name: "l", Privileges: sql.NullString{String: "", Valid: false}, Kind: "Default"}
-		colEmpty := backup.ColumnPrivilegesQueryStruct{TableOid: 2, Name: "m", Privileges: sql.NullString{String: "", Valid: false}, Kind: "Empty"}
+		expectedObjectMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "gpadmin", Select: true}}, Owner: "testrole"}
+		colI := backup.ColumnPrivilegesQueryStruct{TableOid: 1, Name: "i", Privileges: sql.NullString{String: "gpadmin=r/gpadmin", Valid: true}, Kind: "", TableOwner: "testrole"}
+		colJ := backup.ColumnPrivilegesQueryStruct{TableOid: 1, Name: "j", Privileges: sql.NullString{String: "gpadmin=r/gpadmin", Valid: true}, Kind: "", TableOwner: "testrole"}
+		colK1 := backup.ColumnPrivilegesQueryStruct{TableOid: 2, Name: "k", Privileges: sql.NullString{String: "gpadmin=r/gpadmin", Valid: true}, Kind: "", TableOwner: "testrole"}
+		colK2 := backup.ColumnPrivilegesQueryStruct{TableOid: 2, Name: "k", Privileges: sql.NullString{String: "testrole=r/testrole", Valid: true}, Kind: "", TableOwner: "testrole"}
+		colDefault := backup.ColumnPrivilegesQueryStruct{TableOid: 2, Name: "l", Privileges: sql.NullString{String: "", Valid: false}, Kind: "Default", TableOwner: "testrole"}
+		colEmpty := backup.ColumnPrivilegesQueryStruct{TableOid: 2, Name: "m", Privileges: sql.NullString{String: "", Valid: false}, Kind: "Empty", TableOwner: "testrole"}
 		privileges := []backup.ColumnPrivilegesQueryStruct{}
 		BeforeEach(func() {
 			privileges = []backup.ColumnPrivilegesQueryStruct{}
@@ -912,7 +912,7 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 			privileges = []backup.ColumnPrivilegesQueryStruct{colI, colJ, colK1, colK2}
 			metadataMap := backup.ConstructColumnPrivilegesMap(privileges)
 
-			expectedMetadataForK := backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "gpadmin", Select: true}, {Grantee: "testrole", Select: true}}}
+			expectedMetadataForK := backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "gpadmin", Select: true}, {Grantee: "testrole", Select: true}}, Owner: "testrole"}
 
 			Expect(len(metadataMap)).To(Equal(2))
 			Expect(len(metadataMap[1])).To(Equal(2))
@@ -925,7 +925,7 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 			privileges = []backup.ColumnPrivilegesQueryStruct{colDefault}
 			metadataMap := backup.ConstructColumnPrivilegesMap(privileges)
 
-			expectedMetadataForDefaultKind := backup.ObjectMetadata{Privileges: []backup.ACL{}}
+			expectedMetadataForDefaultKind := backup.ObjectMetadata{Privileges: []backup.ACL{}, Owner: "testrole"}
 
 			Expect(len(metadataMap)).To(Equal(1))
 			Expect(len(metadataMap[2])).To(Equal(1))
@@ -935,7 +935,7 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 			privileges = []backup.ColumnPrivilegesQueryStruct{colEmpty}
 			metadataMap := backup.ConstructColumnPrivilegesMap(privileges)
 
-			expectedMetadataForEmptyKind := backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "GRANTEE"}}}
+			expectedMetadataForEmptyKind := backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "GRANTEE"}}, Owner: "testrole"}
 
 			Expect(len(metadataMap)).To(Equal(1))
 			Expect(len(metadataMap[2])).To(Equal(1))

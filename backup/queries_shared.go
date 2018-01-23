@@ -214,6 +214,14 @@ func SchemaFilterClause(namespace string) string {
 	return fmt.Sprintf(`%s.nspname NOT LIKE 'pg_temp_%%' AND %s.nspname NOT LIKE 'pg_toast%%' AND %s.nspname NOT IN ('gp_toolkit', 'information_schema', 'pg_aoseg', 'pg_bitmapindex', 'pg_catalog') %s`, namespace, namespace, namespace, schemaFilterClauseStr)
 }
 
+type MetadataQueryStruct struct {
+	Oid        uint32
+	Privileges sql.NullString
+	Kind       string
+	Owner      string
+	Comment    string
+}
+
 func GetMetadataForObjectType(connection *utils.DBConn, params MetadataQueryParams) MetadataMap {
 	aclStr := "''"
 	kindStr := "''"
@@ -255,47 +263,10 @@ FROM %s o LEFT JOIN %s d ON (d.objoid = o.oid AND d.classoid = '%s'::regclass%s)
 ORDER BY o.oid;
 `, aclStr, kindStr, ownerStr, params.CatalogTable, descFunc, params.CatalogTable, subidStr, schemaStr)
 
-	results := make([]struct {
-		Oid        uint32
-		Privileges sql.NullString
-		Kind       string
-		Owner      string
-		Comment    string
-	}, 0)
+	results := make([]MetadataQueryStruct, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
-
-	metadataMap := make(MetadataMap)
-	var metadata ObjectMetadata
-	if len(results) > 0 {
-		currentOid := uint32(0)
-		// Collect all entries for the same object into one ObjectMetadata
-		for _, result := range results {
-			privilegesStr := ""
-			if result.Privileges.Valid {
-				privilegesStr = result.Privileges.String
-			}
-			if result.Kind == "Empty" {
-				privilegesStr = "GRANTEE=/GRANTOR"
-			}
-			if result.Oid != currentOid {
-				if currentOid != 0 {
-					metadataMap[currentOid] = sortACLs(metadata)
-				}
-				currentOid = result.Oid
-				metadata = ObjectMetadata{}
-				metadata.Privileges = make([]ACL, 0)
-				metadata.Owner = result.Owner
-				metadata.Comment = result.Comment
-			}
-			privileges := ParseACL(privilegesStr)
-			if privileges != nil {
-				metadata.Privileges = append(metadata.Privileges, *privileges)
-			}
-		}
-		metadataMap[currentOid] = sortACLs(metadata)
-	}
-	return metadataMap
+	return ConstructMetadataMap(results)
 }
 
 func sortACLs(metadata ObjectMetadata) ObjectMetadata {

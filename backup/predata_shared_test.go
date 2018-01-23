@@ -1,6 +1,8 @@
 package backup_test
 
 import (
+	"database/sql"
+
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
 	"github.com/lib/pq"
@@ -334,6 +336,58 @@ ALTER SERVER foreignserver OWNER TO testrole;
 REVOKE ALL ON FOREIGN SERVER foreignserver FROM PUBLIC;
 REVOKE ALL ON FOREIGN SERVER foreignserver FROM testrole;
 GRANT ALL ON FOREIGN SERVER foreignserver TO testrole;`)
+		})
+	})
+	Describe("ConstructMetadataMap", func() {
+		object1A := backup.MetadataQueryStruct{Oid: 1, Privileges: sql.NullString{String: "gpadmin=r/gpadmin", Valid: true}, Kind: "", Owner: "testrole", Comment: ""}
+		object1B := backup.MetadataQueryStruct{Oid: 1, Privileges: sql.NullString{String: "testrole=r/testrole", Valid: true}, Kind: "", Owner: "testrole", Comment: ""}
+		object2 := backup.MetadataQueryStruct{Oid: 2, Privileges: sql.NullString{String: "testrole=r/testrole", Valid: true}, Kind: "", Owner: "testrole", Comment: "this is a comment"}
+		objectDefaultKind := backup.MetadataQueryStruct{Oid: 3, Privileges: sql.NullString{String: "", Valid: false}, Kind: "Default", Owner: "testrole", Comment: ""}
+		objectEmptyKind := backup.MetadataQueryStruct{Oid: 4, Privileges: sql.NullString{String: "", Valid: false}, Kind: "Empty", Owner: "testrole", Comment: ""}
+		var metadataList []backup.MetadataQueryStruct
+		BeforeEach(func() {
+			metadataList = []backup.MetadataQueryStruct{}
+		})
+		It("No objects", func() {
+			metadataMap := backup.ConstructMetadataMap(metadataList)
+			Expect(len(metadataMap)).To(Equal(0))
+		})
+		It("One object", func() {
+			metadataList = []backup.MetadataQueryStruct{object2}
+			metadataMap := backup.ConstructMetadataMap(metadataList)
+			expectedObjectMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "testrole", Select: true}}, Owner: "testrole", Comment: "this is a comment"}
+			Expect(len(metadataMap)).To(Equal(1))
+			Expect(metadataMap[2]).To(Equal(expectedObjectMetadata))
+		})
+		It("One object with two ACL entries", func() {
+			metadataList = []backup.MetadataQueryStruct{object1A, object1B}
+			metadataMap := backup.ConstructMetadataMap(metadataList)
+			expectedObjectMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "gpadmin", Select: true}, {Grantee: "testrole", Select: true}}, Owner: "testrole"}
+			Expect(len(metadataMap)).To(Equal(1))
+			Expect(metadataMap[1]).To(Equal(expectedObjectMetadata))
+		})
+		It("Multiple objects", func() {
+			metadataList = []backup.MetadataQueryStruct{object1A, object1B, object2}
+			metadataMap := backup.ConstructMetadataMap(metadataList)
+			expectedObjectMetadataOne := backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "gpadmin", Select: true}, {Grantee: "testrole", Select: true}}, Owner: "testrole"}
+			expectedObjectMetadataTwo := backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "testrole", Select: true}}, Owner: "testrole", Comment: "this is a comment"}
+			Expect(len(metadataMap)).To(Equal(2))
+			Expect(metadataMap[1]).To(Equal(expectedObjectMetadataOne))
+			Expect(metadataMap[2]).To(Equal(expectedObjectMetadataTwo))
+		})
+		It("Default Kind", func() {
+			metadataList = []backup.MetadataQueryStruct{objectDefaultKind}
+			metadataMap := backup.ConstructMetadataMap(metadataList)
+			expectedObjectMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{}, Owner: "testrole"}
+			Expect(len(metadataMap)).To(Equal(1))
+			Expect(metadataMap[3]).To(Equal(expectedObjectMetadata))
+		})
+		It("'Empty' Kind", func() {
+			metadataList = []backup.MetadataQueryStruct{objectEmptyKind}
+			metadataMap := backup.ConstructMetadataMap(metadataList)
+			expectedObjectMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "GRANTEE"}}, Owner: "testrole"}
+			Expect(len(metadataMap)).To(Equal(1))
+			Expect(metadataMap[4]).To(Equal(expectedObjectMetadata))
 		})
 	})
 	Describe("ParseACL", func() {

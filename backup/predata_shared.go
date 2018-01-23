@@ -140,6 +140,39 @@ func PrintObjectMetadata(file *utils.FileWithByteCount, obj ObjectMetadata, obje
 	}
 }
 
+func ConstructMetadataMap(results []MetadataQueryStruct) MetadataMap {
+	metadataMap := make(MetadataMap)
+	var metadata ObjectMetadata
+	if len(results) > 0 {
+		currentOid := uint32(0)
+		// Collect all entries for the same object into one ObjectMetadata
+		for _, result := range results {
+			privilegesStr := ""
+			if result.Kind == "Empty" {
+				privilegesStr = "GRANTEE=/GRANTOR"
+			} else if result.Privileges.Valid {
+				privilegesStr = result.Privileges.String
+			}
+			if result.Oid != currentOid {
+				if currentOid != 0 {
+					metadataMap[currentOid] = sortACLs(metadata)
+				}
+				currentOid = result.Oid
+				metadata = ObjectMetadata{}
+				metadata.Privileges = make([]ACL, 0)
+				metadata.Owner = result.Owner
+				metadata.Comment = result.Comment
+			}
+			privileges := ParseACL(privilegesStr)
+			if privileges != nil {
+				metadata.Privileges = append(metadata.Privileges, *privileges)
+			}
+		}
+		metadataMap[currentOid] = sortACLs(metadata)
+	}
+	return metadataMap
+}
+
 func ParseACL(aclStr string) *ACL {
 	aclRegex := regexp.MustCompile(`^(?:\"(.*)\"|(.*))=([a-zA-Z\*]*)/(?:\"(.*)\"|(.*))$`)
 	grantee := ""
