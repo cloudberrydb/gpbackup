@@ -28,6 +28,8 @@ This will put the gpbackup and gprestore binaries in `$HOME/go/bin`
 
 `make build_linux` and `make build_mac` are for cross compiling between macOS and Linux
 
+`make install_helper` will scp the gpbackup_helper binary (used with -single-data-file flag) to all hosts
+
 ## Running the utilities
 
 The basic command for gpbackup is
@@ -44,7 +46,7 @@ Run `--help` with either command for a complete list of options.
 
 ## Validation and code quality
 
-To run all tests (unit, integration, and linters), use
+To run all tests except end-to-end (unit, integration, and linters), use
 ```bash
 make test
 ```
@@ -55,6 +57,11 @@ make unit
 To run only integration tests (which require a running GPDB instance), use
 ```bash
 make integration
+```
+
+To run end to end tests, use
+```bash
+make end_to_end
 ```
 
 **We provide the following targets to help developers ensure their code fits Go standard formatting guidelines.**
@@ -101,9 +108,9 @@ and object type:
 - externals: external protocols and external tables
 - types: shell, base, composite, and enum types
 - functions: functions, aggregates, and casts
-- general: all other objects
-
-There is also a backup_test package under the backup directory for unit tests that pertain to backup code.
+- operators: operators, operator classes, and operator families
+- textsearch: text search parser, template, dictionary, and configuration
+- shared: metadata that applies to multiple objects such as owners, comments, privileges, and constraints
 
 ### restore
 Functions that are directly responsible for performing restore operations.
@@ -117,6 +124,10 @@ Integration tests run against a Greenplum Database such as queries against the c
 ### testutils
 Functions and structs that are used for testing.
 
+### helper
+This package contains the code for the gpbackup_helper agent which runs on segments and is used for the single-data-file format.
+
+All packages have an accompanying `_test` package that contains unit tests
 # How to Contribute
 
 We accept contributions via [Github Pull requests](https://help.github.com/articles/using-pull-requests) only.
@@ -124,10 +135,11 @@ We accept contributions via [Github Pull requests](https://help.github.com/artic
 Follow the steps below to contribute to gpbackup:
 1. Fork the project’s repository.
 1. Run `go get github/com/greenplum-db/gpbackup` and add your fork as a remote.
+1. Run `make depend` to install required dependencies
 1. Create your own feature branch (e.g. `git checkout -b gpbackup_branch`) and make changes on this branch.
     * Follow the previous sections on this page to setup and build in your environment.
     * Add new tests to cover your code. We use [Ginkgo](http://onsi.github.io/ginkgo/) and [Gomega](https://onsi.github.io/gomega/) for testing.
-1. Run `make format` and `make test` in your feature branch and ensure they are successful.
+1. Run `make format`, `make test`, and `make end_to_end` in your feature branch and ensure they are successful.
 1. Push your local branch to the fork (e.g. `git push <your_fork> gpbackup_branch`) and [submit a pull request](https://help.github.com/articles/creating-a-pull-request).
 
 Your contribution will be analyzed for product fit and engineering quality prior to merging.

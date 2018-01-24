@@ -53,12 +53,6 @@ func buildAndInstallBinaries() (string, string) {
 		fmt.Printf("%s", output)
 		Fail(fmt.Sprintf("%v", err))
 	}
-	command = exec.Command("make", "install_helper")
-	output, err = command.CombinedOutput()
-	if err != nil {
-		fmt.Printf("%s", output)
-		Fail(fmt.Sprintf("%v", err))
-	}
 	os.Chdir("end_to_end")
 	binDir := fmt.Sprintf("%s/go/bin", utils.System.Getenv("HOME"))
 	return fmt.Sprintf("%s/gpbackup", binDir), fmt.Sprintf("%s/gprestore", binDir)
