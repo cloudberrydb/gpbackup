@@ -26,6 +26,7 @@ dependencies :
 		gometalinter --install
 		go get github.com/golang/dep/cmd/dep
 		dep ensure
+		go install github.com/onsi/ginkgo/ginkgo
 
 format :
 		goimports -w .
