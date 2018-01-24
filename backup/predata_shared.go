@@ -155,7 +155,8 @@ func ConstructMetadataMap(results []MetadataQueryStruct) MetadataMap {
 			}
 			if result.Oid != currentOid {
 				if currentOid != 0 {
-					metadataMap[currentOid] = sortACLs(metadata)
+					metadata.Privileges = sortACLs(metadata.Privileges)
+					metadataMap[currentOid] = metadata
 				}
 				currentOid = result.Oid
 				metadata = ObjectMetadata{}
@@ -168,7 +169,8 @@ func ConstructMetadataMap(results []MetadataQueryStruct) MetadataMap {
 				metadata.Privileges = append(metadata.Privileges, *privileges)
 			}
 		}
-		metadataMap[currentOid] = sortACLs(metadata)
+		metadata.Privileges = sortACLs(metadata.Privileges)
+		metadataMap[currentOid] = metadata
 	}
 	return metadataMap
 }

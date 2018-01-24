@@ -64,7 +64,7 @@ SET SUBPARTITION TEMPLATE  ` + `
           DEFAULT SUBPARTITION other_regions  WITH (tablename='testtable')
           )
 `
-			emptyColumnMetadata = &backup.ObjectMetadata{Privileges: []backup.ACL{}, Owner: "testrole"}
+			emptyACL = []backup.ACL{}
 		)
 		BeforeEach(func() {
 			extTableEmpty = backup.ExternalTableDefinition{Oid: 0, Type: -2, Protocol: -2, Location: "", ExecLocation: "ALL_SEGMENTS", FormatType: "t", FormatOpts: "", Options: "", Command: "", RejectLimit: 0, RejectLimitType: "", ErrTable: "", Encoding: "UTF-8", Writable: false, URIs: nil}
@@ -86,8 +86,8 @@ SET SUBPARTITION TEMPLATE  ` + `
 			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ColumnDefs.Oid", "ExtTableDef")
 		})
 		It("creates a basic heap table", func() {
-			rowOne := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", NotNull: false, HasDefault: false, Type: "integer", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: emptyColumnMetadata}
-			rowTwo := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", NotNull: false, HasDefault: false, Type: "character varying(20)", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: emptyColumnMetadata}
+			rowOne := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", NotNull: false, HasDefault: false, Type: "integer", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: emptyACL}
+			rowTwo := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", NotNull: false, HasDefault: false, Type: "character varying(20)", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: emptyACL}
 			tableDef.ColumnDefs = []backup.ColumnDefinition{rowOne, rowTwo}
 
 			backup.PrintRegularTableCreateStatement(backupfile, toc, testTable, tableDef)
@@ -98,9 +98,9 @@ SET SUBPARTITION TEMPLATE  ` + `
 			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ColumnDefs.Oid", "ExtTableDef")
 		})
 		It("creates a complex heap table", func() {
-			rowOneDefault := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", NotNull: false, HasDefault: true, Type: "integer", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "42", Comment: "", ACL: emptyColumnMetadata}
-			rowNotNullDefault := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", NotNull: true, HasDefault: true, Type: "character varying(20)", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "'bar'::text", Comment: "", ACL: emptyColumnMetadata}
-			rowNonDefaultStorageAndStats := backup.ColumnDefinition{Oid: 0, Num: 3, Name: "k", NotNull: false, HasDefault: false, Type: "text", Encoding: "", StatTarget: 3, StorageType: "PLAIN", DefaultVal: "", Comment: "", ACL: emptyColumnMetadata}
+			rowOneDefault := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", NotNull: false, HasDefault: true, Type: "integer", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "42", Comment: "", ACL: emptyACL}
+			rowNotNullDefault := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", NotNull: true, HasDefault: true, Type: "character varying(20)", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "'bar'::text", Comment: "", ACL: emptyACL}
+			rowNonDefaultStorageAndStats := backup.ColumnDefinition{Oid: 0, Num: 3, Name: "k", NotNull: false, HasDefault: false, Type: "text", Encoding: "", StatTarget: 3, StorageType: "PLAIN", DefaultVal: "", Comment: "", ACL: emptyACL}
 			tableDef.DistPolicy = "DISTRIBUTED BY (i, j)"
 			tableDef.ColumnDefs = []backup.ColumnDefinition{rowOneDefault, rowNotNullDefault, rowNonDefaultStorageAndStats}
 
@@ -112,8 +112,8 @@ SET SUBPARTITION TEMPLATE  ` + `
 			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ColumnDefs.Oid", "ExtTableDef")
 		})
 		It("creates a basic append-optimized column-oriented table", func() {
-			rowOne := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", NotNull: false, HasDefault: false, Type: "integer", Encoding: "compresstype=zlib,blocksize=32768,compresslevel=1", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: emptyColumnMetadata}
-			rowTwo := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", NotNull: false, HasDefault: false, Type: "character varying(20)", Encoding: "compresstype=zlib,blocksize=32768,compresslevel=1", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: emptyColumnMetadata}
+			rowOne := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", NotNull: false, HasDefault: false, Type: "integer", Encoding: "compresstype=zlib,blocksize=32768,compresslevel=1", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: emptyACL}
+			rowTwo := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", NotNull: false, HasDefault: false, Type: "character varying(20)", Encoding: "compresstype=zlib,blocksize=32768,compresslevel=1", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: emptyACL}
 			tableDef.StorageOpts = "appendonly=true, orientation=column, fillfactor=42, compresstype=zlib, blocksize=32768, compresslevel=1"
 			tableDef.ColumnDefs = []backup.ColumnDefinition{rowOne, rowTwo}
 
@@ -125,8 +125,8 @@ SET SUBPARTITION TEMPLATE  ` + `
 			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ColumnDefs.Oid", "ExtTableDef")
 		})
 		It("creates a one-level partition table", func() {
-			rowOne := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "region", NotNull: false, HasDefault: false, Type: "text", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: emptyColumnMetadata}
-			rowTwo := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "gender", NotNull: false, HasDefault: false, Type: "text", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: emptyColumnMetadata}
+			rowOne := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "region", NotNull: false, HasDefault: false, Type: "text", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: emptyACL}
+			rowTwo := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "gender", NotNull: false, HasDefault: false, Type: "text", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: emptyACL}
 			tableDef.PartDef = partitionDef
 			tableDef.ColumnDefs = []backup.ColumnDefinition{rowOne, rowTwo}
 			tableDef.PartitionType = "p"
@@ -139,8 +139,8 @@ SET SUBPARTITION TEMPLATE  ` + `
 			testutils.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ColumnDefs.Oid", "ExtTableDef")
 		})
 		It("creates a two-level partition table", func() {
-			rowOne := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "region", NotNull: false, HasDefault: false, Type: "text", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: emptyColumnMetadata}
-			rowTwo := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "gender", NotNull: false, HasDefault: false, Type: "text", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: emptyColumnMetadata}
+			rowOne := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "region", NotNull: false, HasDefault: false, Type: "text", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: emptyACL}
+			rowTwo := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "gender", NotNull: false, HasDefault: false, Type: "text", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: emptyACL}
 			tableDef.PartDef = subpartitionDef
 			tableDef.PartTemplateDef = partTemplateDef
 			tableDef.ColumnDefs = []backup.ColumnDefinition{rowOne, rowTwo}
@@ -222,12 +222,11 @@ SET SUBPARTITION TEMPLATE  ` + `
 	})
 	Describe("PrintPostCreateTableStatements", func() {
 		var (
-			emptyColumnMetadata = &backup.ObjectMetadata{Privileges: []backup.ACL{}}
-			extTableEmpty       = backup.ExternalTableDefinition{Oid: 0, Type: -2, Protocol: -2, Location: "", ExecLocation: "ALL_SEGMENTS", FormatType: "t", FormatOpts: "", Options: "", Command: "", RejectLimit: 0, RejectLimitType: "", ErrTable: "", Encoding: "UTF-8", Writable: false, URIs: nil}
-			testTable           = backup.BasicRelation("public", "testtable")
-			tableRow            = backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", NotNull: false, HasDefault: false, Type: "integer", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: emptyColumnMetadata}
-			tableMetadata       backup.ObjectMetadata
-			tableDef            backup.TableDefinition
+			extTableEmpty = backup.ExternalTableDefinition{Oid: 0, Type: -2, Protocol: -2, Location: "", ExecLocation: "ALL_SEGMENTS", FormatType: "t", FormatOpts: "", Options: "", Command: "", RejectLimit: 0, RejectLimitType: "", ErrTable: "", Encoding: "UTF-8", Writable: false, URIs: nil}
+			testTable     = backup.BasicRelation("public", "testtable")
+			tableRow      = backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", NotNull: false, HasDefault: false, Type: "integer", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: []backup.ACL{}}
+			tableMetadata backup.ObjectMetadata
+			tableDef      backup.TableDefinition
 		)
 		BeforeEach(func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE testtable(i int)")
@@ -265,8 +264,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 		})
 		It("prints column level privileges", func() {
 			testutils.SkipIfBefore6(connection)
-			columnOneMetadata := &backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "testrole", Select: true}}}
-			privilegesColumnOne := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", Type: "integer", StatTarget: -1, ACL: columnOneMetadata}
+			privilegesColumnOne := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", Type: "integer", StatTarget: -1, ACL: []backup.ACL{{Grantee: "testrole", Select: true}}}
 			tableMetadata.Owner = "testrole"
 			tableDef.ColumnDefs = []backup.ColumnDefinition{privilegesColumnOne}
 			backup.PrintPostCreateTableStatements(backupfile, testTable, tableDef, tableMetadata)
@@ -274,8 +272,8 @@ SET SUBPARTITION TEMPLATE  ` + `
 			testutils.AssertQueryRuns(connection, buffer.String())
 			testTable.Oid = testutils.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
 			resultTableDef := backup.ConstructDefinitionsForTables(connection, []backup.Relation{testTable})[testTable.Oid]
-			resultColumnOneACL := resultTableDef.ColumnDefs[0].ACL
-			testutils.ExpectStructsToMatchExcluding(columnOneMetadata, resultColumnOneACL, "Owner")
+			resultColumnOne := resultTableDef.ColumnDefs[0]
+			testutils.ExpectStructsToMatchExcluding(privilegesColumnOne, resultColumnOne, "Oid")
 		})
 	})
 	Describe("PrintCreateViewStatements", func() {

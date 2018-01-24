@@ -202,7 +202,7 @@ type ColumnDefinition struct {
 	StorageType string
 	DefaultVal  string
 	Comment     string
-	ACL         *ObjectMetadata
+	ACL         []ACL
 }
 
 var storageTypeCodes = map[string]string{
@@ -212,7 +212,7 @@ var storageTypeCodes = map[string]string{
 	"x": "EXTENDED",
 }
 
-func GetColumnDefinitions(connection *utils.DBConn, columnMetadata map[uint32]map[string]ObjectMetadata) map[uint32][]ColumnDefinition {
+func GetColumnDefinitions(connection *utils.DBConn, columnMetadata map[uint32]map[string][]ACL) map[uint32][]ColumnDefinition {
 	// This query is adapted from the getTableAttrs() function in pg_dump.c.
 	query := fmt.Sprintf(`
 SELECT
@@ -246,10 +246,9 @@ ORDER BY a.attrelid, a.attnum;`, tableAndSchemaFilterClause())
 	for _, result := range results {
 		result.StorageType = storageTypeCodes[result.StorageType]
 		if connection.Version.Before("6") {
-			result.ACL = &ObjectMetadata{Privileges: []ACL{}}
+			result.ACL = []ACL{}
 		} else {
-			acl := columnMetadata[result.Oid][result.Name]
-			result.ACL = &acl
+			result.ACL = columnMetadata[result.Oid][result.Name]
 		}
 		resultMap[result.Oid] = append(resultMap[result.Oid], result)
 	}
@@ -264,8 +263,8 @@ type ColumnPrivilegesQueryStruct struct {
 	TableOwner string
 }
 
-func GetPrivilegesForColumns(connection *utils.DBConn) map[uint32]map[string]ObjectMetadata {
-	metadataMap := make(map[uint32]map[string]ObjectMetadata)
+func GetPrivilegesForColumns(connection *utils.DBConn) map[uint32]map[string][]ACL {
+	metadataMap := make(map[uint32]map[string][]ACL)
 	if connection.Version.Before("6") {
 		return metadataMap
 	}

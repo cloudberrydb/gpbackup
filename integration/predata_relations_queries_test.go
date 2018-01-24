@@ -337,7 +337,7 @@ PARTITION BY RANGE (year)
 		})
 	})
 	Describe("GetColumnDefinitions", func() {
-		emptyPrivilegeMap := make(map[uint32]map[string]backup.ObjectMetadata, 0)
+		emptyColumnACL := []backup.ACL{}
 		It("returns table attribute information for a heap table", func() {
 			testutils.AssertQueryRuns(connection, "CREATE TABLE atttable(a float, b text, c text NOT NULL, d int DEFAULT(5), e text)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE atttable")
@@ -345,13 +345,13 @@ PARTITION BY RANGE (year)
 			testutils.AssertQueryRuns(connection, "ALTER TABLE atttable DROP COLUMN b")
 			testutils.AssertQueryRuns(connection, "ALTER TABLE atttable ALTER COLUMN e SET STORAGE PLAIN")
 			oid := testutils.OidFromObjectName(connection, "public", "atttable", backup.TYPE_RELATION)
+			privileges := backup.GetPrivilegesForColumns(connection)
+			tableAtts := backup.GetColumnDefinitions(connection, privileges)[oid]
 
-			tableAtts := backup.GetColumnDefinitions(connection, emptyPrivilegeMap)[oid]
-
-			columnA := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "a", NotNull: false, HasDefault: false, Type: "double precision", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "att comment", ACL: &backup.ObjectMetadata{}}
-			columnC := backup.ColumnDefinition{Oid: 0, Num: 3, Name: "c", NotNull: true, HasDefault: false, Type: "text", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: &backup.ObjectMetadata{}}
-			columnD := backup.ColumnDefinition{Oid: 0, Num: 4, Name: "d", NotNull: false, HasDefault: true, Type: "integer", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "5", Comment: "", ACL: &backup.ObjectMetadata{}}
-			columnE := backup.ColumnDefinition{Oid: 0, Num: 5, Name: "e", NotNull: false, HasDefault: false, Type: "text", Encoding: "", StatTarget: -1, StorageType: "PLAIN", DefaultVal: "", Comment: "", ACL: &backup.ObjectMetadata{}}
+			columnA := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "a", NotNull: false, HasDefault: false, Type: "double precision", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "att comment", ACL: emptyColumnACL}
+			columnC := backup.ColumnDefinition{Oid: 0, Num: 3, Name: "c", NotNull: true, HasDefault: false, Type: "text", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: emptyColumnACL}
+			columnD := backup.ColumnDefinition{Oid: 0, Num: 4, Name: "d", NotNull: false, HasDefault: true, Type: "integer", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "5", Comment: "", ACL: emptyColumnACL}
+			columnE := backup.ColumnDefinition{Oid: 0, Num: 5, Name: "e", NotNull: false, HasDefault: false, Type: "text", Encoding: "", StatTarget: -1, StorageType: "PLAIN", DefaultVal: "", Comment: "", ACL: emptyColumnACL}
 
 			Expect(len(tableAtts)).To(Equal(4))
 
@@ -364,11 +364,11 @@ PARTITION BY RANGE (year)
 			testutils.AssertQueryRuns(connection, "CREATE TABLE co_atttable(a float, b text ENCODING(blocksize=65536)) WITH (appendonly=true, orientation=column)")
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE co_atttable")
 			oid := testutils.OidFromObjectName(connection, "public", "co_atttable", backup.TYPE_RELATION)
+			privileges := backup.GetPrivilegesForColumns(connection)
+			tableAtts := backup.GetColumnDefinitions(connection, privileges)[oid]
 
-			tableAtts := backup.GetColumnDefinitions(connection, emptyPrivilegeMap)[oid]
-
-			columnA := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "a", NotNull: false, HasDefault: false, Type: "double precision", Encoding: "compresstype=none,blocksize=32768,compresslevel=0", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: &backup.ObjectMetadata{}}
-			columnB := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "b", NotNull: false, HasDefault: false, Type: "text", Encoding: "blocksize=65536,compresstype=none,compresslevel=0", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: &backup.ObjectMetadata{}}
+			columnA := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "a", NotNull: false, HasDefault: false, Type: "double precision", Encoding: "compresstype=none,blocksize=32768,compresslevel=0", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: emptyColumnACL}
+			columnB := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "b", NotNull: false, HasDefault: false, Type: "text", Encoding: "blocksize=65536,compresstype=none,compresslevel=0", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: emptyColumnACL}
 
 			Expect(len(tableAtts)).To(Equal(2))
 
@@ -380,7 +380,8 @@ PARTITION BY RANGE (year)
 			defer testutils.AssertQueryRuns(connection, "DROP TABLE nocol_atttable")
 			oid := testutils.OidFromObjectName(connection, "public", "nocol_atttable", backup.TYPE_RELATION)
 
-			tableAtts := backup.GetColumnDefinitions(connection, emptyPrivilegeMap)[oid]
+			privileges := backup.GetPrivilegesForColumns(connection)
+			tableAtts := backup.GetColumnDefinitions(connection, privileges)[oid]
 
 			Expect(len(tableAtts)).To(Equal(0))
 		})
@@ -394,10 +395,10 @@ PARTITION BY RANGE (year)
 			metadataMap := backup.GetPrivilegesForColumns(connection)
 
 			oid := testutils.OidFromObjectName(connection, "public", "default_privileges", backup.TYPE_RELATION)
-			expectedObjectMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{}, Owner: "testrole"}
+			expectedACL := []backup.ACL{}
 			Expect(len(metadataMap)).To(Equal(1))
 			Expect(len(metadataMap[oid])).To(Equal(1))
-			Expect(metadataMap[oid]["i"]).To(Equal(expectedObjectMetadata))
+			Expect(metadataMap[oid]["i"]).To(Equal(expectedACL))
 		})
 		It("Column with granted privileges", func() {
 			testutils.SkipIfBefore6(connection)
@@ -408,10 +409,10 @@ PARTITION BY RANGE (year)
 			metadataMap := backup.GetPrivilegesForColumns(connection)
 
 			oid := testutils.OidFromObjectName(connection, "public", "granted_privileges", backup.TYPE_RELATION)
-			expectedObjectMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "testrole", Select: true}}, Owner: "testrole"}
+			expectedACL := []backup.ACL{{Grantee: "testrole", Select: true}}
 			Expect(len(metadataMap)).To(Equal(1))
 			Expect(len(metadataMap[oid])).To(Equal(1))
-			Expect(metadataMap[oid]["i"]).To(Equal(expectedObjectMetadata))
+			Expect(metadataMap[oid]["i"]).To(Equal(expectedACL))
 		})
 	})
 	Describe("GetDistributionPolicies", func() {

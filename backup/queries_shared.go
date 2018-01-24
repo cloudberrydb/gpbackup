@@ -269,11 +269,11 @@ ORDER BY o.oid;
 	return ConstructMetadataMap(results)
 }
 
-func sortACLs(metadata ObjectMetadata) ObjectMetadata {
-	sort.Slice(metadata.Privileges, func(i, j int) bool {
-		return metadata.Privileges[i].Grantee < metadata.Privileges[j].Grantee
+func sortACLs(privileges []ACL) []ACL {
+	sort.Slice(privileges, func(i, j int) bool {
+		return privileges[i].Grantee < privileges[j].Grantee
 	})
-	return metadata
+	return privileges
 }
 
 func GetCommentsForObjectType(connection *utils.DBConn, params MetadataQueryParams) MetadataMap {

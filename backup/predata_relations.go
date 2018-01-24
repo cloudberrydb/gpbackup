@@ -175,10 +175,10 @@ func ConstructDefinitionsForTables(connection *utils.DBConn, tables []Relation) 
 	return tableDefinitionMap
 }
 
-func ConstructColumnPrivilegesMap(results []ColumnPrivilegesQueryStruct) map[uint32]map[string]ObjectMetadata {
-	metadataMap := make(map[uint32]map[string]ObjectMetadata)
-	var tableMetadata map[string]ObjectMetadata
-	var columnMetadata ObjectMetadata
+func ConstructColumnPrivilegesMap(results []ColumnPrivilegesQueryStruct) map[uint32]map[string][]ACL {
+	metadataMap := make(map[uint32]map[string][]ACL)
+	var tableMetadata map[string][]ACL
+	var columnMetadata []ACL
 	if len(results) > 0 {
 		currentTable := uint32(0)
 		currentColumn := ""
@@ -187,7 +187,7 @@ func ConstructColumnPrivilegesMap(results []ColumnPrivilegesQueryStruct) map[uin
 		 * All column metadata objects are stored in the result map as
 		 * a nested map indexed by table oid.
 		 */
-		tableMetadata = make(map[string]ObjectMetadata, 0)
+		tableMetadata = make(map[string][]ACL, 0)
 		for _, result := range results {
 			privilegesStr := ""
 			if result.Kind == "Empty" {
@@ -200,19 +200,17 @@ func ConstructColumnPrivilegesMap(results []ColumnPrivilegesQueryStruct) map[uin
 					tableMetadata[currentColumn] = sortACLs(columnMetadata)
 					if result.TableOid != currentTable {
 						metadataMap[currentTable] = tableMetadata
-						tableMetadata = make(map[string]ObjectMetadata, 0)
+						tableMetadata = make(map[string][]ACL, 0)
 					}
 				}
 				currentTable = result.TableOid
 				currentColumn = result.Name
-				columnMetadata = ObjectMetadata{}
-				columnMetadata.Privileges = make([]ACL, 0)
+				columnMetadata = make([]ACL, 0)
 			}
 			privileges := ParseACL(privilegesStr)
 			if privileges != nil {
-				columnMetadata.Privileges = append(columnMetadata.Privileges, *privileges)
+				columnMetadata = append(columnMetadata, *privileges)
 			}
-			columnMetadata.Owner = result.TableOwner
 		}
 		tableMetadata[currentColumn] = sortACLs(columnMetadata)
 		metadataMap[currentTable] = tableMetadata
@@ -309,7 +307,9 @@ func PrintPostCreateTableStatements(metadataFile *utils.FileWithByteCount, table
 		if att.Comment != "" {
 			metadataFile.MustPrintf("\n\nCOMMENT ON COLUMN %s.%s IS '%s';\n", table.ToString(), att.Name, att.Comment)
 		}
-		if columnPrivileges := att.ACL.GetPrivilegesStatements(table.ToString(), "COLUMN", att.Name); columnPrivileges != "" {
+		if len(att.ACL) > 0 {
+			columnMetadata := ObjectMetadata{Privileges: att.ACL, Owner: tableMetadata.Owner}
+			columnPrivileges := columnMetadata.GetPrivilegesStatements(table.ToString(), "COLUMN", att.Name)
 			metadataFile.MustPrintln(columnPrivileges)
 		}
 	}
