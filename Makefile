@@ -20,27 +20,20 @@ GOFLAGS :=
 .PHONY : coverage integration end_to_end
 
 dependencies :
-		go get github.com/blang/semver
-		go get github.com/jmoiron/sqlx
-		go get github.com/lib/pq
-		go get github.com/maxbrunsfeld/counterfeiter
-		go get github.com/onsi/ginkgo/ginkgo
-		go get github.com/onsi/gomega
-		go get github.com/pkg/errors
 		go get golang.org/x/tools/cmd/goimports
-		go get gopkg.in/cheggaaa/pb.v1
-		go get gopkg.in/DATA-DOG/go-sqlmock.v1
-		go get gopkg.in/yaml.v2
 		go get github.com/golang/lint/golint
 		go get github.com/alecthomas/gometalinter
+		gometalinter --install
+		go get github.com/golang/dep/cmd/dep
+		dep ensure
 
 format :
 		goimports -w .
 		gofmt -w -s .
 
 lint :
-		! gofmt -l . | read
-		gometalinter --config=gometalinter.config ./...
+		! gofmt -l backup/ restore/ utils/ helper/ testutils/ integration/ end_to_end/ | read
+		gometalinter --config=gometalinter.config -s vendor ./...
 
 unit :
 		ginkgo -r -randomizeSuites -noisySkippings=false -randomizeAllSpecs backup restore helper utils testutils 2>&1
