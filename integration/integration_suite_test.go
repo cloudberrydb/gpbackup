@@ -100,16 +100,16 @@ func setupTestFilespace(cluster utils.Cluster) {
 	// Construct a filespace config like the one that gpfilespace generates
 	filespaceConfigQuery := `COPY (SELECT hostname || ':' || dbid || ':/tmp/test_dir/' || preferred_role || content FROM gp_segment_configuration AS subselect) TO '/tmp/temp_filespace_config';`
 	testutils.AssertQueryRuns(connection, filespaceConfigQuery)
-	out, err := exec.Command("sh", "-c", "echo \"filespace:test_dir\" > /tmp/filespace_config").CombinedOutput()
+	out, err := exec.Command("bash", "-c", "echo \"filespace:test_dir\" > /tmp/filespace_config").CombinedOutput()
 	if err != nil {
 		Fail(fmt.Sprintf("Cannot create test filespace configuration: %s: %s", out, err.Error()))
 	}
-	out, err = exec.Command("sh", "-c", "cat /tmp/temp_filespace_config >> /tmp/filespace_config").CombinedOutput()
+	out, err = exec.Command("bash", "-c", "cat /tmp/temp_filespace_config >> /tmp/filespace_config").CombinedOutput()
 	if err != nil {
 		Fail(fmt.Sprintf("Cannot finalize test filespace configuration: %s: %s", out, err.Error()))
 	}
 	// Create the filespace and verify it was created successfully
-	out, err = exec.Command("sh", "-c", "gpfilespace --config /tmp/filespace_config").CombinedOutput()
+	out, err = exec.Command("bash", "-c", "gpfilespace --config /tmp/filespace_config").CombinedOutput()
 	if err != nil {
 		Fail(fmt.Sprintf("Cannot create test filespace: %s: %s", out, err.Error()))
 	}
@@ -125,7 +125,7 @@ func destroyTestFilespace() {
 		return
 	}
 	testutils.AssertQueryRuns(connection, "DROP FILESPACE test_dir")
-	out, err := exec.Command("sh", "-c", "rm -rf /tmp/test_dir /tmp/filespace_config /tmp/temp_filespace_config").CombinedOutput()
+	out, err := exec.Command("bash", "-c", "rm -rf /tmp/test_dir /tmp/filespace_config /tmp/temp_filespace_config").CombinedOutput()
 	if err != nil {
 		Fail(fmt.Sprintf("Could not remove test filespace directory and configuration files: %s: %s", out, err.Error()))
 	}
