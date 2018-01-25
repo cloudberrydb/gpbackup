@@ -52,7 +52,7 @@ resources:
     branch: {{ccp-git-branch}}
     private_key: {{ccp-git-key}}
     uri: {{ccp-git-remote}}
-    tag_filter: 1.5.0
+    tag_filter: 1.6.0
 
 - name: terraform
   type: terraform
@@ -84,7 +84,7 @@ resources:
   type: s3
   source:
     access_key_id: {{gpdb4-bucket-access-key-id}}
-    bucket: {{netbackup_installer_bucket}}
+    bucket: {{dpm_bucket}}
     region_name: {{aws-region}}
     secret_access_key: {{gpdb4-bucket-secret-access-key}}
     versioned_file: scale-schemas/scale_db1.tgz
@@ -93,7 +93,7 @@ resources:
   type: s3
   source:
     access_key_id: {{gpdb4-bucket-access-key-id}}
-    bucket: {{netbackup_installer_bucket}}
+    bucket: {{dpm_bucket}}
     region_name: {{aws-region}}
     secret_access_key: {{gpdb4-bucket-secret-access-key}}
     versioned_file: DDBoostFS-1.1.0.1-565598.rhel.x86_64.rpm
