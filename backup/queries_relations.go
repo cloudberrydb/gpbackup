@@ -260,7 +260,6 @@ type ColumnPrivilegesQueryStruct struct {
 	Name       string
 	Privileges sql.NullString
 	Kind       string
-	TableOwner string
 }
 
 func GetPrivilegesForColumns(connection *utils.DBConn) map[uint32]map[string][]ACL {
@@ -280,8 +279,7 @@ SELECT
 		WHEN a.attacl IS NULL THEN 'Default'
 		WHEN array_upper(a.attacl, 1) = 0 THEN 'Empty'
 		ELSE ''
-	END AS kind,
-	pg_get_userbyid(c.relowner) AS tableowner
+	END AS kind
 FROM pg_attribute a
 JOIN pg_class c ON a.attrelid = c.oid
 JOIN pg_namespace n ON c.relnamespace = n.oid
