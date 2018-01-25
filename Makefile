@@ -22,11 +22,11 @@ GOFLAGS :=
 dependencies :
 		go get golang.org/x/tools/cmd/goimports
 		go get github.com/golang/lint/golint
+		go get github.com/onsi/ginkgo/ginkgo
 		go get github.com/alecthomas/gometalinter
 		gometalinter --install
 		go get github.com/golang/dep/cmd/dep
 		dep ensure
-		go install github.com/onsi/ginkgo/ginkgo
 
 format :
 		goimports -w .
