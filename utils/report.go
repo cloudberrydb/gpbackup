@@ -242,23 +242,24 @@ func EmailReport(cluster Cluster) {
 	contactsFilename := "mail_contacts"
 	gphomeFile := fmt.Sprintf("%s/bin/%s", System.Getenv("GPHOME"), contactsFilename)
 	homeFile := fmt.Sprintf("%s/%s", System.Getenv("HOME"), contactsFilename)
-	homeErr := cluster.ExecuteLocalCommand(fmt.Sprintf("test -f %s", homeFile))
+	_, homeErr := cluster.ExecuteLocalCommand(fmt.Sprintf("test -f %s", homeFile))
 	if homeErr != nil {
-		gphomeErr := cluster.ExecuteLocalCommand(fmt.Sprintf("test -f %s", gphomeFile))
+		_, gphomeErr := cluster.ExecuteLocalCommand(fmt.Sprintf("test -f %s", gphomeFile))
 		if gphomeErr != nil {
-			logger.Warn("Found neither %s nor %s", gphomeFile, homeFile)
-			logger.Warn("Unable to send backup email notification")
+			logger.Info("Found neither %s nor %s", gphomeFile, homeFile)
+			logger.Info("Email containing backup report %s will not be sent", cluster.GetReportFilePath())
 			return
 		}
 		contactsFilename = gphomeFile
 	} else {
 		contactsFilename = homeFile
 	}
+	logger.Info("%s list found, %s will be sent", contactsFilename, cluster.GetReportFilePath())
 	contactList := strings.Join(ReadLinesFromFile(contactsFilename), " ")
 	message := ConstructEmailMessage(cluster, contactList)
 	logger.Verbose("Sending email report to the following addresses: %s", contactList)
-	sendErr := cluster.ExecuteLocalCommand(fmt.Sprintf(`echo "%s" | sendmail -t`, message))
+	output, sendErr := cluster.ExecuteLocalCommand(fmt.Sprintf(`echo "%s" | sendmail -t`, message))
 	if sendErr != nil {
-		logger.Warn("Unable to send email report: %s", sendErr.Error())
+		logger.Warn("Unable to send email report: %s", output)
 	}
 }

@@ -50,13 +50,13 @@ type TestExecutor struct {
 	NumExecutions   int
 }
 
-func (executor *TestExecutor) ExecuteLocalCommand(commandStr string) error {
+func (executor *TestExecutor) ExecuteLocalCommand(commandStr string) (string, error) {
 	executor.NumExecutions++
 	executor.LocalCommands = append(executor.LocalCommands, commandStr)
 	if executor.ErrorOnExecNum == 0 || executor.NumExecutions == executor.ErrorOnExecNum {
-		return executor.LocalError
+		return "", executor.LocalError
 	}
-	return nil
+	return "", nil
 }
 
 func (executor *TestExecutor) ExecuteClusterCommand(commandMap map[int][]string) *utils.RemoteOutput {

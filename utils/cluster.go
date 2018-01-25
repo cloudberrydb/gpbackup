@@ -19,7 +19,7 @@ import (
 )
 
 type Executor interface {
-	ExecuteLocalCommand(commandStr string) error
+	ExecuteLocalCommand(commandStr string) (string, error)
 	ExecuteClusterCommand(commandMap map[int][]string) *RemoteOutput
 }
 
@@ -96,9 +96,9 @@ func (cluster *Cluster) GenerateSSHCommandMapForSegments(generateCommand func(in
 	return cluster.GenerateSSHCommandMap(false, generateCommand)
 }
 
-func (executor *GPDBExecutor) ExecuteLocalCommand(commandStr string) error {
-	_, err := exec.Command("bash", "-c", commandStr).CombinedOutput()
-	return err
+func (executor *GPDBExecutor) ExecuteLocalCommand(commandStr string) (string, error) {
+	output, err := exec.Command("bash", "-c", commandStr).CombinedOutput()
+	return string(output), err
 }
 
 func newRemoteOutput(numIDs int) *RemoteOutput {

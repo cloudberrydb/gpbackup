@@ -176,8 +176,9 @@ var _ = Describe("utils/cluster tests", func() {
 			cluster := utils.Cluster{}
 			commandStr := "some-non-existent-command /tmp/backup_and_restore_test/foo"
 			cluster.Executor = &utils.GPDBExecutor{}
-			err := cluster.ExecuteLocalCommand(commandStr)
+			output, err := cluster.ExecuteLocalCommand(commandStr)
 
+			Expect(output).To(Equal("bash: some-non-existent-command: command not found\n"))
 			Expect(err.Error()).To(Equal("exit status 127"))
 		})
 	})
