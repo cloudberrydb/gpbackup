@@ -43,22 +43,17 @@ AND i.indisprimary = 'f';
 	return indexNameSet
 }
 
-/*
- * This struct is for objects that only have a definition, like indexes
- * (pg_get_indexdef) and rules (pg_get_ruledef), and no owners or the like.
- * We get the owning table for the object because COMMENT ON [object type]
- * statements can require it.
- */
-type QuerySimpleDefinition struct {
+type IndexDefinition struct {
 	Oid          uint32
 	Name         string
 	OwningSchema string
 	OwningTable  string
 	Tablespace   string
 	Def          string
+	IsClustered  bool
 }
 
-func GetIndexes(connection *utils.DBConn, indexNameSet *utils.FilterSet) []QuerySimpleDefinition {
+func GetIndexes(connection *utils.DBConn, indexNameSet *utils.FilterSet) []IndexDefinition {
 	query := fmt.Sprintf(`
 SELECT DISTINCT
 	i.indexrelid AS oid,
@@ -66,7 +61,8 @@ SELECT DISTINCT
 	quote_ident(n.nspname) AS owningschema,
 	quote_ident(t.relname) AS owningtable,
 	coalesce(quote_ident(s.spcname), '') AS tablespace,
-	pg_get_indexdef(i.indexrelid) AS def
+	pg_get_indexdef(i.indexrelid) AS def,
+	i.indisclustered AS isclustered
 FROM pg_index i
 JOIN pg_class c
 	ON (c.oid = i.indexrelid)
@@ -83,10 +79,10 @@ AND i.indisprimary = 'f'
 AND n.nspname || '.' || t.relname NOT IN (SELECT partitionschemaname || '.' || partitiontablename FROM pg_partitions)
 ORDER BY name;`, SchemaFilterClause("n"))
 
-	results := make([]QuerySimpleDefinition, 0)
+	results := make([]IndexDefinition, 0)
 	err := connection.Select(&results, query)
 	utils.CheckError(err)
-	filteredIndexes := make([]QuerySimpleDefinition, 0)
+	filteredIndexes := make([]IndexDefinition, 0)
 	for _, index := range results {
 		// We don't want to quote the index name to use it as a map key, just prepend the schema
 		indexFQN := fmt.Sprintf("%s.%s", index.OwningSchema, index.Name)
@@ -95,6 +91,20 @@ ORDER BY name;`, SchemaFilterClause("n"))
 		}
 	}
 	return filteredIndexes
+}
+
+/*
+ * This struct is for objects that only have a definition, like rules
+ * (pg_get_ruledef) and triggers (pg_get_triggerdef), and no owners or the like.
+ * We get the owning table for the object because COMMENT ON [object type]
+ * statements can require it.
+ */
+type QuerySimpleDefinition struct {
+	Oid          uint32
+	Name         string
+	OwningSchema string
+	OwningTable  string
+	Def          string
 }
 
 /*
@@ -109,7 +119,6 @@ SELECT
 	quote_ident(r.rulename) AS name,
 	quote_ident(n.nspname) AS owningschema,
 	quote_ident(c.relname) AS owningtable,
-	'' AS tablespace,
 	pg_get_ruledef(r.oid) AS def
 FROM pg_rewrite r
 JOIN pg_class c
@@ -134,7 +143,6 @@ SELECT
 	quote_ident(t.tgname) AS name,
 	quote_ident(n.nspname) AS owningschema,
 	quote_ident(c.relname) AS owningtable,
-	'' AS tablespace,
 	pg_get_triggerdef(t.oid) AS def
 FROM pg_trigger t
 JOIN pg_class c

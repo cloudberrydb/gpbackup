@@ -50,8 +50,8 @@ var _ = Describe("backup integration tests", func() {
 			testutils.AssertQueryRuns(connection, "CREATE INDEX simple_table_idx2 ON simple_table(j)")
 			defer testutils.AssertQueryRuns(connection, "DROP INDEX simple_table_idx2")
 
-			index1 := backup.QuerySimpleDefinition{Oid: 0, Name: "simple_table_idx1", OwningSchema: "public", OwningTable: "simple_table", Tablespace: "", Def: "CREATE INDEX simple_table_idx1 ON simple_table USING btree (i)"}
-			index2 := backup.QuerySimpleDefinition{Oid: 1, Name: "simple_table_idx2", OwningSchema: "public", OwningTable: "simple_table", Tablespace: "", Def: "CREATE INDEX simple_table_idx2 ON simple_table USING btree (j)"}
+			index1 := backup.IndexDefinition{Oid: 0, Name: "simple_table_idx1", OwningSchema: "public", OwningTable: "simple_table", Def: "CREATE INDEX simple_table_idx1 ON simple_table USING btree (i)"}
+			index2 := backup.IndexDefinition{Oid: 1, Name: "simple_table_idx2", OwningSchema: "public", OwningTable: "simple_table", Def: "CREATE INDEX simple_table_idx2 ON simple_table USING btree (j)"}
 
 			results := backup.GetIndexes(connection, indexNameSet)
 
@@ -71,8 +71,8 @@ var _ = Describe("backup integration tests", func() {
 			defer testutils.AssertQueryRuns(connection, "DROP INDEX simple_table_idx2")
 			indexNameSet.Add("public.simple_table_i_key")
 
-			index1 := backup.QuerySimpleDefinition{Oid: 0, Name: "simple_table_idx1", OwningSchema: "public", OwningTable: "simple_table", Tablespace: "", Def: "CREATE INDEX simple_table_idx1 ON simple_table USING btree (i)"}
-			index2 := backup.QuerySimpleDefinition{Oid: 1, Name: "simple_table_idx2", OwningSchema: "public", OwningTable: "simple_table", Tablespace: "", Def: "CREATE INDEX simple_table_idx2 ON simple_table USING btree (j)"}
+			index1 := backup.IndexDefinition{Oid: 0, Name: "simple_table_idx1", OwningSchema: "public", OwningTable: "simple_table", Def: "CREATE INDEX simple_table_idx1 ON simple_table USING btree (i)"}
+			index2 := backup.IndexDefinition{Oid: 1, Name: "simple_table_idx2", OwningSchema: "public", OwningTable: "simple_table", Def: "CREATE INDEX simple_table_idx2 ON simple_table USING btree (j)"}
 
 			results := backup.GetIndexes(connection, indexNameSet)
 
@@ -92,7 +92,7 @@ PARTITION BY RANGE (date)
 			testutils.AssertQueryRuns(connection, "CREATE INDEX part_idx ON part(id)")
 			defer testutils.AssertQueryRuns(connection, "DROP INDEX part_idx")
 
-			index1 := backup.QuerySimpleDefinition{Oid: 0, Name: "part_idx", OwningSchema: "public", OwningTable: "part", Tablespace: "", Def: "CREATE INDEX part_idx ON part USING btree (id)"}
+			index1 := backup.IndexDefinition{Oid: 0, Name: "part_idx", OwningSchema: "public", OwningTable: "part", Def: "CREATE INDEX part_idx ON part USING btree (id)"}
 
 			results := backup.GetIndexes(connection, indexNameSet)
 
@@ -111,7 +111,7 @@ PARTITION BY RANGE (date)
 			testutils.AssertQueryRuns(connection, "CREATE INDEX simple_table_idx ON simple_table(i) TABLESPACE test_tablespace")
 			defer testutils.AssertQueryRuns(connection, "DROP INDEX simple_table_idx")
 
-			index1 := backup.QuerySimpleDefinition{Oid: 0, Name: "simple_table_idx", OwningSchema: "public", OwningTable: "simple_table", Tablespace: "test_tablespace", Def: "CREATE INDEX simple_table_idx ON simple_table USING btree (i)"}
+			index1 := backup.IndexDefinition{Oid: 0, Name: "simple_table_idx", OwningSchema: "public", OwningTable: "simple_table", Tablespace: "test_tablespace", Def: "CREATE INDEX simple_table_idx ON simple_table USING btree (i)"}
 
 			results := backup.GetIndexes(connection, indexNameSet)
 
@@ -133,7 +133,23 @@ PARTITION BY RANGE (date)
 			defer testutils.AssertQueryRuns(connection, "DROP INDEX testschema.simple_table_idx1")
 			backup.SetIncludeSchemas([]string{"testschema"})
 
-			index1 := backup.QuerySimpleDefinition{Oid: 0, Name: "simple_table_idx1", OwningSchema: "testschema", OwningTable: "simple_table", Tablespace: "", Def: "CREATE INDEX simple_table_idx1 ON testschema.simple_table USING btree (i)"}
+			index1 := backup.IndexDefinition{Oid: 0, Name: "simple_table_idx1", OwningSchema: "testschema", OwningTable: "simple_table", Def: "CREATE INDEX simple_table_idx1 ON testschema.simple_table USING btree (i)"}
+
+			results := backup.GetIndexes(connection, indexNameSet)
+
+			Expect(len(results)).To(Equal(1))
+			results[0].Oid = testutils.OidFromObjectName(connection, "", "simple_table_idx1", backup.TYPE_INDEX)
+
+			testutils.ExpectStructsToMatchExcluding(&index1, &results[0], "Oid")
+		})
+		It("returns a slice for an index used for clustering", func() {
+			testutils.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int, j int, k int)")
+			defer testutils.AssertQueryRuns(connection, "DROP TABLE simple_table")
+			testutils.AssertQueryRuns(connection, "CREATE INDEX simple_table_idx1 ON simple_table(i)")
+			defer testutils.AssertQueryRuns(connection, "DROP INDEX simple_table_idx1")
+			testutils.AssertQueryRuns(connection, "ALTER TABLE public.simple_table CLUSTER ON simple_table_idx1")
+
+			index1 := backup.IndexDefinition{Oid: 0, Name: "simple_table_idx1", OwningSchema: "public", OwningTable: "simple_table", Def: "CREATE INDEX simple_table_idx1 ON simple_table USING btree (i)", IsClustered: true}
 
 			results := backup.GetIndexes(connection, indexNameSet)
 
@@ -160,8 +176,8 @@ PARTITION BY RANGE (date)
 			defer testutils.AssertQueryRuns(connection, "DROP RULE update_notify ON rule_table1")
 			testutils.AssertQueryRuns(connection, "COMMENT ON RULE update_notify ON rule_table1 IS 'This is a rule comment.'")
 
-			rule1 := backup.QuerySimpleDefinition{Oid: 0, Name: "double_insert", OwningSchema: "public", OwningTable: "rule_table1", Tablespace: "", Def: "CREATE RULE double_insert AS ON INSERT TO rule_table1 DO INSERT INTO rule_table2 (i) VALUES (1);"}
-			rule2 := backup.QuerySimpleDefinition{Oid: 1, Name: "update_notify", OwningSchema: "public", OwningTable: "rule_table1", Tablespace: "", Def: "CREATE RULE update_notify AS ON UPDATE TO rule_table1 DO NOTIFY rule_table1;"}
+			rule1 := backup.QuerySimpleDefinition{Oid: 0, Name: "double_insert", OwningSchema: "public", OwningTable: "rule_table1", Def: "CREATE RULE double_insert AS ON INSERT TO rule_table1 DO INSERT INTO rule_table2 (i) VALUES (1);"}
+			rule2 := backup.QuerySimpleDefinition{Oid: 1, Name: "update_notify", OwningSchema: "public", OwningTable: "rule_table1", Def: "CREATE RULE update_notify AS ON UPDATE TO rule_table1 DO NOTIFY rule_table1;"}
 
 			results := backup.GetRules(connection)
 
@@ -182,7 +198,7 @@ PARTITION BY RANGE (date)
 			defer testutils.AssertQueryRuns(connection, "DROP RULE double_insert ON testschema.rule_table1")
 			backup.SetIncludeSchemas([]string{"testschema"})
 
-			rule1 := backup.QuerySimpleDefinition{Oid: 0, Name: "double_insert", OwningSchema: "testschema", OwningTable: "rule_table1", Tablespace: "", Def: "CREATE RULE double_insert AS ON INSERT TO testschema.rule_table1 DO INSERT INTO testschema.rule_table1 (i) VALUES (1);"}
+			rule1 := backup.QuerySimpleDefinition{Oid: 0, Name: "double_insert", OwningSchema: "testschema", OwningTable: "rule_table1", Def: "CREATE RULE double_insert AS ON INSERT TO testschema.rule_table1 DO INSERT INTO testschema.rule_table1 (i) VALUES (1);"}
 
 			results := backup.GetRules(connection)
 
@@ -207,8 +223,8 @@ PARTITION BY RANGE (date)
 			defer testutils.AssertQueryRuns(connection, "DROP TRIGGER sync_trigger_table2 ON trigger_table2")
 			testutils.AssertQueryRuns(connection, "COMMENT ON TRIGGER sync_trigger_table2 ON trigger_table2 IS 'This is a trigger comment.'")
 
-			trigger1 := backup.QuerySimpleDefinition{Oid: 0, Name: "sync_trigger_table1", OwningSchema: "public", OwningTable: "trigger_table1", Tablespace: "", Def: "CREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON trigger_table1 FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger()"}
-			trigger2 := backup.QuerySimpleDefinition{Oid: 1, Name: "sync_trigger_table2", OwningSchema: "public", OwningTable: "trigger_table2", Tablespace: "", Def: "CREATE TRIGGER sync_trigger_table2 AFTER INSERT OR DELETE OR UPDATE ON trigger_table2 FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger()"}
+			trigger1 := backup.QuerySimpleDefinition{Oid: 0, Name: "sync_trigger_table1", OwningSchema: "public", OwningTable: "trigger_table1", Def: "CREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON trigger_table1 FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger()"}
+			trigger2 := backup.QuerySimpleDefinition{Oid: 1, Name: "sync_trigger_table2", OwningSchema: "public", OwningTable: "trigger_table2", Def: "CREATE TRIGGER sync_trigger_table2 AFTER INSERT OR DELETE OR UPDATE ON trigger_table2 FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger()"}
 
 			results := backup.GetTriggers(connection)
 
@@ -240,7 +256,7 @@ PARTITION BY RANGE (date)
 			defer testutils.AssertQueryRuns(connection, "DROP TRIGGER sync_trigger_table1 ON testschema.trigger_table1")
 			backup.SetIncludeSchemas([]string{"testschema"})
 
-			trigger1 := backup.QuerySimpleDefinition{Oid: 0, Name: "sync_trigger_table1", OwningSchema: "testschema", OwningTable: "trigger_table1", Tablespace: "", Def: "CREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON testschema.trigger_table1 FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger()"}
+			trigger1 := backup.QuerySimpleDefinition{Oid: 0, Name: "sync_trigger_table1", OwningSchema: "testschema", OwningTable: "trigger_table1", Def: "CREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON testschema.trigger_table1 FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger()"}
 
 			results := backup.GetTriggers(connection)
 
