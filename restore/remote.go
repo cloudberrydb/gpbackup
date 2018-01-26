@@ -70,9 +70,10 @@ func WriteOidListToSegments(cluster utils.Cluster, filteredEntries []utils.Maste
 
 func CleanUpHelperFilesOnAllHosts(cluster utils.Cluster) {
 	remoteOutput := cluster.GenerateAndExecuteCommand("Removing oid list and helper script files from segment data directories", func(contentID int) string {
+		errorFile := fmt.Sprintf("%s_error", cluster.GetSegmentPipeFilePathWithPID(contentID))
 		oidFile := cluster.GetSegmentHelperFilePath(contentID, "oid")
 		scriptFile := cluster.GetSegmentHelperFilePath(contentID, "script")
-		return fmt.Sprintf("rm -f %s && rm -f %s", oidFile, scriptFile)
+		return fmt.Sprintf("rm -f %s; rm -f %s; rm -f %s", errorFile, oidFile, scriptFile)
 	})
 	errMsg := fmt.Sprintf("Unable to remove segment helper file(s). See %s for a complete list of segments with errors and remove manually.",
 		logger.GetLogFilePath())
@@ -150,7 +151,7 @@ func CleanUpSegmentHelperProcesses(cluster utils.Cluster) {
 		 * as it's possible that all gpbackup_helper processes have finished by
 		 * the time DoCleanup is called.
 		 */
-		return fmt.Sprintf("PIDS=`ps ux | grep \"%s\" | grep -v grep | awk '{print $2}'`; if [[ ! -z \"$PIDS\" ]]; then kill -9 $PIDS; fi", procPattern)
+		return fmt.Sprintf("PIDS=`ps ux | grep \"%s\" | grep -v grep | awk '{print $2}'`; if [[ ! -z \"$PIDS\" ]]; then kill $PIDS; fi", procPattern)
 	})
 	cluster.CheckClusterError(remoteOutput, "Unable to clean up restore agent processes", func(contentID int) string {
 		return "Unable to clean up restore agent process"
@@ -190,5 +191,30 @@ func VerifyMetadataFilePaths(cluster utils.Cluster, withStats bool) {
 	}
 	if missing {
 		logger.Fatal(errors.Errorf("One or more metadata files do not exist or are not readable."), "Cannot proceed with restore")
+	}
+}
+
+func CheckAgentErrorsOnSegments(cluster utils.Cluster) {
+	remoteOutput := cluster.GenerateAndExecuteCommand("Checking whether segment agents had errors during restore", func(contentID int) string {
+		errorFile := fmt.Sprintf("%s_error", cluster.GetSegmentPipeFilePathWithPID(contentID))
+		/*
+		 * If an error file exists we want to indicate an error, as that means
+		 * the agent errored out.  If no file exists, the agent was successful.
+		 */
+		return fmt.Sprintf("if [[ -f %s ]]; then echo 'error'; fi; rm -f %s", errorFile, errorFile)
+	})
+
+	numErrors := 0
+	for contentID := range remoteOutput.Stdouts {
+		if strings.TrimSpace(remoteOutput.Stdouts[contentID]) == "error" {
+			logger.Verbose("Error occurred with restore agent on segment %d on host %s.", contentID, cluster.GetHostForContent(contentID))
+			numErrors++
+		}
+	}
+	if numErrors > 0 {
+		_, homeDir, _ := utils.GetUserAndHostInfo()
+		helperLogName := fmt.Sprintf("%s/gpAdminLogs/gpbackup_helper_%s.log", homeDir, cluster.Timestamp[0:8])
+		logger.Fatal(nil, "Encountered errors with %d restore agent(s).  See %s for a complete list of segments with errors, and see %s on the corresponding hosts for detailed error messages.",
+			numErrors, logger.GetLogFilePath(), helperLogName)
 	}
 }

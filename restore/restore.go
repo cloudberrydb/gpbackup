@@ -40,7 +40,7 @@ func DoInit() {
 	CleanupGroup.Add(1)
 	SetLogger(utils.InitializeLogging("gprestore", ""))
 	initializeFlags()
-	InitializeSignalHandler()
+	utils.InitializeSignalHandler(DoCleanup, "restore process", &wasTerminated)
 }
 
 /*
@@ -203,6 +203,7 @@ func restoreData(gucStatements []utils.StatementWithType) {
 		workerPool.Wait()
 	}
 	dataProgressBar.Finish()
+	CheckAgentErrorsOnSegments(globalCluster)
 	logger.Info("Data restore complete")
 }
 
@@ -270,8 +271,8 @@ func DoCleanup() {
 	if backupConfig.SingleDataFile {
 		CleanUpSegmentTOCs(globalCluster)
 		CleanUpHelperFilesOnAllHosts(globalCluster)
+		CleanUpSegmentHelperProcesses(globalCluster)
 		if wasTerminated { // These should all end on their own in a successful restore
-			CleanUpSegmentHelperProcesses(globalCluster)
 			utils.TerminateHangingCopySessions(connection, globalCluster, "gprestore")
 		}
 	}

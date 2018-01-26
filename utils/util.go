@@ -7,9 +7,13 @@ package utils
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
+	"os"
+	"os/signal"
 	"regexp"
 	"strings"
+	"syscall"
+
+	"github.com/pkg/errors"
 )
 
 /*
@@ -83,4 +87,18 @@ func ValidateFQNs(fqns []string) {
 			logger.Fatal(errors.Errorf(`Table %s is not correctly fully-qualified.  Please ensure that it is in the format schema.table, it is quoted appropriately, and it has no preceding or trailing whitespace.`, fqn), "")
 		}
 	}
+}
+
+func InitializeSignalHandler(cleanupFunc func(), procDesc string, termFlag *bool) {
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		for _ = range signalChan {
+			fmt.Println() // Add newline after "^C" is printed
+			logger.Warn("Received a termination signal, aborting %s", procDesc)
+			*termFlag = true
+			cleanupFunc()
+			os.Exit(2)
+		}
+	}()
 }

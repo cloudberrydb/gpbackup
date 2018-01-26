@@ -42,7 +42,7 @@ func DoInit() {
 	CleanupGroup.Add(1)
 	SetLogger(utils.InitializeLogging("gpbackup", ""))
 	initializeFlags()
-	InitializeSignalHandler()
+	utils.InitializeSignalHandler(DoCleanup, "backup process", &wasTerminated)
 }
 
 func DoFlagValidation() {

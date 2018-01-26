@@ -10,12 +10,13 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
-var (
+var ( // Shared globals
 	content      *int
 	dataFile     *string
 	logger       *utils.Logger
@@ -28,12 +29,24 @@ var (
 	version      string
 )
 
+var ( // Globals for restore only
+	CleanupGroup  *sync.WaitGroup
+	currentPipe   string
+	lastPipe      string
+	nextPipe      string
+	wasTerminated bool
+	writer        *bufio.Writer
+	writeHandle   *os.File
+)
+
 /*
  * Shared functions
  */
 
 func DoHelper() {
+	defer DoTeardown()
 	InitializeGlobals()
+	utils.InitializeSignalHandler(DoCleanup, fmt.Sprintf("restore agent on segment %d", *content), &wasTerminated)
 	if *restoreAgent {
 		doRestoreAgent()
 	} else {
@@ -42,6 +55,8 @@ func DoHelper() {
 }
 
 func InitializeGlobals() {
+	CleanupGroup = &sync.WaitGroup{}
+	CleanupGroup.Add(1)
 	content = flag.Int("content", -2, "Content ID of the corresponding segment")
 	dataFile = flag.String("data-file", "", "Absolute path to the data file")
 	logger = utils.InitializeLogging("gpbackup_helper", "")
@@ -131,27 +146,23 @@ func doRestoreAgent() {
 	oidList := getOidListFromFile()
 	reader := getPipeReader()
 
-	lastPipe := ""
-	currentPipe := ""
-	nextPipe := fmt.Sprintf("%s_%d", *pipeFile, oidList[0])
-	err := syscall.Mkfifo(nextPipe, 0777)
+	lastPipe = ""
+	currentPipe = ""
+	nextPipe = fmt.Sprintf("%s_%d", *pipeFile, oidList[0])
 	for i, oid := range oidList {
 		log(fmt.Sprintf("Restoring table with oid %d", oid))
 		lastPipe = currentPipe
 		currentPipe = nextPipe
 		if i < len(oidList)-1 {
 			nextPipe = fmt.Sprintf("%s_%d", *pipeFile, oidList[i+1])
-			err := syscall.Mkfifo(nextPipe, 0777)
-			utils.CheckError(err)
+			createNextPipe()
 		} else {
 			nextPipe = ""
 		}
-		if fileExists(lastPipe) {
-			err = os.Remove(lastPipe)
-			utils.CheckError(err)
-		}
+		removeFileIfExists(lastPipe)
 
-		writer, writeHandle := getPipeWriter(currentPipe)
+		log(fmt.Sprintf("Opening pipe for oid %d", oid))
+		writer, writeHandle = getPipeWriter(currentPipe)
 		start := tocEntries[uint(oid)].StartByte
 		end := tocEntries[uint(oid)].EndByte
 		log(fmt.Sprintf("Start Byte: %d; End Byte: %d; Last Byte: %d", start, end, lastByte))
@@ -160,15 +171,15 @@ func doRestoreAgent() {
 		bytesRead, err := io.CopyN(writer, reader, int64(end-start))
 		log(fmt.Sprintf("Read %d bytes", bytesRead))
 		utils.CheckError(err)
-		err = writer.Flush()
-		utils.CheckError(err)
-		closePipe(writeHandle)
+		log(fmt.Sprintf("Closing pipe for oid %d", oid))
+		flushAndCloseWriter()
 		lastByte = end
 	}
-	if fileExists(currentPipe) {
-		err = os.Remove(currentPipe)
-		utils.CheckError(err)
-	}
+}
+
+func createNextPipe() {
+	err := syscall.Mkfifo(nextPipe, 0777)
+	utils.CheckError(err)
 }
 
 func getPipeReader() *bufio.Reader {
@@ -186,17 +197,23 @@ func getPipeReader() *bufio.Reader {
 }
 
 func getPipeWriter(currentPipe string) (*bufio.Writer, *os.File) {
-	log(fmt.Sprintf("Opening pipe for oid %d", oid))
-	writeHandle, err := os.OpenFile(currentPipe, os.O_WRONLY, os.ModeNamedPipe)
+	fileHandle, err := os.OpenFile(currentPipe, os.O_WRONLY, os.ModeNamedPipe)
 	utils.CheckError(err)
-	writer := bufio.NewWriter(writeHandle)
-	return writer, writeHandle
+	pipeWriter := bufio.NewWriter(fileHandle)
+	return pipeWriter, fileHandle
 }
 
-func closePipe(writeHandle *os.File) {
-	log(fmt.Sprintf("Closing pipe for oid %d", oid))
-	err := writeHandle.Close()
-	utils.CheckError(err)
+func flushAndCloseWriter() {
+	if writer != nil {
+		err := writer.Flush()
+		utils.CheckError(err)
+		writer = nil
+	}
+	if writeHandle != nil {
+		err := writeHandle.Close()
+		utils.CheckError(err)
+		writeHandle = nil
+	}
 }
 
 func fileExists(filename string) bool {
@@ -204,9 +221,53 @@ func fileExists(filename string) bool {
 	return err == nil
 }
 
+func removeFileIfExists(filename string) {
+	if fileExists(filename) {
+		err := os.Remove(filename)
+		utils.CheckError(err)
+	}
+}
+
 /*
  * Shared helper functions
  */
+
+func DoTeardown() {
+	if err := recover(); err != nil {
+		log("%v", err)
+	}
+	if wasTerminated {
+		CleanupGroup.Wait()
+		return
+	}
+	DoCleanup()
+	os.Exit(utils.GetErrorCode())
+}
+
+func DoCleanup() {
+	defer func() {
+		if err := recover(); err != nil {
+			log("Encountered error during cleanup: %v", err)
+		}
+		log("Cleanup complete")
+		CleanupGroup.Done()
+	}()
+	if wasTerminated {
+		/*
+		 * If the agent dies during the last table copy, it can still report
+		 * success, so we create an error file and check for its presence in
+		 * gprestore after the COPYs are finished.
+		 */
+		handle := utils.MustOpenFileForWriting(fmt.Sprintf("%s_error", *pipeFile))
+		handle.Close()
+	}
+	if *restoreAgent {
+		flushAndCloseWriter()
+		removeFileIfExists(lastPipe)
+		removeFileIfExists(currentPipe)
+		removeFileIfExists(nextPipe)
+	}
+}
 
 func log(s string, v ...interface{}) {
 	s = fmt.Sprintf("Segment %d: %s", *content, s)

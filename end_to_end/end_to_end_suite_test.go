@@ -348,7 +348,7 @@ var _ = Describe("backup end to end integration tests", func() {
 			output, _ := cmd.CombinedOutput()
 			stdout := string(output)
 
-			Expect(stdout).To(ContainSubstring("Received an interrupt, aborting backup process"))
+			Expect(stdout).To(ContainSubstring("Received a termination signal, aborting backup process"))
 			Expect(stdout).To(ContainSubstring("Cleanup complete"))
 			Expect(stdout).To(Not(ContainSubstring("CRITICAL")))
 
@@ -373,7 +373,7 @@ var _ = Describe("backup end to end integration tests", func() {
 			output, _ := cmd.CombinedOutput()
 			stdout := string(output)
 
-			Expect(stdout).To(ContainSubstring("Received an interrupt, aborting restore process"))
+			Expect(stdout).To(ContainSubstring("Received a termination signal, aborting restore process"))
 			Expect(stdout).To(ContainSubstring("Cleanup complete"))
 			Expect(stdout).To(Not(ContainSubstring("CRITICAL")))
 
