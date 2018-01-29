@@ -19,14 +19,12 @@ var _ = Describe("utils/report tests", func() {
 	Describe("ParseErrorMessage", func() {
 		It("Parses a CRITICAL error message and returns error code 1", func() {
 			errStr := "testProgram:testUser:testHost:000000-[CRITICAL]:-Error Message"
-			errMsg, exitCode := utils.ParseErrorMessage(errStr)
+			errMsg := utils.ParseErrorMessage(errStr)
 			Expect(errMsg).To(Equal("Error Message"))
-			Expect(exitCode).To(Equal(1))
 		})
 		It("Returns error code 0 for an empty error message", func() {
-			errMsg, exitCode := utils.ParseErrorMessage("")
+			errMsg := utils.ParseErrorMessage("")
 			Expect(errMsg).To(Equal(""))
-			Expect(exitCode).To(Equal(0))
 		})
 	})
 	Describe("WriteReportFile", func() {
