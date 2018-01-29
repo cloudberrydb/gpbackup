@@ -3,7 +3,6 @@ package utils
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"regexp"
 	"sort"
@@ -96,7 +95,7 @@ Data File Format: %s`
 
 func ReadConfigFile(filename string) *BackupConfig {
 	config := &BackupConfig{}
-	contents, err := ioutil.ReadFile(filename)
+	contents, err := System.ReadFile(filename)
 	CheckError(err)
 	err = yaml.Unmarshal(contents, config)
 	CheckError(err)
@@ -219,6 +218,27 @@ func EnsureDatabaseVersionCompatibility(backupGPDBVersion string, restoreGPDBVer
 	}
 }
 
+type ContactList struct {
+	Backup []EmailContact
+}
+
+type EmailContact struct {
+	Address string
+}
+
+func GetBackupContacts(filename string) string {
+	contacts := &ContactList{}
+	contents, err := System.ReadFile(filename)
+	CheckError(err)
+	err = yaml.Unmarshal(contents, contacts)
+	CheckError(err)
+	contactList := make([]string, len(contacts.Backup))
+	for i, contact := range contacts.Backup {
+		contactList[i] = contact.Address
+	}
+	return strings.Join(contactList, " ")
+}
+
 func ConstructEmailMessage(cluster Cluster, contactList string) string {
 	hostname, _ := System.Hostname()
 	emailHeader := fmt.Sprintf(`To: %s
@@ -238,7 +258,7 @@ Content-Disposition: inline
 }
 
 func EmailReport(cluster Cluster) {
-	contactsFilename := "mail_contacts"
+	contactsFilename := "gp_email_contacts.yaml"
 	gphomeFile := fmt.Sprintf("%s/bin/%s", System.Getenv("GPHOME"), contactsFilename)
 	homeFile := fmt.Sprintf("%s/%s", System.Getenv("HOME"), contactsFilename)
 	_, homeErr := cluster.ExecuteLocalCommand(fmt.Sprintf("test -f %s", homeFile))
@@ -254,7 +274,7 @@ func EmailReport(cluster Cluster) {
 		contactsFilename = homeFile
 	}
 	logger.Info("%s list found, %s will be sent", contactsFilename, cluster.GetReportFilePath())
-	contactList := strings.Join(ReadLinesFromFile(contactsFilename), " ")
+	contactList := GetBackupContacts(contactsFilename)
 	message := ConstructEmailMessage(cluster, contactList)
 	logger.Verbose("Sending email report to the following addresses: %s", contactList)
 	output, sendErr := cluster.ExecuteLocalCommand(fmt.Sprintf(`echo "%s" | sendmail -t`, message))

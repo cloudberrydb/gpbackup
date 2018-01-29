@@ -2,6 +2,7 @@ package utils_test
 
 import (
 	"io"
+	"io/ioutil"
 	"os"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/pkg/errors"
+	yaml "gopkg.in/yaml.v2"
 )
 
 var _ = Describe("utils/report tests", func() {
@@ -306,8 +308,11 @@ Data File Format: Multiple Data Files Per Segment`),
 		reportFileContents := []byte(`Greenplum Database Backup Report
 
 Timestamp Key: 20170101010101`)
-		contactsFileContents := []byte(`contact1@example.com
-contact2@example.org`)
+		contactsFileContents, _ := yaml.Marshal(utils.ContactList{
+			Backup: []utils.EmailContact{
+				{Address: "contact1@example.com"},
+				{Address: "contact2@example.org"},
+			}})
 		contactsList := "contact1@example.com contact2@example.org"
 
 		var (
@@ -320,6 +325,7 @@ contact2@example.org`)
 			r, w, _ = os.Pipe()
 			testCluster = testutils.SetDefaultSegmentConfiguration()
 			utils.System.OpenFileRead = func(name string, flag int, perm os.FileMode) (utils.ReadCloserAt, error) { return r, nil }
+			utils.System.ReadFile = func(filename string) ([]byte, error) { return ioutil.ReadAll(r) }
 			utils.System.Hostname = func() (string, error) { return "localhost", nil }
 			utils.System.Getenv = func(key string) string {
 				if key == "HOME" {
@@ -359,8 +365,8 @@ Timestamp Key: 20170101010101
 		})
 		Context("EmailReport", func() {
 			var (
-				expectedHomeCmd   = "test -f home/mail_contacts"
-				expectedGpHomeCmd = "test -f gphome/bin/mail_contacts"
+				expectedHomeCmd   = "test -f home/gp_email_contacts.yaml"
+				expectedGpHomeCmd = "test -f gphome/bin/gp_email_contacts.yaml"
 				expectedMessage   = `echo "To: contact1@example.com contact2@example.org
 Subject: gpbackup 20170101010101 on localhost completed
 Content-Type: text/html
@@ -373,7 +379,7 @@ Content-Disposition: inline
 </body>
 </html>" | sendmail -t`
 			)
-			It("sends no email and raises a warning if no mail_contacts file is found", func() {
+			It("sends no email and raises a warning if no gp_email_contacts.yaml file is found", func() {
 				w.Write(contactsFileContents)
 				w.Close()
 
@@ -382,9 +388,9 @@ Content-Disposition: inline
 				utils.EmailReport(testCluster)
 				Expect(testExecutor.NumExecutions).To(Equal(2))
 				Expect(testExecutor.LocalCommands).To(Equal([]string{expectedHomeCmd, expectedGpHomeCmd}))
-				Expect(stdout).To(gbytes.Say("Found neither gphome/bin/mail_contacts nor home/mail_contacts"))
+				Expect(stdout).To(gbytes.Say("Found neither gphome/bin/gp_email_contacts.yaml nor home/gp_email_contacts.yaml"))
 			})
-			It("sends an email to contacts in $HOME/mail_contacts if only that file is found", func() {
+			It("sends an email to contacts in $HOME/gp_email_contacts.yaml if only that file is found", func() {
 				w.Write(contactsFileContents)
 				w.Close()
 
@@ -396,7 +402,7 @@ Content-Disposition: inline
 				Expect(testExecutor.LocalCommands).To(Equal([]string{expectedHomeCmd, expectedMessage}))
 				Expect(logfile).To(gbytes.Say("Sending email report to the following addresses: contact1@example.com contact2@example.org"))
 			})
-			It("sends an email to contacts in $GPHOME/bin/mail_contacts if only that file is found", func() {
+			It("sends an email to contacts in $GPHOME/bin/gp_email_contacts.yaml if only that file is found", func() {
 				w.Write(contactsFileContents)
 				w.Close()
 
@@ -408,7 +414,7 @@ Content-Disposition: inline
 				Expect(testExecutor.LocalCommands).To(Equal([]string{expectedHomeCmd, expectedGpHomeCmd, expectedMessage}))
 				Expect(logfile).To(gbytes.Say("Sending email report to the following addresses: contact1@example.com contact2@example.org"))
 			})
-			It("sends an email to contacts in $HOME/mail_contacts if a file exists in both $HOME and $GPHOME/bin", func() {
+			It("sends an email to contacts in $HOME/gp_email_contacts.yaml if a file exists in both $HOME and $GPHOME/bin", func() {
 				w.Write(contactsFileContents)
 				w.Close()
 
