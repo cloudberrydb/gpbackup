@@ -33,6 +33,7 @@ var _ = Describe("restore/remote tests", func() {
 			testExecutor.ClusterOutput = &utils.RemoteOutput{
 				NumErrors: 0,
 			}
+			testCluster.Executor = testExecutor
 			restore.VerifyBackupFileCountOnSegments(testCluster, 2)
 			Expect((*testExecutor).NumExecutions).To(Equal(1))
 		})
@@ -74,6 +75,7 @@ var _ = Describe("restore/remote tests", func() {
 			testExecutor.ClusterOutput = &utils.RemoteOutput{
 				NumErrors: 0,
 			}
+			testCluster.Executor = testExecutor
 			restore.VerifyBackupDirectoriesExistOnAllHosts(testCluster)
 			Expect((*testExecutor).NumExecutions).To(Equal(1))
 		})

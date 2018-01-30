@@ -31,15 +31,17 @@ var _ = Describe("backup/data tests", func() {
 	})
 	Describe("AddTableDataEntriesToTOC", func() {
 		var toc *utils.TOC
+		var rowsCopiedMap map[uint32]int64
 		BeforeEach(func() {
 			toc = &utils.TOC{}
 			backup.SetTOC(toc)
+			rowsCopiedMap = make(map[uint32]int64, 0)
 		})
 		It("adds an entry for a regular table to the TOC", func() {
 			columnDefs := []backup.ColumnDefinition{{Oid: 1, Name: "a"}}
 			tableDefs := map[uint32]backup.TableDefinition{1: {ColumnDefs: columnDefs}}
 			tables := []backup.Relation{{Oid: 1, Schema: "public", Name: "table"}}
-			backup.AddTableDataEntriesToTOC(tables, tableDefs)
+			backup.AddTableDataEntriesToTOC(tables, tableDefs, rowsCopiedMap)
 			expectedDataEntries := []utils.MasterDataEntry{{Schema: "public", Name: "table", Oid: 1, AttributeString: "(a)"}}
 			Expect(toc.DataEntries).To(Equal(expectedDataEntries))
 		})
@@ -47,7 +49,7 @@ var _ = Describe("backup/data tests", func() {
 			columnDefs := []backup.ColumnDefinition{{Oid: 1, Name: "a"}}
 			tableDefs := map[uint32]backup.TableDefinition{1: {ColumnDefs: columnDefs, IsExternal: true}}
 			tables := []backup.Relation{{Oid: 1, Schema: "public", Name: "table"}}
-			backup.AddTableDataEntriesToTOC(tables, tableDefs)
+			backup.AddTableDataEntriesToTOC(tables, tableDefs, rowsCopiedMap)
 			Expect(toc.DataEntries).To(BeNil())
 		})
 	})

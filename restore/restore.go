@@ -203,7 +203,15 @@ func restoreData(gucStatements []utils.StatementWithType) {
 		workerPool.Wait()
 	}
 	dataProgressBar.Finish()
-	CheckAgentErrorsOnSegments(globalCluster)
+	err := CheckAgentErrorsOnSegments(globalCluster)
+	if err != nil {
+		errMsg := "Error restoring data for one or more tables"
+		if *onErrorContinue {
+			logger.Error("%s: %v", errMsg, err)
+		} else {
+			logger.Fatal(err, errMsg)
+		}
+	}
 	logger.Info("Data restore complete")
 }
 

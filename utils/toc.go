@@ -36,6 +36,7 @@ type MasterDataEntry struct {
 	Name            string
 	Oid             uint32
 	AttributeString string
+	RowsCopied      int64
 }
 
 type SegmentDataEntry struct {
@@ -189,8 +190,8 @@ func (toc *TOC) AddStatisticsEntry(schema string, name string, objectType string
 	toc.AddMetadataEntry(schema, name, objectType, "", start, file, "statistics")
 }
 
-func (toc *TOC) AddMasterDataEntry(schema string, name string, oid uint32, attributeString string) {
-	toc.DataEntries = append(toc.DataEntries, MasterDataEntry{schema, name, oid, attributeString})
+func (toc *TOC) AddMasterDataEntry(schema string, name string, oid uint32, attributeString string, rowsCopied int64) {
+	toc.DataEntries = append(toc.DataEntries, MasterDataEntry{schema, name, oid, attributeString, rowsCopied})
 }
 
 func (toc *SegmentTOC) AddSegmentDataEntry(oid uint, startByte uint64, endByte uint64) {

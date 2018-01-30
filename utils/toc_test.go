@@ -132,21 +132,21 @@ var _ = Describe("utils/toc tests", func() {
 	Context("GetDataEntriesMatching", func() {
 		It("returns matching entry on schema", func() {
 			includeSchemas := []string{"schema1"}
-			toc.AddMasterDataEntry("schema1", "table1", 1, "(i)")
-			toc.AddMasterDataEntry("schema2", "table2", 1, "(i)")
+			toc.AddMasterDataEntry("schema1", "table1", 1, "(i)", 0)
+			toc.AddMasterDataEntry("schema2", "table2", 1, "(i)", 0)
 			matchingEntries := toc.GetDataEntriesMatching(includeSchemas, []string{})
 			Expect(matchingEntries).To(Equal([]utils.MasterDataEntry{{Schema: "schema1", Name: "table1", Oid: 1, AttributeString: "(i)"}}))
 		})
 		It("returns all entries when not schema-filtered or table-filtered", func() {
-			toc.AddMasterDataEntry("schema1", "table1", 1, "(i)")
-			toc.AddMasterDataEntry("schema2", "table2", 1, "(i)")
+			toc.AddMasterDataEntry("schema1", "table1", 1, "(i)", 0)
+			toc.AddMasterDataEntry("schema2", "table2", 1, "(i)", 0)
 			matchingEntries := toc.GetDataEntriesMatching([]string{}, []string{})
 			Expect(matchingEntries).To(Equal([]utils.MasterDataEntry{{Schema: "schema1", Name: "table1", Oid: 1, AttributeString: "(i)"}, {Schema: "schema2", Name: "table2", Oid: 1, AttributeString: "(i)"}}))
 		})
 		It("returns matching entry on table", func() {
 			includeTables := []string{"schema1.table1"}
-			toc.AddMasterDataEntry("schema1", "table1", 1, "(i)")
-			toc.AddMasterDataEntry("schema2", "table2", 1, "(i)")
+			toc.AddMasterDataEntry("schema1", "table1", 1, "(i)", 0)
+			toc.AddMasterDataEntry("schema2", "table2", 1, "(i)", 0)
 			matchingEntries := toc.GetDataEntriesMatching([]string{}, includeTables)
 			Expect(matchingEntries).To(Equal([]utils.MasterDataEntry{{Schema: "schema1", Name: "table1", Oid: 1, AttributeString: "(i)"}}))
 		})

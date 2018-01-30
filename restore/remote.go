@@ -73,7 +73,7 @@ func CleanUpHelperFilesOnAllHosts(cluster utils.Cluster) {
 		errorFile := fmt.Sprintf("%s_error", cluster.GetSegmentPipeFilePathWithPID(contentID))
 		oidFile := cluster.GetSegmentHelperFilePath(contentID, "oid")
 		scriptFile := cluster.GetSegmentHelperFilePath(contentID, "script")
-		return fmt.Sprintf("rm -f %s; rm -f %s; rm -f %s", errorFile, oidFile, scriptFile)
+		return fmt.Sprintf("rm -f %s && rm -f %s && rm -f %s", errorFile, oidFile, scriptFile)
 	})
 	errMsg := fmt.Sprintf("Unable to remove segment helper file(s). See %s for a complete list of segments with errors and remove manually.",
 		logger.GetLogFilePath())
@@ -194,7 +194,7 @@ func VerifyMetadataFilePaths(cluster utils.Cluster, withStats bool) {
 	}
 }
 
-func CheckAgentErrorsOnSegments(cluster utils.Cluster) {
+func CheckAgentErrorsOnSegments(cluster utils.Cluster) error {
 	remoteOutput := cluster.GenerateAndExecuteCommand("Checking whether segment agents had errors during restore", func(contentID int) string {
 		errorFile := fmt.Sprintf("%s_error", cluster.GetSegmentPipeFilePathWithPID(contentID))
 		/*
@@ -214,7 +214,8 @@ func CheckAgentErrorsOnSegments(cluster utils.Cluster) {
 	if numErrors > 0 {
 		_, homeDir, _ := utils.GetUserAndHostInfo()
 		helperLogName := fmt.Sprintf("%s/gpAdminLogs/gpbackup_helper_%s.log", homeDir, cluster.Timestamp[0:8])
-		logger.Fatal(nil, "Encountered errors with %d restore agent(s).  See %s for a complete list of segments with errors, and see %s on the corresponding hosts for detailed error messages.",
+		return errors.Errorf("Encountered errors with %d restore agent(s).  See %s for a complete list of segments with errors, and see %s on the corresponding hosts for detailed error messages.",
 			numErrors, logger.GetLogFilePath(), helperLogName)
 	}
+	return nil
 }

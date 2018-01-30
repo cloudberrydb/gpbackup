@@ -475,12 +475,12 @@ func BackupTriggers(metadataFile *utils.FileWithByteCount) {
  * Data wrapper functions
  */
 
-func BackupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
+func BackupData(tables []Relation, tableDefs map[uint32]TableDefinition) map[uint32]int64 {
 	if *singleDataFile {
 		CreateSegmentPipesOnAllHostsForBackup(globalCluster)
 		ReadFromSegmentPipes(globalCluster)
 	}
-	BackupDataForAllTables(tables, tableDefs)
+	return BackupDataForAllTables(tables, tableDefs)
 }
 
 func BackupStatistics(statisticsFile *utils.FileWithByteCount, tables []Relation) {

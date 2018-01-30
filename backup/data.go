@@ -26,16 +26,16 @@ func ConstructTableAttributesList(columnDefs []ColumnDefinition) string {
 	return ""
 }
 
-func AddTableDataEntriesToTOC(tables []Relation, tableDefs map[uint32]TableDefinition) {
+func AddTableDataEntriesToTOC(tables []Relation, tableDefs map[uint32]TableDefinition, rowsCopiedMap map[uint32]int64) {
 	for _, table := range tables {
 		if !tableDefs[table.Oid].IsExternal {
 			attributes := ConstructTableAttributesList(tableDefs[table.Oid].ColumnDefs)
-			globalTOC.AddMasterDataEntry(table.Schema, table.Name, table.Oid, attributes)
+			globalTOC.AddMasterDataEntry(table.Schema, table.Name, table.Oid, attributes, rowsCopiedMap[table.Oid])
 		}
 	}
 }
 
-func CopyTableOut(connection *utils.DBConn, table Relation, backupFile string) {
+func CopyTableOut(connection *utils.DBConn, table Relation, backupFile string) int64 {
 	usingCompression, compressionProgram := utils.GetCompressionParameters()
 	copyCommand := ""
 	if *singleDataFile {
@@ -55,10 +55,13 @@ func CopyTableOut(connection *utils.DBConn, table Relation, backupFile string) {
 		copyCommand = fmt.Sprintf("'%s'", backupFile)
 	}
 	query := fmt.Sprintf("COPY %s TO %s WITH CSV DELIMITER '%s' ON SEGMENT IGNORE EXTERNAL PARTITIONS;", table.ToString(), copyCommand, tableDelim)
-	connection.MustExec(query)
+	result, err := connection.Exec(query)
+	utils.CheckError(err)
+	numRows, _ := result.RowsAffected()
+	return numRows
 }
 
-func BackupDataForAllTables(tables []Relation, tableDefs map[uint32]TableDefinition) {
+func BackupDataForAllTables(tables []Relation, tableDefs map[uint32]TableDefinition) map[uint32]int64 {
 	numExtTables := 0
 	numRegTables := 1
 	totalExtTables := 0
@@ -75,6 +78,7 @@ func BackupDataForAllTables(tables []Relation, tableDefs map[uint32]TableDefinit
 		backupFile = globalCluster.GetSegmentPipePathForCopyCommand()
 	}
 
+	rowsCopiedMap := make(map[uint32]int64, 0)
 	for _, table := range tables {
 		/*
 		* We break when an interrupt is received and rely on
@@ -96,7 +100,8 @@ func BackupDataForAllTables(tables []Relation, tableDefs map[uint32]TableDefinit
 			if !*singleDataFile {
 				backupFile = globalCluster.GetTableBackupFilePathForCopyCommand(table.Oid, false)
 			}
-			CopyTableOut(connection, table, backupFile)
+			rowsCopied := CopyTableOut(connection, table, backupFile)
+			rowsCopiedMap[table.Oid] = rowsCopied
 			numRegTables++
 			dataProgressBar.Increment()
 		} else if *leafPartitionData || tableDef.PartitionType != "l" {
@@ -106,6 +111,7 @@ func BackupDataForAllTables(tables []Relation, tableDefs map[uint32]TableDefinit
 	}
 	dataProgressBar.Finish()
 	printDataBackupWarnings(numExtTables)
+	return rowsCopiedMap
 }
 
 func printDataBackupWarnings(numExtTables int) {

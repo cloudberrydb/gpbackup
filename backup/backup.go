@@ -204,8 +204,8 @@ func backupTablePredata(metadataFile *utils.FileWithByteCount, tables []Relation
 
 func backupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
 	logger.Info("Writing data to file")
-	BackupData(tables, tableDefs)
-	AddTableDataEntriesToTOC(tables, tableDefs)
+	rowsCopiedMap := BackupData(tables, tableDefs)
+	AddTableDataEntriesToTOC(tables, tableDefs, rowsCopiedMap)
 	if *singleDataFile {
 		MoveSegmentTOCsAndMakeReadOnly(globalCluster)
 	}
