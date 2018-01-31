@@ -1,6 +1,7 @@
 package restore_test
 
 import (
+	"os/user"
 	"regexp"
 
 	"github.com/greenplum-db/gpbackup/restore"
@@ -57,6 +58,8 @@ var _ = Describe("restore/data tests", func() {
 			name               = "public.foo"
 		)
 		BeforeEach(func() {
+			utils.System.CurrentUser = func() (*user.User, error) { return &user.User{Username: "testUser", HomeDir: "testDir"}, nil }
+			utils.System.Hostname = func() (string, error) { return "testHost", nil }
 			testExecutor = &testutils.TestExecutor{}
 			testCluster = utils.NewCluster([]utils.SegConfig{masterSeg, localSegOne, remoteSegOne}, "", "20170101010101", "gpseg")
 			testCluster.Executor = testExecutor
