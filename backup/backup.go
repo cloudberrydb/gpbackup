@@ -274,6 +274,9 @@ func DoTeardown() {
 		}
 
 		endTime := time.Now()
+		isSchemaFiltered := len(includeSchemas) > 0 || len(excludeSchemas) > 0
+		isTableFiltered := len(includeTables) > 0 || len(excludeTables) > 0
+		backupReport.ConstructBackupParamsStringFromFlags(*dataOnly, *metadataOnly, isSchemaFiltered, isTableFiltered, *singleDataFile, *withStats)
 		backupReport.WriteConfigFile(configFilename)
 		backupReport.WriteReportFile(reportFilename, globalCluster.Timestamp, objectCounts, endTime, errMsg)
 		utils.EmailReport(globalCluster)

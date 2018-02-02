@@ -120,10 +120,10 @@ func printDataBackupWarnings(numExtTables int) {
 		if numExtTables > 1 {
 			s = "s"
 		}
-		logger.Warn("Skipped data backup of %d external table%s.", numExtTables, s)
+		logger.Info("Skipped data backup of %d external table%s.", numExtTables, s)
 	}
 	if numExtTables > 0 {
-		logger.Warn("See %s for a complete list of skipped tables.", logger.GetLogFilePath())
+		logger.Info("See %s for a complete list of skipped tables.", logger.GetLogFilePath())
 	}
 }
 
