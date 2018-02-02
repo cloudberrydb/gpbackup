@@ -18,7 +18,7 @@ import (
  * The flag variables, and setter functions for them, are in global_variables.go.
  */
 func initializeFlags() {
-	backupDir = flag.String("backupdir", "", "The absolute path of the directory in which the backup files to be restored are located")
+	backupDir = flag.String("backup-dir", "", "The absolute path of the directory in which the backup files to be restored are located")
 	createdb = flag.Bool("createdb", false, "Create the database before metadata restore")
 	debug = flag.Bool("debug", false, "Print verbose and debug log messages")
 	flag.Var(&includeSchemas, "include-schema", "Restore only the specified schema(s). --include-schema can be specified multiple times.")

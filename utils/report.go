@@ -219,7 +219,7 @@ func EnsureDatabaseVersionCompatibility(backupGPDBVersion string, restoreGPDBVer
 }
 
 type ContactList struct {
-	Backup []EmailContact
+	Backup []EmailContact `yaml:"gpbackup"`
 }
 
 type EmailContact struct {

@@ -15,7 +15,7 @@ import (
  * The flag variables, and setter functions for them, are in global_variables.go.
  */
 func initializeFlags() {
-	backupDir = flag.String("backupdir", "", "The absolute path of the directory to which all backup files will be written")
+	backupDir = flag.String("backup-dir", "", "The absolute path of the directory to which all backup files will be written")
 	compressionLevel = flag.Int("compression-level", 0, "Level of compression to use during data backup. Valid values are between 1 and 9.")
 	dataOnly = flag.Bool("data-only", false, "Only back up data, do not back up metadata")
 	dbname = flag.String("dbname", "", "The database to be backed up")
