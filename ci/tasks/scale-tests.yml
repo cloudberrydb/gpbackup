@@ -54,10 +54,10 @@ run:
 
     log_file=/tmp/gpbackup.log
     time pg_dump -s scaledb > /data/gpdata/pg_dump.sql
-    time gpbackup --dbname scaledb --backupdir /data/gpdata/ --metadata-only --verbose | tee "\$log_file"
+    time gpbackup --dbname scaledb --backup-dir /data/gpdata/ --metadata-only --verbose | tee "\$log_file"
 
     timestamp=\$(head -5 "\$log_file" | grep "Backup Timestamp " | grep -Eo "[[:digit:]]{14}")
-    gprestore --timestamp "\$timestamp" --backupdir /data/gpdata/ --redirect=scaledb_res --createdb
+    gprestore --timestamp "\$timestamp" --backup-dir /data/gpdata/ --redirect=scaledb_res --createdb
 
     SCRIPT
 
