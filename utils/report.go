@@ -49,40 +49,44 @@ func ParseErrorMessage(errStr string) string {
 	return errMsg
 }
 
-func (report *Report) ConstructBackupParamsStringFromFlags(dataOnly bool, ddlOnly bool, isSchemaFiltered bool, isTableFiltered bool, singleDataFile bool, withStats bool) {
+func (report *Report) SetBackupParamsFromFlags(dataOnly bool, ddlOnly bool, isSchemaFiltered bool, isTableFiltered bool, singleDataFile bool, withStats bool) {
+	compressed, _ := GetCompressionParameters()
+	report.Compressed = compressed
+	report.SchemaFiltered = isSchemaFiltered
+	report.TableFiltered = isTableFiltered
+	report.DataOnly = dataOnly
+	report.MetadataOnly = ddlOnly
+	report.SingleDataFile = singleDataFile
+	report.WithStatistics = withStats
+}
+
+func (report *Report) ConstructBackupParamsString() {
 	filterStr := "None"
-	if isSchemaFiltered {
-		report.SchemaFiltered = true
+	if report.SchemaFiltered {
 		filterStr = "Schema Filter"
-	} else if isTableFiltered {
-		report.TableFiltered = true
+	} else if report.TableFiltered {
 		filterStr = "Table Filter"
 	}
 	compressStr := "None"
-	compressed, program := GetCompressionParameters()
-	if compressed {
-		report.Compressed = true
+	_, program := GetCompressionParameters()
+	if report.Compressed {
 		compressStr = program.Name
 	}
 	sectionStr := "All Sections"
-	if dataOnly {
-		report.DataOnly = true
+	if report.DataOnly {
 		sectionStr = "Data Only"
 	}
-	if ddlOnly {
-		report.MetadataOnly = true
+	if report.MetadataOnly {
 		sectionStr = "Metadata Only"
 	}
 	filesStr := "Multiple Data Files Per Segment"
-	if ddlOnly {
+	if report.MetadataOnly {
 		filesStr = "No Data Files"
-	} else if singleDataFile {
-		report.SingleDataFile = true
+	} else if report.SingleDataFile {
 		filesStr = "Single Data File Per Segment"
 	}
 	statsStr := "No"
-	if withStats {
-		report.WithStatistics = true
+	if report.WithStatistics {
 		statsStr = "Yes"
 	}
 	backupParamsTemplate := `Compression: %s

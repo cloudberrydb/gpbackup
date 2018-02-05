@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/greenplum-db/gp-common-go-libs/structmatcher"
 	"github.com/greenplum-db/gpbackup/testutils"
 	"github.com/greenplum-db/gpbackup/utils"
 	. "github.com/onsi/ginkgo"
@@ -140,7 +141,23 @@ tables                       42
 types                        1000`))
 		})
 	})
-	Describe("ConstructBackupParamStringFromFlags", func() {
+	Describe("SetBackupParamFromFlags", func() {
+		var backupReport *utils.Report
+		AfterEach(func() {
+			utils.InitializeCompressionParameters(false, 0)
+		})
+		It("configures the Report struct correctly", func() {
+			backupReport = &utils.Report{}
+			utils.InitializeCompressionParameters(true, 0)
+			backupReport.SetBackupParamsFromFlags(true, true, true, true, true, true)
+			structmatcher.ExpectStructsToMatch(backupReport.BackupConfig, utils.BackupConfig{
+				BackupVersion: "", DatabaseName: "", DatabaseVersion: "",
+				Compressed: true, DataOnly: true, SchemaFiltered: true, TableFiltered: true,
+				MetadataOnly: true, WithStatistics: true, SingleDataFile: true,
+			})
+		})
+	})
+	Describe("ConstructBackupParamString", func() {
 		var backupReport *utils.Report
 		BeforeEach(func() {
 			backupReport = &utils.Report{}
@@ -150,7 +167,8 @@ types                        1000`))
 		})
 		DescribeTable("Backup type classification", func(dataOnly bool, ddlOnly bool, noCompression bool, isSchemaFiltered bool, isTableFiltered bool, singleDataFile bool, withStats bool, expectedType string) {
 			utils.InitializeCompressionParameters(!noCompression, 0)
-			backupReport.ConstructBackupParamsStringFromFlags(dataOnly, ddlOnly, isSchemaFiltered, isTableFiltered, singleDataFile, withStats)
+			backupReport.SetBackupParamsFromFlags(dataOnly, ddlOnly, isSchemaFiltered, isTableFiltered, singleDataFile, withStats)
+			backupReport.ConstructBackupParamsString()
 			Expect(backupReport.BackupParamsString).To(Equal(expectedType))
 		},
 			Entry("classifies a default backup",
@@ -208,17 +226,6 @@ Object Filtering: Table Filter
 Includes Statistics: No
 Data File Format: Multiple Data Files Per Segment`),
 		)
-		It("sets properties on the report struct with various flag combinations", func() {
-			utils.InitializeCompressionParameters(false, 0)
-			backupReport.ConstructBackupParamsStringFromFlags(true, false, false, true, true, false)
-			expectedBackupConfig := utils.BackupConfig{Compressed: false, DataOnly: true, SchemaFiltered: false, TableFiltered: true, MetadataOnly: false, SingleDataFile: true, WithStatistics: false}
-			testutils.ExpectStructsToMatch(expectedBackupConfig, backupReport.BackupConfig)
-			backupReport = &utils.Report{}
-			utils.InitializeCompressionParameters(true, 0)
-			backupReport.ConstructBackupParamsStringFromFlags(false, true, true, false, false, true)
-			expectedBackupConfig = utils.BackupConfig{Compressed: true, DataOnly: false, SchemaFiltered: true, TableFiltered: false, MetadataOnly: true, SingleDataFile: false, WithStatistics: true}
-			testutils.ExpectStructsToMatch(expectedBackupConfig, backupReport.BackupConfig)
-		})
 	})
 	Describe("GetBackupTimeInfo", func() {
 		timestamp := "20170101010101"
