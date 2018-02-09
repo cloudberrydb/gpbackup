@@ -98,7 +98,12 @@ var _ = AfterSuite(func() {
 })
 
 func setupTestFilespace(testCluster cluster.Cluster) {
-	backup.CreateBackupDirectoriesOnAllHosts()
+	remoteOutput := testCluster.GenerateAndExecuteCommand("Creating filespace test directory", func(contentID int) string {
+		return fmt.Sprintf("mkdir -p /tmp/test_dir")
+	}, true)
+	if remoteOutput.NumErrors != 0 {
+		Fail("Could not create filespace test directory on 1 or more hosts")
+	}
 	// Construct a filespace config like the one that gpfilespace generates
 	filespaceConfigQuery := `COPY (SELECT hostname || ':' || dbid || ':/tmp/test_dir/' || preferred_role || content FROM gp_segment_configuration AS subselect) TO '/tmp/temp_filespace_config';`
 	testhelper.AssertQueryRuns(connection, filespaceConfigQuery)
