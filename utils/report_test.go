@@ -35,7 +35,7 @@ var _ = Describe("utils/report tests", func() {
 			Expect(errMsg).To(Equal(""))
 		})
 	})
-	Describe("WriteReportFile", func() {
+	Describe("WriteBackupReportFile", func() {
 		timestamp := "20170101010101"
 		config := utils.BackupConfig{
 			BackupVersion:   "0.1.0",
@@ -43,7 +43,6 @@ var _ = Describe("utils/report tests", func() {
 			DatabaseVersion: "5.0.0 build test",
 		}
 		backupReport := &utils.Report{}
-		endTime := time.Date(2017, 1, 1, 5, 4, 3, 2, time.Local)
 		objectCounts := map[string]int{"tables": 42, "sequences": 1, "types": 1000}
 		BeforeEach(func() {
 			backupReport = &utils.Report{
@@ -58,10 +57,13 @@ Data File Format: Single Data File Per Segment`,
 			operating.System.OpenFileWrite = func(name string, flag int, perm os.FileMode) (io.WriteCloser, error) {
 				return buffer, nil
 			}
+			operating.System.Now = func() time.Time {
+				return time.Date(2017, 1, 1, 5, 4, 3, 2, time.Local)
+			}
 		})
 
 		It("writes a report for a successful backup", func() {
-			backupReport.WriteReportFile("filename", timestamp, objectCounts, endTime, "")
+			backupReport.WriteBackupReportFile("filename", timestamp, objectCounts, "")
 			Expect(buffer).To(gbytes.Say(`Greenplum Database Backup Report
 
 Timestamp Key: 20170101010101
@@ -89,7 +91,7 @@ tables                       42
 types                        1000`))
 		})
 		It("writes a report for a failed backup", func() {
-			backupReport.WriteReportFile("filename", timestamp, objectCounts, endTime, "Cannot access /tmp/backups: Permission denied")
+			backupReport.WriteBackupReportFile("filename", timestamp, objectCounts, "Cannot access /tmp/backups: Permission denied")
 			Expect(buffer).To(gbytes.Say(`Greenplum Database Backup Report
 
 Timestamp Key: 20170101010101
@@ -119,7 +121,7 @@ types                        1000`))
 		})
 		It("writes a report without database size information", func() {
 			backupReport.DatabaseSize = ""
-			backupReport.WriteReportFile("filename", timestamp, objectCounts, endTime, "")
+			backupReport.WriteBackupReportFile("filename", timestamp, objectCounts, "")
 			Expect(buffer).To(gbytes.Say(`Greenplum Database Backup Report
 
 Timestamp Key: 20170101010101
@@ -144,6 +146,61 @@ Count of Database Objects in Backup:
 sequences                    1
 tables                       42
 types                        1000`))
+		})
+	})
+	Describe("WriteRestoreReportFile", func() {
+		timestamp := "20170101010101"
+		restoreStartTime := "20170101010102"
+		restoreVersion := "0.1.0"
+		connection := &dbconn.DBConn{
+			DBName: "testdb",
+			Version: dbconn.GPDBVersion{
+				VersionString: "5.0.0 build test",
+			},
+		}
+		BeforeEach(func() {
+			operating.System.OpenFileWrite = func(name string, flag int, perm os.FileMode) (io.WriteCloser, error) {
+				return buffer, nil
+			}
+			operating.System.Now = func() time.Time {
+				return time.Date(2017, 1, 1, 5, 4, 3, 2, time.Local)
+			}
+		})
+
+		It("writes a report for a failed restore", func() {
+			utils.WriteRestoreReportFile("filename", timestamp, restoreStartTime, connection, restoreVersion, "Cannot access /tmp/backups: Permission denied")
+			Expect(buffer).To(gbytes.Say(`Greenplum Database Restore Report
+
+Timestamp Key: 20170101010101
+GPDB Version: 5\.0\.0 build test
+gprestore Version: 0\.1\.0
+
+Database Name: testdb
+Command Line: .*
+
+Start Time: 2017-01-01 01:01:02
+End Time: 2017-01-01 05:04:03
+Duration: 4:03:01
+
+Restore Status: Failure
+Restore Error: Cannot access /tmp/backups: Permission denied`))
+		})
+		It("writes a report for a successful restore", func() {
+			utils.WriteRestoreReportFile("filename", timestamp, restoreStartTime, connection, restoreVersion, "")
+			Expect(buffer).To(gbytes.Say(`Greenplum Database Restore Report
+
+Timestamp Key: 20170101010101
+GPDB Version: 5\.0\.0 build test
+gprestore Version: 0\.1\.0
+
+Database Name: testdb
+Command Line: .*
+
+Start Time: 2017-01-01 01:01:02
+End Time: 2017-01-01 05:04:03
+Duration: 4:03:01
+
+Restore Status: Success`))
 		})
 	})
 	Describe("SetBackupParamFromFlags", func() {
@@ -232,35 +289,35 @@ Includes Statistics: No
 Data File Format: Multiple Data Files Per Segment`),
 		)
 	})
-	Describe("GetBackupTimeInfo", func() {
+	Describe("GetDurationInfo", func() {
 		timestamp := "20170101010101"
 		AfterEach(func() {
 			operating.System.Local = time.Local
 		})
 		It("prints times and duration for a sub-minute backup", func() {
 			endTime := time.Date(2017, 1, 1, 1, 1, 3, 2, operating.System.Local)
-			start, end, duration := utils.GetBackupTimeInfo(timestamp, endTime)
+			start, end, duration := utils.GetDurationInfo(timestamp, endTime)
 			Expect(start).To(Equal("2017-01-01 01:01:01"))
 			Expect(end).To(Equal("2017-01-01 01:01:03"))
 			Expect(duration).To(Equal("0:00:02"))
 		})
 		It("prints times and duration for a sub-hour backup", func() {
 			endTime := time.Date(2017, 1, 1, 1, 4, 3, 2, operating.System.Local)
-			start, end, duration := utils.GetBackupTimeInfo(timestamp, endTime)
+			start, end, duration := utils.GetDurationInfo(timestamp, endTime)
 			Expect(start).To(Equal("2017-01-01 01:01:01"))
 			Expect(end).To(Equal("2017-01-01 01:04:03"))
 			Expect(duration).To(Equal("0:03:02"))
 		})
 		It("prints times and duration for a multiple-hour backup", func() {
 			endTime := time.Date(2017, 1, 1, 5, 4, 3, 2, operating.System.Local)
-			start, end, duration := utils.GetBackupTimeInfo(timestamp, endTime)
+			start, end, duration := utils.GetDurationInfo(timestamp, endTime)
 			Expect(start).To(Equal("2017-01-01 01:01:01"))
 			Expect(end).To(Equal("2017-01-01 05:04:03"))
 			Expect(duration).To(Equal("4:03:02"))
 		})
 		It("prints times and duration for a backup going past midnight", func() {
 			endTime := time.Date(2017, 1, 2, 1, 4, 3, 2, operating.System.Local)
-			start, end, duration := utils.GetBackupTimeInfo(timestamp, endTime)
+			start, end, duration := utils.GetDurationInfo(timestamp, endTime)
 			Expect(start).To(Equal("2017-01-01 01:01:01"))
 			Expect(end).To(Equal("2017-01-02 01:04:03"))
 			Expect(duration).To(Equal("24:03:02"))
@@ -269,7 +326,7 @@ Data File Format: Multiple Data Files Per Segment`),
 			operating.System.Local, _ = time.LoadLocation("America/Los_Angeles") // Ensure test works regardless of time zone of test machine
 			dst := "20170312010000"
 			endTime := time.Date(2017, 3, 12, 3, 0, 0, 0, operating.System.Local)
-			start, end, duration := utils.GetBackupTimeInfo(dst, endTime)
+			start, end, duration := utils.GetDurationInfo(dst, endTime)
 			Expect(start).To(Equal("2017-03-12 01:00:00"))
 			Expect(end).To(Equal("2017-03-12 03:00:00"))
 			Expect(duration).To(Equal("1:00:00"))
@@ -278,7 +335,7 @@ Data File Format: Multiple Data Files Per Segment`),
 			operating.System.Local, _ = time.LoadLocation("America/Los_Angeles") // Ensure test works regardless of time zone of test machine
 			dst := "20171105010000"
 			endTime := time.Date(2017, 11, 5, 3, 0, 0, 0, operating.System.Local)
-			start, end, duration := utils.GetBackupTimeInfo(dst, endTime)
+			start, end, duration := utils.GetDurationInfo(dst, endTime)
 			Expect(start).To(Equal("2017-11-05 01:00:00"))
 			Expect(end).To(Equal("2017-11-05 03:00:00"))
 			Expect(duration).To(Equal("3:00:00"))
@@ -382,7 +439,7 @@ Timestamp Key: 20170101010101`)
 				w.Write(reportFileContents)
 				w.Close()
 
-				message := utils.ConstructEmailMessage(testFPInfo, contactsList)
+				message := utils.ConstructEmailMessage(testFPInfo.Timestamp, contactsList, "report_file", "gpbackup")
 				expectedMessage := `To: contact1@example.com contact2@example.org
 Subject: gpbackup 20170101010101 on localhost completed
 Content-Type: text/html
@@ -421,7 +478,7 @@ Content-Disposition: inline
 
 				testExecutor.LocalError = errors.Errorf("exit status 2")
 
-				utils.EmailReport(testCluster, testFPInfo)
+				utils.EmailReport(testCluster, testFPInfo.Timestamp, "report_file", "gpbackup")
 				Expect(testExecutor.NumExecutions).To(Equal(2))
 				Expect(testExecutor.LocalCommands).To(Equal([]string{expectedHomeCmd, expectedGpHomeCmd}))
 				Expect(stdout).To(gbytes.Say("Found neither gphome/bin/gp_email_contacts.yaml nor home/gp_email_contacts.yaml"))
@@ -433,7 +490,7 @@ Content-Disposition: inline
 				testExecutor.ErrorOnExecNum = 2 // Shouldn't hit this case, as it shouldn't be executed a second time
 				testExecutor.LocalError = errors.Errorf("exit status 2")
 
-				utils.EmailReport(testCluster, testFPInfo)
+				utils.EmailReport(testCluster, testFPInfo.Timestamp, "report_file", "gpbackup")
 				Expect(testExecutor.NumExecutions).To(Equal(2))
 				Expect(testExecutor.LocalCommands).To(Equal([]string{expectedHomeCmd, expectedMessage}))
 				Expect(logfile).To(gbytes.Say("Sending email report to the following addresses: contact1@example.com contact2@example.org"))
@@ -445,7 +502,7 @@ Content-Disposition: inline
 				testExecutor.ErrorOnExecNum = 1
 				testExecutor.LocalError = errors.Errorf("exit status 2")
 
-				utils.EmailReport(testCluster, testFPInfo)
+				utils.EmailReport(testCluster, testFPInfo.Timestamp, "report_file", "gpbackup")
 				Expect(testExecutor.NumExecutions).To(Equal(3))
 				Expect(testExecutor.LocalCommands).To(Equal([]string{expectedHomeCmd, expectedGpHomeCmd, expectedMessage}))
 				Expect(logfile).To(gbytes.Say("Sending email report to the following addresses: contact1@example.com contact2@example.org"))
@@ -454,7 +511,7 @@ Content-Disposition: inline
 				w.Write(contactsFileContents)
 				w.Close()
 
-				utils.EmailReport(testCluster, testFPInfo)
+				utils.EmailReport(testCluster, testFPInfo.Timestamp, "report_file", "gpbackup")
 				Expect(testExecutor.NumExecutions).To(Equal(2))
 				Expect(testExecutor.LocalCommands).To(Equal([]string{expectedHomeCmd, expectedMessage}))
 				Expect(logfile).To(gbytes.Say("Sending email report to the following addresses: contact1@example.com contact2@example.org"))

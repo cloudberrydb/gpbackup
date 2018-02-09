@@ -118,7 +118,7 @@ func (report *Report) WriteConfigFile(configFilename string) {
 	MustPrintBytes(configFile, configContents)
 }
 
-func (report *Report) WriteReportFile(reportFilename string, timestamp string, objectCounts map[string]int, endTime time.Time, errMsg string) {
+func (report *Report) WriteBackupReportFile(reportFilename string, timestamp string, objectCounts map[string]int, errMsg string) {
 	reportFile := MustOpenFileForWriting(reportFilename)
 	defer operating.System.Chmod(reportFilename, 0444)
 	reportFileTemplate := `Greenplum Database Backup Report
@@ -139,8 +139,15 @@ Backup Status: %s
 %s`
 
 	gpbackupCommandLine := strings.Join(os.Args, " ")
-	start, end, duration := GetBackupTimeInfo(timestamp, endTime)
-	backupStatus, dbSizeStr := getStatusAndSizeStrings(errMsg, report.DatabaseSize)
+	start, end, duration := GetDurationInfo(timestamp, operating.System.Now())
+	backupStatus := "Success"
+	if errMsg != "" {
+		backupStatus = fmt.Sprintf("Failure\nBackup Error: %s", errMsg)
+	}
+	dbSizeStr := ""
+	if report.DatabaseSize != "" {
+		dbSizeStr = fmt.Sprintf("\nDatabase Size: %s", report.DatabaseSize)
+	}
 
 	MustPrintf(reportFile, reportFileTemplate,
 		timestamp, report.DatabaseVersion, report.BackupVersion,
@@ -151,7 +158,39 @@ Backup Status: %s
 	PrintObjectCounts(reportFile, objectCounts)
 }
 
-func GetBackupTimeInfo(timestamp string, endTime time.Time) (string, string, string) {
+func WriteRestoreReportFile(reportFilename string, backupTimestamp string, startTimestamp string, connection *dbconn.DBConn, restoreVersion string, errMsg string) {
+	reportFile := MustOpenFileForWriting(reportFilename)
+	defer operating.System.Chmod(reportFilename, 0444)
+	reportFileTemplate := `Greenplum Database Restore Report
+
+Timestamp Key: %s
+GPDB Version: %s
+gprestore Version: %s
+
+Database Name: %s
+Command Line: %s
+
+Start Time: %s
+End Time: %s
+Duration: %s
+
+Restore Status: %s`
+
+	gprestoreCommandLine := strings.Join(os.Args, " ")
+	start, end, duration := GetDurationInfo(startTimestamp, operating.System.Now())
+	restoreStatus := "Success"
+	if errMsg != "" {
+		restoreStatus = fmt.Sprintf("Failure\nRestore Error: %s", errMsg)
+	}
+
+	MustPrintf(reportFile, reportFileTemplate,
+		backupTimestamp, connection.Version.VersionString, restoreVersion,
+		connection.DBName, gprestoreCommandLine,
+		start, end, duration, restoreStatus)
+
+}
+
+func GetDurationInfo(timestamp string, endTime time.Time) (string, string, string) {
 	startTime, _ := time.ParseInLocation("20060102150405", timestamp, operating.System.Local)
 	duration := reformatDuration(endTime.Sub(startTime))
 	startTimestamp := startTime.Format("2006-01-02 15:04:05")
@@ -167,18 +206,6 @@ func reformatDuration(duration time.Duration) string {
 	duration -= min * time.Minute
 	sec := duration / time.Second
 	return fmt.Sprintf("%d:%02d:%02d", hour, min, sec)
-}
-
-func getStatusAndSizeStrings(errMsg string, dbSize string) (string, string) {
-	backupStatus := "Success"
-	if errMsg != "" {
-		backupStatus = fmt.Sprintf("Failure\nBackup Error: %s", errMsg)
-	}
-	dbSizeStr := ""
-	if dbSize != "" {
-		dbSizeStr = fmt.Sprintf("\nDatabase Size: %s", dbSize)
-	}
-	return backupStatus, dbSizeStr
 }
 
 func PrintObjectCounts(reportFile io.WriteCloser, objectCounts map[string]int) {
@@ -251,25 +278,25 @@ func GetContacts(filename string, utility string) string {
 	return strings.Join(contactList, " ")
 }
 
-func ConstructEmailMessage(backupFPInfo FilePathInfo, contactList string) string {
+func ConstructEmailMessage(timestamp string, contactList string, reportFilePath string, utility string) string {
 	hostname, _ := operating.System.Hostname()
 	emailHeader := fmt.Sprintf(`To: %s
-Subject: gpbackup %s on %s completed
+Subject: %s %s on %s completed
 Content-Type: text/html
 Content-Disposition: inline
 <html>
 <body>
 <pre style=\"font: monospace\">
-`, contactList, backupFPInfo.Timestamp, hostname)
+`, contactList, utility, timestamp, hostname)
 	emailFooter := `
 </pre>
 </body>
 </html>`
-	fileContents := strings.Join(ReadLinesFromFile(backupFPInfo.GetReportFilePath()), "\n")
+	fileContents := strings.Join(ReadLinesFromFile(reportFilePath), "\n")
 	return emailHeader + fileContents + emailFooter
 }
 
-func EmailReport(cluster cluster.Cluster, backupFPInfo FilePathInfo) {
+func EmailReport(cluster cluster.Cluster, timestamp string, reportFilePath string, utility string) {
 	contactsFilename := "gp_email_contacts.yaml"
 	gphomeFile := fmt.Sprintf("%s/bin/%s", operating.System.Getenv("GPHOME"), contactsFilename)
 	homeFile := fmt.Sprintf("%s/%s", operating.System.Getenv("HOME"), contactsFilename)
@@ -278,19 +305,19 @@ func EmailReport(cluster cluster.Cluster, backupFPInfo FilePathInfo) {
 		_, gphomeErr := cluster.ExecuteLocalCommand(fmt.Sprintf("test -f %s", gphomeFile))
 		if gphomeErr != nil {
 			gplog.Info("Found neither %s nor %s", gphomeFile, homeFile)
-			gplog.Info("Email containing backup report %s will not be sent", backupFPInfo.GetReportFilePath())
+			gplog.Info("Email containing %s report %s will not be sent", utility, reportFilePath)
 			return
 		}
 		contactsFilename = gphomeFile
 	} else {
 		contactsFilename = homeFile
 	}
-	gplog.Info("%s list found, %s will be sent", contactsFilename, backupFPInfo.GetReportFilePath())
-	contactList := GetContacts(contactsFilename, "gpbackup")
+	gplog.Info("%s list found, %s will be sent", contactsFilename, reportFilePath)
+	contactList := GetContacts(contactsFilename, utility)
 	if contactList == "" {
 		return
 	}
-	message := ConstructEmailMessage(backupFPInfo, contactList)
+	message := ConstructEmailMessage(timestamp, contactList, reportFilePath, utility)
 	gplog.Verbose("Sending email report to the following addresses: %s", contactList)
 	output, sendErr := cluster.ExecuteLocalCommand(fmt.Sprintf(`echo "%s" | sendmail -t`, message))
 	if sendErr != nil {

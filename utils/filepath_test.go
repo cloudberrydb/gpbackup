@@ -61,11 +61,11 @@ var _ = Describe("utils/filepath tests", func() {
 	Describe("GetReportFilePath", func() {
 		It("returns report file path", func() {
 			fpInfo := utils.NewFilePathInfo(map[int]string{-1: "/data/gpseg-1"}, "", "20170101010101", "gpseg")
-			Expect(fpInfo.GetReportFilePath()).To(Equal("/data/gpseg-1/backups/20170101/20170101010101/gpbackup_20170101010101_report"))
+			Expect(fpInfo.GetBackupReportFilePath()).To(Equal("/data/gpseg-1/backups/20170101/20170101010101/gpbackup_20170101010101_report"))
 		})
 		It("returns report file path based on user specified path", func() {
 			fpInfo := utils.NewFilePathInfo(map[int]string{-1: "/data/gpseg-1"}, "/foo/bar", "20170101010101", "gpseg")
-			Expect(fpInfo.GetReportFilePath()).To(Equal("/foo/bar/gpseg-1/backups/20170101/20170101010101/gpbackup_20170101010101_report"))
+			Expect(fpInfo.GetBackupReportFilePath()).To(Equal("/foo/bar/gpseg-1/backups/20170101/20170101010101/gpbackup_20170101010101_report"))
 		})
 	})
 	Describe("GetTableBackupFilePath", func() {

@@ -68,6 +68,7 @@ func DoValidation() {
 // This function handles setup that must be done after parsing flags.
 func DoSetup() {
 	SetLoggerVerbosity()
+	restoreStartTime = utils.CurrentTimestamp()
 	gplog.Info("Restore Key = %s", *timestamp)
 
 	InitializeConnection("postgres")
@@ -261,7 +262,12 @@ func DoTeardown() {
 	if errStr != "" {
 		fmt.Println(errStr)
 	}
+	errMsg := utils.ParseErrorMessage(errStr)
 	errorCode := gplog.GetErrorCode()
+
+	reportFilename := globalFPInfo.GetRestoreReportFilePath(restoreStartTime)
+	utils.WriteRestoreReportFile(reportFilename, globalFPInfo.Timestamp, restoreStartTime, connection, version, errMsg)
+	utils.EmailReport(globalCluster, globalFPInfo.Timestamp, reportFilename, "gprestore")
 
 	DoCleanup()
 

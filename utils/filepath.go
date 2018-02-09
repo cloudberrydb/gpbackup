@@ -113,8 +113,12 @@ func (backupFPInfo *FilePathInfo) GetTOCFilePath() string {
 	return backupFPInfo.GetBackupFilePath("table of contents")
 }
 
-func (backupFPInfo *FilePathInfo) GetReportFilePath() string {
+func (backupFPInfo *FilePathInfo) GetBackupReportFilePath() string {
 	return backupFPInfo.GetBackupFilePath("report")
+}
+
+func (backupFPInfo *FilePathInfo) GetRestoreReportFilePath(restoreTimestamp string) string {
+	return path.Join(backupFPInfo.GetDirForContent(-1), fmt.Sprintf("gprestore_%s_%s_report", backupFPInfo.Timestamp, restoreTimestamp))
 }
 
 func (backupFPInfo *FilePathInfo) GetConfigFilePath() string {

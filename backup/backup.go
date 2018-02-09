@@ -266,7 +266,7 @@ func DoTeardown() {
 		if statErr != nil { // Even if this isn't os.IsNotExist, don't try to write a report file in case of further errors
 			os.Exit(errorCode)
 		}
-		reportFilename := globalFPInfo.GetReportFilePath()
+		reportFilename := globalFPInfo.GetBackupReportFilePath()
 		configFilename := globalFPInfo.GetConfigFilePath()
 
 		time.Sleep(time.Second) // We sleep for 1 second to ensure multiple backups do not start within the same second.
@@ -276,11 +276,10 @@ func DoTeardown() {
 			gplog.Warn("Failed to remove lock file %s.", timestampLockFile)
 		}
 
-		endTime := time.Now()
 		backupReport.ConstructBackupParamsString()
 		backupReport.WriteConfigFile(configFilename)
-		backupReport.WriteReportFile(reportFilename, globalFPInfo.Timestamp, objectCounts, endTime, errMsg)
-		utils.EmailReport(globalCluster, globalFPInfo)
+		backupReport.WriteBackupReportFile(reportFilename, globalFPInfo.Timestamp, objectCounts, errMsg)
+		utils.EmailReport(globalCluster, globalFPInfo.Timestamp, reportFilename, "gpbackup")
 	}
 
 	DoCleanup()
