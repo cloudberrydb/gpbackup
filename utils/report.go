@@ -259,6 +259,7 @@ type ContactFile struct {
 
 type EmailContact struct {
 	Address string
+	Status  map[string]bool
 }
 
 func GetContacts(filename string, utility string) string {
@@ -271,9 +272,20 @@ func GetContacts(filename string, utility string) string {
 		gplog.Warn("Please ensure that the email contacts file is in valid YAML format.")
 		return ""
 	}
-	contactList := make([]string, len(contactFile.Contacts[utility]))
-	for i, contact := range contactFile.Contacts[utility] {
-		contactList[i] = contact.Address
+
+	errorCode := gplog.GetErrorCode()
+	exitStatus := "success"
+	if errorCode == 1 {
+		exitStatus = "success_with_errors"
+	} else if errorCode == 2 {
+		exitStatus = "failure"
+	}
+
+	contactList := make([]string, 0)
+	for _, contact := range contactFile.Contacts[utility] {
+		if contact.Status[exitStatus] {
+			contactList = append(contactList, contact.Address)
+		}
 	}
 	return strings.Join(contactList, " ")
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/greenplum-db/gp-common-go-libs/cluster"
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
+	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gp-common-go-libs/operating"
 	"github.com/greenplum-db/gp-common-go-libs/structmatcher"
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
@@ -381,11 +382,27 @@ Timestamp Key: 20170101010101`)
 		contactsFileContents, _ := yaml.Marshal(utils.ContactFile{
 			Contacts: map[string][]utils.EmailContact{
 				"gpbackup": []utils.EmailContact{
-					{Address: "contact1@example.com"},
-					{Address: "contact2@example.org"},
+					{Address: "contact1@example.com",
+						Status: map[string]bool{
+							"success":             true,
+							"success_with_errors": true,
+							"failure":             false,
+						}},
+					{Address: "contact2@example.org",
+						Status: map[string]bool{
+							"success":             false,
+							"success_with_errors": true,
+							"failure":             true,
+						}},
 				},
 				"gprestore": []utils.EmailContact{
 					{Address: "contact3@example.com"},
+					{Address: "contact4@example.org",
+						Status: map[string]bool{
+							"success":             true,
+							"success_with_errors": true,
+							"failure":             true,
+						}},
 				},
 			}})
 		contactsList := "contact1@example.com contact2@example.org"
@@ -413,25 +430,45 @@ Timestamp Key: 20170101010101`)
 			}
 			testExecutor = &testhelper.TestExecutor{}
 			testCluster.Executor = testExecutor
+			gplog.SetErrorCode(0)
 		})
 		AfterEach(func() {
 			operating.InitializeSystemFunctions()
+			gplog.SetErrorCode(0)
 		})
 		Context("GetContacts", func() {
 			contactsFilename := fmt.Sprintf("%s/bin/gp_email_contacts.yaml", operating.System.Getenv("GPHOME"))
-			It("Gets a list of gpbackup contacts", func() {
+			It("Gets a list of gpbackup contacts on success", func() {
+				gplog.SetErrorCode(0)
+				w.Write(contactsFileContents)
+				w.Close()
+
+				contacts := utils.GetContacts(contactsFilename, "gpbackup")
+				Expect(contacts).To(Equal("contact1@example.com"))
+			})
+			It("Gets a list of gpbackup contacts on success with errors", func() {
+				gplog.SetErrorCode(1)
 				w.Write(contactsFileContents)
 				w.Close()
 
 				contacts := utils.GetContacts(contactsFilename, "gpbackup")
 				Expect(contacts).To(Equal("contact1@example.com contact2@example.org"))
 			})
-			It("Gets a list of gprestore contacts", func() {
+			It("Gets a list of gpbackup contacts on failure", func() {
+				gplog.SetErrorCode(2)
+				w.Write(contactsFileContents)
+				w.Close()
+
+				contacts := utils.GetContacts(contactsFilename, "gpbackup")
+				Expect(contacts).To(Equal("contact2@example.org"))
+			})
+			It("Gets a list of gprestore contacts and doesn't fail when no status specified", func() {
+				gplog.SetErrorCode(0)
 				w.Write(contactsFileContents)
 				w.Close()
 
 				contacts := utils.GetContacts(contactsFilename, "gprestore")
-				Expect(contacts).To(Equal("contact3@example.com"))
+				Expect(contacts).To(Equal("contact4@example.org"))
 			})
 		})
 		Context("ConstructEmailMessage", func() {
@@ -460,7 +497,7 @@ Timestamp Key: 20170101010101
 			var (
 				expectedHomeCmd   = "test -f home/gp_email_contacts.yaml"
 				expectedGpHomeCmd = "test -f gphome/bin/gp_email_contacts.yaml"
-				expectedMessage   = `echo "To: contact1@example.com contact2@example.org
+				expectedMessage   = `echo "To: contact1@example.com
 Subject: gpbackup 20170101010101 on localhost completed
 Content-Type: text/html
 Content-Disposition: inline
@@ -493,7 +530,7 @@ Content-Disposition: inline
 				utils.EmailReport(testCluster, testFPInfo.Timestamp, "report_file", "gpbackup")
 				Expect(testExecutor.NumExecutions).To(Equal(2))
 				Expect(testExecutor.LocalCommands).To(Equal([]string{expectedHomeCmd, expectedMessage}))
-				Expect(logfile).To(gbytes.Say("Sending email report to the following addresses: contact1@example.com contact2@example.org"))
+				Expect(logfile).To(gbytes.Say("Sending email report to the following addresses: contact1@example.com"))
 			})
 			It("sends an email to contacts in $GPHOME/bin/gp_email_contacts.yaml if only that file is found", func() {
 				w.Write(contactsFileContents)
@@ -505,7 +542,7 @@ Content-Disposition: inline
 				utils.EmailReport(testCluster, testFPInfo.Timestamp, "report_file", "gpbackup")
 				Expect(testExecutor.NumExecutions).To(Equal(3))
 				Expect(testExecutor.LocalCommands).To(Equal([]string{expectedHomeCmd, expectedGpHomeCmd, expectedMessage}))
-				Expect(logfile).To(gbytes.Say("Sending email report to the following addresses: contact1@example.com contact2@example.org"))
+				Expect(logfile).To(gbytes.Say("Sending email report to the following addresses: contact1@example.com"))
 			})
 			It("sends an email to contacts in $HOME/gp_email_contacts.yaml if a file exists in both $HOME and $GPHOME/bin", func() {
 				w.Write(contactsFileContents)
@@ -514,7 +551,7 @@ Content-Disposition: inline
 				utils.EmailReport(testCluster, testFPInfo.Timestamp, "report_file", "gpbackup")
 				Expect(testExecutor.NumExecutions).To(Equal(2))
 				Expect(testExecutor.LocalCommands).To(Equal([]string{expectedHomeCmd, expectedMessage}))
-				Expect(logfile).To(gbytes.Say("Sending email report to the following addresses: contact1@example.com contact2@example.org"))
+				Expect(logfile).To(gbytes.Say("Sending email report to the following addresses: contact1@example.com"))
 			})
 		})
 	})
