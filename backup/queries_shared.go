@@ -62,60 +62,60 @@ type Constraint struct {
 	IsPartitionParent  bool
 }
 
-func GetConstraints(connection *dbconn.DBConn, tables ...Relation) []Constraint {
+func GetConstraints(connection *dbconn.DBConn, includeTables ...Relation) []Constraint {
 	// This query is adapted from the queries underlying \d in psql.
 	tableQuery := `
 SELECT
-	c.oid,
+	con.oid,
 	quote_ident(n.nspname) AS schema,
 	quote_ident(conname) AS name,
 	contype,
-	pg_get_constraintdef(c.oid, TRUE) AS condef,
-	quote_ident(n.nspname) || '.' || quote_ident(r.relname) AS owningobject,
+	pg_get_constraintdef(con.oid, TRUE) AS condef,
+	quote_ident(n.nspname) || '.' || quote_ident(c.relname) AS owningobject,
 	'f' AS isdomainconstraint,
 	CASE
 		WHEN pt.parrelid IS NULL THEN 'f'
 		ELSE 't'
 	END AS ispartitionparent
-FROM pg_constraint c
-LEFT JOIN pg_class r ON c.conrelid = r.oid
-LEFT JOIN pg_partition pt ON c.conrelid = pt.parrelid
-JOIN pg_namespace n ON n.oid = c.connamespace
+FROM pg_constraint con
+LEFT JOIN pg_class c ON con.conrelid = c.oid
+LEFT JOIN pg_partition pt ON con.conrelid = pt.parrelid
+JOIN pg_namespace n ON n.oid = con.connamespace
 WHERE %s
-AND r.relname IS NOT NULL
+AND c.relname IS NOT NULL
 AND conrelid NOT IN (SELECT parchildrelid FROM pg_partition_rule)
-AND (conrelid, conname) NOT IN (SELECT i.inhrelid, c.conname FROM pg_inherits i JOIN pg_constraint c ON i.inhrelid = c.conrelid JOIN pg_constraint p ON i.inhparent = p.conrelid WHERE c.conname = p.conname)
-GROUP BY c.oid, conname, contype, r.relname, n.nspname, pt.parrelid`
+AND (conrelid, conname) NOT IN (SELECT i.inhrelid, con.conname FROM pg_inherits i JOIN pg_constraint con ON i.inhrelid = con.conrelid JOIN pg_constraint p ON i.inhparent = p.conrelid WHERE con.conname = p.conname)
+GROUP BY con.oid, conname, contype, c.relname, n.nspname, pt.parrelid`
 
 	nonTableQuery := fmt.Sprintf(`SELECT
-	c.oid,
+	con.oid,
 	quote_ident(n.nspname) AS schema,
 	quote_ident(conname) AS name,
 	contype,
-	pg_get_constraintdef(c.oid, TRUE) AS condef,
+	pg_get_constraintdef(con.oid, TRUE) AS condef,
 	quote_ident(n.nspname) || '.' || quote_ident(t.typname) AS owningobject,
 	't' AS isdomainconstraint,
 	'f' AS ispartitionparent
-FROM pg_constraint c
-LEFT JOIN pg_type t ON c.contypid = t.oid
-JOIN pg_namespace n ON n.oid = c.connamespace
+FROM pg_constraint con
+LEFT JOIN pg_type t ON con.contypid = t.oid
+JOIN pg_namespace n ON n.oid = con.connamespace
 WHERE %s
 AND t.typname IS NOT NULL
-GROUP BY c.oid, conname, contype, n.nspname, t.typname
+GROUP BY con.oid, conname, contype, n.nspname, t.typname
 ORDER BY name;
 
 `, SchemaFilterClause("n"))
 
 	query := ""
-	if len(tables) > 0 {
+	if len(includeTables) > 0 {
 		oidList := make([]string, 0)
-		for _, table := range tables {
+		for _, table := range includeTables {
 			oidList = append(oidList, fmt.Sprintf("%d", table.Oid))
 		}
-		filterClause := fmt.Sprintf("%s\nAND r.oid IN (%s)", SchemaFilterClause("n"), strings.Join(oidList, ","))
+		filterClause := fmt.Sprintf("%s\nAND c.oid IN (%s)", SchemaFilterClause("n"), strings.Join(oidList, ","))
 		query = fmt.Sprintf(tableQuery, filterClause)
 	} else {
-		tableQuery = fmt.Sprintf(tableQuery, SchemaFilterClause("n"))
+		tableQuery = fmt.Sprintf(tableQuery, tableAndSchemaFilterClause())
 		query = fmt.Sprintf("%s\nUNION\n%s", tableQuery, nonTableQuery)
 	}
 	results := make([]Constraint, 0)

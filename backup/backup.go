@@ -96,8 +96,7 @@ func DoBackup() {
 
 	BackupSessionGUCs(metadataFile)
 	if !*dataOnly {
-		isTableFiltered := len(includeTables) > 0 || len(excludeTables) > 0
-		if isTableFiltered {
+		if len(includeTables) > 0 {
 			backupTablePredata(metadataFile, metadataTables, tableDefs)
 		} else {
 			backupGlobal(metadataFile)

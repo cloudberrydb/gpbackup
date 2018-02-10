@@ -192,7 +192,7 @@ PARTITION BY RANGE (date)
 				Expect(len(constraints)).To(Equal(1))
 				structmatcher.ExpectStructsToMatchExcluding(&constraints[0], &constraintInSchema, "Oid")
 			})
-			It("returns a constraint array for only the tables in the backup set", func() {
+			It("returns a constraint array for only the tables included in the backup set", func() {
 				testhelper.AssertQueryRuns(connection, "CREATE TABLE public.constraints_table(a int, b text, c float)")
 				defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.constraints_table")
 				testhelper.AssertQueryRuns(connection, "ALTER TABLE ONLY public.constraints_table ADD CONSTRAINT uniq2 UNIQUE (a, b)")
@@ -209,6 +209,24 @@ PARTITION BY RANGE (date)
 
 				tables = []backup.Relation{{Oid: otherOid, Schema: "public", Name: "other_table"}}
 				constraints = backup.GetConstraints(connection, tables...)
+				Expect(len(constraints)).To(Equal(0))
+			})
+			It("returns a constraint array without contraints on tables in the exclude set", func() {
+				testhelper.AssertQueryRuns(connection, "CREATE TABLE public.constraints_table(a int, b text, c float)")
+				defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.constraints_table")
+				testhelper.AssertQueryRuns(connection, "ALTER TABLE ONLY public.constraints_table ADD CONSTRAINT uniq2 UNIQUE (a, b)")
+				testhelper.AssertQueryRuns(connection, "COMMENT ON CONSTRAINT uniq2 ON public.constraints_table IS 'this is a constraint comment'")
+				testhelper.AssertQueryRuns(connection, "CREATE TABLE public.other_table(d bool, e float)")
+				defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.other_table")
+
+				backup.SetExcludeTables([]string{"public.other_table"})
+				defer backup.SetExcludeTables([]string{})
+				constraints := backup.GetConstraints(connection)
+				Expect(len(constraints)).To(Equal(1))
+				structmatcher.ExpectStructsToMatchExcluding(&constraints[0], &uniqueConstraint, "Oid")
+
+				backup.SetExcludeTables([]string{"public.constraints_table"})
+				constraints = backup.GetConstraints(connection)
 				Expect(len(constraints)).To(Equal(0))
 			})
 		})
