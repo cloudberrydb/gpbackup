@@ -167,8 +167,12 @@ types                        1000`))
 				return time.Date(2017, 1, 1, 5, 4, 3, 2, time.Local)
 			}
 		})
+		AfterEach(func() {
+			gplog.SetErrorCode(0)
+		})
 
 		It("writes a report for a failed restore", func() {
+			gplog.SetErrorCode(2)
 			utils.WriteRestoreReportFile("filename", timestamp, restoreStartTime, connection, restoreVersion, "Cannot access /tmp/backups: Permission denied")
 			Expect(buffer).To(gbytes.Say(`Greenplum Database Restore Report
 
@@ -187,6 +191,7 @@ Restore Status: Failure
 Restore Error: Cannot access /tmp/backups: Permission denied`))
 		})
 		It("writes a report for a successful restore", func() {
+			gplog.SetErrorCode(0)
 			utils.WriteRestoreReportFile("filename", timestamp, restoreStartTime, connection, restoreVersion, "")
 			Expect(buffer).To(gbytes.Say(`Greenplum Database Restore Report
 
@@ -202,6 +207,24 @@ End Time: 2017-01-01 05:04:03
 Duration: 4:03:01
 
 Restore Status: Success`))
+		})
+		It("writes a report for a successful restore with errors", func() {
+			gplog.SetErrorCode(1)
+			utils.WriteRestoreReportFile("filename", timestamp, restoreStartTime, connection, restoreVersion, "")
+			Expect(buffer).To(gbytes.Say(`Greenplum Database Restore Report
+
+Timestamp Key: 20170101010101
+GPDB Version: 5\.0\.0 build test
+gprestore Version: 0\.1\.0
+
+Database Name: testdb
+Command Line: .*
+
+Start Time: 2017-01-01 01:01:02
+End Time: 2017-01-01 05:04:03
+Duration: 4:03:01
+
+Restore Status: Success but non-fatal errors occurred. See log file .+ for details.`))
 		})
 	})
 	Describe("SetBackupParamFromFlags", func() {

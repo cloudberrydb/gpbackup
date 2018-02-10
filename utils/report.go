@@ -179,7 +179,10 @@ Restore Status: %s`
 	gprestoreCommandLine := strings.Join(os.Args, " ")
 	start, end, duration := GetDurationInfo(startTimestamp, operating.System.Now())
 	restoreStatus := "Success"
-	if errMsg != "" {
+	errorCode := gplog.GetErrorCode()
+	if errorCode == 1 {
+		restoreStatus = fmt.Sprintf("Success but non-fatal errors occurred. See log file %s for details.", gplog.GetLogFilePath())
+	} else if errMsg != "" {
 		restoreStatus = fmt.Sprintf("Failure\nRestore Error: %s", errMsg)
 	}
 
