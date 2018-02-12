@@ -58,5 +58,5 @@
   name = "gopkg.in/yaml.v2"
 
 [[constraint]]
-  branch = "add_packages"
+  branch = "master"
   name = "github.com/greenplum-db/gp-common-go-libs"

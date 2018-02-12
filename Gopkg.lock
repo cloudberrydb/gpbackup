@@ -8,7 +8,7 @@
   version = "v3.5.1"
 
 [[projects]]
-  branch = "add_packages"
+  branch = "master"
   name = "github.com/greenplum-db/gp-common-go-libs"
   packages = [
     "cluster",
@@ -18,7 +18,7 @@
     "structmatcher",
     "testhelper"
   ]
-  revision = "bd7d3365c20ecae5770647bb3019cefd8e7f57ae"
+  revision = "2cf6deb81b24d02b66b8ec54aedf7c4153658492"
 
 [[projects]]
   branch = "master"
@@ -158,6 +158,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "3fa7a083aa9cc58d4f75f1ac5cee4dda4f7ef7fc801df5c6ad03b22f21564c0c"
+  inputs-digest = "00827baf447b8cd9ef306470ce1ba4ceb19d5f90c743fde7997aaa2f832b4235"
   solver-name = "gps-cdcl"
   solver-version = 1
