@@ -311,7 +311,7 @@ AND spcname != 'pg_global';`
 
 func GetDBSize(connection *dbconn.DBConn) string {
 	size := struct{ DBSize string }{}
-	sizeQuery := fmt.Sprintf("SELECT pg_size_pretty(sodddatsize) as dbsize FROM gp_toolkit.gp_size_of_database WHERE sodddatname=E'%s'", dbconn.EscapeConnectionParam(connection.DBName))
+	sizeQuery := fmt.Sprintf("SELECT pg_size_pretty(pg_database_size(E'%s')) as dbsize", dbconn.EscapeConnectionParam(connection.DBName))
 	err := connection.Get(&size, sizeQuery)
 	gplog.FatalOnError(err)
 	return size.DBSize
