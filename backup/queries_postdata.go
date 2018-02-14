@@ -59,27 +59,27 @@ func GetIndexes(connection *dbconn.DBConn, indexNameSet *utils.FilterSet) []Inde
 	query := fmt.Sprintf(`
 SELECT DISTINCT
 	i.indexrelid AS oid,
-	quote_ident(c.relname) AS name,
+	quote_ident(ic.relname) AS name,
 	quote_ident(n.nspname) AS owningschema,
-	quote_ident(t.relname) AS owningtable,
+	quote_ident(c.relname) AS owningtable,
 	coalesce(quote_ident(s.spcname), '') AS tablespace,
 	pg_get_indexdef(i.indexrelid) AS def,
 	i.indisclustered AS isclustered
 FROM pg_index i
-JOIN pg_class c
-	ON (c.oid = i.indexrelid)
+JOIN pg_class ic
+	ON (ic.oid = i.indexrelid)
 JOIN pg_namespace n
-	ON (c.relnamespace = n.oid)
-JOIN pg_class t
-	ON (t.oid = i.indrelid)
+	ON (ic.relnamespace = n.oid)
+JOIN pg_class c
+	ON (c.oid = i.indrelid)
 LEFT JOIN pg_partitions p
-	ON (t.relname = p.tablename AND p.partitionlevel = 0)
+	ON (c.relname = p.tablename AND p.partitionlevel = 0)
 LEFT JOIN pg_tablespace s
-	ON (c.reltablespace = s.oid)
+	ON (ic.reltablespace = s.oid)
 WHERE %s
 AND i.indisprimary = 'f'
-AND n.nspname || '.' || t.relname NOT IN (SELECT partitionschemaname || '.' || partitiontablename FROM pg_partitions)
-ORDER BY name;`, SchemaFilterClause("n"))
+AND n.nspname || '.' || c.relname NOT IN (SELECT partitionschemaname || '.' || partitiontablename FROM pg_partitions)
+ORDER BY name;`, tableAndSchemaFilterClause())
 
 	results := make([]IndexDefinition, 0)
 	err := connection.Select(&results, query)
@@ -130,7 +130,7 @@ JOIN pg_namespace n
 WHERE %s
 AND rulename NOT LIKE '%%RETURN'
 AND rulename NOT LIKE 'pg_%%'
-ORDER BY rulename;`, SchemaFilterClause("n"))
+ORDER BY rulename;`, tableAndSchemaFilterClause())
 
 	results := make([]QuerySimpleDefinition, 0)
 	err := connection.Select(&results, query)
@@ -154,7 +154,7 @@ JOIN pg_namespace n
 WHERE %s
 AND tgname NOT LIKE 'pg_%%'
 AND tgisconstraint = 'f'
-ORDER BY tgname;`, SchemaFilterClause("n"))
+ORDER BY tgname;`, tableAndSchemaFilterClause())
 
 	results := make([]QuerySimpleDefinition, 0)
 	err := connection.Select(&results, query)

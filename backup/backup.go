@@ -101,8 +101,8 @@ func DoBackup() {
 		} else {
 			backupGlobal(metadataFile)
 			backupPredata(metadataFile, metadataTables, tableDefs)
-			backupPostdata(metadataFile)
 		}
+		backupPostdata(metadataFile)
 	}
 
 	if !backupReport.MetadataOnly {

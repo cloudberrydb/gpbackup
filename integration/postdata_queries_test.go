@@ -144,6 +144,28 @@ PARTITION BY RANGE (date)
 
 			structmatcher.ExpectStructsToMatchExcluding(&index1, &results[0], "Oid")
 		})
+		It("returns a slice of indexes belonging to filtered tables", func() {
+			testhelper.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int, j int, k int)")
+			defer testhelper.AssertQueryRuns(connection, "DROP TABLE simple_table")
+			testhelper.AssertQueryRuns(connection, "CREATE INDEX simple_table_idx1 ON simple_table(i)")
+			defer testhelper.AssertQueryRuns(connection, "DROP INDEX simple_table_idx1")
+			testhelper.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
+			defer testhelper.AssertQueryRuns(connection, "DROP SCHEMA testschema")
+			testhelper.AssertQueryRuns(connection, "CREATE TABLE testschema.simple_table(i int, j int, k int)")
+			defer testhelper.AssertQueryRuns(connection, "DROP TABLE testschema.simple_table")
+			testhelper.AssertQueryRuns(connection, "CREATE INDEX simple_table_idx1 ON testschema.simple_table(i)")
+			defer testhelper.AssertQueryRuns(connection, "DROP INDEX testschema.simple_table_idx1")
+			backup.SetIncludeTables([]string{"testschema.simple_table"})
+
+			index1 := backup.IndexDefinition{Oid: 0, Name: "simple_table_idx1", OwningSchema: "testschema", OwningTable: "simple_table", Def: "CREATE INDEX simple_table_idx1 ON testschema.simple_table USING btree (i)"}
+
+			results := backup.GetIndexes(connection, indexNameSet)
+
+			Expect(len(results)).To(Equal(1))
+			results[0].Oid = testutils.OidFromObjectName(connection, "", "simple_table_idx1", backup.TYPE_INDEX)
+
+			structmatcher.ExpectStructsToMatchExcluding(&index1, &results[0], "Oid")
+		})
 		It("returns a slice for an index used for clustering", func() {
 			testhelper.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int, j int, k int)")
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE simple_table")
@@ -207,6 +229,26 @@ PARTITION BY RANGE (date)
 			Expect(len(results)).To(Equal(1))
 			structmatcher.ExpectStructsToMatchExcluding(&rule1, &results[0], "Oid")
 		})
+		It("returns a slice of rules belonging to filtered tables", func() {
+			testhelper.AssertQueryRuns(connection, "CREATE TABLE rule_table1(i int)")
+			defer testhelper.AssertQueryRuns(connection, "DROP TABLE rule_table1")
+			testhelper.AssertQueryRuns(connection, "CREATE RULE double_insert AS ON INSERT TO rule_table1 DO INSERT INTO rule_table1 (i) VALUES (1)")
+			defer testhelper.AssertQueryRuns(connection, "DROP RULE double_insert ON rule_table1")
+			testhelper.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
+			defer testhelper.AssertQueryRuns(connection, "DROP SCHEMA testschema")
+			testhelper.AssertQueryRuns(connection, "CREATE TABLE testschema.rule_table1(i int)")
+			defer testhelper.AssertQueryRuns(connection, "DROP TABLE testschema.rule_table1")
+			testhelper.AssertQueryRuns(connection, "CREATE RULE double_insert AS ON INSERT TO testschema.rule_table1 DO INSERT INTO testschema.rule_table1 (i) VALUES (1)")
+			defer testhelper.AssertQueryRuns(connection, "DROP RULE double_insert ON testschema.rule_table1")
+			backup.SetIncludeTables([]string{"testschema.rule_table1"})
+
+			rule1 := backup.QuerySimpleDefinition{Oid: 0, Name: "double_insert", OwningSchema: "testschema", OwningTable: "rule_table1", Def: "CREATE RULE double_insert AS ON INSERT TO testschema.rule_table1 DO INSERT INTO testschema.rule_table1 (i) VALUES (1);"}
+
+			results := backup.GetRules(connection)
+
+			Expect(len(results)).To(Equal(1))
+			structmatcher.ExpectStructsToMatchExcluding(&rule1, &results[0], "Oid")
+		})
 	})
 	Describe("GetTriggers", func() {
 		It("returns no slice when no trigger exists", func() {
@@ -257,6 +299,26 @@ PARTITION BY RANGE (date)
 			testhelper.AssertQueryRuns(connection, "CREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON testschema.trigger_table1 FOR EACH STATEMENT EXECUTE PROCEDURE tsvector_update_trigger()")
 			defer testhelper.AssertQueryRuns(connection, "DROP TRIGGER sync_trigger_table1 ON testschema.trigger_table1")
 			backup.SetIncludeSchemas([]string{"testschema"})
+
+			trigger1 := backup.QuerySimpleDefinition{Oid: 0, Name: "sync_trigger_table1", OwningSchema: "testschema", OwningTable: "trigger_table1", Def: "CREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON testschema.trigger_table1 FOR EACH STATEMENT EXECUTE PROCEDURE tsvector_update_trigger()"}
+
+			results := backup.GetTriggers(connection)
+
+			Expect(len(results)).To(Equal(1))
+			structmatcher.ExpectStructsToMatchExcluding(&trigger1, &results[0], "Oid")
+		})
+		It("returns a slice of triggers belonging to filtered tables", func() {
+			testhelper.AssertQueryRuns(connection, "CREATE TABLE trigger_table1(i int)")
+			defer testhelper.AssertQueryRuns(connection, "DROP TABLE trigger_table1")
+			testhelper.AssertQueryRuns(connection, "CREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON trigger_table1 FOR EACH STATEMENT EXECUTE PROCEDURE tsvector_update_trigger()")
+			defer testhelper.AssertQueryRuns(connection, "DROP TRIGGER sync_trigger_table1 ON trigger_table1")
+			testhelper.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
+			defer testhelper.AssertQueryRuns(connection, "DROP SCHEMA testschema")
+			testhelper.AssertQueryRuns(connection, "CREATE TABLE testschema.trigger_table1(i int)")
+			defer testhelper.AssertQueryRuns(connection, "DROP TABLE testschema.trigger_table1")
+			testhelper.AssertQueryRuns(connection, "CREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON testschema.trigger_table1 FOR EACH STATEMENT EXECUTE PROCEDURE tsvector_update_trigger()")
+			defer testhelper.AssertQueryRuns(connection, "DROP TRIGGER sync_trigger_table1 ON testschema.trigger_table1")
+			backup.SetIncludeTables([]string{"testschema.trigger_table1"})
 
 			trigger1 := backup.QuerySimpleDefinition{Oid: 0, Name: "sync_trigger_table1", OwningSchema: "testschema", OwningTable: "trigger_table1", Def: "CREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON testschema.trigger_table1 FOR EACH STATEMENT EXECUTE PROCEDURE tsvector_update_trigger()"}
 
