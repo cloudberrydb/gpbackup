@@ -869,7 +869,7 @@ LANGUAGE SQL`)
 				numTriggers := len(resultMetadataMap)
 
 				testhelper.AssertQueryRuns(connection, `CREATE TABLE testtable(i int)`)
-				testhelper.AssertQueryRuns(connection, `CREATE TRIGGER sync_testtable AFTER INSERT OR DELETE OR UPDATE ON testtable FOR EACH STATEMENT EXECUTE PROCEDURE tsvector_update_trigger()`)
+				testhelper.AssertQueryRuns(connection, `CREATE TRIGGER sync_testtable AFTER INSERT OR DELETE OR UPDATE ON testtable FOR EACH STATEMENT EXECUTE PROCEDURE "RI_FKey_check_ins"()`)
 				defer testhelper.AssertQueryRuns(connection, "DROP TABLE testtable")
 				testhelper.AssertQueryRuns(connection, "COMMENT ON TRIGGER sync_testtable ON public.testtable IS 'This is a trigger comment.'")
 
