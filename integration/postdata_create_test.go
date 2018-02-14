@@ -141,7 +141,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			triggerMetadataMap = backup.MetadataMap{}
 		})
 		It("creates a basic trigger", func() {
-			triggers := []backup.QuerySimpleDefinition{{Oid: 0, Name: "sync_testtable", OwningSchema: "public", OwningTable: "testtable", Def: "CREATE TRIGGER sync_testtable AFTER INSERT OR DELETE OR UPDATE ON testtable FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger()"}}
+			triggers := []backup.QuerySimpleDefinition{{Oid: 0, Name: "sync_testtable", OwningSchema: "public", OwningTable: "testtable", Def: "CREATE TRIGGER sync_testtable AFTER INSERT OR DELETE OR UPDATE ON testtable FOR EACH STATEMENT EXECUTE PROCEDURE tsvector_update_trigger()"}}
 			backup.PrintCreateTriggerStatements(backupfile, toc, triggers, triggerMetadataMap)
 
 			testhelper.AssertQueryRuns(connection, "CREATE TABLE testtable(i int)")
@@ -154,7 +154,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			structmatcher.ExpectStructsToMatchExcluding(&resultTriggers[0], &triggers[0], "Oid")
 		})
 		It("creates a trigger with a comment", func() {
-			triggers := []backup.QuerySimpleDefinition{{Oid: 1, Name: "sync_testtable", OwningSchema: "public", OwningTable: "testtable", Def: "CREATE TRIGGER sync_testtable AFTER INSERT OR DELETE OR UPDATE ON testtable FOR EACH STATEMENT EXECUTE PROCEDURE flatfile_update_trigger()"}}
+			triggers := []backup.QuerySimpleDefinition{{Oid: 1, Name: "sync_testtable", OwningSchema: "public", OwningTable: "testtable", Def: "CREATE TRIGGER sync_testtable AFTER INSERT OR DELETE OR UPDATE ON testtable FOR EACH STATEMENT EXECUTE PROCEDURE tsvector_update_trigger()"}}
 			triggerMetadataMap = testutils.DefaultMetadataMap("RULE", false, false, true)
 			triggerMetadata := triggerMetadataMap[1]
 			backup.PrintCreateTriggerStatements(backupfile, toc, triggers, triggerMetadataMap)

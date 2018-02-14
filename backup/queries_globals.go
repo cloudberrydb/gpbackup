@@ -58,15 +58,22 @@ WHERE d.datname = '%s';`, lcQuery, connection.DBName)
 
 func GetDatabaseGUCs(connection *dbconn.DBConn) []string {
 	//We do not want to quote list type config settings such as search_path and DateStyle
-	query := fmt.Sprintf(`
+	query := `
 SELECT CASE
 	WHEN option_name='search_path' OR option_name = 'DateStyle'
 	THEN ('SET ' || option_name || ' TO ' || option_value)
 	ELSE ('SET ' || option_name || ' TO ' || quote_ident(option_value))
 END AS string
 FROM pg_options_to_table(
-	(SELECT datconfig FROM pg_database WHERE datname = '%s')
-);`, connection.DBName)
+	(%s)
+);`
+	if connection.Version.Before("6") {
+		subquery := fmt.Sprintf("SELECT datconfig FROM pg_database WHERE datname = '%s'", connection.DBName)
+		query = fmt.Sprintf(query, subquery)
+	} else {
+		subquery := fmt.Sprintf("SELECT setconfig FROM pg_db_role_setting WHERE setdatabase = (SELECT oid FROM pg_database WHERE datname = '%s')", connection.DBName)
+		query = fmt.Sprintf(query, subquery)
+	}
 	return dbconn.MustSelectStringSlice(connection, query)
 }
 
