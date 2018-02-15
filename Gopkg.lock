@@ -18,7 +18,7 @@
     "structmatcher",
     "testhelper"
   ]
-  revision = "2cf6deb81b24d02b66b8ec54aedf7c4153658492"
+  revision = "2a6ca7b9e24efd5cf2b48642b612fe275da1c98e"
 
 [[projects]]
   branch = "master"
@@ -68,7 +68,7 @@
     "reporters/stenographer/support/go-isatty",
     "types"
   ]
-  revision = "747514b53ddd06d5d37d096c1cb313cfe620d7d4"
+  revision = "ae6829de29c3af4e009138c7bae3be0f67175ef8"
 
 [[projects]]
   name = "github.com/onsi/gomega"
