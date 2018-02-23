@@ -85,12 +85,12 @@ func DoPostgresValidation() {
 	VerifyBackupDirectoriesExistOnAllHosts()
 
 	InitializeBackupConfig()
-	ValidateBackupFlagCombinations()
 	VerifyMetadataFilePaths(*withStats)
 
 	tocFilename := globalFPInfo.GetTOCFilePath()
 	globalTOC = utils.NewTOC(tocFilename)
 	globalTOC.InitializeEntryMap()
+	ValidateBackupFlagCombinations()
 
 	validateFilterListsInBackupSet()
 }

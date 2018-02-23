@@ -116,7 +116,7 @@ func DoRestore() {
 		restoreData(gucStatements)
 	}
 
-	if !backupConfig.DataOnly && !backupConfig.TableFiltered {
+	if !backupConfig.DataOnly {
 		restorePostdata(metadataFilename)
 	}
 

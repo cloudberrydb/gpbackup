@@ -123,6 +123,13 @@ func ValidateBackupFlagCombinations() {
 			gplog.Fatal(errors.Errorf("Cannot use jobs flag when restoring backups with a single data file per segment."), "")
 		}
 	}
+	if backupConfig.IncludeTableFiltered {
+		if *createDB {
+			gplog.Fatal(errors.Errorf("CREATE DATABASE statements are not included in table-filtered backups. Create the database manually before restoring."), "")
+		} else if *restoreGlobals {
+			gplog.Fatal(errors.Errorf("Global metadata is not backed up in table-filtered backup."), "")
+		}
+	}
 }
 
 func ValidateFlagCombinations() {

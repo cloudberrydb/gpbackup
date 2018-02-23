@@ -70,9 +70,11 @@ func InitializeBackupReport() {
 		BackupConfig: config,
 	}
 	utils.InitializeCompressionParameters(!*noCompression, *compressionLevel)
-	isSchemaFiltered := len(includeSchemas) > 0 || len(excludeSchemas) > 0
-	isTableFiltered := len(includeTables) > 0 || len(excludeTables) > 0
-	backupReport.SetBackupParamsFromFlags(*dataOnly, *metadataOnly, isSchemaFiltered, isTableFiltered, *singleDataFile, *withStats)
+	isIncludeSchemaFiltered := len(includeSchemas) > 0
+	isIncludeTableFiltered := len(includeTables) > 0
+	isExcludeSchemaFiltered := len(excludeSchemas) > 0
+	isExcludeTableFiltered := len(excludeTables) > 0
+	backupReport.SetBackupParamsFromFlags(*dataOnly, *metadataOnly, isIncludeSchemaFiltered, isIncludeTableFiltered, isExcludeSchemaFiltered, isExcludeTableFiltered, *singleDataFile, *withStats)
 }
 
 func InitializeFilterLists() {

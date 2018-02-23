@@ -20,16 +20,18 @@ import (
 )
 
 type BackupConfig struct {
-	BackupVersion   string
-	DatabaseName    string
-	DatabaseVersion string
-	Compressed      bool
-	DataOnly        bool
-	SchemaFiltered  bool
-	TableFiltered   bool
-	MetadataOnly    bool
-	WithStatistics  bool
-	SingleDataFile  bool
+	BackupVersion         string
+	DatabaseName          string
+	DatabaseVersion       string
+	Compressed            bool
+	DataOnly              bool
+	IncludeSchemaFiltered bool
+	IncludeTableFiltered  bool
+	ExcludeSchemaFiltered bool
+	ExcludeTableFiltered  bool
+	MetadataOnly          bool
+	WithStatistics        bool
+	SingleDataFile        bool
 }
 
 /*
@@ -53,11 +55,13 @@ func ParseErrorMessage(errStr string) string {
 	return errMsg
 }
 
-func (report *Report) SetBackupParamsFromFlags(dataOnly bool, ddlOnly bool, isSchemaFiltered bool, isTableFiltered bool, singleDataFile bool, withStats bool) {
+func (report *Report) SetBackupParamsFromFlags(dataOnly bool, ddlOnly bool, isIncludeSchemaFiltered bool, isIncludeTableFiltered bool, isExcludeSchemaFiltered bool, isExcludeTableFiltered bool, singleDataFile bool, withStats bool) {
 	compressed, _ := GetCompressionParameters()
 	report.Compressed = compressed
-	report.SchemaFiltered = isSchemaFiltered
-	report.TableFiltered = isTableFiltered
+	report.IncludeSchemaFiltered = isIncludeSchemaFiltered
+	report.IncludeTableFiltered = isIncludeTableFiltered
+	report.ExcludeSchemaFiltered = isExcludeSchemaFiltered
+	report.ExcludeTableFiltered = isExcludeTableFiltered
 	report.DataOnly = dataOnly
 	report.MetadataOnly = ddlOnly
 	report.SingleDataFile = singleDataFile
@@ -65,11 +69,21 @@ func (report *Report) SetBackupParamsFromFlags(dataOnly bool, ddlOnly bool, isSc
 }
 
 func (report *Report) ConstructBackupParamsString() {
-	filterStr := "None"
-	if report.SchemaFiltered {
-		filterStr = "Schema Filter"
-	} else if report.TableFiltered {
-		filterStr = "Table Filter"
+	filterStr := ""
+	if report.IncludeSchemaFiltered {
+		filterStr = "Include Schema Filter "
+	}
+	if report.IncludeTableFiltered {
+		filterStr = "Include Table Filter"
+	}
+	if report.ExcludeSchemaFiltered {
+		filterStr = "Exclude Schema Filter"
+	}
+	if report.ExcludeTableFiltered {
+		filterStr += "Exclude Table Filter"
+	}
+	if filterStr == "" {
+		filterStr = "None"
 	}
 	compressStr := "None"
 	_, program := GetCompressionParameters()

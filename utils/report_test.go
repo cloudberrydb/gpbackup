@@ -235,10 +235,11 @@ Restore Status: Success but non-fatal errors occurred. See log file .+ for detai
 		It("configures the Report struct correctly", func() {
 			backupReport = &utils.Report{}
 			utils.InitializeCompressionParameters(true, 0)
-			backupReport.SetBackupParamsFromFlags(true, true, true, true, true, true)
+			backupReport.SetBackupParamsFromFlags(true, true, true, true, true, true, true, true)
 			structmatcher.ExpectStructsToMatch(backupReport.BackupConfig, utils.BackupConfig{
 				BackupVersion: "", DatabaseName: "", DatabaseVersion: "",
-				Compressed: true, DataOnly: true, SchemaFiltered: true, TableFiltered: true,
+				Compressed: true, DataOnly: true, IncludeSchemaFiltered: true, IncludeTableFiltered: true,
+				ExcludeSchemaFiltered: true, ExcludeTableFiltered: true,
 				MetadataOnly: true, WithStatistics: true, SingleDataFile: true,
 			})
 		})
@@ -251,64 +252,82 @@ Restore Status: Success but non-fatal errors occurred. See log file .+ for detai
 		AfterEach(func() {
 			utils.InitializeCompressionParameters(false, 0)
 		})
-		DescribeTable("Backup type classification", func(dataOnly bool, ddlOnly bool, noCompression bool, isSchemaFiltered bool, isTableFiltered bool, singleDataFile bool, withStats bool, expectedType string) {
+		DescribeTable("Backup type classification", func(dataOnly bool, ddlOnly bool, noCompression bool, isIncludeSchemaFiltered bool, isIncludeTableFiltered bool, isExcludeSchemaFiltered bool, isExcludeTableFiltered bool, singleDataFile bool, withStats bool, expectedType string) {
 			utils.InitializeCompressionParameters(!noCompression, 0)
-			backupReport.SetBackupParamsFromFlags(dataOnly, ddlOnly, isSchemaFiltered, isTableFiltered, singleDataFile, withStats)
+			backupReport.SetBackupParamsFromFlags(dataOnly, ddlOnly, isIncludeSchemaFiltered, isIncludeTableFiltered, isExcludeSchemaFiltered, isExcludeTableFiltered, singleDataFile, withStats)
 			backupReport.ConstructBackupParamsString()
 			Expect(backupReport.BackupParamsString).To(Equal(expectedType))
 		},
 			Entry("classifies a default backup",
-				false, false, false, false, false, false, false, `Compression: gzip
+				false, false, false, false, false, false, false, false, false, `Compression: gzip
 Backup Section: All Sections
 Object Filtering: None
 Includes Statistics: No
 Data File Format: Multiple Data Files Per Segment`),
 			Entry("classifies a default backup with stats",
-				false, false, false, false, false, false, true, `Compression: gzip
+				false, false, false, false, false, false, false, false, true, `Compression: gzip
 Backup Section: All Sections
 Object Filtering: None
 Includes Statistics: Yes
 Data File Format: Multiple Data Files Per Segment`),
 			Entry("classifies a default backup with a single data file",
-				false, false, false, false, false, true, false, `Compression: gzip
+				false, false, false, false, false, false, false, true, false, `Compression: gzip
 Backup Section: All Sections
 Object Filtering: None
 Includes Statistics: No
 Data File Format: Single Data File Per Segment`),
 			Entry("classifies a default backup with statistics and a single data file",
-				false, false, false, false, false, true, true, `Compression: gzip
+				false, false, false, false, false, false, false, true, true, `Compression: gzip
 Backup Section: All Sections
 Object Filtering: None
 Includes Statistics: Yes
 Data File Format: Single Data File Per Segment`),
 			Entry("classifies a metadata-only backup",
-				false, true, false, false, false, false, false, `Compression: gzip
+				false, true, false, false, false, false, false, false, false, `Compression: gzip
 Backup Section: Metadata Only
 Object Filtering: None
 Includes Statistics: No
 Data File Format: No Data Files`),
 			Entry("classifies a data-only backup",
-				true, false, false, false, false, false, false, `Compression: gzip
+				true, false, false, false, false, false, false, false, false, `Compression: gzip
 Backup Section: Data Only
 Object Filtering: None
 Includes Statistics: No
 Data File Format: Multiple Data Files Per Segment`),
 			Entry("classifies an uncompressed backup",
-				false, false, true, false, false, false, false, `Compression: None
+				false, false, true, false, false, false, false, false, false, `Compression: None
 Backup Section: All Sections
 Object Filtering: None
 Includes Statistics: No
 Data File Format: Multiple Data Files Per Segment`),
-			Entry("classifies a schema-filtered backup",
-				false, false, false, true, false, false, false, `Compression: gzip
+			Entry("classifies an include-schema-filtered backup",
+				false, false, false, true, false, false, false, false, false, `Compression: gzip
 Backup Section: All Sections
-Object Filtering: Schema Filter
+Object Filtering: Include Schema Filter 
 Includes Statistics: No
 Data File Format: Multiple Data Files Per Segment`),
-			Entry("classifies a table-filtered backup",
-				false, false, false, false, true, false, false, `Compression: gzip
+			Entry("classifies an include-table-filtered backup",
+				false, false, false, false, true, false, false, false, false, `Compression: gzip
 Backup Section: All Sections
-Object Filtering: Table Filter
+Object Filtering: Include Table Filter
+Includes Statistics: No
+Data File Format: Multiple Data Files Per Segment`),
+			Entry("classifies an exclude-schema-filtered backup",
+				false, false, false, false, false, true, false, false, false, `Compression: gzip
+Backup Section: All Sections
+Object Filtering: Exclude Schema Filter
+Includes Statistics: No
+Data File Format: Multiple Data Files Per Segment`),
+			Entry("classifies an exclude-table-filtered backup",
+				false, false, false, false, false, false, true, false, false, `Compression: gzip
+Backup Section: All Sections
+Object Filtering: Exclude Table Filter
+Includes Statistics: No
+Data File Format: Multiple Data Files Per Segment`),
+			Entry("classifies an include-schema-filtered, exclude-table-filtered backup",
+				false, false, false, true, false, false, true, false, false, `Compression: gzip
+Backup Section: All Sections
+Object Filtering: Include Schema Filter Exclude Table Filter
 Includes Statistics: No
 Data File Format: Multiple Data Files Per Segment`),
 		)
