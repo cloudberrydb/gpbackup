@@ -58,7 +58,6 @@ resources:
     branch: {{ccp-git-branch}}
     private_key: {{ccp-git-key}}
     uri: {{ccp-git-remote}}
-    tag_filter: 1.6.0
 
 - name: terraform
   type: terraform
@@ -281,6 +280,7 @@ jobs:
         aws_instance-node-instance_type: i3.large
         aws_ebs_volume_type: gp2
         number_of_nodes: 1
+        ccp_reap_minutes: 720
   - task: gen_cluster
     params:
       <<: *ccp_gen_cluster_default_params
@@ -325,6 +325,7 @@ jobs:
         aws_ebs_volume_type: gp2
         aws_ebs_volume_size: 128
         number_of_nodes: 3
+        ccp_reap_minutes: 720
   - task: gen_cluster
     params:
       <<: *boostfs_ccp_gen_cluster_default_params
