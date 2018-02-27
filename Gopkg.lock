@@ -18,7 +18,7 @@
     "structmatcher",
     "testhelper"
   ]
-  revision = "2a6ca7b9e24efd5cf2b48642b612fe275da1c98e"
+  revision = "59afcbb8e0ba298a796b2cd1537ec894b2a1d185"
 
 [[projects]]
   branch = "master"
@@ -27,7 +27,7 @@
     ".",
     "reflectx"
   ]
-  revision = "05cef0741ade10ca668982355b3f3f0bcf0ff0a8"
+  revision = "cf35089a197953c69420c8d0cecda90809764b1d"
 
 [[projects]]
   branch = "master"
@@ -68,7 +68,7 @@
     "reporters/stenographer/support/go-isatty",
     "types"
   ]
-  revision = "ae6829de29c3af4e009138c7bae3be0f67175ef8"
+  revision = "9008c7b79f9636c46a0a945141020124702f0ecf"
 
 [[projects]]
   name = "github.com/onsi/gomega"
@@ -105,16 +105,15 @@
     "html/atom",
     "html/charset"
   ]
-  revision = "f5dfe339be1d06f81b22525fe34671ee7d2c8904"
+  revision = "cbe0f9307d0156177f9dd5dc85da1a31abc5f2fb"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "37707fdb30a5b38865cfb95e5aab41707daec7fd"
+  revision = "f6cff0780e542efa0c8e864dc8fa522808f6a598"
 
 [[projects]]
-  branch = "master"
   name = "golang.org/x/text"
   packages = [
     "encoding",
@@ -135,7 +134,8 @@
     "transform",
     "unicode/cldr"
   ]
-  revision = "4e4a3210bb54bb31f6ab2cdca2edcc0b50c420c1"
+  revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
+  version = "v0.3.0"
 
 [[projects]]
   name = "gopkg.in/DATA-DOG/go-sqlmock.v1"
@@ -146,14 +146,14 @@
 [[projects]]
   name = "gopkg.in/cheggaaa/pb.v1"
   packages = ["."]
-  revision = "5119518d88fbf604cab04dafd667dc7022e3b5ac"
-  version = "v1.0.21"
+  revision = "72b964305fba1230d3d818711138195f22b9ceea"
+  version = "v1.0.22"
 
 [[projects]]
-  branch = "v2"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "d670f9405373e636a5a2765eea47fac0c9bc91a4"
+  revision = "7f97868eec74b32b0982dd158a51a446d1da7eb5"
+  version = "v2.1.1"
 
 [solve-meta]
   analyzer-name = "dep"
