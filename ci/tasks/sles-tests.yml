@@ -1,0 +1,44 @@
+platform: linux
+
+image_resource:
+  type: docker-image
+  source:
+    repository: pivotaldata/sles-gpdb-dev
+    tag: 11-beta
+
+inputs:
+- name: gpbackup
+  path: go/src/github.com/greenplum-db/gpbackup
+- name: ccp_src
+- name: cluster_env_files
+
+run:
+  path: bash
+  args:
+  - -c
+  - |
+    set -ex
+
+    ccp_src/aws/setup_ssh_to_cluster.sh
+
+    cat <<SCRIPT > /tmp/run_tests.bash
+    set -ex
+    export GOPATH=/home/gpadmin/go
+    export PGPORT=5432
+    export MASTER_DATA_DIRECTORY=/data/gpdata/master/gpseg-1
+    export PATH=\$GOPATH/bin:/usr/local/go/bin:\$PATH
+
+    cd \$GOPATH/src/github.com/greenplum-db/gpbackup
+    make depend
+    source /usr/local/greenplum-db-devel/greenplum_path.sh # We source greenplum_path.sh here to avoid certificate issues during `go get`
+    make build
+    make end_to_end
+    SCRIPT
+
+    ssh -t ec2-user@mdw "sudo zypper -n install wget git && wget https://storage.googleapis.com/golang/go1.9.3.linux-amd64.tar.gz && sudo tar -C /usr/local -xzf go1.9.3.linux-amd64.tar.gz"
+    ssh -t ec2-user@mdw "sudo mkdir /home/gpadmin/go && sudo chown gpadmin:gpadmin -R /home/gpadmin/go"
+    chmod +x /tmp/run_tests.bash
+    scp /tmp/run_tests.bash mdw:/home/gpadmin/run_tests.bash
+    ssh -t mdw "mkdir -p /home/gpadmin/go/src/github.com/greenplum-db"
+    scp -r go/src/github.com/greenplum-db/gpbackup mdw:/home/gpadmin/go/src/github.com/greenplum-db/gpbackup
+    ssh -t mdw "bash /home/gpadmin/run_tests.bash"

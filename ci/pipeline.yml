@@ -58,6 +58,7 @@ resources:
     branch: {{ccp-git-branch}}
     private_key: {{ccp-git-key}}
     uri: {{ccp-git-remote}}
+    tag_filter: {{ccp-tag-filter}}
 
 - name: terraform
   type: terraform
@@ -118,6 +119,45 @@ jobs:
     file: gpbackup/ci/tasks/unit-tests.yml
     on_failure:
       *slack_alert
+
+- name: integrations-GPDB5-sles
+  plan:
+  - aggregate:
+    - get: gpbackup
+      tags: ["ccp"]
+      trigger: true
+    - get: bin_gpdb_5x_stable
+      tags: ["ccp"]
+    - get: ccp_src
+      tags: ["ccp"]
+    - get: gpdb_src
+      tags: ["ccp"]
+  - put: terraform
+    tags: ["ccp"]
+    params:
+      <<: *ccp_create_params
+      vars:
+        <<: *ccp_default_vars
+        platform: sles12
+  - task: gen_cluster
+    params:
+      <<: *ccp_gen_cluster_default_params
+      platform: sles12
+    tags: ["ccp"]
+    file: ccp_src/ci/tasks/gen_cluster.yml
+    input_mapping:
+      gpdb_binary: bin_gpdb_5x_stable
+      gpdb_src: gpdb_src
+  - task: integration-tests
+    tags: ["ccp"]
+    file: gpbackup/ci/tasks/sles-tests.yml
+    on_success:
+      <<: *ccp_destroy
+    on_failure:
+      *slack_alert
+  ensure:
+    <<: *set_failed
+
 
 - name: integrations-master
   plan:
