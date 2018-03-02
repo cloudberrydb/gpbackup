@@ -1,0 +1,53 @@
+
+platform: linux
+
+image_resource:
+  type: docker-image
+  source:
+    repository: pivotaldata/centos-gpdb-dev
+    tag: '6-gcc6.2-llvm3.7'
+
+inputs:
+- name: gpbackup
+  path: go/src/github.com/greenplum-db/gpbackup
+- name: ccp_src
+- name: cluster_env_files
+
+run:
+  path: bash
+  args:
+  - -c
+  - |
+    set -ex
+
+    ccp_src/aws/setup_ssh_to_cluster.sh
+
+    cat <<SCRIPT > /tmp/setup_centos_env.bash
+    set -ex
+        cat << ENV_SCRIPT > env.sh
+        export GOPATH=/home/gpadmin/go
+        source /usr/local/greenplum-db-devel/greenplum_path.sh
+        export PGPORT=5432
+        export MASTER_DATA_DIRECTORY=/data/gpdata/master/gpseg-1
+        export PATH=\\\$GOPATH/bin:/usr/local/go/bin:\\\$PATH
+    ENV_SCRIPT
+
+    export GOPATH=/home/gpadmin/go
+    chown gpadmin:gpadmin -R \$GOPATH
+    chmod +x env.sh
+    source env.sh
+    gpconfig --skipvalidation -c fsync -v off
+    gpstop -u
+
+    pushd \$GOPATH/src/github.com/greenplum-db/gpbackup
+        make depend
+        make build
+    popd
+    SCRIPT
+
+    ssh -t centos@mdw "sudo yum -y install wget git && wget https://storage.googleapis.com/golang/go1.9.3.linux-amd64.tar.gz && tar -xzf go1.9.3.linux-amd64.tar.gz && sudo mv go /usr/local"
+    chmod +x /tmp/setup_centos_env.bash
+    scp /tmp/setup_centos_env.bash mdw:/home/gpadmin/setup_centos_env.bash
+    ssh -t mdw "mkdir -p /home/gpadmin/go/src/github.com/greenplum-db"
+    scp -r go/src/github.com/greenplum-db/gpbackup mdw:/home/gpadmin/go/src/github.com/greenplum-db/gpbackup
+    ssh -t mdw "bash /home/gpadmin/setup_centos_env.bash"

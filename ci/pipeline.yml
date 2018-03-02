@@ -185,6 +185,9 @@ jobs:
     input_mapping:
       gpdb_binary: bin_gpdb_master
       gpdb_src: gpdb_src
+  - task: setup-centos-env
+    tags: ["ccp"]
+    file: gpbackup/ci/tasks/setup-centos-env.yml
   - task: integration-tests
     tags: ["ccp"]
     file: gpbackup/ci/tasks/integration-tests.yml
@@ -221,6 +224,9 @@ jobs:
     input_mapping:
       gpdb_binary: bin_gpdb_5x_stable
       gpdb_src: gpdb_src
+  - task: setup-centos-env
+    tags: ["ccp"]
+    file: gpbackup/ci/tasks/setup-centos-env.yml
   - task: integration-tests
     tags: ["ccp"]
     file: gpbackup/ci/tasks/integration-tests.yml
@@ -257,6 +263,9 @@ jobs:
     input_mapping:
       gpdb_binary: bin_gpdb_43_stable
       gpdb_src: gpdb_src
+  - task: setup-centos-env
+    tags: ["ccp"]
+    file: gpbackup/ci/tasks/setup-centos-env.yml
   - task: integration-tests
     tags: ["ccp"]
     file: gpbackup/ci/tasks/integration-tests.yml
@@ -329,6 +338,9 @@ jobs:
     input_mapping:
       gpdb_binary: bin_gpdb_master
       gpdb_src: gpdb_src
+  - task: setup-centos-env
+    tags: ["ccp"]
+    file: gpbackup/ci/tasks/setup-centos-env.yml
   - task: scale-tests
     tags: ["ccp"]
     file: gpbackup/ci/tasks/scale-tests.yml
@@ -404,6 +416,9 @@ jobs:
     on_failure:
       do:
       - *boostfs_debug_sleep
+  - task: setup-centos-env
+    tags: ["ccp"]
+    file: gpbackup/ci/tasks/setup-centos-env.yml
   - task: scale-tests
     tags: ["ddboost"]
     file: gpbackup/ci/tasks/scale-tests.yml
@@ -444,6 +459,9 @@ jobs:
     input_mapping:
       gpdb_binary: bin_gpdb_43_stable
       gpdb_src: gpdb_src
+  - task: setup-centos-env
+    tags: ["ccp"]
+    file: gpbackup/ci/tasks/setup-centos-env.yml
   - task: scale-tests
     tags: ["ccp"]
     file: gpbackup/ci/tasks/scale-tests.yml

@@ -23,27 +23,13 @@ run:
 
     cat <<SCRIPT > /tmp/run_tests.bash
     set -ex
-    export GOPATH=/home/gpadmin/go
-    chown gpadmin:gpadmin -R \$GOPATH
-    source /usr/local/greenplum-db-devel/greenplum_path.sh
-    export PGPORT=5432
-    export MASTER_DATA_DIRECTORY=/data/gpdata/master/gpseg-1
-    export PATH=\$GOPATH/bin:/usr/local/go/bin:\$PATH
-
-    pushd \$GOPATH/src/github.com/greenplum-db/gpbackup
-        make depend
-    popd
+    source env.sh
 
     cd \$GOPATH/src/github.com/greenplum-db/gpbackup
-    make build
-    scp \$GOPATH/bin/gpbackup_helper sdw1:\$GPHOME/bin/gpbackup_helper
     make integration
     make end_to_end
     SCRIPT
 
-    ssh -t centos@mdw "sudo yum -y install wget git && wget https://storage.googleapis.com/golang/go1.9.3.linux-amd64.tar.gz && tar -xzf go1.9.3.linux-amd64.tar.gz && sudo mv go /usr/local"
     chmod +x /tmp/run_tests.bash
     scp /tmp/run_tests.bash mdw:/home/gpadmin/run_tests.bash
-    ssh -t mdw "mkdir -p /home/gpadmin/go/src/github.com/greenplum-db"
-    scp -r go/src/github.com/greenplum-db/gpbackup mdw:/home/gpadmin/go/src/github.com/greenplum-db/gpbackup
     ssh -t mdw "bash /home/gpadmin/run_tests.bash"
