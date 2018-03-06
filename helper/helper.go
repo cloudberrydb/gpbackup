@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"sort"
 	"strconv"
 	"strings"
@@ -19,15 +20,16 @@ import (
 )
 
 var ( // Shared globals
-	content      *int
-	dataFile     *string
-	oid          *uint
-	oidFile      *string
-	pipeFile     *string
-	printVersion *bool
-	restoreAgent *bool
-	tocFile      *string
-	version      string
+	content          *int
+	dataFile         *string
+	oid              *uint
+	oidFile          *string
+	pipeFile         *string
+	printVersion     *bool
+	restoreAgent     *bool
+	tocFile          *string
+	version          string
+	pluginConfigFile *string
 )
 
 var ( // Globals for restore only
@@ -64,6 +66,7 @@ func InitializeGlobals() {
 	oid = flag.Uint("oid", 0, "Oid of the table being processed")
 	oidFile = flag.String("oid-file", "", "Absolute path to the file containing a list of oids to restore")
 	pipeFile = flag.String("pipe-file", "", "Absolute path to the pipe file")
+	pluginConfigFile = flag.String("plugin-config", "", "The configuration file to use for a plugin")
 	printVersion = flag.Bool("version", false, "Print version number and exit")
 	restoreAgent = flag.Bool("restore-agent", false, "Use gpbackup_helper as an agent for restore")
 	tocFile = flag.String("toc-file", "", "Absolute path to the table of contents file")
@@ -180,17 +183,29 @@ func createNextPipe() {
 }
 
 func getPipeReader() *bufio.Reader {
-	readHandle, err := os.Open(*dataFile)
-	gplog.FatalOnError(err)
-	var reader *bufio.Reader
+	var readHandle io.Reader
+	var err error
+	if *pluginConfigFile != "" {
+		pluginConfig := utils.ReadPluginConfig(*pluginConfigFile)
+		cmd := exec.Command(pluginConfig.ExecutablePath, "restore_data", *dataFile)
+		readHandle, err = cmd.StdoutPipe()
+		gplog.FatalOnError(err)
+		err = cmd.Start()
+		gplog.FatalOnError(err)
+	} else {
+		readHandle, err = os.Open(*dataFile)
+		gplog.FatalOnError(err)
+	}
+
+	var bufIoReader *bufio.Reader
 	if strings.HasSuffix(*dataFile, ".gz") {
 		gzipReader, err := gzip.NewReader(readHandle)
 		gplog.FatalOnError(err)
-		reader = bufio.NewReader(gzipReader)
+		bufIoReader = bufio.NewReader(gzipReader)
 	} else {
-		reader = bufio.NewReader(readHandle)
+		bufIoReader = bufio.NewReader(readHandle)
 	}
-	return reader
+	return bufIoReader
 }
 
 func getPipeWriter(currentPipe string) (*bufio.Writer, *os.File) {

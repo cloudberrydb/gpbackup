@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/greenplum-db/gp-common-go-libs/cluster"
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpbackup/utils"
@@ -78,13 +77,8 @@ func DoPostgresValidation() {
 	InitializeFilterLists()
 
 	gplog.Verbose("Gathering information on backup directories")
-	segConfig := cluster.GetSegmentConfiguration(connection)
-	globalCluster = cluster.NewCluster(segConfig)
-	segPrefix := utils.ParseSegPrefix(*backupDir)
-	globalFPInfo = utils.NewFilePathInfo(globalCluster.SegDirMap, *backupDir, *timestamp, segPrefix)
 	VerifyBackupDirectoriesExistOnAllHosts()
 
-	InitializeBackupConfig()
 	VerifyMetadataFilePaths(*withStats)
 
 	tocFilename := globalFPInfo.GetTOCFilePath()
@@ -103,6 +97,25 @@ func ConnectToRestoreDatabase() {
 		restoreDatabase = backupConfig.DatabaseName
 	}
 	InitializeConnection(restoreDatabase)
+}
+
+func RecoverMetadataFilesUsingPlugin() {
+	pluginConfig := utils.ReadPluginConfig(*pluginConfigFile)
+	pluginConfig.Setup(globalCluster, *pluginConfigFile)
+	pluginConfig.RestoreMetadata(globalFPInfo.GetConfigFilePath())
+
+	InitializeBackupConfig()
+
+	metadataFiles := []string{globalFPInfo.GetMetadataFilePath(), globalFPInfo.GetTOCFilePath(), globalFPInfo.GetBackupReportFilePath()}
+	if *withStats {
+		metadataFiles = append(metadataFiles, globalFPInfo.GetStatisticsFilePath())
+	}
+	for _, filename := range metadataFiles {
+		pluginConfig.RestoreMetadata(filename)
+	}
+	if !backupConfig.MetadataOnly {
+		pluginConfig.RestoreSegmentTOCs(globalCluster, globalFPInfo)
+	}
 }
 
 /*

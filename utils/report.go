@@ -30,8 +30,9 @@ type BackupConfig struct {
 	ExcludeSchemaFiltered bool
 	ExcludeTableFiltered  bool
 	MetadataOnly          bool
-	WithStatistics        bool
+	Plugin                string
 	SingleDataFile        bool
+	WithStatistics        bool
 }
 
 /*
@@ -55,7 +56,7 @@ func ParseErrorMessage(errStr string) string {
 	return errMsg
 }
 
-func (report *Report) SetBackupParamsFromFlags(dataOnly bool, ddlOnly bool, isIncludeSchemaFiltered bool, isIncludeTableFiltered bool, isExcludeSchemaFiltered bool, isExcludeTableFiltered bool, singleDataFile bool, withStats bool) {
+func (report *Report) SetBackupParamsFromFlags(dataOnly bool, ddlOnly bool, plugin string, isIncludeSchemaFiltered bool, isIncludeTableFiltered bool, isExcludeSchemaFiltered bool, isExcludeTableFiltered bool, singleDataFile bool, withStats bool) {
 	compressed, _ := GetCompressionParameters()
 	report.Compressed = compressed
 	report.IncludeSchemaFiltered = isIncludeSchemaFiltered
@@ -64,6 +65,7 @@ func (report *Report) SetBackupParamsFromFlags(dataOnly bool, ddlOnly bool, isIn
 	report.ExcludeTableFiltered = isExcludeTableFiltered
 	report.DataOnly = dataOnly
 	report.MetadataOnly = ddlOnly
+	report.Plugin = plugin
 	report.SingleDataFile = singleDataFile
 	report.WithStatistics = withStats
 }
@@ -90,6 +92,10 @@ func (report *Report) ConstructBackupParamsString() {
 	if report.Compressed {
 		compressStr = program.Name
 	}
+	pluginStr := "None"
+	if report.Plugin != "" {
+		pluginStr = report.Plugin
+	}
 	sectionStr := "All Sections"
 	if report.DataOnly {
 		sectionStr = "Data Only"
@@ -108,11 +114,12 @@ func (report *Report) ConstructBackupParamsString() {
 		statsStr = "Yes"
 	}
 	backupParamsTemplate := `Compression: %s
+Plugin Executable: %s
 Backup Section: %s
 Object Filtering: %s
 Includes Statistics: %s
 Data File Format: %s`
-	report.BackupParamsString = fmt.Sprintf(backupParamsTemplate, compressStr, sectionStr, filterStr, statsStr, filesStr)
+	report.BackupParamsString = fmt.Sprintf(backupParamsTemplate, compressStr, pluginStr, sectionStr, filterStr, statsStr, filesStr)
 }
 
 func ReadConfigFile(filename string) *BackupConfig {

@@ -2,6 +2,7 @@ package restore
 
 import (
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -44,12 +45,17 @@ func WriteToSegmentPipes() {
 		pipeFile := globalFPInfo.GetSegmentPipeFilePathWithPID(contentID)
 		backupFile := globalFPInfo.GetTableBackupFilePath(contentID, 0, true)
 		gphomePath := operating.System.Getenv("GPHOME")
+		pluginStr := ""
+		if *pluginConfigFile != "" {
+			_, configFilename := filepath.Split(*pluginConfigFile)
+			pluginStr = fmt.Sprintf(" --plugin-config /tmp/%s", configFilename)
+		}
 		return fmt.Sprintf(`cat << HEREDOC > %s
 #!/bin/bash
-%s/bin/gpbackup_helper --restore-agent --toc-file %s --oid-file %s --pipe-file %s --data-file %s --content %d
+%s/bin/gpbackup_helper --restore-agent --toc-file %s --oid-file %s --pipe-file %s --data-file %s --content %d%s
 HEREDOC
 
-chmod +x %s; (nohup %s > /dev/null 2>&1 &) &`, scriptFile, gphomePath, tocFile, oidFile, pipeFile, backupFile, contentID, scriptFile, scriptFile)
+chmod +x %s; (nohup %s > /dev/null 2>&1 &) &`, scriptFile, gphomePath, tocFile, oidFile, pipeFile, backupFile, contentID, pluginStr, scriptFile, scriptFile)
 	})
 	globalCluster.CheckClusterError(remoteOutput, "Unable to write to segment data pipes", func(contentID int) string {
 		return fmt.Sprintf("Unable to write to data pipe for segment %d on host %s", contentID, globalCluster.GetHostForContent(contentID))

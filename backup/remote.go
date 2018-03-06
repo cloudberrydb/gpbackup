@@ -45,7 +45,11 @@ func ReadFromSegmentPipes() {
 		pipeFile := globalFPInfo.GetSegmentPipeFilePath(contentID)
 		compress := compressionProgram.CompressCommand
 		backupFile := globalFPInfo.GetTableBackupFilePath(contentID, 0, true)
-		if usingCompression {
+		if *pluginConfigFile != "" && usingCompression {
+			return fmt.Sprintf("set -o pipefail; nohup tail -n +1 -f %s | %s | %s backup_data %s > /dev/null &", pipeFile, compress, pluginConfig.ExecutablePath, backupFile)
+		} else if *pluginConfigFile != "" && !usingCompression {
+			return fmt.Sprintf("set -o pipefail; nohup tail -n +1 -f %s | %s backup_data %s > /dev/null &", pipeFile, pluginConfig.ExecutablePath, backupFile)
+		} else if usingCompression {
 			return fmt.Sprintf("set -o pipefail; nohup tail -n +1 -f %s | %s > %s &", pipeFile, compress, backupFile)
 		}
 		return fmt.Sprintf("nohup tail -n +1 -f %s > %s &", pipeFile, backupFile)

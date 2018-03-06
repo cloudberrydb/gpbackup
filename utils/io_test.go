@@ -39,7 +39,7 @@ var _ = Describe("utils/io tests", func() {
 				return nil, errors.New("Permission denied")
 			}
 			defer func() { operating.System.OpenFileWrite = operating.OpenFileWrite }()
-			defer testhelper.ShouldPanicWithMessage("Unable to create or open file for writing: Permission denied")
+			defer testhelper.ShouldPanicWithMessage("Permission denied: Unable to create or open file for writing")
 			utils.MustOpenFileForWriting("filename")
 		})
 	})
@@ -55,7 +55,7 @@ var _ = Describe("utils/io tests", func() {
 				return nil, errors.New("Permission denied")
 			}
 			defer func() { operating.System.OpenFileRead = operating.OpenFileRead }()
-			defer testhelper.ShouldPanicWithMessage("Unable to open file for reading: Permission denied")
+			defer testhelper.ShouldPanicWithMessage("Permission denied: Unable to open file for reading")
 			utils.MustOpenFileForReading("filename")
 		})
 	})

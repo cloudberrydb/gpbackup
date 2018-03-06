@@ -74,7 +74,7 @@ func InitializeBackupReport() {
 	isIncludeTableFiltered := len(includeTables) > 0
 	isExcludeSchemaFiltered := len(excludeSchemas) > 0
 	isExcludeTableFiltered := len(excludeTables) > 0
-	backupReport.SetBackupParamsFromFlags(*dataOnly, *metadataOnly, isIncludeSchemaFiltered, isIncludeTableFiltered, isExcludeSchemaFiltered, isExcludeTableFiltered, *singleDataFile, *withStats)
+	backupReport.SetBackupParamsFromFlags(*dataOnly, *metadataOnly, "", isIncludeSchemaFiltered, isIncludeTableFiltered, isExcludeSchemaFiltered, isExcludeTableFiltered, *singleDataFile, *withStats)
 }
 
 func InitializeFilterLists() {

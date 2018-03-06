@@ -31,6 +31,7 @@ func initializeFlags() {
 	leafPartitionData = flag.Bool("leaf-partition-data", false, "For partition tables, create one data file per leaf partition instead of one data file for the whole table")
 	metadataOnly = flag.Bool("metadata-only", false, "Only back up metadata, do not back up data")
 	noCompression = flag.Bool("no-compression", false, "Disable compression of data files")
+	pluginConfigFile = flag.String("plugin-config", "", "The configuration file to use for a plugin")
 	printVersion = flag.Bool("version", false, "Print version number and exit")
 	quiet = flag.Bool("quiet", false, "Suppress non-warning, non-error log messages")
 	singleDataFile = flag.Bool("single-data-file", false, "Back up all data to a single file instead of one per table")
@@ -66,6 +67,7 @@ func DoSetup() {
 	SetLoggerVerbosity()
 	timestamp := utils.CurrentTimestamp()
 	utils.CreateBackupLockFile(timestamp)
+
 	gplog.Info("Starting backup of database %s", *dbname)
 	InitializeConnection()
 
@@ -74,12 +76,18 @@ func DoSetup() {
 	validateFilterLists()
 
 	segConfig := cluster.GetSegmentConfiguration(connection)
-	segPrefix := utils.GetSegPrefix(connection)
 	globalCluster = cluster.NewCluster(segConfig)
+	segPrefix := utils.GetSegPrefix(connection)
 	globalFPInfo = utils.NewFilePathInfo(globalCluster.SegDirMap, *backupDir, timestamp, segPrefix)
 	CreateBackupDirectoriesOnAllHosts()
 	globalTOC = &utils.TOC{}
 	globalTOC.InitializeEntryMap()
+
+	if *pluginConfigFile != "" {
+		pluginConfig = utils.ReadPluginConfig(*pluginConfigFile)
+		pluginConfig.Setup(globalCluster, *pluginConfigFile)
+		backupReport.Plugin = pluginConfig.ExecutablePath
+	}
 }
 
 func DoBackup() {
@@ -115,6 +123,13 @@ func DoBackup() {
 
 	globalTOC.WriteToFileAndMakeReadOnly(globalFPInfo.GetTOCFilePath())
 	connection.MustCommit()
+	if *pluginConfigFile != "" {
+		pluginConfig.BackupMetadata(metadataFilename)
+		pluginConfig.BackupMetadata(globalFPInfo.GetTOCFilePath())
+		if *withStats {
+			pluginConfig.BackupMetadata(globalFPInfo.GetStatisticsFilePath())
+		}
+	}
 }
 
 func backupGlobal(metadataFile *utils.FileWithByteCount) {
@@ -227,6 +242,9 @@ func backupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
 	AddTableDataEntriesToTOC(tables, tableDefs, rowsCopiedMap)
 	if *singleDataFile {
 		MoveSegmentTOCsAndMakeReadOnly()
+		if *pluginConfigFile != "" {
+			pluginConfig.BackupSegmentTOCs(globalCluster, globalFPInfo)
+		}
 	}
 	if wasTerminated {
 		gplog.Info("Data backup incomplete")
@@ -311,6 +329,11 @@ func DoTeardown() {
 		backupReport.WriteConfigFile(configFilename)
 		backupReport.WriteBackupReportFile(reportFilename, globalFPInfo.Timestamp, objectCounts, errMsg)
 		utils.EmailReport(globalCluster, globalFPInfo.Timestamp, reportFilename, "gpbackup")
+		if pluginConfig != nil {
+			pluginConfig.BackupMetadata(configFilename, true)
+			pluginConfig.BackupMetadata(reportFilename, true)
+			pluginConfig.CleanupPluginOnAllHosts(globalCluster)
+		}
 	}
 
 	DoCleanup()

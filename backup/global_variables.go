@@ -23,6 +23,7 @@ var (
 	globalFPInfo  utils.FilePathInfo
 	globalTOC     *utils.TOC
 	objectCounts  map[string]int
+	pluginConfig  *utils.PluginConfig
 	version       string
 	wasTerminated bool
 
@@ -52,6 +53,7 @@ var (
 	leafPartitionData *bool
 	metadataOnly      *bool
 	noCompression     *bool
+	pluginConfigFile  *string
 	printVersion      *bool
 	quiet             *bool
 	singleDataFile    *bool

@@ -23,6 +23,7 @@ var (
 	globalCluster    cluster.Cluster
 	globalFPInfo     utils.FilePathInfo
 	globalTOC        *utils.TOC
+	pluginConfig     *utils.PluginConfig
 	restoreStartTime string
 	version          string
 	wasTerminated    bool
@@ -51,6 +52,7 @@ var (
 	includeTables    utils.ArrayFlags
 	numJobs          *int
 	onErrorContinue  *bool
+	pluginConfigFile *string
 	printVersion     *bool
 	quiet            *bool
 	redirect         *string

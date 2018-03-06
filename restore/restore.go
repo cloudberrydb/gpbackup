@@ -8,6 +8,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/greenplum-db/gp-common-go-libs/cluster"
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpbackup/utils"
 	pb "gopkg.in/cheggaaa/pb.v1"
@@ -31,6 +32,7 @@ func initializeFlags() {
 	includeTableFile = flag.String("include-table-file", "", "A file containing a list of fully-qualified tables that will be restored")
 	numJobs = flag.Int("jobs", 1, "Number of parallel connections to use when restoring table data and post-data")
 	onErrorContinue = flag.Bool("on-error-continue", false, "Log errors and continue restore, instead of exiting on first error")
+	pluginConfigFile = flag.String("plugin-config", "", "The configuration file to use for a plugin")
 	printVersion = flag.Bool("version", false, "Print version number and exit")
 	quiet = flag.Bool("quiet", false, "Suppress non-warning, non-error log messages")
 	redirect = flag.String("redirect-db", "", "Restore to the specified database instead of the database that was backed up")
@@ -77,6 +79,18 @@ func DoSetup() {
 	gplog.Info("Restore Key = %s", *timestamp)
 
 	InitializeConnection("postgres")
+	segConfig := cluster.GetSegmentConfiguration(connection)
+	globalCluster = cluster.NewCluster(segConfig)
+	segPrefix := utils.ParseSegPrefix(*backupDir)
+	globalFPInfo = utils.NewFilePathInfo(globalCluster.SegDirMap, *backupDir, *timestamp, segPrefix)
+
+	// Get restore metadata from plugin
+	if *pluginConfigFile != "" {
+		RecoverMetadataFilesUsingPlugin()
+	} else {
+		InitializeBackupConfig()
+	}
+
 	DoPostgresValidation()
 	metadataFilename := globalFPInfo.GetMetadataFilePath()
 	if !backupConfig.DataOnly {
@@ -108,11 +122,13 @@ func DoRestore() {
 	}
 
 	if !backupConfig.MetadataOnly {
-		backupFileCount := 2 // 1 for the actual data file, 1 for the segment TOC file
-		if !backupConfig.SingleDataFile {
-			backupFileCount = len(globalTOC.DataEntries)
+		if *pluginConfigFile == "" {
+			backupFileCount := 2 // 1 for the actual data file, 1 for the segment TOC file
+			if !backupConfig.SingleDataFile {
+				backupFileCount = len(globalTOC.DataEntries)
+			}
+			VerifyBackupFileCountOnSegments(backupFileCount)
 		}
-		VerifyBackupFileCountOnSegments(backupFileCount)
 		restoreData(gucStatements)
 	}
 
@@ -297,6 +313,9 @@ func DoTeardown() {
 		reportFilename := globalFPInfo.GetRestoreReportFilePath(restoreStartTime)
 		utils.WriteRestoreReportFile(reportFilename, globalFPInfo.Timestamp, restoreStartTime, connection, version, errMsg)
 		utils.EmailReport(globalCluster, globalFPInfo.Timestamp, reportFilename, "gprestore")
+		if pluginConfig != nil {
+			pluginConfig.CleanupPluginOnAllHosts(globalCluster)
+		}
 	}
 
 	DoCleanup()

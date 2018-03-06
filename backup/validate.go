@@ -83,6 +83,9 @@ func ValidateFlagCombinations() {
 	utils.CheckExclusiveFlags("metadata-only", "leaf-partition-data")
 	utils.CheckExclusiveFlags("metadata-only", "single-data-file")
 	utils.CheckExclusiveFlags("no-compression", "compression-level")
+	if *pluginConfigFile != "" && !(*singleDataFile || *metadataOnly) {
+		gplog.Fatal(errors.Errorf("--plugin-config must be specified with either --single-data-file or --metadata-only"), "")
+	}
 }
 
 func ValidateCompressionLevel(compressionLevel int) {

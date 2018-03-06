@@ -130,6 +130,11 @@ func ValidateBackupFlagCombinations() {
 			gplog.Fatal(errors.Errorf("Global metadata is not backed up in table-filtered backup."), "")
 		}
 	}
+	if backupConfig.Plugin != "" && *pluginConfigFile == "" {
+		gplog.Fatal(errors.Errorf("Backup was taken with plugin %s. The --plugin-config flag must be used to restore.", backupConfig.Plugin), "")
+	} else if backupConfig.Plugin == "" && *pluginConfigFile != "" {
+		gplog.Fatal(errors.Errorf("The --plugin-config flag cannot be used to restore a backup taken without a plugin."), "")
+	}
 }
 
 func ValidateFlagCombinations() {
