@@ -15,7 +15,6 @@ sed -i'.bak' "s/^GIT_VERSION := .*/GIT_VERSION=${GIT_VER}/" Makefile
 cp ./conan/conanfile.py $GO_DIR
 popd
 pushd $GO_DIR
-sed -i'' "s/version = .*/version = '${GIT_VER}'/" conanfile.py
 
 CONAN_VER=gpbackup/${GIT_VER}@gpdb/devel
 CONAN_REPO_NAME=zzz_gpdb_oss
