@@ -21,7 +21,7 @@ class GpbackupConan(ConanFile):
         os.environ["PATH"] = os.environ["PATH"] + ":" + os.path.join(os.getcwd(), "bin")
         with tools.environment_append({'GOPATH': os.getcwd()}):
             with tools.chdir('src/github.com/greenplum-db/gpbackup'):
-                self.run('dep ensure && make build_linux')
+                self.run('make depend && make build_linux')
 
     def package(self):
         self.copy("gpbackup", dst="bin", src="bin")
