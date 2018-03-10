@@ -76,6 +76,18 @@ func assertTablesCreated(conn *dbconn.DBConn, numTables int) {
 	Expect(tableCount).To(Equal(strconv.Itoa(numTables)))
 }
 
+func copyPluginToAllHosts(conn *dbconn.DBConn, pluginPath string) {
+	hostnameQuery := `SELECT DISTINCT hostname AS string FROM gp_segment_configuration WHERE content != -1`
+	hostnames := dbconn.MustSelectStringSlice(conn, hostnameQuery)
+	for _, hostname := range hostnames {
+		output, err := exec.Command("scp", pluginPath, fmt.Sprintf("%s:%s", hostname, pluginPath)).CombinedOutput()
+		if err != nil {
+			fmt.Printf("%s", output)
+			Fail(fmt.Sprintf("%v", err))
+		}
+	}
+}
+
 func TestEndToEnd(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "EndToEnd Suite")
@@ -285,7 +297,43 @@ var _ = Describe("backup end to end integration tests", func() {
 			timestamp := gpbackup(gpbackupPath, "-single-data-file", "-backup-dir", backupdir, "-no-compression")
 			gprestore(gprestorePath, timestamp, "-redirect-db", "restoredb", "-backup-dir", backupdir)
 
+			assertTablesCreated(restoreConn, 30)
+			assertDataRestored(restoreConn, publicSchemaTupleCounts)
+			assertDataRestored(restoreConn, schema2TupleCounts)
+
 			os.RemoveAll(backupdir)
+		})
+
+		It("runs gpbackup and gprestore with plugin, single-data-file, and no-compression", func() {
+			pluginDir := "/tmp/plugin_dest"
+			pluginExecutablePath := fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/end_to_end/testPlugin.sh", os.Getenv("HOME"))
+			copyPluginToAllHosts(backupConn, pluginExecutablePath)
+			pluginConfigPath := fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/end_to_end/plugin_config.yaml", os.Getenv("HOME"))
+
+			timestamp := gpbackup(gpbackupPath, "-single-data-file", "-no-compression", "-plugin-config", pluginConfigPath)
+			gprestore(gprestorePath, timestamp, "-redirect-db", "restoredb", "-plugin-config", pluginConfigPath)
+
+			assertTablesCreated(restoreConn, 30)
+			assertDataRestored(restoreConn, publicSchemaTupleCounts)
+			assertDataRestored(restoreConn, schema2TupleCounts)
+
+			os.RemoveAll(pluginDir)
+		})
+
+		It("runs gpbackup and gprestore with plugin and single-data-file", func() {
+			pluginDir := "/tmp/plugin_dest"
+			pluginExecutablePath := fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/end_to_end/testPlugin.sh", os.Getenv("HOME"))
+			copyPluginToAllHosts(backupConn, pluginExecutablePath)
+			pluginConfigPath := fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/end_to_end/plugin_config.yaml", os.Getenv("HOME"))
+
+			timestamp := gpbackup(gpbackupPath, "-single-data-file", "-plugin-config", pluginConfigPath)
+			gprestore(gprestorePath, timestamp, "-redirect-db", "restoredb", "-plugin-config", pluginConfigPath)
+
+			assertTablesCreated(restoreConn, 30)
+			assertDataRestored(restoreConn, publicSchemaTupleCounts)
+			assertDataRestored(restoreConn, schema2TupleCounts)
+
+			os.RemoveAll(pluginDir)
 		})
 
 		It("runs gpbackup and gprestore with include-table-file restore flag", func() {

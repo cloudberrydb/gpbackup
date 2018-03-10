@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 
@@ -21,6 +22,7 @@ func ReadPluginConfig(configFile string) *PluginConfig {
 	contents, err := operating.System.ReadFile(configFile)
 	gplog.FatalOnError(err)
 	err = yaml.Unmarshal(contents, config)
+	config.ExecutablePath = os.ExpandEnv(config.ExecutablePath)
 	gplog.FatalOnError(err)
 	return config
 }

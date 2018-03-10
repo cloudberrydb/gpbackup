@@ -1,0 +1,2 @@
+executablepath: $HOME/go/src/github.com/greenplum-db/gpbackup/end_to_end/testPlugin.sh
+options:
