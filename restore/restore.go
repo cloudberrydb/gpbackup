@@ -66,7 +66,8 @@ func DoValidation() {
 		os.Exit(0)
 	}
 	ValidateFlagCombinations()
-	utils.ValidateBackupDir(*backupDir)
+	utils.ValidateFullPath(*backupDir)
+	utils.ValidateFullPath(*pluginConfigFile)
 	if !utils.IsValidTimestamp(*timestamp) {
 		gplog.Fatal(errors.Errorf("Timestamp %s is invalid.  Timestamps must be in the format YYYYMMDDHHMMSS.", *timestamp), "")
 	}

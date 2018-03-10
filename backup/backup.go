@@ -353,16 +353,16 @@ func DoCleanup() {
 		CleanupGroup.Done()
 	}()
 	gplog.Verbose("Beginning cleanup")
-	if *singleDataFile {
-		CleanUpSegmentPipesOnAllHosts()
-		CleanUpSegmentTailProcesses()
-		if wasTerminated {
-			// It is possible for the COPY command to become orphaned if an agent process is killed
-			utils.TerminateHangingCopySessions(connection, globalFPInfo, "gpbackup")
-			CleanUpSegmentTOCs()
-		}
-	}
 	if globalFPInfo.Timestamp != "" {
+		if *singleDataFile {
+			CleanUpSegmentPipesOnAllHosts()
+			CleanUpSegmentTailProcesses()
+			if wasTerminated {
+				// It is possible for the COPY command to become orphaned if an agent process is killed
+				utils.TerminateHangingCopySessions(connection, globalFPInfo, "gpbackup")
+				CleanUpSegmentTOCs()
+			}
+		}
 		timestampLockFile := fmt.Sprintf("/tmp/%s.lck", globalFPInfo.Timestamp)
 		os.Remove(timestampLockFile) // Don't check error, as DoTeardown may have removed it already
 	}

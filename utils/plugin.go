@@ -23,6 +23,7 @@ func ReadPluginConfig(configFile string) *PluginConfig {
 	gplog.FatalOnError(err)
 	err = yaml.Unmarshal(contents, config)
 	config.ExecutablePath = os.ExpandEnv(config.ExecutablePath)
+	ValidateFullPath(config.ExecutablePath)
 	gplog.FatalOnError(err)
 	return config
 }

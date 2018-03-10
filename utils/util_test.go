@@ -85,6 +85,21 @@ var _ = Describe("utils/util tests", func() {
 			utils.ValidateFQNs(testStrings)
 		})
 	})
+	Context("ValidateFullPath", func() {
+		It("does not panic when the flag is not set", func() {
+			path := ""
+			utils.ValidateFullPath(path)
+		})
+		It("does not panic when given an absolute path", func() {
+			path := "/this/is/an/absolute/path"
+			utils.ValidateFullPath(path)
+		})
+		It("panics when given a relative path", func() {
+			path := "this/is/a/relative/path"
+			defer testhelper.ShouldPanicWithMessage("this/is/a/relative/path is not an absolute path.")
+			utils.ValidateFullPath(path)
+		})
+	})
 	Describe("SetDatabaseVersion", func() {
 		BeforeEach(func() {
 			operating.System.Now = func() time.Time { return time.Date(2017, time.January, 1, 1, 1, 1, 1, time.Local) }

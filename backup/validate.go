@@ -96,6 +96,7 @@ func ValidateCompressionLevel(compressionLevel int) {
 }
 
 func ValidateFlagValues() {
-	utils.ValidateBackupDir(*backupDir)
+	utils.ValidateFullPath(*backupDir)
+	utils.ValidateFullPath(*pluginConfigFile)
 	ValidateCompressionLevel(*compressionLevel)
 }

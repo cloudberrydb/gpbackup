@@ -69,9 +69,3 @@ func IsValidTimestamp(timestamp string) bool {
 	timestampFormat := regexp.MustCompile(`^([0-9]{14})$`)
 	return timestampFormat.MatchString(timestamp)
 }
-
-func ValidateBackupDir(path string) {
-	if len(path) > 0 && string(path[0]) != "/" {
-		gplog.Fatal(errors.Errorf("Absolute path required for backupdir."), "")
-	}
-}

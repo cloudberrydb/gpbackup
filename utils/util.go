@@ -61,6 +61,12 @@ func ValidateFQNs(fqns []string) {
 	}
 }
 
+func ValidateFullPath(path string) {
+	if len(path) > 0 && string(path[0]) != "/" {
+		gplog.Fatal(errors.Errorf("%s is not an absolute path.", path), "")
+	}
+}
+
 func InitializeSignalHandler(cleanupFunc func(), procDesc string, termFlag *bool) {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
