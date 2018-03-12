@@ -422,19 +422,22 @@ var _ = Describe("backup integration create statement tests", func() {
 		funcInfoMap := map[uint32]backup.FunctionInfo{
 			1: {QualifiedName: "pg_catalog.postgresql_fdw_validator", Arguments: "", IsInternal: true},
 		}
-		It("creates a foreign data wrapper with a validator and options", func() {
+		It("creates foreign data wrappers with a validator and options", func() {
 			testutils.SkipIfBefore6(connection)
-			foreignDataWrapper := backup.ForeignDataWrapper{Name: "foreigndata", Validator: 1, Options: "dbname 'testdb'"}
+			foreignDataWrapperValidator := backup.ForeignDataWrapper{Name: "foreigndata1", Validator: 1}
+			foreignDataWrapperOptions := backup.ForeignDataWrapper{Name: "foreigndata2", Options: "dbname 'testdb'"}
 
-			backup.PrintCreateForeignDataWrapperStatements(backupfile, toc, []backup.ForeignDataWrapper{foreignDataWrapper}, funcInfoMap, emptyMetadataMap)
+			backup.PrintCreateForeignDataWrapperStatements(backupfile, toc, []backup.ForeignDataWrapper{foreignDataWrapperValidator, foreignDataWrapperOptions}, funcInfoMap, emptyMetadataMap)
 
 			testhelper.AssertQueryRuns(connection, buffer.String())
-			defer testhelper.AssertQueryRuns(connection, "DROP FOREIGN DATA WRAPPER foreigndata")
+			defer testhelper.AssertQueryRuns(connection, "DROP FOREIGN DATA WRAPPER foreigndata1")
+			defer testhelper.AssertQueryRuns(connection, "DROP FOREIGN DATA WRAPPER foreigndata2")
 
 			resultWrappers := backup.GetForeignDataWrappers(connection)
 
-			Expect(len(resultWrappers)).To(Equal(1))
-			structmatcher.ExpectStructsToMatchExcluding(&foreignDataWrapper, &resultWrappers[0], "Oid", "Validator")
+			Expect(len(resultWrappers)).To(Equal(2))
+			structmatcher.ExpectStructsToMatchExcluding(&foreignDataWrapperValidator, &resultWrappers[0], "Oid", "Validator")
+			structmatcher.ExpectStructsToMatchExcluding(&foreignDataWrapperOptions, &resultWrappers[1], "Oid", "Validator")
 		})
 	})
 	Describe("PrintCreateServerStatements", func() {

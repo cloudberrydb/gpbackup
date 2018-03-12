@@ -22,6 +22,7 @@ type AttributeStatistic struct {
 	Type         string
 	Relid        uint32         `db:"starelid"`
 	AttNumber    int            `db:"staattnum"`
+	Inherit      bool           `db:"stainherit"`
 	NullFraction float64        `db:"stanullfrac"`
 	Width        int            `db:"stawidth"`
 	Distinct     float64        `db:"stadistinct"`
@@ -44,6 +45,10 @@ type AttributeStatistic struct {
 }
 
 func GetAttributeStatistics(connection *dbconn.DBConn, tables []Relation) map[uint32][]AttributeStatistic {
+	inheritClause := ""
+	if connection.Version.AtLeast("6") {
+		inheritClause = "s.stainherit,"
+	}
 	tablenames := make([]string, 0)
 	for _, table := range tables {
 		tablenames = append(tablenames, table.ToString())
@@ -57,6 +62,7 @@ SELECT
 	quote_ident(t.typname) AS type,
 	s.starelid,
 	s.staattnum,
+	%s
 	s.stanullfrac,
 	s.stawidth,
 	s.stadistinct,
@@ -83,7 +89,7 @@ JOIN pg_statistic s ON (c.oid = s.starelid AND a.attnum = s.staattnum)
 JOIN pg_type t ON a.atttypid = t.oid
 WHERE %s
 AND quote_ident(n.nspname) || '.' || quote_ident(c.relname) IN (%s)
-ORDER BY n.nspname, c.relname, a.attnum;`, SchemaFilterClause("n"), utils.SliceToQuotedString(tablenames))
+ORDER BY n.nspname, c.relname, a.attnum;`, inheritClause, SchemaFilterClause("n"), utils.SliceToQuotedString(tablenames))
 
 	results := make([]AttributeStatistic, 0)
 	err := connection.Select(&results, query)

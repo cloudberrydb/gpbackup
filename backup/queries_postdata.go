@@ -153,7 +153,7 @@ JOIN pg_namespace n
 	ON (c.relnamespace = n.oid)
 WHERE %s
 AND tgname NOT LIKE 'pg_%%'
-AND tgisconstraint = 'f'
+AND tgconstraint = 0
 ORDER BY tgname;`, tableAndSchemaFilterClause())
 
 	results := make([]QuerySimpleDefinition, 0)
