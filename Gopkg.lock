@@ -18,7 +18,7 @@
     "structmatcher",
     "testhelper"
   ]
-  revision = "59afcbb8e0ba298a796b2cd1537ec894b2a1d185"
+  revision = "fee7a667f71aee2ef648ce12589820ad20267012"
 
 [[projects]]
   branch = "master"
@@ -68,7 +68,7 @@
     "reporters/stenographer/support/go-isatty",
     "types"
   ]
-  revision = "9008c7b79f9636c46a0a945141020124702f0ecf"
+  revision = "ba8e856bb854d6771a72ddf6497a42dad3a0c971"
 
 [[projects]]
   name = "github.com/onsi/gomega"
@@ -105,13 +105,13 @@
     "html/atom",
     "html/charset"
   ]
-  revision = "cbe0f9307d0156177f9dd5dc85da1a31abc5f2fb"
+  revision = "ae89d30ce0c63142b652837da33d782e2b0a9b25"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "f6cff0780e542efa0c8e864dc8fa522808f6a598"
+  revision = "c28acc882ebcbfbe8ce9f0f14b9ac26ee138dd51"
 
 [[projects]]
   name = "golang.org/x/text"
