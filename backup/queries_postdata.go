@@ -139,6 +139,10 @@ ORDER BY rulename;`, tableAndSchemaFilterClause())
 }
 
 func GetTriggers(connection *dbconn.DBConn) []QuerySimpleDefinition {
+	constraintClause := "NOT tgisinternal"
+	if connection.Version.Before("6") {
+		constraintClause = "tgisconstraint = 'f'"
+	}
 	query := fmt.Sprintf(`
 SELECT
 	t.oid,
@@ -153,8 +157,8 @@ JOIN pg_namespace n
 	ON (c.relnamespace = n.oid)
 WHERE %s
 AND tgname NOT LIKE 'pg_%%'
-AND tgconstraint = 0
-ORDER BY tgname;`, tableAndSchemaFilterClause())
+AND %s
+ORDER BY tgname;`, tableAndSchemaFilterClause(), constraintClause)
 
 	results := make([]QuerySimpleDefinition, 0)
 	err := connection.Select(&results, query)
