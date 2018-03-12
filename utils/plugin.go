@@ -54,7 +54,7 @@ func (plugin *PluginConfig) RestoreMetadata(filenamePath string) {
 func (plugin *PluginConfig) CheckPluginExistsOnAllHosts(cluster cluster.Cluster) {
 	remoteOutput := cluster.GenerateAndExecuteCommand("Checking that plugin exists on all segment hosts", func(contentID int) string {
 		return fmt.Sprintf("test -x %s", plugin.ExecutablePath)
-	})
+	}, true)
 	cluster.CheckClusterError(remoteOutput, fmt.Sprintf("Unable to execute plugin %s", plugin.ExecutablePath), func(contentID int) string {
 		return fmt.Sprintf("Unable to execute plugin %s", plugin.ExecutablePath)
 	})
@@ -63,7 +63,7 @@ func (plugin *PluginConfig) CheckPluginExistsOnAllHosts(cluster cluster.Cluster)
 func (plugin *PluginConfig) SetupPluginOnAllHosts(cluster cluster.Cluster, configPath string) {
 	remoteOutput := cluster.GenerateAndExecuteCommand("Running plugin setup on all segment hosts", func(contentID int) string {
 		return fmt.Sprintf("%s setup_plugin %s", plugin.ExecutablePath, configPath)
-	})
+	}, true)
 	cluster.CheckClusterError(remoteOutput, fmt.Sprintf("Unable to setup plugin %s", plugin.ExecutablePath), func(contentID int) string {
 		return fmt.Sprintf("Unable to setup plugin %s", plugin.ExecutablePath)
 	})
@@ -72,29 +72,19 @@ func (plugin *PluginConfig) SetupPluginOnAllHosts(cluster cluster.Cluster, confi
 func (plugin *PluginConfig) CleanupPluginOnAllHosts(cluster cluster.Cluster) {
 	remoteOutput := cluster.GenerateAndExecuteCommand("Running plugin cleanup on all segment hosts", func(contentID int) string {
 		return fmt.Sprintf("%s cleanup_plugin", plugin.ExecutablePath)
-	})
+	}, true)
 	cluster.CheckClusterError(remoteOutput, fmt.Sprintf("Unable to cleanup plugin %s", plugin.ExecutablePath), func(contentID int) string {
 		return fmt.Sprintf("Unable to cleanup plugin %s", plugin.ExecutablePath)
 	}, true)
 }
 
 func (plugin *PluginConfig) CopyPluginConfigToAllHosts(cluster cluster.Cluster, configPath string) {
-	hostnameSet := NewIncludeSet([]string{})
-	for _, hostname := range cluster.SegHostMap {
-		hostnameSet.Add(hostname)
-	}
-	hostnameSet.Delete(cluster.SegHostMap[-1])
-	hostnameStr := ""
-	for hostname := range hostnameSet.Set {
-		hostnameStr += fmt.Sprintf("-h %s ", hostname)
-	}
-	_, configFilename := filepath.Split(configPath)
-	output, err := cluster.ExecuteLocalCommand(fmt.Sprintf("rsync %s /tmp/.", configPath))
-	gplog.FatalOnError(err, output)
-	if hostnameStr != "" {
-		output, err = cluster.ExecuteLocalCommand(fmt.Sprintf("gpscp %s /tmp/%s /tmp/%s", hostnameStr, configFilename, configFilename))
-		gplog.FatalOnError(err, output)
-	}
+	remoteOutput := cluster.GenerateAndExecuteCommand("Copying plugin config to all segment hosts", func(contentID int) string {
+		return fmt.Sprintf("rsync %s:%s /tmp/.", cluster.GetHostForContent(-1), configPath)
+	}, true)
+	cluster.CheckClusterError(remoteOutput, "Unable to copy plugin config", func(contentID int) string {
+		return "Unable to copy plugin config"
+	})
 }
 
 func (plugin *PluginConfig) BackupSegmentTOCs(cluster cluster.Cluster, fpInfo FilePathInfo) {

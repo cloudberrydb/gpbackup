@@ -80,7 +80,13 @@ func copyPluginToAllHosts(conn *dbconn.DBConn, pluginPath string) {
 	hostnameQuery := `SELECT DISTINCT hostname AS string FROM gp_segment_configuration WHERE content != -1`
 	hostnames := dbconn.MustSelectStringSlice(conn, hostnameQuery)
 	for _, hostname := range hostnames {
-		output, err := exec.Command("scp", pluginPath, fmt.Sprintf("%s:%s", hostname, pluginPath)).CombinedOutput()
+		pluginDir, _ := filepath.Split(pluginPath)
+		output, err := exec.Command("ssh", hostname, fmt.Sprintf("mkdir -p %s", pluginDir)).CombinedOutput()
+		if err != nil {
+			fmt.Printf("%s", output)
+			Fail(fmt.Sprintf("%v", err))
+		}
+		output, err = exec.Command("scp", pluginPath, fmt.Sprintf("%s:%s", hostname, pluginPath)).CombinedOutput()
 		if err != nil {
 			fmt.Printf("%s", output)
 			Fail(fmt.Sprintf("%v", err))
