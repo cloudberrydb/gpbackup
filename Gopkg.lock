@@ -36,7 +36,7 @@
     ".",
     "oid"
   ]
-  revision = "88edab0803230a3898347e77b474f8c1820a1f20"
+  revision = "b2004221932bd6b13167ef654c81cffac36f7537"
 
 [[projects]]
   name = "github.com/mattn/go-runewidth"
@@ -68,7 +68,7 @@
     "reporters/stenographer/support/go-isatty",
     "types"
   ]
-  revision = "ba8e856bb854d6771a72ddf6497a42dad3a0c971"
+  revision = "03ffd3f46debf00c49ed76d5dbb564ef4839adfe"
 
 [[projects]]
   name = "github.com/onsi/gomega"
@@ -105,13 +105,13 @@
     "html/atom",
     "html/charset"
   ]
-  revision = "ae89d30ce0c63142b652837da33d782e2b0a9b25"
+  revision = "6078986fec03a1dcc236c34816c71b0e05018fda"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "c28acc882ebcbfbe8ce9f0f14b9ac26ee138dd51"
+  revision = "91ee8cde435411ca3f1cd365e8f20131aed4d0a1"
 
 [[projects]]
   name = "golang.org/x/text"

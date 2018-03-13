@@ -14,6 +14,7 @@ import (
 
 type PluginConfig struct {
 	ExecutablePath string
+	ConfigPath     string
 	Options        map[string]string
 }
 
@@ -22,21 +23,17 @@ func ReadPluginConfig(configFile string) *PluginConfig {
 	contents, err := operating.System.ReadFile(configFile)
 	gplog.FatalOnError(err)
 	err = yaml.Unmarshal(contents, config)
+	gplog.FatalOnError(err)
 	config.ExecutablePath = os.ExpandEnv(config.ExecutablePath)
 	ValidateFullPath(config.ExecutablePath)
-	gplog.FatalOnError(err)
+	_, configFilename := filepath.Split(configFile)
+	config.ConfigPath = filepath.Join("/tmp", configFilename)
 	return config
 }
 
-func (plugin *PluginConfig) Setup(cluster cluster.Cluster, configPath string) {
-	plugin.CheckPluginExistsOnAllHosts(cluster)
-	plugin.CopyPluginConfigToAllHosts(cluster, configPath)
-	_, configFilename := filepath.Split(configPath)
-	plugin.SetupPluginOnAllHosts(cluster, fmt.Sprintf("/tmp/%s", configFilename))
-}
-
-func (plugin *PluginConfig) BackupMetadata(filenamePath string, noFatal ...bool) {
-	output, err := exec.Command(plugin.ExecutablePath, "backup_metadata", filenamePath).CombinedOutput()
+func (plugin *PluginConfig) BackupFile(filenamePath string, noFatal ...bool) {
+	command := fmt.Sprintf("%s backup_file %s %s", plugin.ExecutablePath, plugin.ConfigPath, filenamePath)
+	output, err := exec.Command("bash", "-c", command).CombinedOutput()
 	if err != nil {
 		if len(noFatal) == 1 && noFatal[0] == true {
 			gplog.Error(fmt.Sprintf("Plugin failed to process %s. %s", filenamePath, string(output)))
@@ -46,8 +43,9 @@ func (plugin *PluginConfig) BackupMetadata(filenamePath string, noFatal ...bool)
 	}
 }
 
-func (plugin *PluginConfig) RestoreMetadata(filenamePath string) {
-	output, err := exec.Command(plugin.ExecutablePath, "restore_metadata", filenamePath).CombinedOutput()
+func (plugin *PluginConfig) RestoreFile(filenamePath string) {
+	command := fmt.Sprintf("%s restore_file %s %s", plugin.ExecutablePath, plugin.ConfigPath, filenamePath)
+	output, err := exec.Command("bash", "-c", command).CombinedOutput()
 	gplog.FatalOnError(err, string(output))
 }
 
@@ -60,9 +58,18 @@ func (plugin *PluginConfig) CheckPluginExistsOnAllHosts(c cluster.Cluster) {
 	})
 }
 
-func (plugin *PluginConfig) SetupPluginOnAllHosts(c cluster.Cluster, configPath string) {
-	remoteOutput := c.GenerateAndExecuteCommand("Running plugin setup on all hosts", func(contentID int) string {
-		return fmt.Sprintf("%s setup_plugin %s", plugin.ExecutablePath, configPath)
+func (plugin *PluginConfig) SetupPluginForBackupOnAllHosts(c cluster.Cluster, configPath string, backupDir string) {
+	remoteOutput := c.GenerateAndExecuteCommand("Running plugin setup for backup on all hosts", func(contentID int) string {
+		return fmt.Sprintf("%s setup_plugin_for_backup %s %s", plugin.ExecutablePath, configPath, backupDir)
+	}, cluster.ON_HOSTS_AND_MASTER)
+	c.CheckClusterError(remoteOutput, fmt.Sprintf("Unable to setup plugin %s", plugin.ExecutablePath), func(contentID int) string {
+		return fmt.Sprintf("Unable to setup plugin %s", plugin.ExecutablePath)
+	})
+}
+
+func (plugin *PluginConfig) SetupPluginForRestoreOnAllHosts(c cluster.Cluster, configPath string, backupDir string) {
+	remoteOutput := c.GenerateAndExecuteCommand("Running plugin setup for restore on all hosts", func(contentID int) string {
+		return fmt.Sprintf("%s setup_plugin_for_restore %s %s", plugin.ExecutablePath, configPath, backupDir)
 	}, cluster.ON_HOSTS_AND_MASTER)
 	c.CheckClusterError(remoteOutput, fmt.Sprintf("Unable to setup plugin %s", plugin.ExecutablePath), func(contentID int) string {
 		return fmt.Sprintf("Unable to setup plugin %s", plugin.ExecutablePath)
@@ -90,7 +97,7 @@ func (plugin *PluginConfig) CopyPluginConfigToAllHosts(c cluster.Cluster, config
 func (plugin *PluginConfig) BackupSegmentTOCs(c cluster.Cluster, fpInfo FilePathInfo) {
 	remoteOutput := c.GenerateAndExecuteCommand("Processing segment TOC files with plugin", func(contentID int) string {
 		tocFilename := fmt.Sprintf("gpbackup_%d_%s_toc.yaml", contentID, fpInfo.Timestamp)
-		return fmt.Sprintf("%s backup_metadata %s/%s", plugin.ExecutablePath, fpInfo.GetDirForContent(contentID), tocFilename)
+		return fmt.Sprintf("%s backup_file %s %s/%s", plugin.ExecutablePath, plugin.ConfigPath, fpInfo.GetDirForContent(contentID), tocFilename)
 	}, cluster.ON_SEGMENTS)
 	c.CheckClusterError(remoteOutput, "Unable to process segment TOC files using plugin", func(contentID int) string {
 		return fmt.Sprintf("Unable to process segment TOC files using plugin")
@@ -100,7 +107,7 @@ func (plugin *PluginConfig) BackupSegmentTOCs(c cluster.Cluster, fpInfo FilePath
 func (plugin *PluginConfig) RestoreSegmentTOCs(c cluster.Cluster, fpInfo FilePathInfo) {
 	remoteOutput := c.GenerateAndExecuteCommand("Processing segment TOC files with plugin", func(contentID int) string {
 		tocFilename := fmt.Sprintf("gpbackup_%d_%s_toc.yaml", contentID, fpInfo.Timestamp)
-		return fmt.Sprintf("%s restore_metadata %s/%s", plugin.ExecutablePath, fpInfo.GetDirForContent(contentID), tocFilename)
+		return fmt.Sprintf("%s restore_file %s %s/%s", plugin.ExecutablePath, plugin.ConfigPath, fpInfo.GetDirForContent(contentID), tocFilename)
 	}, cluster.ON_SEGMENTS)
 	c.CheckClusterError(remoteOutput, "Unable to process segment TOC files using plugin", func(contentID int) string {
 		return fmt.Sprintf("Unable to process segment TOC files using plugin")

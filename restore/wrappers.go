@@ -101,8 +101,10 @@ func ConnectToRestoreDatabase() {
 
 func RecoverMetadataFilesUsingPlugin() {
 	pluginConfig := utils.ReadPluginConfig(*pluginConfigFile)
-	pluginConfig.Setup(globalCluster, *pluginConfigFile)
-	pluginConfig.RestoreMetadata(globalFPInfo.GetConfigFilePath())
+	pluginConfig.CheckPluginExistsOnAllHosts(globalCluster)
+	pluginConfig.CopyPluginConfigToAllHosts(globalCluster, *pluginConfigFile)
+	pluginConfig.SetupPluginForRestoreOnAllHosts(globalCluster, pluginConfig.ConfigPath, globalFPInfo.GetDirForContent(-1))
+	pluginConfig.RestoreFile(globalFPInfo.GetConfigFilePath())
 
 	InitializeBackupConfig()
 
@@ -111,7 +113,7 @@ func RecoverMetadataFilesUsingPlugin() {
 		metadataFiles = append(metadataFiles, globalFPInfo.GetStatisticsFilePath())
 	}
 	for _, filename := range metadataFiles {
-		pluginConfig.RestoreMetadata(filename)
+		pluginConfig.RestoreFile(filename)
 	}
 	if !backupConfig.MetadataOnly {
 		pluginConfig.RestoreSegmentTOCs(globalCluster, globalFPInfo)

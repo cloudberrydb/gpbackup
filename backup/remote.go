@@ -47,9 +47,9 @@ func ReadFromSegmentPipes() {
 		compress := compressionProgram.CompressCommand
 		backupFile := globalFPInfo.GetTableBackupFilePath(contentID, 0, true)
 		if *pluginConfigFile != "" && usingCompression {
-			return fmt.Sprintf("set -o pipefail; nohup tail -n +1 -f %s | %s | %s backup_data %s > /dev/null &", pipeFile, compress, pluginConfig.ExecutablePath, backupFile)
+			return fmt.Sprintf("set -o pipefail; nohup tail -n +1 -f %s | %s | %s backup_data %s %s > /dev/null &", pipeFile, compress, pluginConfig.ExecutablePath, pluginConfig.ConfigPath, backupFile)
 		} else if *pluginConfigFile != "" && !usingCompression {
-			return fmt.Sprintf("set -o pipefail; nohup tail -n +1 -f %s | %s backup_data %s > /dev/null &", pipeFile, pluginConfig.ExecutablePath, backupFile)
+			return fmt.Sprintf("set -o pipefail; nohup tail -n +1 -f %s | %s backup_data %s %s > /dev/null &", pipeFile, pluginConfig.ExecutablePath, pluginConfig.ConfigPath, backupFile)
 		} else if usingCompression {
 			return fmt.Sprintf("set -o pipefail; nohup tail -n +1 -f %s | %s > %s &", pipeFile, compress, backupFile)
 		}
@@ -68,7 +68,7 @@ func CleanUpSegmentTailProcesses() {
 		 * function is called in DoCleanup and it's possible no tail processes
 		 * were started yet if cleanup occurs due to an interrupt.
 		 */
-		return fmt.Sprintf("PIDS=`ps ux | grep \"%s\" | grep -v grep | awk '{print $2}'`; if [[ ! -z \"$PIDS\" ]]; then kill -9 $PIDS; fi", filePattern)
+		return fmt.Sprintf("PIDS=`ps ux | grep tail | grep \"%s\" | grep -v grep | awk '{print $2}'`; if [[ ! -z \"$PIDS\" ]]; then kill -9 $PIDS; fi", filePattern)
 	}, cluster.ON_SEGMENTS)
 	globalCluster.CheckClusterError(remoteOutput, "Unable to clean up tail processes", func(contentID int) string {
 		return "Unable to clean up tail process"

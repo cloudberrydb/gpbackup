@@ -62,7 +62,7 @@ func ValidateFQNs(fqns []string) {
 }
 
 func ValidateFullPath(path string) {
-	if len(path) > 0 && string(path[0]) != "/" {
+	if len(path) > 0 && !(strings.HasPrefix(path, "/") || strings.HasPrefix(path, "~")) {
 		gplog.Fatal(errors.Errorf("%s is not an absolute path.", path), "")
 	}
 }

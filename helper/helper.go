@@ -2,6 +2,7 @@ package helper
 
 import (
 	"bufio"
+	"bytes"
 	"compress/gzip"
 	"flag"
 	"fmt"
@@ -40,6 +41,7 @@ var ( // Globals for restore only
 	wasTerminated bool
 	writer        *bufio.Writer
 	writeHandle   *os.File
+	errBuf        bytes.Buffer
 )
 
 /*
@@ -144,25 +146,21 @@ func doRestoreAgent() {
 	tocEntries := utils.NewSegmentTOC(*tocFile).DataEntries
 	lastByte := uint64(0)
 	oidList := getOidListFromFile()
-	reader := getPipeReader()
 
 	lastPipe = ""
-	currentPipe = ""
-	nextPipe = fmt.Sprintf("%s_%d", *pipeFile, oidList[0])
+	currentPipe = fmt.Sprintf("%s_%d", *pipeFile, oidList[0])
+	nextPipe = ""
+	log(fmt.Sprintf("Opening pipe for oid %d", oid))
+	writer, writeHandle = getPipeWriter(currentPipe)
+	reader := getPipeReader()
 	for i, oid := range oidList {
 		log(fmt.Sprintf("Restoring table with oid %d", oid))
-		lastPipe = currentPipe
-		currentPipe = nextPipe
 		if i < len(oidList)-1 {
 			nextPipe = fmt.Sprintf("%s_%d", *pipeFile, oidList[i+1])
 			createNextPipe()
 		} else {
 			nextPipe = ""
 		}
-		removeFileIfExists(lastPipe)
-
-		log(fmt.Sprintf("Opening pipe for oid %d", oid))
-		writer, writeHandle = getPipeWriter(currentPipe)
 		start := tocEntries[uint(oid)].StartByte
 		end := tocEntries[uint(oid)].EndByte
 		log(fmt.Sprintf("Start Byte: %d; End Byte: %d; Last Byte: %d", start, end, lastByte))
@@ -170,10 +168,18 @@ func doRestoreAgent() {
 		log(fmt.Sprintf("Discarded %d bytes", start-lastByte))
 		bytesRead, err := io.CopyN(writer, reader, int64(end-start))
 		log(fmt.Sprintf("Read %d bytes", bytesRead))
-		gplog.FatalOnError(err)
+		gplog.FatalOnError(err, errBuf.String())
 		log(fmt.Sprintf("Closing pipe for oid %d", oid))
 		flushAndCloseWriter()
 		lastByte = end
+
+		lastPipe = currentPipe
+		currentPipe = nextPipe
+		removeFileIfExists(lastPipe)
+		if currentPipe != "" {
+			log(fmt.Sprintf("Opening pipe for oid %d", oid))
+			writer, writeHandle = getPipeWriter(currentPipe)
+		}
 	}
 }
 
@@ -187,11 +193,21 @@ func getPipeReader() *bufio.Reader {
 	var err error
 	if *pluginConfigFile != "" {
 		pluginConfig := utils.ReadPluginConfig(*pluginConfigFile)
-		cmd := exec.Command(pluginConfig.ExecutablePath, "restore_data", *dataFile)
+		cmdStr := fmt.Sprintf("%s restore_data %s %s", pluginConfig.ExecutablePath, pluginConfig.ConfigPath, *dataFile)
+		cmd := exec.Command("bash", "-c", cmdStr)
+
 		readHandle, err = cmd.StdoutPipe()
 		gplog.FatalOnError(err)
+		cmd.Stderr = &errBuf
+
 		err = cmd.Start()
 		gplog.FatalOnError(err)
+
+		defer func() {
+			if len(errBuf.String()) != 0 {
+				gplog.Error(errBuf.String())
+			}
+		}()
 	} else {
 		readHandle, err = os.Open(*dataFile)
 		gplog.FatalOnError(err)
@@ -245,9 +261,7 @@ func removeFileIfExists(filename string) {
  */
 
 func DoTeardown() {
-	if err := recover(); err != nil {
-		log("%v", err)
-	}
+	recover()
 	if wasTerminated {
 		CleanupGroup.Wait()
 		return

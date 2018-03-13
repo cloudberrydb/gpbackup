@@ -85,7 +85,9 @@ func DoSetup() {
 
 	if *pluginConfigFile != "" {
 		pluginConfig = utils.ReadPluginConfig(*pluginConfigFile)
-		pluginConfig.Setup(globalCluster, *pluginConfigFile)
+		pluginConfig.CheckPluginExistsOnAllHosts(globalCluster)
+		pluginConfig.CopyPluginConfigToAllHosts(globalCluster, *pluginConfigFile)
+		pluginConfig.SetupPluginForBackupOnAllHosts(globalCluster, pluginConfig.ConfigPath, globalFPInfo.GetDirForContent(-1))
 		backupReport.Plugin = pluginConfig.ExecutablePath
 	}
 }
@@ -124,10 +126,10 @@ func DoBackup() {
 	globalTOC.WriteToFileAndMakeReadOnly(globalFPInfo.GetTOCFilePath())
 	connection.MustCommit()
 	if *pluginConfigFile != "" {
-		pluginConfig.BackupMetadata(metadataFilename)
-		pluginConfig.BackupMetadata(globalFPInfo.GetTOCFilePath())
+		pluginConfig.BackupFile(metadataFilename)
+		pluginConfig.BackupFile(globalFPInfo.GetTOCFilePath())
 		if *withStats {
-			pluginConfig.BackupMetadata(globalFPInfo.GetStatisticsFilePath())
+			pluginConfig.BackupFile(globalFPInfo.GetStatisticsFilePath())
 		}
 	}
 }
@@ -330,8 +332,8 @@ func DoTeardown() {
 		backupReport.WriteBackupReportFile(reportFilename, globalFPInfo.Timestamp, objectCounts, errMsg)
 		utils.EmailReport(globalCluster, globalFPInfo.Timestamp, reportFilename, "gpbackup")
 		if pluginConfig != nil {
-			pluginConfig.BackupMetadata(configFilename, true)
-			pluginConfig.BackupMetadata(reportFilename, true)
+			pluginConfig.BackupFile(configFilename, true)
+			pluginConfig.BackupFile(reportFilename, true)
 			pluginConfig.CleanupPluginOnAllHosts(globalCluster)
 		}
 	}
