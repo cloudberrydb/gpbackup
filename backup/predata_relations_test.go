@@ -448,6 +448,16 @@ COMMENT ON TABLE public.tablename IS 'This is a table comment.';`)
 
 COMMENT ON COLUMN public.tablename.i IS 'This is a column comment.';`)
 		})
+		It("prints a block with a single column comment containing special characters", func() {
+			rowCommentSpecialCharacters := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", Type: "integer", StatTarget: -1, Comment: `This is a ta'ble 1+=;,./\>,<@\\n^comment.`, ACL: []backup.ACL{}}
+
+			col := []backup.ColumnDefinition{rowCommentSpecialCharacters}
+			tableDef.ColumnDefs = col
+			backup.PrintPostCreateTableStatements(backupfile, testTable, tableDef, noMetadata)
+			testhelper.ExpectRegexp(buffer, `
+
+COMMENT ON COLUMN public.tablename.i IS 'This is a ta''ble 1+=;,./\>,<@\\n^comment.';`)
+		})
 		It("prints a block with multiple column comments", func() {
 			col := []backup.ColumnDefinition{rowCommentOne, rowCommentTwo}
 			tableDef.ColumnDefs = col

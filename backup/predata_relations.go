@@ -307,7 +307,8 @@ func PrintPostCreateTableStatements(metadataFile *utils.FileWithByteCount, table
 
 	for _, att := range tableDef.ColumnDefs {
 		if att.Comment != "" {
-			metadataFile.MustPrintf("\n\nCOMMENT ON COLUMN %s.%s IS '%s';\n", table.ToString(), att.Name, att.Comment)
+			escapedComment := strings.Replace(att.Comment, "'", "''", -1)
+			metadataFile.MustPrintf("\n\nCOMMENT ON COLUMN %s.%s IS '%s';\n", table.ToString(), att.Name, escapedComment)
 		}
 		if len(att.ACL) > 0 {
 			columnMetadata := ObjectMetadata{Privileges: att.ACL, Owner: tableMetadata.Owner}

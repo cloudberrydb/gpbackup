@@ -236,6 +236,13 @@ GRANT ALL ON SCHEMA schemaname TO testrole;`)
 
 COMMENT ON TABLE public.tablename IS 'This is a table comment.';`)
 		})
+		It("prints a block with a table comment with special characters", func() {
+			tableMetadata := backup.ObjectMetadata{Comment: `This is a ta'ble 1+=;,./\>,<@\\n^comment.`}
+			backup.PrintObjectMetadata(backupfile, tableMetadata, "public.tablename", "TABLE")
+			testhelper.ExpectRegexp(buffer, `
+
+COMMENT ON TABLE public.tablename IS 'This is a ta''ble 1+=;,./\>,<@\\n^comment.';`)
+		})
 		It("prints an ALTER TABLE ... OWNER TO statement to set the table owner", func() {
 			tableMetadata := backup.ObjectMetadata{Owner: "testrole"}
 			backup.PrintObjectMetadata(backupfile, tableMetadata, "public.tablename", "TABLE")
