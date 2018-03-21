@@ -59,7 +59,7 @@ var _ = BeforeSuite(func() {
 	} else {
 		remoteOutput := testCluster.GenerateAndExecuteCommand("Creating /tmp/test_dir directory on all hosts", func(contentID int) string {
 			return fmt.Sprintf("mkdir -p /tmp/test_dir")
-		}, true)
+		}, cluster.ON_HOSTS_AND_MASTER)
 		if remoteOutput.NumErrors != 0 {
 			Fail("Could not create /tmp/test_dir directory on 1 or more hosts")
 		}
@@ -80,7 +80,7 @@ var _ = AfterSuite(func() {
 	} else {
 		remoteOutput := testCluster.GenerateAndExecuteCommand("Removing /tmp/test_dir directory on all hosts", func(contentID int) string {
 			return fmt.Sprintf("rm -rf /tmp/test_dir")
-		}, true)
+		}, cluster.ON_HOSTS_AND_MASTER)
 		if remoteOutput.NumErrors != 0 {
 			Fail("Could not remove /tmp/test_dir directory on 1 or more hosts")
 		}
@@ -100,7 +100,7 @@ var _ = AfterSuite(func() {
 func setupTestFilespace(testCluster cluster.Cluster) {
 	remoteOutput := testCluster.GenerateAndExecuteCommand("Creating filespace test directory", func(contentID int) string {
 		return fmt.Sprintf("mkdir -p /tmp/test_dir")
-	}, true)
+	}, cluster.ON_HOSTS_AND_MASTER)
 	if remoteOutput.NumErrors != 0 {
 		Fail("Could not create filespace test directory on 1 or more hosts")
 	}
