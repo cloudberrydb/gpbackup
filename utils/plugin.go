@@ -52,36 +52,36 @@ func (plugin *PluginConfig) RestoreMetadata(filenamePath string) {
 }
 
 func (plugin *PluginConfig) CheckPluginExistsOnAllHosts(c cluster.Cluster) {
-	remoteOutput := c.GenerateAndExecuteCommand("Checking that plugin exists on all segment hosts", func(contentID int) string {
+	remoteOutput := c.GenerateAndExecuteCommand("Checking that plugin exists on all hosts", func(contentID int) string {
 		return fmt.Sprintf("test -x %s", plugin.ExecutablePath)
-	}, cluster.ON_HOSTS)
+	}, cluster.ON_HOSTS_AND_MASTER)
 	c.CheckClusterError(remoteOutput, fmt.Sprintf("Unable to execute plugin %s", plugin.ExecutablePath), func(contentID int) string {
 		return fmt.Sprintf("Unable to execute plugin %s", plugin.ExecutablePath)
 	})
 }
 
 func (plugin *PluginConfig) SetupPluginOnAllHosts(c cluster.Cluster, configPath string) {
-	remoteOutput := c.GenerateAndExecuteCommand("Running plugin setup on all segment hosts", func(contentID int) string {
+	remoteOutput := c.GenerateAndExecuteCommand("Running plugin setup on all hosts", func(contentID int) string {
 		return fmt.Sprintf("%s setup_plugin %s", plugin.ExecutablePath, configPath)
-	}, cluster.ON_HOSTS)
+	}, cluster.ON_HOSTS_AND_MASTER)
 	c.CheckClusterError(remoteOutput, fmt.Sprintf("Unable to setup plugin %s", plugin.ExecutablePath), func(contentID int) string {
 		return fmt.Sprintf("Unable to setup plugin %s", plugin.ExecutablePath)
 	})
 }
 
 func (plugin *PluginConfig) CleanupPluginOnAllHosts(c cluster.Cluster) {
-	remoteOutput := c.GenerateAndExecuteCommand("Running plugin cleanup on all segment hosts", func(contentID int) string {
+	remoteOutput := c.GenerateAndExecuteCommand("Running plugin cleanup on all hosts", func(contentID int) string {
 		return fmt.Sprintf("%s cleanup_plugin", plugin.ExecutablePath)
-	}, cluster.ON_HOSTS)
+	}, cluster.ON_HOSTS_AND_MASTER)
 	c.CheckClusterError(remoteOutput, fmt.Sprintf("Unable to cleanup plugin %s", plugin.ExecutablePath), func(contentID int) string {
 		return fmt.Sprintf("Unable to cleanup plugin %s", plugin.ExecutablePath)
 	}, true)
 }
 
 func (plugin *PluginConfig) CopyPluginConfigToAllHosts(c cluster.Cluster, configPath string) {
-	remoteOutput := c.GenerateAndExecuteCommand("Copying plugin config to all segment hosts", func(contentID int) string {
+	remoteOutput := c.GenerateAndExecuteCommand("Copying plugin config to all hosts", func(contentID int) string {
 		return fmt.Sprintf("rsync %s:%s /tmp/.", c.GetHostForContent(-1), configPath)
-	}, cluster.ON_HOSTS)
+	}, cluster.ON_HOSTS_AND_MASTER)
 	c.CheckClusterError(remoteOutput, "Unable to copy plugin config", func(contentID int) string {
 		return "Unable to copy plugin config"
 	})
