@@ -18,7 +18,7 @@
     "structmatcher",
     "testhelper"
   ]
-  revision = "fee7a667f71aee2ef648ce12589820ad20267012"
+  revision = "50905cede07fab864e90238504c6a6dac6af1ca7"
 
 [[projects]]
   branch = "master"
