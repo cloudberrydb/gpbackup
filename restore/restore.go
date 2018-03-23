@@ -315,7 +315,7 @@ func DoTeardown() {
 		utils.WriteRestoreReportFile(reportFilename, globalFPInfo.Timestamp, restoreStartTime, connection, version, errMsg)
 		utils.EmailReport(globalCluster, globalFPInfo.Timestamp, reportFilename, "gprestore")
 		if pluginConfig != nil {
-			pluginConfig.CleanupPluginOnAllHosts(globalCluster)
+			pluginConfig.CleanupPluginForRestoreOnAllHosts(globalCluster)
 		}
 	}
 

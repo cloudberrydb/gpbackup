@@ -9,7 +9,11 @@ setup_plugin_for_restore(){
   mkdir -p $2
 }
 
-cleanup_plugin(){
+cleanup_plugin_for_backup(){
+  :
+}
+
+cleanup_plugin_for_restore(){
   :
 }
 
@@ -32,6 +36,10 @@ backup_data() {
 restore_data() {
   filename=`basename "$2"`
 	cat /tmp/plugin_dest/$filename
+}
+
+plugin_api_version(){
+  echo "0.1.0"
 }
 
 "$@"
