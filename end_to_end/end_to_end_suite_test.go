@@ -312,9 +312,9 @@ var _ = Describe("backup end to end integration tests", func() {
 
 		It("runs gpbackup and gprestore with plugin, single-data-file, and no-compression", func() {
 			pluginDir := "/tmp/plugin_dest"
-			pluginExecutablePath := fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/end_to_end/testPlugin.sh", os.Getenv("HOME"))
+			pluginExecutablePath := fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/plugins/example_plugin.sh", os.Getenv("HOME"))
 			copyPluginToAllHosts(backupConn, pluginExecutablePath)
-			pluginConfigPath := fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/end_to_end/plugin_config.yaml", os.Getenv("HOME"))
+			pluginConfigPath := fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/plugins/example_plugin_config.yaml", os.Getenv("HOME"))
 
 			timestamp := gpbackup(gpbackupPath, "-single-data-file", "-no-compression", "-plugin-config", pluginConfigPath)
 			gprestore(gprestorePath, timestamp, "-redirect-db", "restoredb", "-plugin-config", pluginConfigPath)
@@ -328,9 +328,9 @@ var _ = Describe("backup end to end integration tests", func() {
 
 		It("runs gpbackup and gprestore with plugin and single-data-file", func() {
 			pluginDir := "/tmp/plugin_dest"
-			pluginExecutablePath := fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/end_to_end/testPlugin.sh", os.Getenv("HOME"))
+			pluginExecutablePath := fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/plugins/example_plugin.sh", os.Getenv("HOME"))
 			copyPluginToAllHosts(backupConn, pluginExecutablePath)
-			pluginConfigPath := fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/end_to_end/plugin_config.yaml", os.Getenv("HOME"))
+			pluginConfigPath := fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/plugins/example_plugin_config.yaml", os.Getenv("HOME"))
 
 			timestamp := gpbackup(gpbackupPath, "-single-data-file", "-plugin-config", pluginConfigPath)
 			gprestore(gprestorePath, timestamp, "-redirect-db", "restoredb", "-plugin-config", pluginConfigPath)
@@ -464,5 +464,17 @@ var _ = Describe("backup end to end integration tests", func() {
 
 			os.RemoveAll(backupdir)
 		})
+
+		It("runs example_plugin.sh with plugin_test_bench", func() {
+			pluginsDir := fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/plugins", os.Getenv("HOME"))
+			output, err := exec.Command("bash", "-c", fmt.Sprintf("%s/plugin_test_bench.sh %s/example_plugin.sh %s/example_plugin_config.yaml", pluginsDir, pluginsDir, pluginsDir)).CombinedOutput()
+			if err != nil {
+				fmt.Printf("%s", output)
+				Fail(fmt.Sprintf("%v", err))
+			}
+
+			os.RemoveAll("/tmp/plugin_dest")
+		})
+
 	})
 })

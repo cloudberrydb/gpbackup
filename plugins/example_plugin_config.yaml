@@ -1,0 +1,2 @@
+executablepath: $HOME/go/src/github.com/greenplum-db/gpbackup/plugins/example_plugin.sh
+options:
