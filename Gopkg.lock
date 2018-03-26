@@ -18,7 +18,7 @@
     "structmatcher",
     "testhelper"
   ]
-  revision = "50905cede07fab864e90238504c6a6dac6af1ca7"
+  revision = "083ff5493dd69d7ccf573ef50ca4ed8d44fac031"
 
 [[projects]]
   branch = "master"
@@ -36,7 +36,7 @@
     ".",
     "oid"
   ]
-  revision = "b2004221932bd6b13167ef654c81cffac36f7537"
+  revision = "614cb7963ff8ee90114d039a0f92dcd6a79292f9"
 
 [[projects]]
   name = "github.com/mattn/go-runewidth"
@@ -111,7 +111,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "91ee8cde435411ca3f1cd365e8f20131aed4d0a1"
+  revision = "13d03a9a82fba647c21a0ef8fba44a795d0f0835"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -150,10 +150,10 @@
   version = "v1.0.22"
 
 [[projects]]
+  branch = "v2"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "7f97868eec74b32b0982dd158a51a446d1da7eb5"
-  version = "v2.1.1"
+  revision = "4fc5987536ef307a24ca299aee7ae301cde3d221"
 
 [solve-meta]
   analyzer-name = "dep"
