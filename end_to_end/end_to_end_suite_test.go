@@ -467,6 +467,7 @@ var _ = Describe("backup end to end integration tests", func() {
 
 		It("runs example_plugin.sh with plugin_test_bench", func() {
 			pluginsDir := fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/plugins", os.Getenv("HOME"))
+			copyPluginToAllHosts(backupConn, fmt.Sprintf("%s/example_plugin.sh", pluginsDir))
 			output, err := exec.Command("bash", "-c", fmt.Sprintf("%s/plugin_test_bench.sh %s/example_plugin.sh %s/example_plugin_config.yaml", pluginsDir, pluginsDir, pluginsDir)).CombinedOutput()
 			if err != nil {
 				fmt.Printf("%s", output)
