@@ -31,6 +31,7 @@ run:
     cd \$GOPATH/src/github.com/greenplum-db/gpbackup
     make depend
     source /usr/local/greenplum-db-devel/greenplum_path.sh # We source greenplum_path.sh here to avoid certificate issues during `go get`
+    export PATH=\$GOPATH/bin:/usr/local/go/bin:\$PATH
     make build
     make end_to_end
     SCRIPT
