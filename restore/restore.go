@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -92,15 +91,20 @@ func DoSetup() {
 		InitializeBackupConfig()
 	}
 
-	DoPostgresValidation()
+	BackupConfigurationValidation()
 	metadataFilename := globalFPInfo.GetMetadataFilePath()
 	if !backupConfig.DataOnly {
 		gplog.Verbose("Metadata will be restored from %s", metadataFilename)
 	}
+	restoreDatabase := backupConfig.DatabaseName
+	if *redirect != "" {
+		restoreDatabase = *redirect
+	}
+	ValidateDatabaseExistence(restoreDatabase, *createDB, backupConfig.IncludeTableFiltered || backupConfig.DataOnly)
 	if *createDB {
 		createDatabase(metadataFilename)
 	}
-	ConnectToRestoreDatabase()
+	InitializeConnection(restoreDatabase)
 
 	if *restoreGlobals {
 		restoreGlobal(metadataFilename)
@@ -286,13 +290,6 @@ func DoTeardown() {
 	errStr := ""
 	if err := recover(); err != nil {
 		errStr = fmt.Sprintf("%v", err)
-		if connection != nil {
-			if strings.Contains(errStr, fmt.Sprintf(`Database "%s" does not exist`, connection.DBName)) {
-				errStr = fmt.Sprintf(`%s.  Use the --create-db flag to create "%s" as part of the restore process.`, errStr, connection.DBName)
-			} else if strings.Contains(errStr, fmt.Sprintf(`Database "%s" already exists`, connection.DBName)) {
-				errStr = fmt.Sprintf(`%s.  Run gprestore again without the --create-db flag.`, errStr)
-			}
-		}
 	}
 	if wasTerminated {
 		/*

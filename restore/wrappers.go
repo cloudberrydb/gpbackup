@@ -69,11 +69,7 @@ func InitializeFilterLists() {
 	}
 }
 
-/*
- * This function is for any validation that requires a database connection but
- * does not specifically need to connect to the restore database.
- */
-func DoPostgresValidation() {
+func BackupConfigurationValidation() {
 	InitializeFilterLists()
 
 	gplog.Verbose("Gathering information on backup directories")
@@ -87,16 +83,6 @@ func DoPostgresValidation() {
 	ValidateBackupFlagCombinations()
 
 	validateFilterListsInBackupSet()
-}
-
-func ConnectToRestoreDatabase() {
-	restoreDatabase := ""
-	if *redirect != "" {
-		restoreDatabase = *redirect
-	} else {
-		restoreDatabase = backupConfig.DatabaseName
-	}
-	InitializeConnection(restoreDatabase)
 }
 
 func RecoverMetadataFilesUsingPlugin() {

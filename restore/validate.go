@@ -2,6 +2,7 @@ package restore
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
@@ -117,17 +118,33 @@ func ValidateFilterTablesInBackupSet(tableList utils.ArrayFlags) {
 	gplog.Fatal(errors.Errorf("Could not find the following table(s) in the backup set: %s", strings.Join(keys, ", ")), "")
 }
 
+func ValidateDatabaseExistence(dbname string, createDatabase bool, isFiltered bool) {
+	databaseExists, err := strconv.ParseBool(dbconn.MustSelectString(connection, fmt.Sprintf(`
+SELECT CASE
+	WHEN EXISTS (SELECT datname FROM pg_database WHERE datname='%s') THEN 'true'
+	ELSE 'false'
+END AS string;`, dbname)))
+	gplog.FatalOnError(err)
+	if !databaseExists {
+		if isFiltered {
+			gplog.Fatal(errors.Errorf(`Database "%s" must be created manually to restore table-filtered or data-only backups.`, dbname), "")
+		} else if !createDatabase {
+			gplog.Fatal(errors.Errorf(`Database "%s" does not exist. Use the --create-db flag to create "%s" as part of the restore process.`, dbname, dbname), "")
+		}
+	} else if createDatabase {
+		gplog.Fatal(errors.Errorf(`Database "%s" already exists. Run gprestore again without --create-db flag.`, dbname), "")
+	}
+}
+
 func ValidateBackupFlagCombinations() {
 	if backupConfig.SingleDataFile {
 		if *numJobs != 1 {
 			gplog.Fatal(errors.Errorf("Cannot use jobs flag when restoring backups with a single data file per segment."), "")
 		}
 	}
-	if backupConfig.IncludeTableFiltered {
-		if *createDB {
-			gplog.Fatal(errors.Errorf("CREATE DATABASE statements are not included in table-filtered backups. Create the database manually before restoring."), "")
-		} else if *restoreGlobals {
-			gplog.Fatal(errors.Errorf("Global metadata is not backed up in table-filtered backup."), "")
+	if backupConfig.IncludeTableFiltered || backupConfig.DataOnly {
+		if *restoreGlobals {
+			gplog.Fatal(errors.Errorf("Global metadata is not backed up in table-filtered or data-only backups."), "")
 		}
 	}
 	if backupConfig.Plugin != "" && *pluginConfigFile == "" {

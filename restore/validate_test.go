@@ -136,4 +136,35 @@ var _ = Describe("restore/validate tests", func() {
 			restore.ValidateFilterTablesInBackupSet(filterList)
 		})
 	})
+	Describe("ValidateDatabaseExistence", func() {
+		BeforeEach(func() {
+		})
+		It("fails if createdb passed when db exists", func() {
+			db_exists := sqlmock.NewRows([]string{"string"}).
+				AddRow("true")
+			mock.ExpectQuery("SELECT (.*)").WillReturnRows(db_exists)
+			defer testhelper.ShouldPanicWithMessage(`Database "testdb" already exists.`)
+			restore.ValidateDatabaseExistence("testdb", true, false)
+		})
+		It("passes if db exists and --create-db not passed", func() {
+			db_exists := sqlmock.NewRows([]string{"string"}).
+				AddRow("true")
+			mock.ExpectQuery("SELECT (.*)").WillReturnRows(db_exists)
+			restore.ValidateDatabaseExistence("testdb", false, false)
+		})
+		It("tells user to manually create db when db does not exist and filtered", func() {
+			db_exists := sqlmock.NewRows([]string{"string"}).
+				AddRow("false")
+			mock.ExpectQuery("SELECT (.*)").WillReturnRows(db_exists)
+			defer testhelper.ShouldPanicWithMessage(`Database "testdb" must be created manually`)
+			restore.ValidateDatabaseExistence("testdb", true, true)
+		})
+		It("tells user to pass --create-db when db does not exist, not filtered, and no --create-db", func() {
+			db_exists := sqlmock.NewRows([]string{"string"}).
+				AddRow("false")
+			mock.ExpectQuery("SELECT (.*)").WillReturnRows(db_exists)
+			defer testhelper.ShouldPanicWithMessage(`Database "testdb" does not exist. Use the --create-db flag`)
+			restore.ValidateDatabaseExistence("testdb", false, false)
+		})
+	})
 })
