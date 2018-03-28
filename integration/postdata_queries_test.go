@@ -5,7 +5,6 @@ import (
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -32,15 +31,11 @@ var _ = Describe("backup integration tests", func() {
 		})
 	})
 	Describe("GetIndex", func() {
-		var indexNameSet *utils.FilterSet
-		BeforeEach(func() {
-			indexNameSet = utils.NewExcludeSet([]string{})
-		})
 		It("returns no slice when no index exists", func() {
 			testhelper.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int)")
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE simple_table")
 
-			results := backup.GetIndexes(connection, indexNameSet)
+			results := backup.GetIndexes(connection)
 
 			Expect(len(results)).To(Equal(0))
 		})
@@ -55,7 +50,7 @@ var _ = Describe("backup integration tests", func() {
 			index1 := backup.IndexDefinition{Oid: 0, Name: "simple_table_idx1", OwningSchema: "public", OwningTable: "simple_table", Def: "CREATE INDEX simple_table_idx1 ON simple_table USING btree (i)"}
 			index2 := backup.IndexDefinition{Oid: 1, Name: "simple_table_idx2", OwningSchema: "public", OwningTable: "simple_table", Def: "CREATE INDEX simple_table_idx2 ON simple_table USING btree (j)"}
 
-			results := backup.GetIndexes(connection, indexNameSet)
+			results := backup.GetIndexes(connection)
 
 			Expect(len(results)).To(Equal(2))
 			results[0].Oid = testutils.OidFromObjectName(connection, "", "simple_table_idx1", backup.TYPE_INDEX)
@@ -65,18 +60,16 @@ var _ = Describe("backup integration tests", func() {
 			structmatcher.ExpectStructsToMatchExcluding(&index2, &results[1], "Oid")
 		})
 		It("returns a slice of multiple indexes, excluding implicit indexes", func() {
-			testhelper.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int UNIQUE, j int, k int)")
-			defer testhelper.AssertQueryRuns(connection, "DROP TABLE simple_table")
+			testhelper.AssertQueryRuns(connection, "CREATE TABLE simple_table(i int, j int, k int)")
+			defer testhelper.AssertQueryRuns(connection, "DROP TABLE simple_table CASCADE")
+			testhelper.AssertQueryRuns(connection, "ALTER TABLE simple_table ADD CONSTRAINT test_constraint UNIQUE (i, k)")
 			testhelper.AssertQueryRuns(connection, "CREATE INDEX simple_table_idx1 ON simple_table(i)")
-			defer testhelper.AssertQueryRuns(connection, "DROP INDEX simple_table_idx1")
 			testhelper.AssertQueryRuns(connection, "CREATE INDEX simple_table_idx2 ON simple_table(j)")
-			defer testhelper.AssertQueryRuns(connection, "DROP INDEX simple_table_idx2")
-			indexNameSet.Add("public.simple_table_i_key")
 
 			index1 := backup.IndexDefinition{Oid: 0, Name: "simple_table_idx1", OwningSchema: "public", OwningTable: "simple_table", Def: "CREATE INDEX simple_table_idx1 ON simple_table USING btree (i)"}
 			index2 := backup.IndexDefinition{Oid: 1, Name: "simple_table_idx2", OwningSchema: "public", OwningTable: "simple_table", Def: "CREATE INDEX simple_table_idx2 ON simple_table USING btree (j)"}
 
-			results := backup.GetIndexes(connection, indexNameSet)
+			results := backup.GetIndexes(connection)
 
 			Expect(len(results)).To(Equal(2))
 			structmatcher.ExpectStructsToMatchExcluding(&index1, &results[0], "Oid")
@@ -96,7 +89,7 @@ PARTITION BY RANGE (date)
 
 			index1 := backup.IndexDefinition{Oid: 0, Name: "part_idx", OwningSchema: "public", OwningTable: "part", Def: "CREATE INDEX part_idx ON part USING btree (id)"}
 
-			results := backup.GetIndexes(connection, indexNameSet)
+			results := backup.GetIndexes(connection)
 
 			Expect(len(results)).To(Equal(1))
 			structmatcher.ExpectStructsToMatchExcluding(&index1, &results[0], "Oid")
@@ -115,7 +108,7 @@ PARTITION BY RANGE (date)
 
 			index1 := backup.IndexDefinition{Oid: 0, Name: "simple_table_idx", OwningSchema: "public", OwningTable: "simple_table", Tablespace: "test_tablespace", Def: "CREATE INDEX simple_table_idx ON simple_table USING btree (i)"}
 
-			results := backup.GetIndexes(connection, indexNameSet)
+			results := backup.GetIndexes(connection)
 
 			Expect(len(results)).To(Equal(1))
 			results[0].Oid = testutils.OidFromObjectName(connection, "", "simple_table_idx", backup.TYPE_INDEX)
@@ -137,7 +130,7 @@ PARTITION BY RANGE (date)
 
 			index1 := backup.IndexDefinition{Oid: 0, Name: "simple_table_idx1", OwningSchema: "testschema", OwningTable: "simple_table", Def: "CREATE INDEX simple_table_idx1 ON testschema.simple_table USING btree (i)"}
 
-			results := backup.GetIndexes(connection, indexNameSet)
+			results := backup.GetIndexes(connection)
 
 			Expect(len(results)).To(Equal(1))
 			results[0].Oid = testutils.OidFromObjectName(connection, "", "simple_table_idx1", backup.TYPE_INDEX)
@@ -159,7 +152,7 @@ PARTITION BY RANGE (date)
 
 			index1 := backup.IndexDefinition{Oid: 0, Name: "simple_table_idx1", OwningSchema: "testschema", OwningTable: "simple_table", Def: "CREATE INDEX simple_table_idx1 ON testschema.simple_table USING btree (i)"}
 
-			results := backup.GetIndexes(connection, indexNameSet)
+			results := backup.GetIndexes(connection)
 
 			Expect(len(results)).To(Equal(1))
 			results[0].Oid = testutils.OidFromObjectName(connection, "", "simple_table_idx1", backup.TYPE_INDEX)
@@ -175,7 +168,7 @@ PARTITION BY RANGE (date)
 
 			index1 := backup.IndexDefinition{Oid: 0, Name: "simple_table_idx1", OwningSchema: "public", OwningTable: "simple_table", Def: "CREATE INDEX simple_table_idx1 ON simple_table USING btree (i)", IsClustered: true}
 
-			results := backup.GetIndexes(connection, indexNameSet)
+			results := backup.GetIndexes(connection)
 
 			Expect(len(results)).To(Equal(1))
 			results[0].Oid = testutils.OidFromObjectName(connection, "", "simple_table_idx1", backup.TYPE_INDEX)

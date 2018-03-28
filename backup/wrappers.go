@@ -445,8 +445,7 @@ func BackupConstraints(metadataFile *utils.FileWithByteCount, constraints []Cons
 
 func BackupIndexes(metadataFile *utils.FileWithByteCount) {
 	gplog.Verbose("Writing CREATE INDEX statements to metadata file")
-	indexNameMap := ConstructImplicitIndexNames(connection)
-	indexes := GetIndexes(connection, indexNameMap)
+	indexes := GetIndexes(connection)
 	objectCounts["Indexes"] = len(indexes)
 	indexMetadata := GetCommentsForObjectType(connection, TYPE_INDEX)
 	PrintCreateIndexStatements(metadataFile, globalTOC, indexes, indexMetadata)

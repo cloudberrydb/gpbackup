@@ -5,7 +5,6 @@ import (
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -17,11 +16,9 @@ var _ = Describe("backup integration create statement tests", func() {
 	})
 	Describe("PrintCreateIndexStatements", func() {
 		var (
-			indexNameSet     *utils.FilterSet
 			indexMetadataMap backup.MetadataMap
 		)
 		BeforeEach(func() {
-			indexNameSet = utils.NewEmptyIncludeSet()
 			indexMetadataMap = backup.MetadataMap{}
 		})
 		It("creates a basic index", func() {
@@ -34,7 +31,7 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			testhelper.AssertQueryRuns(connection, buffer.String())
 
-			resultIndexes := backup.GetIndexes(connection, indexNameSet)
+			resultIndexes := backup.GetIndexes(connection)
 			Expect(len(resultIndexes)).To(Equal(1))
 			structmatcher.ExpectStructsToMatchExcluding(&resultIndexes[0], &indexes[0], "Oid")
 		})
@@ -48,7 +45,7 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			testhelper.AssertQueryRuns(connection, buffer.String())
 
-			resultIndexes := backup.GetIndexes(connection, indexNameSet)
+			resultIndexes := backup.GetIndexes(connection)
 			Expect(len(resultIndexes)).To(Equal(1))
 			structmatcher.ExpectStructsToMatchExcluding(&resultIndexes[0], &indexes[0], "Oid")
 		})
@@ -65,7 +62,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testhelper.AssertQueryRuns(connection, buffer.String())
 
 			indexes[0].Oid = testutils.OidFromObjectName(connection, "", "index1", backup.TYPE_INDEX)
-			resultIndexes := backup.GetIndexes(connection, indexNameSet)
+			resultIndexes := backup.GetIndexes(connection)
 			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_INDEX)
 			resultMetadata := resultMetadataMap[indexes[0].Oid]
 			Expect(len(resultIndexes)).To(Equal(1))
@@ -88,7 +85,7 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			testhelper.AssertQueryRuns(connection, buffer.String())
 
-			resultIndexes := backup.GetIndexes(connection, indexNameSet)
+			resultIndexes := backup.GetIndexes(connection)
 			Expect(len(resultIndexes)).To(Equal(1))
 			structmatcher.ExpectStructsToMatchExcluding(&resultIndexes[0], &indexes[0], "Oid")
 		})

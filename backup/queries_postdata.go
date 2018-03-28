@@ -55,8 +55,11 @@ type IndexDefinition struct {
 	IsClustered  bool
 }
 
-func GetIndexes(connection *dbconn.DBConn, indexNameSet *utils.FilterSet) []IndexDefinition {
-	query := fmt.Sprintf(`
+func GetIndexes(connection *dbconn.DBConn) []IndexDefinition {
+	resultIndexes := make([]IndexDefinition, 0)
+	if connection.Version.Before("6") {
+		indexNameSet := ConstructImplicitIndexNames(connection)
+		query := fmt.Sprintf(`
 SELECT DISTINCT
 	i.indexrelid AS oid,
 	quote_ident(ic.relname) AS name,
@@ -81,18 +84,48 @@ AND i.indisprimary = 'f'
 AND n.nspname || '.' || c.relname NOT IN (SELECT partitionschemaname || '.' || partitiontablename FROM pg_partitions)
 ORDER BY name;`, tableAndSchemaFilterClause())
 
-	results := make([]IndexDefinition, 0)
-	err := connection.Select(&results, query)
-	gplog.FatalOnError(err)
-	filteredIndexes := make([]IndexDefinition, 0)
-	for _, index := range results {
-		// We don't want to quote the index name to use it as a map key, just prepend the schema
-		indexFQN := fmt.Sprintf("%s.%s", index.OwningSchema, index.Name)
-		if indexNameSet.MatchesFilter(indexFQN) {
-			filteredIndexes = append(filteredIndexes, index)
+		results := make([]IndexDefinition, 0)
+		err := connection.Select(&results, query)
+		gplog.FatalOnError(err)
+		for _, index := range results {
+			// We don't want to quote the index name to use it as a map key, just prepend the schema
+			indexFQN := fmt.Sprintf("%s.%s", index.OwningSchema, index.Name)
+			if indexNameSet.MatchesFilter(indexFQN) {
+				resultIndexes = append(resultIndexes, index)
+			}
 		}
+	} else {
+		query := fmt.Sprintf(`
+SELECT DISTINCT
+	i.indexrelid AS oid,
+	quote_ident(ic.relname) AS name,
+	quote_ident(n.nspname) AS owningschema,
+	quote_ident(c.relname) AS owningtable,
+	coalesce(quote_ident(s.spcname), '') AS tablespace,
+	pg_get_indexdef(i.indexrelid) AS def,
+	i.indisclustered AS isclustered
+FROM pg_index i
+JOIN pg_class ic
+	ON (ic.oid = i.indexrelid)
+JOIN pg_namespace n
+	ON (ic.relnamespace = n.oid)
+JOIN pg_class c
+	ON (c.oid = i.indrelid)
+LEFT JOIN pg_partitions p
+	ON (c.relname = p.tablename AND p.partitionlevel = 0)
+LEFT JOIN pg_tablespace s
+	ON (ic.reltablespace = s.oid)
+LEFT JOIN pg_constraint con
+	ON (i.indexrelid = con.conindid)
+WHERE %s
+AND i.indisprimary = 'f'
+AND n.nspname || '.' || c.relname NOT IN (SELECT partitionschemaname || '.' || partitiontablename FROM pg_partitions)
+AND con.conindid IS NULL
+ORDER BY name;`, tableAndSchemaFilterClause())
+		err := connection.Select(&resultIndexes, query)
+		gplog.FatalOnError(err)
 	}
-	return filteredIndexes
+	return resultIndexes
 }
 
 /*
