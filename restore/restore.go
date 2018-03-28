@@ -197,7 +197,6 @@ func restoreData(gucStatements []utils.StatementWithType) {
 	if backupConfig.SingleDataFile {
 		gplog.Verbose("Initializing pipes and gpbackup_helper on segments for single data file restore")
 		VerifyHelperVersionOnSegments(version)
-		CopySegmentTOCs()
 		WriteOidListToSegments(filteredMasterDataEntries)
 		firstOid := filteredMasterDataEntries[0].Oid
 		CreateSegmentPipesOnAllHostsForRestore(firstOid)
@@ -331,7 +330,6 @@ func DoCleanup() {
 	}()
 	gplog.Verbose("Beginning cleanup")
 	if backupConfig != nil && backupConfig.SingleDataFile {
-		CleanUpSegmentTOCs()
 		CleanUpHelperFilesOnAllHosts()
 		CleanUpSegmentHelperProcesses()
 		if wasTerminated { // These should all end on their own in a successful restore

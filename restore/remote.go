@@ -39,7 +39,7 @@ func CreateSegmentPipesOnAllHostsForRestore(oid uint32) {
 
 func WriteToSegmentPipes() {
 	remoteOutput := globalCluster.GenerateAndExecuteCommand("Writing to segment data pipes", func(contentID int) string {
-		tocFile := globalFPInfo.GetSegmentTOCFilePathWithPID(globalCluster.SegDirMap[contentID], fmt.Sprintf("%d", contentID))
+		tocFile := globalFPInfo.GetSegmentTOCFilePath(globalFPInfo.GetDirForContent(contentID), fmt.Sprintf("%d", contentID))
 		oidFile := globalFPInfo.GetSegmentHelperFilePath(contentID, "oid")
 		scriptFile := globalFPInfo.GetSegmentHelperFilePath(contentID, "script")
 		pipeFile := globalFPInfo.GetSegmentPipeFilePathWithPID(contentID)
@@ -87,20 +87,9 @@ func CleanUpHelperFilesOnAllHosts() {
 	errMsg := fmt.Sprintf("Unable to remove segment helper file(s). See %s for a complete list of segments with errors and remove manually.",
 		gplog.GetLogFilePath())
 	globalCluster.CheckClusterError(remoteOutput, errMsg, func(contentID int) string {
-		tocFile := globalFPInfo.GetSegmentTOCFilePathWithPID(globalCluster.SegDirMap[contentID], fmt.Sprintf("%d", contentID))
-		return fmt.Sprintf("Unable to remove helper file %s on segment %d on host %s", tocFile, contentID, globalCluster.GetHostForContent(contentID))
+		errorFile := fmt.Sprintf("%s_error", globalFPInfo.GetSegmentPipeFilePathWithPID(contentID))
+		return fmt.Sprintf("Unable to remove helper file %s on segment %d on host %s", errorFile, contentID, globalCluster.GetHostForContent(contentID))
 	}, true)
-}
-
-func CopySegmentTOCs() {
-	remoteOutput := globalCluster.GenerateAndExecuteCommand("Copying segment table of contents files from backup directories", func(contentID int) string {
-		tocFile := globalFPInfo.GetSegmentTOCFilePathWithPID(globalCluster.SegDirMap[contentID], fmt.Sprintf("%d", contentID))
-		tocFilename := fmt.Sprintf("gpbackup_%d_%s_toc.yaml", contentID, globalFPInfo.Timestamp)
-		return fmt.Sprintf("cp -f %s/%s %s", globalFPInfo.GetDirForContent(contentID), tocFilename, tocFile)
-	}, cluster.ON_SEGMENTS)
-	globalCluster.CheckClusterError(remoteOutput, "Unable to copy segment table of contents files from backup directories", func(contentID int) string {
-		return fmt.Sprintf("Unable to copy segment table of contents file to %s", globalFPInfo.GetSegmentTOCFilePathWithPID(globalCluster.SegDirMap[contentID], fmt.Sprintf("%d", contentID)))
-	})
 }
 
 func VerifyBackupFileCountOnSegments(fileCount int) {
@@ -153,7 +142,7 @@ func VerifyHelperVersionOnSegments(version string) {
 
 func CleanUpSegmentHelperProcesses() {
 	remoteOutput := globalCluster.GenerateAndExecuteCommand("Cleaning up segment restore agent processes", func(contentID int) string {
-		tocFile := globalFPInfo.GetSegmentTOCFilePathWithPID(globalCluster.SegDirMap[contentID], fmt.Sprintf("%d", contentID))
+		tocFile := globalFPInfo.GetSegmentTOCFilePath(globalFPInfo.GetDirForContent(contentID), fmt.Sprintf("%d", contentID))
 		procPattern := fmt.Sprintf("gpbackup_helper --restore-agent --toc-file %s", tocFile)
 		/*
 		 * We try to avoid erroring out if no gpbackup_helper processes are found,
@@ -165,19 +154,6 @@ func CleanUpSegmentHelperProcesses() {
 	globalCluster.CheckClusterError(remoteOutput, "Unable to clean up restore agent processes", func(contentID int) string {
 		return "Unable to clean up restore agent process"
 	})
-}
-
-func CleanUpSegmentTOCs() {
-	remoteOutput := globalCluster.GenerateAndExecuteCommand("Removing segment table of contents files from segment data directories", func(contentID int) string {
-		tocFile := globalFPInfo.GetSegmentTOCFilePathWithPID(globalCluster.SegDirMap[contentID], fmt.Sprintf("%d", contentID))
-		return fmt.Sprintf("rm -f %s", tocFile)
-	}, cluster.ON_SEGMENTS)
-	errMsg := fmt.Sprintf("Unable to remove segment table of contents file(s). See %s for a complete list of segments with errors and remove manually.",
-		gplog.GetLogFilePath())
-	globalCluster.CheckClusterError(remoteOutput, errMsg, func(contentID int) string {
-		tocFile := globalFPInfo.GetSegmentTOCFilePathWithPID(globalCluster.SegDirMap[contentID], fmt.Sprintf("%d", contentID))
-		return fmt.Sprintf("Unable to remove table of contents file %s on segment %d on host %s", tocFile, contentID, globalCluster.GetHostForContent(contentID))
-	}, true)
 }
 
 func VerifyMetadataFilePaths(withStats bool) {

@@ -133,10 +133,6 @@ func (backupFPInfo *FilePathInfo) GetSegmentTOCFilePath(topDir string, contentSt
 	return path.Join(topDir, fmt.Sprintf("gpbackup_%s_%s_toc.yaml", contentStr, backupFPInfo.Timestamp))
 }
 
-func (backupFPInfo *FilePathInfo) GetSegmentTOCFilePathWithPID(topDir string, contentStr string) string {
-	return path.Join(topDir, fmt.Sprintf("gpbackup_%s_%s_toc_%d.yaml", contentStr, backupFPInfo.Timestamp, backupFPInfo.PID))
-}
-
 func (backupFPInfo *FilePathInfo) GetSegmentHelperFilePath(contentID int, suffix string) string {
 	return path.Join(backupFPInfo.SegDirMap[contentID], fmt.Sprintf("gpbackup_%d_%s_%s_%d", contentID, backupFPInfo.Timestamp, suffix, backupFPInfo.PID))
 }
