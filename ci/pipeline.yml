@@ -403,6 +403,12 @@ jobs:
       terraform: boostfs_terraform
       gpdb_binary: bin_gpdb_5x_stable
       gpdb_src: gpdb_src
+  - task: setup-centos-env
+    tags: ["ddboost"]
+    file: gpbackup/ci/tasks/setup-centos-env.yml
+    on_failure:
+      do:
+      - *boostfs_debug_sleep
   - task: boostfs_installation
     tags: ["ddboost"]
     config:
@@ -432,9 +438,6 @@ jobs:
     on_failure:
       do:
       - *boostfs_debug_sleep
-  - task: setup-centos-env
-    tags: ["ccp"]
-    file: gpbackup/ci/tasks/setup-centos-env.yml
   - task: scale-tests
     tags: ["ddboost"]
     file: gpbackup/ci/tasks/scale-tests.yml
