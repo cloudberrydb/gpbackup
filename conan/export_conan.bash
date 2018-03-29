@@ -11,6 +11,7 @@ GIT_VER=$(git describe --tags | perl -pe 's/(.*)-([0-9]*)-(g[0-9a-f]*)/\1/')
 make depend
 
 sed -i'.bak' "s/^GIT_VERSION := .*/GIT_VERSION=${GIT_VER}/" Makefile
+sed -i'.bak' "s/GIT_VERSION/${GIT_VER}/" conan/conanfile.py
 
 cp ./conan/conanfile.py $GO_DIR
 popd
@@ -26,3 +27,4 @@ conan user -r ${CONAN_REPO_NAME} -p ${BINTRAY_TOKEN} ${BINTRAY_USER}
 conan upload -r ${CONAN_REPO_NAME} ${CONAN_VER}
 conan remote remove ${CONAN_REPO_NAME}
 mv ${GPBACKUP_SRC}/Makefile.bak ${GPBACKUP_SRC}/Makefile
+mv ${GPBACKUP_SRC}/conan/conanfile.py.bak ${GPBACKUP_SRC}/conan/conanfile.py

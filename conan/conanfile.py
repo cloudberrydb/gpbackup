@@ -13,9 +13,7 @@ class GpbackupConan(ConanFile):
     def source(self):
         self.run("git clone https://github.com/greenplum-db/gpbackup.git src/github.com/greenplum-db/gpbackup")
         with tools.chdir('src/github.com/greenplum-db/gpbackup'):
-            ver = StringIO()
-            self.run("git describe --tags", output=ver)
-            self.run("git checkout " + ver.getvalue())
+            self.run("git checkout GIT_VERSION")
 
     def build(self):
         os.environ["PATH"] = os.environ["PATH"] + ":" + os.path.join(os.getcwd(), "bin")
