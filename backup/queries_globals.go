@@ -319,9 +319,7 @@ type Tablespace struct {
 }
 
 func GetTablespaces(connection *dbconn.DBConn) []Tablespace {
-	query := ""
-	if connection.Version.Before("6") {
-		query = `
+	before6query := `
 SELECT
 	t.oid,
 	quote_ident(t.spcname) AS tablespace,
@@ -331,19 +329,22 @@ JOIN pg_filespace f
 ON t.spcfsoid = f.oid
 WHERE spcname != 'pg_default'
 AND spcname != 'pg_global';`
-	} else {
-		query = `
+	query := `
 SELECT
 	oid,
 	quote_ident(spcname) AS tablespace,
-	'''' || spclocation || '''' AS filelocation
+	'''' || pg_catalog.pg_tablespace_location(oid) || '''' AS filelocation
 FROM pg_tablespace
 WHERE spcname != 'pg_default'
 AND spcname != 'pg_global';`
-	}
 
 	results := make([]Tablespace, 0)
-	err := connection.Select(&results, query)
+	var err error
+	if connection.Version.Before("6") {
+		err = connection.Select(&results, before6query)
+	} else {
+		err = connection.Select(&results, query)
+	}
 	gplog.FatalOnError(err)
 	return results
 }

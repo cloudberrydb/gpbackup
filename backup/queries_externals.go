@@ -30,7 +30,7 @@ SELECT
 	writable
 FROM pg_exttable;`, execOptions, execOptions)
 
-	query := `
+	version5query := `
 SELECT
 	reloid AS oid,
 	CASE WHEN urilocation IS NOT NULL THEN unnest(urilocation) ELSE '' END AS location,
@@ -50,10 +50,32 @@ SELECT
 	writable
 FROM pg_exttable;`
 
+	query := `
+SELECT
+	reloid AS oid,
+	CASE WHEN urilocation IS NOT NULL THEN unnest(urilocation) ELSE '' END AS location,
+	array_to_string(execlocation, ',') AS execlocation,
+	fmttype AS formattype,
+	fmtopts AS formatopts,
+	(
+		array_to_string(ARRAY(SELECT pg_catalog.quote_ident(option_name) || ' ' || pg_catalog.quote_literal(option_value)
+		FROM pg_options_to_table(options)
+		ORDER BY option_name), E',\n\t')
+	) AS options,
+	coalesce(command, '') AS command,
+	coalesce(rejectlimit, 0) AS rejectlimit,
+	coalesce(rejectlimittype, '') AS rejectlimittype,
+	CASE WHEN logerrors = 'false' THEN '' ELSE coalesce((SELECT relname FROM pg_class WHERE oid = reloid), '') END AS errtable,
+	pg_encoding_to_char(encoding) AS encoding,
+	writable
+FROM pg_exttable;`
+
 	results := make([]ExternalTableDefinition, 0)
 	var err error
 	if connection.Version.Before("5") {
 		err = connection.Select(&results, version4query)
+	} else if connection.Version.Before("6") {
+		err = connection.Select(&results, version5query)
 	} else {
 		err = connection.Select(&results, query)
 	}
