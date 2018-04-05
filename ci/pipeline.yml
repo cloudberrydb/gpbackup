@@ -496,6 +496,15 @@ jobs:
   - aggregate:
     - get: gpbackup_tagged_src
       trigger: true
+    # While the resource is not used, it ensures only releasing if
+    #  tests are passing
+    - get: gpbackup
+      passed:
+       - units
+       - integrations-GPDB5
+       - integrations-GPDB4.3
+       - integrations-GPDB5-sles
+       - test_package_conan
   - task: compile_gpbackup
     config:
       platform: linux
