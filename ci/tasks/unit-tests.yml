@@ -1,5 +1,5 @@
 ---
-platform: linux
+PLATFORM: linux
 
 image_resource:
   type: docker-image

@@ -1,5 +1,5 @@
 
-platform: linux
+PLATFORM: linux
 
 image_resource:
   type: docker-image
@@ -20,7 +20,7 @@ run:
   - |
     set -ex
 
-    ccp_src/aws/setup_ssh_to_cluster.sh
+    ccp_src/scripts/setup_ssh_to_cluster.sh
 
     cat <<SCRIPT > /tmp/setup_centos_env.bash
     set -ex
