@@ -343,7 +343,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			testhelper.AssertQueryRuns(connection, buffer.String())
 			defer testhelper.AssertQueryRuns(connection, "DROP SEQUENCE my_sequence")
 
-			resultSequences := backup.GetAllSequences(connection)
+			resultSequences := backup.GetAllSequences(connection, map[string]string{})
 
 			Expect(len(resultSequences)).To(Equal(1))
 			structmatcher.ExpectStructsToMatchExcluding(&sequence, &resultSequences[0].Relation, "SchemaOid", "Oid")
@@ -360,7 +360,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			testhelper.AssertQueryRuns(connection, buffer.String())
 			defer testhelper.AssertQueryRuns(connection, "DROP SEQUENCE my_sequence")
 
-			resultSequences := backup.GetAllSequences(connection)
+			resultSequences := backup.GetAllSequences(connection, map[string]string{})
 
 			Expect(len(resultSequences)).To(Equal(1))
 			structmatcher.ExpectStructsToMatchExcluding(&sequence, &resultSequences[0].Relation, "SchemaOid", "Oid")
@@ -382,7 +382,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			testhelper.AssertQueryRuns(connection, buffer.String())
 			defer testhelper.AssertQueryRuns(connection, "DROP SEQUENCE my_sequence")
 
-			resultSequences := backup.GetAllSequences(connection)
+			resultSequences := backup.GetAllSequences(connection, map[string]string{})
 
 			Expect(len(resultSequences)).To(Equal(1))
 			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_RELATION)
@@ -414,9 +414,11 @@ SET SUBPARTITION TEMPLATE  ` + `
 			testhelper.AssertQueryRuns(connection, buffer.String())
 			defer testhelper.AssertQueryRuns(connection, "DROP SEQUENCE my_sequence")
 
-			sequenceOwners := backup.GetSequenceColumnOwnerMap(connection)
-			Expect(len(sequenceOwners)).To(Equal(1))
-			Expect(sequenceOwners["public.my_sequence"]).To(Equal("public.sequence_table.a"))
+			sequenceOwnerTables, sequenceOwnerColumns := backup.GetSequenceColumnOwnerMap(connection)
+			Expect(len(sequenceOwnerTables)).To(Equal(1))
+			Expect(len(sequenceOwnerColumns)).To(Equal(1))
+			Expect(sequenceOwnerTables["public.my_sequence"]).To(Equal("public.sequence_table"))
+			Expect(sequenceOwnerColumns["public.my_sequence"]).To(Equal("public.sequence_table.a"))
 		})
 	})
 })

@@ -339,8 +339,8 @@ type Sequence struct {
 	SequenceDefinition
 }
 
-func GetAllSequences(connection *dbconn.DBConn) []Sequence {
-	sequenceRelations := GetAllSequenceRelations(connection)
+func GetAllSequences(connection *dbconn.DBConn, sequenceOwnerTables map[string]string) []Sequence {
+	sequenceRelations := GetAllSequenceRelations(connection, sequenceOwnerTables)
 	sequences := make([]Sequence, 0)
 	for _, seqRelation := range sequenceRelations {
 		seqDef := GetSequenceDefinition(connection, seqRelation.ToString())
@@ -392,6 +392,7 @@ func PrintCreateSequenceStatements(metadataFile *utils.FileWithByteCount, toc *u
 }
 
 func PrintAlterSequenceStatements(metadataFile *utils.FileWithByteCount, toc *utils.TOC, sequences []Sequence, sequenceColumnOwners map[string]string) {
+	gplog.Verbose("Writing ALTER SEQUENCE statements to metadata file")
 	for _, sequence := range sequences {
 		seqFQN := sequence.ToString()
 		// owningColumn is quoted when the map is constructed in GetSequenceColumnOwnerMap() and doesn't need to be quoted again

@@ -181,13 +181,13 @@ func backupPredata(metadataFile *utils.FileWithByteCount, tables []Relation, tab
 	}
 
 	relationMetadata := GetMetadataForObjectType(connection, TYPE_RELATION)
-	sequences := GetAllSequences(connection)
+	sequences, sequenceOwnerColumns := RetrieveSequences()
 	BackupCreateSequences(metadataFile, sequences, relationMetadata)
 
 	constraints, conMetadata := RetrieveConstraints()
 
 	BackupFunctionsAndTypesAndTables(metadataFile, otherFuncs, types, tables, functionMetadata, typeMetadata, relationMetadata, tableDefs, constraints)
-	BackupAlterSequences(metadataFile, sequences)
+	PrintAlterSequenceStatements(metadataFile, globalTOC, sequences, sequenceOwnerColumns)
 
 	if len(includeSchemas) == 0 {
 		BackupProtocols(metadataFile, funcInfoMap)
@@ -231,9 +231,14 @@ func backupTablePredata(metadataFile *utils.FileWithByteCount, tables []Relation
 
 	relationMetadata := GetMetadataForObjectType(connection, TYPE_RELATION)
 
+	sequences, sequenceOwnerColumns := RetrieveSequences()
+	BackupCreateSequences(metadataFile, sequences, relationMetadata)
+
 	constraints, conMetadata := RetrieveConstraints(tables...)
 
 	BackupTables(metadataFile, tables, relationMetadata, tableDefs, constraints)
+	PrintAlterSequenceStatements(metadataFile, globalTOC, sequences, sequenceOwnerColumns)
+
 	BackupConstraints(metadataFile, constraints, conMetadata)
 	gplog.Info("Table metadata backup complete")
 }

@@ -610,7 +610,7 @@ SET SUBPARTITION TEMPLATE
 			defer testhelper.AssertQueryRuns(connection, "DROP SCHEMA testschema CASCADE")
 			testhelper.AssertQueryRuns(connection, "CREATE SEQUENCE testschema.my_sequence2")
 
-			sequences := backup.GetAllSequenceRelations(connection)
+			sequences := backup.GetAllSequenceRelations(connection, map[string]string{})
 
 			mySequence := backup.BasicRelation("public", "my_sequence")
 			mySequence2 := backup.BasicRelation("testschema", "my_sequence2")
@@ -629,10 +629,42 @@ SET SUBPARTITION TEMPLATE
 			mySequence := backup.BasicRelation("testschema", "my_sequence")
 
 			backup.SetIncludeSchemas([]string{"testschema"})
-			sequences := backup.GetAllSequenceRelations(connection)
+			sequences := backup.GetAllSequenceRelations(connection, map[string]string{})
 
 			Expect(len(sequences)).To(Equal(1))
 			structmatcher.ExpectStructsToMatchExcluding(&mySequence, &sequences[0], "SchemaOid", "Oid")
+		})
+		It("returns a slice of sequences owned by included tables", func() {
+			testhelper.AssertQueryRuns(connection, "CREATE SEQUENCE my_sequence START 10")
+			testhelper.AssertQueryRuns(connection, "CREATE SEQUENCE no_table_sequence START 5")
+			defer testhelper.AssertQueryRuns(connection, "DROP SEQUENCE no_table_sequence")
+
+			testhelper.AssertQueryRuns(connection, "CREATE TABLE seq_table(i int)")
+			defer testhelper.AssertQueryRuns(connection, "DROP TABLE seq_table")
+			testhelper.AssertQueryRuns(connection, "ALTER SEQUENCE my_sequence OWNED BY seq_table.i")
+			mySequence := backup.BasicRelation("public", "my_sequence")
+
+			backup.SetIncludeTables([]string{"public.seq_table"})
+			sequences := backup.GetAllSequenceRelations(connection, map[string]string{"public.my_sequence": "public.seq_table"})
+
+			Expect(len(sequences)).To(Equal(1))
+			structmatcher.ExpectStructsToMatchExcluding(&mySequence, &sequences[0], "SchemaOid", "Oid")
+		})
+		It("does not return sequences owned by excluded tables", func() {
+			testhelper.AssertQueryRuns(connection, "CREATE SEQUENCE my_sequence START 10")
+			testhelper.AssertQueryRuns(connection, "CREATE SEQUENCE no_table_sequence START 5")
+			defer testhelper.AssertQueryRuns(connection, "DROP SEQUENCE no_table_sequence")
+
+			testhelper.AssertQueryRuns(connection, "CREATE TABLE seq_table(i int)")
+			defer testhelper.AssertQueryRuns(connection, "DROP TABLE seq_table")
+			testhelper.AssertQueryRuns(connection, "ALTER SEQUENCE my_sequence OWNED BY seq_table.i")
+			noTableSequence := backup.BasicRelation("public", "no_table_sequence")
+
+			backup.SetExcludeTables([]string{"public.seq_table"})
+			sequences := backup.GetAllSequenceRelations(connection, map[string]string{"public.my_sequence": "public.seq_table"})
+
+			Expect(len(sequences)).To(Equal(1))
+			structmatcher.ExpectStructsToMatchExcluding(&noTableSequence, &sequences[0], "SchemaOid", "Oid")
 		})
 	})
 	Describe("GetSequenceDefinition", func() {
@@ -685,10 +717,12 @@ SET SUBPARTITION TEMPLATE
 			testhelper.AssertQueryRuns(connection, "CREATE SEQUENCE my_sequence OWNED BY with_sequence.a;")
 			defer testhelper.AssertQueryRuns(connection, "DROP SEQUENCE my_sequence")
 
-			sequenceMap := backup.GetSequenceColumnOwnerMap(connection)
+			sequenceOwnerTables, sequenceOwnerColumns := backup.GetSequenceColumnOwnerMap(connection)
 
-			Expect(len(sequenceMap)).To(Equal(1))
-			Expect(sequenceMap["public.my_sequence"]).To(Equal("public.with_sequence.a"))
+			Expect(len(sequenceOwnerTables)).To(Equal(1))
+			Expect(len(sequenceOwnerColumns)).To(Equal(1))
+			Expect(sequenceOwnerTables["public.my_sequence"]).To(Equal("public.with_sequence"))
+			Expect(sequenceOwnerColumns["public.my_sequence"]).To(Equal("public.with_sequence.a"))
 		})
 	})
 	Describe("GetAllSequences", func() {
@@ -715,7 +749,7 @@ SET SUBPARTITION TEMPLATE
 				seqTwoDef.LogCnt = 1
 			}
 
-			results := backup.GetAllSequences(connection)
+			results := backup.GetAllSequences(connection, map[string]string{})
 
 			structmatcher.ExpectStructsToMatchExcluding(&seqOneRelation, &results[0].Relation, "SchemaOid", "Oid")
 			structmatcher.ExpectStructsToMatchExcluding(&seqOneDef, &results[0].SequenceDefinition)

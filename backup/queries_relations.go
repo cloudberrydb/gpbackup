@@ -487,7 +487,7 @@ AND p.oid NOT IN (select objid from pg_depend where deptype = 'e')`
 	return tables
 }
 
-func GetAllSequenceRelations(connection *dbconn.DBConn) []Relation {
+func GetAllSequenceRelations(connection *dbconn.DBConn, sequenceOwnerTables map[string]string) []Relation {
 	query := fmt.Sprintf(`SELECT
 	n.oid AS schemaoid,
 	c.oid AS oid,
@@ -504,7 +504,23 @@ ORDER BY n.nspname, c.relname;`, SchemaFilterClause("n"))
 	results := make([]Relation, 0)
 	err := connection.Select(&results, query)
 	gplog.FatalOnError(err)
-	return results
+
+	var tableSet *utils.FilterSet
+	if len(excludeTables) > 0 {
+		tableSet = utils.NewExcludeSet(excludeTables)
+	} else if len(includeTables) > 0 {
+		tableSet = utils.NewIncludeSet(includeTables)
+	} else {
+		return results
+	}
+
+	filteredSequences := make([]Relation, 0)
+	for _, sequence := range results {
+		if tableSet.MatchesFilter(sequenceOwnerTables[sequence.ToString()]) {
+			filteredSequences = append(filteredSequences, sequence)
+		}
+	}
+	return filteredSequences
 }
 
 type SequenceDefinition struct {
@@ -528,7 +544,7 @@ func GetSequenceDefinition(connection *dbconn.DBConn, seqName string) SequenceDe
 	return result
 }
 
-func GetSequenceColumnOwnerMap(connection *dbconn.DBConn) map[string]string {
+func GetSequenceColumnOwnerMap(connection *dbconn.DBConn) (map[string]string, map[string]string) {
 	query := `SELECT
 	quote_ident(n.nspname) AS schema,
 	quote_ident(s.relname) AS name,
@@ -551,15 +567,18 @@ WHERE s.relkind = 'S';`
 		TableName  string
 		ColumnName string
 	}, 0)
-	sequenceOwners := make(map[string]string, 0)
+	sequenceOwnerTables := make(map[string]string, 0)
+	sequenceOwnerColumns := make(map[string]string, 0)
 	err := connection.Select(&results, query)
 	gplog.FatalOnError(err)
 	for _, seqOwner := range results {
 		seqFQN := utils.MakeFQN(seqOwner.Schema, seqOwner.Name)
+		tableFQN := fmt.Sprintf("%s.%s", seqOwner.Schema, seqOwner.TableName)
 		columnFQN := fmt.Sprintf("%s.%s.%s", seqOwner.Schema, seqOwner.TableName, seqOwner.ColumnName)
-		sequenceOwners[seqFQN] = columnFQN
+		sequenceOwnerTables[seqFQN] = tableFQN
+		sequenceOwnerColumns[seqFQN] = columnFQN
 	}
-	return sequenceOwners
+	return sequenceOwnerTables, sequenceOwnerColumns
 }
 
 type View struct {

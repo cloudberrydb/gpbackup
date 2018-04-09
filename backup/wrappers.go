@@ -152,6 +152,12 @@ func RetrieveConstraints(tables ...Relation) ([]Constraint, MetadataMap) {
 	return constraints, conMetadata
 }
 
+func RetrieveSequences() ([]Sequence, map[string]string) {
+	sequenceOwnerTables, sequenceOwnerColumns := GetSequenceColumnOwnerMap(connection)
+	sequences := GetAllSequences(connection, sequenceOwnerTables)
+	return sequences, sequenceOwnerColumns
+}
+
 /*
  * Generic metadata wrapper functions
  */
@@ -321,12 +327,6 @@ func BackupTables(metadataFile *utils.FileWithByteCount, tables []Relation, rela
 		gplog.Verbose("Writing EXCHANGE PARTITION statements to metadata file")
 		PrintExchangeExternalPartitionStatements(metadataFile, globalTOC, extPartInfo, partInfoMap, tables)
 	}
-}
-
-func BackupAlterSequences(metadataFile *utils.FileWithByteCount, sequences []Sequence) {
-	gplog.Verbose("Writing ALTER SEQUENCE statements to metadata file")
-	sequenceColumnOwners := GetSequenceColumnOwnerMap(connection)
-	PrintAlterSequenceStatements(metadataFile, globalTOC, sequences, sequenceColumnOwners)
 }
 
 func BackupProtocols(metadataFile *utils.FileWithByteCount, funcInfoMap map[uint32]FunctionInfo) {
