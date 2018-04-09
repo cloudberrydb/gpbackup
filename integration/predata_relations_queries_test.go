@@ -438,8 +438,7 @@ PARTITION BY RANGE (year)
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE dist_random")
 			oid := testutils.OidFromObjectName(connection, "public", "dist_random", backup.TYPE_RELATION)
 
-			tables := []backup.Relation{{Oid: oid}}
-			distPolicies := backup.GetDistributionPolicies(connection, tables)[oid]
+			distPolicies := backup.GetDistributionPolicies(connection)[oid]
 
 			Expect(distPolicies).To(Equal("DISTRIBUTED RANDOMLY"))
 		})
@@ -448,8 +447,7 @@ PARTITION BY RANGE (year)
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE dist_one")
 			oid := testutils.OidFromObjectName(connection, "public", "dist_one", backup.TYPE_RELATION)
 
-			tables := []backup.Relation{{Oid: oid}}
-			distPolicies := backup.GetDistributionPolicies(connection, tables)[oid]
+			distPolicies := backup.GetDistributionPolicies(connection)[oid]
 
 			Expect(distPolicies).To(Equal("DISTRIBUTED BY (a)"))
 		})
@@ -458,8 +456,7 @@ PARTITION BY RANGE (year)
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE dist_two")
 			oid := testutils.OidFromObjectName(connection, "public", "dist_two", backup.TYPE_RELATION)
 
-			tables := []backup.Relation{{Oid: oid}}
-			distPolicies := backup.GetDistributionPolicies(connection, tables)[oid]
+			distPolicies := backup.GetDistributionPolicies(connection)[oid]
 
 			Expect(distPolicies).To(Equal("DISTRIBUTED BY (a, b)"))
 		})
@@ -468,10 +465,19 @@ PARTITION BY RANGE (year)
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE dist_one")
 			oid := testutils.OidFromObjectName(connection, "public", "dist_one", backup.TYPE_RELATION)
 
-			tables := []backup.Relation{{Oid: oid}}
-			distPolicies := backup.GetDistributionPolicies(connection, tables)[oid]
+			distPolicies := backup.GetDistributionPolicies(connection)[oid]
 
 			Expect(distPolicies).To(Equal(`DISTRIBUTED BY ("group")`))
+		})
+		It("returns distribution policy info for a table DISTRIBUTED REPLICATED", func() {
+			testutils.SkipIfBefore6(connection)
+			testhelper.AssertQueryRuns(connection, `CREATE TABLE dist_one(a int, "group" text) DISTRIBUTED REPLICATED`)
+			defer testhelper.AssertQueryRuns(connection, "DROP TABLE dist_one")
+			oid := testutils.OidFromObjectName(connection, "public", "dist_one", backup.TYPE_RELATION)
+
+			distPolicies := backup.GetDistributionPolicies(connection)[oid]
+
+			Expect(distPolicies).To(Equal(`DISTRIBUTED REPLICATED`))
 		})
 	})
 	Describe("GetPartitionDefinitions", func() {
