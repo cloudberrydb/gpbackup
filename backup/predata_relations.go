@@ -344,6 +344,7 @@ func GetAllSequences(connection *dbconn.DBConn, sequenceOwnerTables map[string]s
 	sequences := make([]Sequence, 0)
 	for _, seqRelation := range sequenceRelations {
 		seqDef := GetSequenceDefinition(connection, seqRelation.ToString())
+		seqDef.OwningTable = sequenceOwnerTables[seqRelation.ToString()]
 		sequence := Sequence{seqRelation, seqDef}
 		sequences = append(sequences, sequence)
 	}
@@ -387,7 +388,7 @@ func PrintCreateSequenceStatements(metadataFile *utils.FileWithByteCount, toc *u
 		metadataFile.MustPrintf("\n\nSELECT pg_catalog.setval('%s', %d, %v);\n", seqFQN, sequence.LastVal, sequence.IsCalled)
 
 		PrintObjectMetadata(metadataFile, sequenceMetadata[sequence.Oid], seqFQN, "SEQUENCE")
-		toc.AddPredataEntry(sequence.Relation.Schema, sequence.Relation.Name, "SEQUENCE", "", start, metadataFile)
+		toc.AddPredataEntry(sequence.Relation.Schema, sequence.Relation.Name, "SEQUENCE", sequence.OwningTable, start, metadataFile)
 	}
 }
 
@@ -399,7 +400,7 @@ func PrintAlterSequenceStatements(metadataFile *utils.FileWithByteCount, toc *ut
 		if owningColumn, hasColumnOwner := sequenceColumnOwners[seqFQN]; hasColumnOwner {
 			start := metadataFile.ByteCount
 			metadataFile.MustPrintf("\n\nALTER SEQUENCE %s OWNED BY %s;\n", seqFQN, owningColumn)
-			toc.AddPredataEntry(sequence.Relation.Schema, sequence.Relation.Name, "SEQUENCE OWNER", "", start, metadataFile)
+			toc.AddPredataEntry(sequence.Relation.Schema, sequence.Relation.Name, "SEQUENCE OWNER", sequence.OwningTable, start, metadataFile)
 		}
 	}
 }

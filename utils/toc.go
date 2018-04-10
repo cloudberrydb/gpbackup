@@ -128,7 +128,7 @@ func shouldIncludeStatement(entry MetadataEntry, objectSet *FilterSet, schemaSet
 	shouldIncludeObject := objectSet.MatchesFilter(entry.ObjectType)
 	shouldIncludeSchema := schemaSet.MatchesFilter(entry.Schema)
 	tableFQN := MakeFQN(entry.Schema, entry.Name)
-	shouldIncludeTable := (tableSet.IsExclude && entry.ObjectType != "TABLE") || // An exclude filter only excludes tables, not other objects
+	shouldIncludeTable := (tableSet.IsExclude && entry.ObjectType != "TABLE" && entry.ReferenceObject == "") ||
 		(entry.ObjectType == "TABLE" && tableSet.MatchesFilter(tableFQN)) || // Tables should match the filter
 		(entry.ReferenceObject != "" && tableSet.MatchesFilter(entry.ReferenceObject)) // Include tables that filtered tables depend on
 	return shouldIncludeObject && shouldIncludeSchema && shouldIncludeTable
