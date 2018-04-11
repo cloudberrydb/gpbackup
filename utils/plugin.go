@@ -94,18 +94,18 @@ func (plugin *PluginConfig) SetupPluginForRestoreOnAllHosts(c cluster.Cluster, c
 	})
 }
 
-func (plugin *PluginConfig) CleanupPluginForBackupOnAllHosts(c cluster.Cluster) {
+func (plugin *PluginConfig) CleanupPluginForBackupOnAllHosts(c cluster.Cluster, configPath string, backupDir string) {
 	remoteOutput := c.GenerateAndExecuteCommand("Running plugin cleanup for backup on all hosts", func(contentID int) string {
-		return fmt.Sprintf("%s cleanup_plugin_for_backup", plugin.ExecutablePath)
+		return fmt.Sprintf("%s cleanup_plugin_for_backup %s %s", plugin.ExecutablePath, configPath, backupDir)
 	}, cluster.ON_HOSTS_AND_MASTER)
 	c.CheckClusterError(remoteOutput, fmt.Sprintf("Unable to cleanup plugin %s", plugin.ExecutablePath), func(contentID int) string {
 		return fmt.Sprintf("Unable to cleanup plugin %s", plugin.ExecutablePath)
 	}, true)
 }
 
-func (plugin *PluginConfig) CleanupPluginForRestoreOnAllHosts(c cluster.Cluster) {
+func (plugin *PluginConfig) CleanupPluginForRestoreOnAllHosts(c cluster.Cluster, configPath string, backupDir string) {
 	remoteOutput := c.GenerateAndExecuteCommand("Running plugin cleanup for restore on all hosts", func(contentID int) string {
-		return fmt.Sprintf("%s cleanup_plugin_for_restore", plugin.ExecutablePath)
+		return fmt.Sprintf("%s cleanup_plugin_for_restore %s %s", plugin.ExecutablePath, configPath, backupDir)
 	}, cluster.ON_HOSTS_AND_MASTER)
 	c.CheckClusterError(remoteOutput, fmt.Sprintf("Unable to cleanup plugin %s", plugin.ExecutablePath), func(contentID int) string {
 		return fmt.Sprintf("Unable to cleanup plugin %s", plugin.ExecutablePath)

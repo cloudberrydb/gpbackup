@@ -339,7 +339,7 @@ func DoTeardown() {
 		if pluginConfig != nil {
 			pluginConfig.BackupFile(configFilename, true)
 			pluginConfig.BackupFile(reportFilename, true)
-			pluginConfig.CleanupPluginForBackupOnAllHosts(globalCluster)
+			pluginConfig.CleanupPluginForBackupOnAllHosts(globalCluster, pluginConfig.ConfigPath, globalFPInfo.GetDirForContent(-1))
 		}
 	}
 
