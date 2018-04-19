@@ -95,6 +95,7 @@ var _ = Describe("backup end to end integration tests", func() {
 
 		}
 		err := helperCmd.Wait()
+		printHelperLogOnError(err)
 		Expect(err).ToNot(HaveOccurred())
 		assertBackupArtifacts(false, false)
 	})
@@ -111,6 +112,7 @@ var _ = Describe("backup end to end integration tests", func() {
 
 		}
 		err := helperCmd.Wait()
+		printHelperLogOnError(err)
 		Expect(err).ToNot(HaveOccurred())
 		assertBackupArtifacts(true, false)
 	})
@@ -127,6 +129,7 @@ var _ = Describe("backup end to end integration tests", func() {
 
 		}
 		err := helperCmd.Wait()
+		printHelperLogOnError(err)
 		Expect(err).ToNot(HaveOccurred())
 		assertBackupArtifacts(false, true)
 	})
@@ -143,6 +146,7 @@ var _ = Describe("backup end to end integration tests", func() {
 
 		}
 		err := helperCmd.Wait()
+		printHelperLogOnError(err)
 		Expect(err).ToNot(HaveOccurred())
 		assertBackupArtifacts(true, true)
 	})
@@ -154,6 +158,7 @@ var _ = Describe("backup end to end integration tests", func() {
 			Expect(string(contents)).To(Equal("here is some data\n"))
 		}
 		err := helperCmd.Wait()
+		printHelperLogOnError(err)
 		Expect(err).ToNot(HaveOccurred())
 		assertNoErrors()
 	})
@@ -165,6 +170,7 @@ var _ = Describe("backup end to end integration tests", func() {
 			Expect(string(contents)).To(Equal("here is some data\n"))
 		}
 		err := helperCmd.Wait()
+		printHelperLogOnError(err)
 		Expect(err).ToNot(HaveOccurred())
 		assertNoErrors()
 	})
@@ -176,6 +182,7 @@ var _ = Describe("backup end to end integration tests", func() {
 			Expect(string(contents)).To(Equal("here is some data\n"))
 		}
 		err := helperCmd.Wait()
+		printHelperLogOnError(err)
 		Expect(err).ToNot(HaveOccurred())
 		assertNoErrors()
 	})
@@ -268,4 +275,14 @@ func assertBackupArtifacts(withCompression bool, withPlugin bool) {
 	Expect(err).ToNot(HaveOccurred())
 	Expect(string(contents)).To(Equal(expectedTOC))
 	assertNoErrors()
+}
+
+func printHelperLogOnError(helperErr error) {
+	if helperErr != nil {
+		homeDir := os.Getenv("HOME")
+		helperFiles, _ := filepath.Glob(filepath.Join(homeDir, "gpAdminLogs/gpbackup_helper_*"))
+		command := exec.Command("tail", "-n 20", helperFiles[len(helperFiles)-1])
+		output, _ := command.CombinedOutput()
+		fmt.Println(string(output))
+	}
 }
