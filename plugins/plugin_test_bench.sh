@@ -11,7 +11,7 @@ SUPPORTED_API_VERSION="0.1.0"
 # ----------------------------------------------
 if [ $# -ne 2 ]
   then
-    echo "Usage: plugin_test.sh [path_to_executable] [plugin_config]"
+    echo "Usage: plugin_test_bench.sh [path_to_executable] [plugin_config]"
     exit 1
 fi
 

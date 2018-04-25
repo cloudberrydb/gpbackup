@@ -18,6 +18,12 @@ resources:
     uri: https://github.com/greenplum-db/gpbackup
     branch: master
 
+- name: gpbackup_s3_plugin
+  type: git
+  source:
+    branch: master
+    uri: https://github.com/greenplum-db/gpbackup-s3-plugin
+
 - name: gpbackup_tagged_src
   type: git
   source:
@@ -144,6 +150,92 @@ jobs:
     file: gpbackup/ci/tasks/unit-tests.yml
     on_failure:
       *slack_alert
+
+- name: s3_plugin_tests
+  plan:
+  - aggregate:
+    - get: gpbackup_s3_plugin
+      trigger: true
+    - get: gpbackup
+      trigger: true
+    - get: ccp_src
+    - get: gpdb_src
+    - get: bin_gpdb_5x_stable
+  - put: terraform
+    params:
+      <<: *ccp_default_params
+      vars:
+        <<: *ccp_default_vars
+  - task: gen_cluster
+    file: ccp_src/ci/tasks/gen_cluster.yml
+    params:
+      <<: *ccp_gen_cluster_default_params
+    input_mapping:
+      gpdb_binary: bin_gpdb_5x_stable
+      gpdb_src: gpdb_src
+  - task: gpinitsystem
+    file: ccp_src/ci/tasks/gpinitsystem.yml
+  - task: setup-centos-env
+    file: gpbackup/ci/tasks/setup-centos-env.yml
+  - task: run_tests
+    config:
+      platform: linux
+      inputs:
+       - name: gpbackup
+         path: go/src/github.com/greenplum-db/gpbackup
+       - name: gpbackup_s3_plugin
+         path: go/src/github.com/greenplum-db/gpbackup-s3-plugin
+       - name: ccp_src
+       - name: cluster_env_files
+
+      image_resource:
+        type: docker-image
+        source:
+          repository: golang
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -ex
+
+          ccp_src/scripts/setup_ssh_to_cluster.sh
+          scp -r go/src/github.com/greenplum-db/gpbackup-s3-plugin mdw:/home/gpadmin/go/src/github.com/greenplum-db/gpbackup-s3-plugin
+
+          cat <<SCRIPT > /tmp/run_tests.bash
+          set -ex
+          source env.sh
+
+          cd \$GOPATH/src/github.com/greenplum-db
+          pushd gpbackup-s3-plugin
+          make depend
+          make unit
+          make build
+          popd
+
+              cat << CONFIG > \$HOME/s3_config.yaml
+              executablepath: \$GPHOME/bin/gpbackup_s3_plugin
+              options:
+                region: us-west-2
+                aws_access_key_id: {{bucket-access-key-id}}
+                aws_secret_access_key: {{bucket-secret-access-key}}
+                bucket: {{gpbackup-bucket}}
+                backupdir: test/backup
+          CONFIG
+
+          pushd gpbackup/plugins
+          ./plugin_test_bench.sh \$GOPATH/bin/gpbackup_s3_plugin \$HOME/s3_config.yaml
+          SCRIPT
+
+          chmod +x /tmp/run_tests.bash
+          scp /tmp/run_tests.bash mdw:/home/gpadmin/run_tests.bash
+          ssh -t mdw "bash /home/gpadmin/run_tests.bash"
+    on_success:
+      <<: *ccp_destroy
+    on_failure:
+      *slack_alert
+  ensure:
+    <<: *set_failed
 
 - name: integrations-GPDB5-sles
   plan:
@@ -448,6 +540,7 @@ jobs:
        - integrations-GPDB5
        - integrations-GPDB4.3
        - integrations-GPDB5-sles
+       - s3_plugin_tests
   - task: compile_gpbackup
     config:
       platform: linux
