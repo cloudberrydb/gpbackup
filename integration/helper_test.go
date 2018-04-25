@@ -67,154 +67,153 @@ func buildAndInstallBinaries() string {
 	return fmt.Sprintf("%s/gpbackup_helper", binDir)
 }
 
-var _ = Describe("backup end to end integration tests", func() {
+var _ = Describe("gpbackup_helper end to end integration tests", func() {
 	BeforeEach(func() {
-		os.RemoveAll(testDir)
-		os.MkdirAll(testDir, 0777)
-		os.RemoveAll(pluginDir)
-		os.MkdirAll(pluginDir, 0777)
+		err := os.RemoveAll(testDir)
+		Expect(err).ToNot(HaveOccurred())
+		err = os.MkdirAll(testDir, 0777)
+		Expect(err).ToNot(HaveOccurred())
+		err = os.RemoveAll(pluginDir)
+		Expect(err).ToNot(HaveOccurred())
+		err = os.MkdirAll(pluginDir, 0777)
+		Expect(err).ToNot(HaveOccurred())
 
-		err := syscall.Mkfifo(fmt.Sprintf("%s_%d", pipeFile, 1), 0777)
+		err = syscall.Mkfifo(fmt.Sprintf("%s_%d", pipeFile, 1), 0777)
 		if err != nil {
 			Fail(fmt.Sprintf("%v", err))
 		}
 	})
-	AfterEach(func() {
+	Context("backup tests", func() {
+		BeforeEach(func() {
+			f, _ := os.Create(oidFile)
+			f.WriteString("1\n2\n3\n")
+		})
+		It("runs backup gpbackup_helper without compression", func() {
+			helperCmd := gpbackupHelper(gpbackupHelperPath, "--backup-agent", "--compression-level", "0", "--data-file", dataFileFullPath)
+			for i := 1; i <= 3; i++ {
+				output, err := exec.Command("bash", "-c", fmt.Sprintf(`echo "here is some data" > %s_%d`, pipeFile, i)).CombinedOutput()
+				if err != nil {
+					fmt.Printf("%s", output)
+					Fail(fmt.Sprintf("%v", err))
+				}
 
-	})
-	It("runs backup gpbackup_helper without compression", func() {
-		f, _ := os.Create(oidFile)
-		f.WriteString("1\n2\n3\n")
-		helperCmd := gpbackupHelper(gpbackupHelperPath, "--backup-agent", "--compression-level", "0", "--data-file", dataFileFullPath)
-		for i := 1; i <= 3; i++ {
-			output, err := exec.Command("bash", "-c", fmt.Sprintf(`echo "here is some data" > %s_%d`, pipeFile, i)).CombinedOutput()
-			if err != nil {
-				fmt.Printf("%s", output)
-				Fail(fmt.Sprintf("%v", err))
 			}
+			err := helperCmd.Wait()
+			printHelperLogOnError(err)
+			Expect(err).ToNot(HaveOccurred())
+			assertBackupArtifacts(false, false)
+		})
+		It("runs backup gpbackup_helper with compression", func() {
+			helperCmd := gpbackupHelper(gpbackupHelperPath, "--backup-agent", "--compression-level", "1", "--data-file", dataFileFullPath+".gz")
+			for i := 1; i <= 3; i++ {
+				output, err := exec.Command("bash", "-c", fmt.Sprintf("echo here is some data > %s_%d", pipeFile, i)).CombinedOutput()
+				if err != nil {
+					fmt.Printf("%s", output)
+					Fail(fmt.Sprintf("%v", err))
+				}
 
-		}
-		err := helperCmd.Wait()
-		printHelperLogOnError(err)
-		Expect(err).ToNot(HaveOccurred())
-		assertBackupArtifacts(false, false)
-	})
-	It("runs backup gpbackup_helper with compression", func() {
-		f, _ := os.Create(oidFile)
-		f.WriteString("1\n2\n3\n")
-		helperCmd := gpbackupHelper(gpbackupHelperPath, "--backup-agent", "--compression-level", "1", "--data-file", dataFileFullPath+".gz")
-		for i := 1; i <= 3; i++ {
-			output, err := exec.Command("bash", "-c", fmt.Sprintf("echo here is some data > %s_%d", pipeFile, i)).CombinedOutput()
-			if err != nil {
-				fmt.Printf("%s", output)
-				Fail(fmt.Sprintf("%v", err))
 			}
+			err := helperCmd.Wait()
+			printHelperLogOnError(err)
+			Expect(err).ToNot(HaveOccurred())
+			assertBackupArtifacts(true, false)
+		})
+		It("runs backup gpbackup_helper without compression with plugin", func() {
+			helperCmd := gpbackupHelper(gpbackupHelperPath, "--backup-agent", "--compression-level", "0", "--data-file", dataFileFullPath, "--plugin-config", pluginConfigPath)
+			for i := 1; i <= 3; i++ {
+				output, err := exec.Command("bash", "-c", fmt.Sprintf("echo here is some data > %s_%d", pipeFile, i)).CombinedOutput()
+				if err != nil {
+					fmt.Printf("%s", output)
+					Fail(fmt.Sprintf("%v", err))
+				}
 
-		}
-		err := helperCmd.Wait()
-		printHelperLogOnError(err)
-		Expect(err).ToNot(HaveOccurred())
-		assertBackupArtifacts(true, false)
-	})
-	It("runs backup gpbackup_helper without compression with plugin", func() {
-		f, _ := os.Create(oidFile)
-		f.WriteString("1\n2\n3\n")
-		helperCmd := gpbackupHelper(gpbackupHelperPath, "--backup-agent", "--compression-level", "0", "--data-file", dataFileFullPath, "--plugin-config", pluginConfigPath)
-		for i := 1; i <= 3; i++ {
-			output, err := exec.Command("bash", "-c", fmt.Sprintf("echo here is some data > %s_%d", pipeFile, i)).CombinedOutput()
-			if err != nil {
-				fmt.Printf("%s", output)
-				Fail(fmt.Sprintf("%v", err))
 			}
+			err := helperCmd.Wait()
+			printHelperLogOnError(err)
+			Expect(err).ToNot(HaveOccurred())
+			assertBackupArtifacts(false, true)
+		})
+		It("runs backup gpbackup_helper with compression with plugin", func() {
+			helperCmd := gpbackupHelper(gpbackupHelperPath, "--backup-agent", "--compression-level", "1", "--data-file", dataFileFullPath+".gz", "--plugin-config", pluginConfigPath)
+			for i := 1; i <= 3; i++ {
+				output, err := exec.Command("bash", "-c", fmt.Sprintf("echo here is some data > %s_%d", pipeFile, i)).CombinedOutput()
+				if err != nil {
+					fmt.Printf("%s", output)
+					Fail(fmt.Sprintf("%v", err))
+				}
 
-		}
-		err := helperCmd.Wait()
-		printHelperLogOnError(err)
-		Expect(err).ToNot(HaveOccurred())
-		assertBackupArtifacts(false, true)
-	})
-	It("runs backup gpbackup_helper with compression with plugin", func() {
-		f, _ := os.Create(oidFile)
-		f.WriteString("1\n2\n3\n")
-		helperCmd := gpbackupHelper(gpbackupHelperPath, "--backup-agent", "--compression-level", "1", "--data-file", dataFileFullPath+".gz", "--plugin-config", pluginConfigPath)
-		for i := 1; i <= 3; i++ {
-			output, err := exec.Command("bash", "-c", fmt.Sprintf("echo here is some data > %s_%d", pipeFile, i)).CombinedOutput()
-			if err != nil {
-				fmt.Printf("%s", output)
-				Fail(fmt.Sprintf("%v", err))
 			}
-
-		}
-		err := helperCmd.Wait()
-		printHelperLogOnError(err)
-		Expect(err).ToNot(HaveOccurred())
-		assertBackupArtifacts(true, true)
+			err := helperCmd.Wait()
+			printHelperLogOnError(err)
+			Expect(err).ToNot(HaveOccurred())
+			assertBackupArtifacts(true, true)
+		})
+		It("Generates error file when backup agent interrupted", func() {
+			helperCmd := gpbackupHelper(gpbackupHelperPath, "--backup-agent", "--compression-level", "0", "--data-file", dataFileFullPath)
+			time.Sleep(200 * time.Millisecond)
+			err := helperCmd.Process.Signal(os.Interrupt)
+			Expect(err).ToNot(HaveOccurred())
+			err = helperCmd.Wait()
+			Expect(err).To(HaveOccurred())
+			assertErrorsHandled()
+		})
 	})
-	It("runs restore gpbackup_helper without compression", func() {
-		setupRestoreFiles(false, false)
-		helperCmd := gpbackupHelper(gpbackupHelperPath, "--restore-agent", "--data-file", dataFileFullPath)
-		for _, i := range []int{1, 3} {
-			contents, _ := ioutil.ReadFile(fmt.Sprintf("%s_%d", pipeFile, i))
-			Expect(string(contents)).To(Equal("here is some data\n"))
-		}
-		err := helperCmd.Wait()
-		printHelperLogOnError(err)
-		Expect(err).ToNot(HaveOccurred())
-		assertNoErrors()
-	})
-	It("runs restore gpbackup_helper with compression", func() {
-		setupRestoreFiles(true, false)
-		helperCmd := gpbackupHelper(gpbackupHelperPath, "--restore-agent", "--data-file", dataFileFullPath+".gz")
-		for _, i := range []int{1, 3} {
-			contents, _ := ioutil.ReadFile(fmt.Sprintf("%s_%d", pipeFile, i))
-			Expect(string(contents)).To(Equal("here is some data\n"))
-		}
-		err := helperCmd.Wait()
-		printHelperLogOnError(err)
-		Expect(err).ToNot(HaveOccurred())
-		assertNoErrors()
-	})
-	It("runs restore gpbackup_helper without compression with plugin", func() {
-		setupRestoreFiles(false, true)
-		helperCmd := gpbackupHelper(gpbackupHelperPath, "--restore-agent", "--data-file", dataFileFullPath, "--plugin-config", pluginConfigPath)
-		for _, i := range []int{1, 3} {
-			contents, _ := ioutil.ReadFile(fmt.Sprintf("%s_%d", pipeFile, i))
-			Expect(string(contents)).To(Equal("here is some data\n"))
-		}
-		err := helperCmd.Wait()
-		printHelperLogOnError(err)
-		Expect(err).ToNot(HaveOccurred())
-		assertNoErrors()
-	})
-	It("runs restore gpbackup_helper with compression with plugin", func() {
-		setupRestoreFiles(true, true)
-		gpbackupHelper(gpbackupHelperPath, "--restore-agent", "--data-file", dataFileFullPath+".gz", "--plugin-config", pluginConfigPath)
-		for _, i := range []int{1, 3} {
-			contents, _ := ioutil.ReadFile(fmt.Sprintf("%s_%d", pipeFile, i))
-			Expect(string(contents)).To(Equal("here is some data\n"))
-		}
-		assertNoErrors()
-	})
-	It("Generates error file when backup agent interrupted", func() {
-		f, _ := os.Create(oidFile)
-		f.WriteString("1\n2\n3\n")
-		helperCmd := gpbackupHelper(gpbackupHelperPath, "--backup-agent", "--compression-level", "0", "--data-file", dataFileFullPath)
-		time.Sleep(200 * time.Millisecond)
-		err := helperCmd.Process.Signal(os.Interrupt)
-		Expect(err).ToNot(HaveOccurred())
-		err = helperCmd.Wait()
-		Expect(err).To(HaveOccurred())
-		assertErrorsHandled()
-	})
-	It("Generates error file when restore agent interrupted", func() {
-		setupRestoreFiles(true, false)
-		helperCmd := gpbackupHelper(gpbackupHelperPath, "--restore-agent", "--data-file", dataFileFullPath+".gz")
-		time.Sleep(200 * time.Millisecond)
-		err := helperCmd.Process.Signal(os.Interrupt)
-		Expect(err).ToNot(HaveOccurred())
-		err = helperCmd.Wait()
-		Expect(err).To(HaveOccurred())
-		assertErrorsHandled()
+	Context("restore tests", func() {
+		It("runs restore gpbackup_helper without compression", func() {
+			setupRestoreFiles(false, false)
+			helperCmd := gpbackupHelper(gpbackupHelperPath, "--restore-agent", "--data-file", dataFileFullPath)
+			for _, i := range []int{1, 3} {
+				contents, _ := ioutil.ReadFile(fmt.Sprintf("%s_%d", pipeFile, i))
+				Expect(string(contents)).To(Equal("here is some data\n"))
+			}
+			err := helperCmd.Wait()
+			printHelperLogOnError(err)
+			Expect(err).ToNot(HaveOccurred())
+			assertNoErrors()
+		})
+		It("runs restore gpbackup_helper with compression", func() {
+			setupRestoreFiles(true, false)
+			helperCmd := gpbackupHelper(gpbackupHelperPath, "--restore-agent", "--data-file", dataFileFullPath+".gz")
+			for _, i := range []int{1, 3} {
+				contents, _ := ioutil.ReadFile(fmt.Sprintf("%s_%d", pipeFile, i))
+				Expect(string(contents)).To(Equal("here is some data\n"))
+			}
+			err := helperCmd.Wait()
+			printHelperLogOnError(err)
+			Expect(err).ToNot(HaveOccurred())
+			assertNoErrors()
+		})
+		It("runs restore gpbackup_helper without compression with plugin", func() {
+			setupRestoreFiles(false, true)
+			helperCmd := gpbackupHelper(gpbackupHelperPath, "--restore-agent", "--data-file", dataFileFullPath, "--plugin-config", pluginConfigPath)
+			for _, i := range []int{1, 3} {
+				contents, _ := ioutil.ReadFile(fmt.Sprintf("%s_%d", pipeFile, i))
+				Expect(string(contents)).To(Equal("here is some data\n"))
+			}
+			err := helperCmd.Wait()
+			printHelperLogOnError(err)
+			Expect(err).ToNot(HaveOccurred())
+			assertNoErrors()
+		})
+		It("runs restore gpbackup_helper with compression with plugin", func() {
+			setupRestoreFiles(true, true)
+			gpbackupHelper(gpbackupHelperPath, "--restore-agent", "--data-file", dataFileFullPath+".gz", "--plugin-config", pluginConfigPath)
+			for _, i := range []int{1, 3} {
+				contents, _ := ioutil.ReadFile(fmt.Sprintf("%s_%d", pipeFile, i))
+				Expect(string(contents)).To(Equal("here is some data\n"))
+			}
+			assertNoErrors()
+		})
+		It("Generates error file when restore agent interrupted", func() {
+			setupRestoreFiles(true, false)
+			helperCmd := gpbackupHelper(gpbackupHelperPath, "--restore-agent", "--data-file", dataFileFullPath+".gz")
+			time.Sleep(200 * time.Millisecond)
+			err := helperCmd.Process.Signal(os.Interrupt)
+			Expect(err).ToNot(HaveOccurred())
+			err = helperCmd.Wait()
+			Expect(err).To(HaveOccurred())
+			assertErrorsHandled()
+		})
 	})
 })
 
