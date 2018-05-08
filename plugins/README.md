@@ -17,13 +17,6 @@ gprestore ... --plugin-config <Absolute path to config file>
 ```
 The backup you are restoring must have been taken with the same plugin.
 
-## Plugin flow within gpbackup and gprestore
-### Backup Plugin Flow
-![Backup Plugin Flow](https://github.com/greenplum-db/gpbackup/wiki/backup_plugin_flow.png)
-
-### Restore Plugin Flow
-![Restore Plugin Flow](https://github.com/greenplum-db/gpbackup/wiki/restore_plugin_flow.png)
-
 ## Plugin configuration file format
 The plugin configuration must be specified in a yaml file. This yaml file is only required to exist on the master host.
 
@@ -274,6 +267,13 @@ None
 ```
 test_plugin plugin_api_version
 ```
+
+## Plugin flow within gpbackup and gprestore
+### Backup Plugin Flow
+![Backup Plugin Flow](https://github.com/greenplum-db/gpbackup/wiki/backup_plugin_flow.png)
+
+### Restore Plugin Flow
+![Restore Plugin Flow](https://github.com/greenplum-db/gpbackup/wiki/restore_plugin_flow.png)
 
 ## Custom yaml file
 Parameters specific to a plugin can be specified through the plugin configuration yaml file. The _executablepath_ key is required and used by gpbackup and gprestore. Additional arguments should be specified under the _options_ keyword. A path to this file is passed as the first argument to every API command. Options and valid arguments should be documented by the plugin.
