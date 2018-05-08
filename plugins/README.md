@@ -17,6 +17,13 @@ gprestore ... --plugin-config <Absolute path to config file>
 ```
 The backup you are restoring must have been taken with the same plugin.
 
+## Plugin flow within gpbackup and gprestore
+### Backup Plugin Flow
+![Backup Plugin Flow](https://github.com/greenplum-db/gpbackup/wiki/backup_plugin_flow.png)
+
+### Restore Plugin Flow
+![Restore Plugin Flow](https://github.com/greenplum-db/gpbackup/wiki/restore_plugin_flow.png)
+
 ## Plugin configuration file format
 The plugin configuration must be specified in a yaml file. This yaml file is only required to exist on the master host.
 
