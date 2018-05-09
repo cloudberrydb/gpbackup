@@ -31,7 +31,7 @@ options:
 ```
 
 ## Available plugins
-[gp_s3plugin](https://github.com/greenplum-db/gpbackup-s3-plugin): Allows users to back up their Greenplum Database to Amazon S3.
+[gpbackup_s3_plugin](https://github.com/greenplum-db/gpbackup-s3-plugin): Allows users to back up their Greenplum Database to Amazon S3.
 
 ## Developing plugins
 
@@ -280,7 +280,7 @@ Parameters specific to a plugin can be specified through the plugin configuratio
 
 Example yaml file for s3:
 ```
-executablepath: <full path to gp_s3plugin>
+executablepath: <full path to gpbackup_s3_plugin>
 options:
   region: us-west-2
   aws_access_key_id: ...
