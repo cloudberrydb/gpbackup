@@ -6,7 +6,7 @@ setup_plugin_for_backup(){
 }
 
 setup_plugin_for_restore(){
-  mkdir -p $2
+  :
 }
 
 cleanup_plugin_for_backup(){

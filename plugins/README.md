@@ -105,7 +105,7 @@ test_plugin setup_plugin_for_backup /home/test_plugin_config.yaml /data_dir/back
 
 ### <a name="setup_plugin_for_restore">setup_plugin_for_restore</a>
 
-Steps necessary to initialize plugin before restore begins. E.g. Creating local directories, validating connectivity, etc.
+Steps necessary to initialize plugin before restore begins. E.g. validating connectivity
 
 **Usage within gprestore:**
 

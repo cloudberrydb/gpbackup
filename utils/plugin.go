@@ -46,6 +46,9 @@ func (plugin *PluginConfig) BackupFile(filenamePath string, noFatal ...bool) {
 }
 
 func (plugin *PluginConfig) RestoreFile(filenamePath string) {
+	directory, _ := filepath.Split(filenamePath)
+	err := operating.System.MkdirAll(directory, 0755)
+	gplog.FatalOnError(err)
 	command := fmt.Sprintf("%s restore_file %s %s", plugin.ExecutablePath, plugin.ConfigPath, filenamePath)
 	output, err := exec.Command("bash", "-c", command).CombinedOutput()
 	gplog.FatalOnError(err, string(output))
@@ -143,7 +146,7 @@ func (plugin *PluginConfig) BackupSegmentTOCs(c cluster.Cluster, fpInfo FilePath
 func (plugin *PluginConfig) RestoreSegmentTOCs(c cluster.Cluster, fpInfo FilePathInfo) {
 	remoteOutput := c.GenerateAndExecuteCommand("Processing segment TOC files with plugin", func(contentID int) string {
 		tocFile := fpInfo.GetSegmentTOCFilePath(contentID)
-		return fmt.Sprintf("%s restore_file %s %s", plugin.ExecutablePath, plugin.ConfigPath, tocFile)
+		return fmt.Sprintf("mkdir -p %s && %s restore_file %s %s", fpInfo.GetDirForContent(contentID), plugin.ExecutablePath, plugin.ConfigPath, tocFile)
 	}, cluster.ON_SEGMENTS)
 	c.CheckClusterError(remoteOutput, "Unable to process segment TOC files using plugin", func(contentID int) string {
 		return fmt.Sprintf("Unable to process segment TOC files using plugin")
