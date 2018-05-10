@@ -329,7 +329,6 @@ func DoTeardown() {
 		fmt.Println(errStr)
 	}
 	errMsg := utils.ParseErrorMessage(errStr)
-	errorCode := gplog.GetErrorCode()
 
 	/*
 	 * Only create a report file if we fail after the cluster is initialized
@@ -338,7 +337,7 @@ func DoTeardown() {
 	if globalFPInfo.Timestamp != "" {
 		_, statErr := os.Stat(globalFPInfo.GetDirForContent(-1))
 		if statErr != nil { // Even if this isn't os.IsNotExist, don't try to write a report file in case of further errors
-			os.Exit(errorCode)
+			os.Exit(gplog.GetErrorCode())
 		}
 		reportFilename := globalFPInfo.GetBackupReportFilePath()
 		configFilename := globalFPInfo.GetConfigFilePath()
@@ -363,6 +362,7 @@ func DoTeardown() {
 
 	DoCleanup()
 
+	errorCode := gplog.GetErrorCode()
 	if errorCode == 0 {
 		gplog.Info("Backup completed successfully")
 	}
