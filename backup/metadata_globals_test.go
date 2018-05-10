@@ -65,7 +65,7 @@ GRANT TEMPORARY,CONNECT ON DATABASE testdb TO testrole;`)
 	Describe("PrintDatabaseGUCs", func() {
 		dbname := "testdb"
 		defaultOidGUC := "SET default_with_oids TO 'true'"
-		searchPathGUC := "SET search_path TO 'pg_catalog, public'"
+		searchPathGUC := "SET search_path TO pg_catalog, public"
 		defaultStorageGUC := "SET gp_default_storage_options TO 'appendonly=true,blocksize=32768'"
 
 		It("prints single database GUC", func() {
@@ -81,7 +81,7 @@ GRANT TEMPORARY,CONNECT ON DATABASE testdb TO testrole;`)
 			backup.PrintDatabaseGUCs(backupfile, toc, gucs, dbname)
 			testutils.AssertBufferContents(toc.GlobalEntries, buffer,
 				`ALTER DATABASE testdb SET default_with_oids TO 'true';`,
-				`ALTER DATABASE testdb SET search_path TO 'pg_catalog, public';`,
+				`ALTER DATABASE testdb SET search_path TO pg_catalog, public;`,
 				`ALTER DATABASE testdb SET gp_default_storage_options TO 'appendonly=true,blocksize=32768';`)
 		})
 	})

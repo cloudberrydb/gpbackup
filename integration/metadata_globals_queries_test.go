@@ -26,15 +26,16 @@ var _ = Describe("backup integration tests", func() {
 	Describe("GetDatabaseGUCs", func() {
 		It("returns a slice of values for database level GUCs", func() {
 			testhelper.AssertQueryRuns(connection, "ALTER DATABASE testdb SET default_with_oids TO true")
-			defer testhelper.AssertQueryRuns(connection, "ALTER DATABASE testdb SET default_with_oids TO false")
+			defer testhelper.AssertQueryRuns(connection, "ALTER DATABASE testdb RESET default_with_oids")
 			testhelper.AssertQueryRuns(connection, "ALTER DATABASE testdb SET search_path TO public,pg_catalog")
-			defer testhelper.AssertQueryRuns(connection, "ALTER DATABASE testdb SET search_path TO pg_catalog,public")
+			defer testhelper.AssertQueryRuns(connection, "ALTER DATABASE testdb RESET search_path")
 			testhelper.AssertQueryRuns(connection, "ALTER DATABASE testdb SET lc_time TO 'C'")
+			defer testhelper.AssertQueryRuns(connection, "ALTER DATABASE testdb RESET lc_time")
 			results := backup.GetDatabaseGUCs(connection)
 			Expect(len(results)).To(Equal(3))
-			Expect(results[0]).To(Equal(`SET default_with_oids TO "true"`))
+			Expect(results[0]).To(Equal(`SET default_with_oids TO 'true'`))
 			Expect(results[1]).To(Equal("SET search_path TO public, pg_catalog"))
-			Expect(results[2]).To(Equal(`SET lc_time TO "C"`))
+			Expect(results[2]).To(Equal(`SET lc_time TO 'C'`))
 		})
 	})
 	Describe("GetDatabaseInfo", func() {

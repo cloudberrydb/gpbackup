@@ -17,6 +17,22 @@ var _ = Describe("backup integration create statement tests", func() {
 	BeforeEach(func() {
 		toc, backupfile = testutils.InitializeTestTOC(buffer, "predata")
 	})
+	Describe("PrintDatabaseGUCs", func() {
+		defaultOidGUC := "SET default_with_oids TO 'true'"
+		searchPathGUC := "SET search_path TO pg_catalog, public"
+		defaultStorageGUC := "SET gp_default_storage_options TO 'appendonly=true, compresslevel=6, orientation=row, compresstype=none'"
+		It("creates database GUCs with correct quoting", func() {
+			gucs := []string{defaultOidGUC, searchPathGUC, defaultStorageGUC}
+
+			backup.PrintDatabaseGUCs(backupfile, toc, gucs, "testdb")
+			testhelper.AssertQueryRuns(connection, buffer.String())
+			defer testhelper.AssertQueryRuns(connection, "ALTER DATABASE testdb RESET default_with_oids")
+			defer testhelper.AssertQueryRuns(connection, "ALTER DATABASE testdb RESET search_path")
+			defer testhelper.AssertQueryRuns(connection, "ALTER DATABASE testdb RESET gp_default_storage_options")
+			resultGUCs := backup.GetDatabaseGUCs(connection)
+			Expect(resultGUCs).To(Equal(gucs))
+		})
+	})
 	Describe("PrintCreateResourceQueueStatements", func() {
 		It("creates a basic resource queue with a comment", func() {
 			basicQueue := backup.ResourceQueue{Oid: 1, Name: `"basicQueue"`, ActiveStatements: -1, MaxCost: "32.80", CostOvercommit: false, MinCost: "0.00", Priority: "medium", MemoryLimit: "-1"}
