@@ -2,6 +2,7 @@ package integration
 
 import (
 	"regexp"
+	"sort"
 
 	"github.com/greenplum-db/gp-common-go-libs/structmatcher"
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
@@ -173,7 +174,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				role1.ResGroup = ""
 			}
 			roleConfigMap := map[string][]string{
-				"role1": {"SET search_path TO public"},
+				"role1": {"SET gp_default_storage_options TO 'appendonly=true, compresslevel=6, orientation=row, compresstype=none'", "SET search_path TO public"},
 			}
 			emptyMetadataMap := backup.MetadataMap{}
 
@@ -184,9 +185,15 @@ var _ = Describe("backup integration create statement tests", func() {
 			role1.Oid = testutils.OidFromObjectName(connection, "", "role1", backup.TYPE_ROLE)
 
 			resultRoles := backup.GetRoles(connection)
+			resultGUCs := backup.GetRoleGUCs(connection)
+			testRole := "role1"
 			for _, role := range resultRoles {
-				if role.Name == "role1" {
+				if role.Name == testRole {
 					structmatcher.ExpectStructsToMatch(&role1, role)
+					roleConfig := resultGUCs["role1"]
+					sort.Strings(roleConfig)
+					Expect(roleConfig[0]).To(Equal(`SET gp_default_storage_options TO 'appendonly=true, compresslevel=6, orientation=row, compresstype=none'`))
+					Expect(roleConfig[1]).To(Equal(`SET search_path TO public`))
 					return
 				}
 			}

@@ -241,7 +241,7 @@ FROM (
 		CASE
 			WHEN option_name='search_path' OR option_name = 'DateStyle'
 			THEN ('SET ' || option_name || ' TO ' || option_value)
-			ELSE ('SET ' || option_name || ' TO ' || quote_ident(option_value))
+			ELSE ('SET ' || option_name || ' TO ''' || option_value || '''')
 		END AS guc
 	FROM (
 		SELECT rolname, (pg_options_to_table(rolconfig)).option_name, (pg_options_to_table(rolconfig)).option_value FROM pg_roles

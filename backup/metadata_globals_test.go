@@ -224,7 +224,7 @@ COMMENT ON ROLE testrole1 IS 'This is a role comment.';`)
 		It("prints basic role with user GUCs set", func() {
 			roleMetadataMap := testutils.DefaultMetadataMap("ROLE", false, false, true)
 			roleConfigMap := map[string][]string{
-				"testrole1": {"SET search_path TO public", "SET client_min_messages TO error"},
+				"testrole1": {"SET search_path TO public", "SET client_min_messages TO 'error'", "SET gp_default_storage_options TO 'appendonly=true, compresslevel=6, orientation=row, compresstype=none'"},
 			}
 			backup.PrintCreateRoleStatements(backupfile, toc, []backup.Role{testrole1}, roleConfigMap, roleMetadataMap)
 
@@ -234,7 +234,9 @@ ALTER ROLE testrole1 WITH NOSUPERUSER NOINHERIT NOCREATEROLE NOCREATEDB NOLOGIN 
 
 ALTER ROLE testrole1 SET search_path TO public;
 
-ALTER ROLE testrole1 SET client_min_messages TO error;
+ALTER ROLE testrole1 SET client_min_messages TO 'error';
+
+ALTER ROLE testrole1 SET gp_default_storage_options TO 'appendonly=true, compresslevel=6, orientation=row, compresstype=none';
 
 COMMENT ON ROLE testrole1 IS 'This is a role comment.';`)
 		})
