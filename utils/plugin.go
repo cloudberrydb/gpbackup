@@ -43,6 +43,7 @@ func (plugin *PluginConfig) BackupFile(filenamePath string, noFatal ...bool) {
 			gplog.Fatal(err, string(output))
 		}
 	}
+	operating.System.Chmod(filenamePath, 0755)
 }
 
 func (plugin *PluginConfig) RestoreFile(filenamePath string) {
@@ -136,7 +137,7 @@ func (plugin *PluginConfig) BackupSegmentTOCs(c cluster.Cluster, fpInfo FilePath
 
 	remoteOutput = c.GenerateAndExecuteCommand("Processing segment TOC files with plugin", func(contentID int) string {
 		tocFile := fpInfo.GetSegmentTOCFilePath(contentID)
-		return fmt.Sprintf("%s backup_file %s %s", plugin.ExecutablePath, plugin.ConfigPath, tocFile)
+		return fmt.Sprintf("%s backup_file %s %s && chmod 0755 %s", plugin.ExecutablePath, plugin.ConfigPath, tocFile, tocFile)
 	}, cluster.ON_SEGMENTS)
 	c.CheckClusterError(remoteOutput, "Unable to process segment TOC files using plugin", func(contentID int) string {
 		return "See gpAdminLog for gpbackup_helper on segment host for details: Error occurred with plugin"

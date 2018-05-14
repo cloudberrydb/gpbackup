@@ -25,7 +25,6 @@ restore_file() {
 backup_file() {
   filename=`basename "$2"`
 	cat $2 > /tmp/plugin_dest/$filename
-  rm $2
 }
 
 backup_data() {

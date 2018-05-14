@@ -102,7 +102,6 @@ func DoBackup() {
 	metadataFilename := globalFPInfo.GetMetadataFilePath()
 	gplog.Info("Metadata will be written to %s", metadataFilename)
 	metadataFile := utils.NewFileWithByteCountFromFile(metadataFilename)
-	defer metadataFile.Close()
 
 	BackupSessionGUCs(metadataFile)
 	if !*dataOnly {
@@ -130,6 +129,7 @@ func DoBackup() {
 
 	globalTOC.WriteToFileAndMakeReadOnly(globalFPInfo.GetTOCFilePath())
 	connection.MustCommit()
+	metadataFile.Close()
 	if *pluginConfigFile != "" {
 		pluginConfig.BackupFile(metadataFilename)
 		pluginConfig.BackupFile(globalFPInfo.GetTOCFilePath())
