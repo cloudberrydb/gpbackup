@@ -57,7 +57,7 @@ func (plugin *PluginConfig) RestoreFile(filenamePath string) {
 
 func (plugin *PluginConfig) CheckPluginExistsOnAllHosts(c cluster.Cluster) {
 	remoteOutput := c.GenerateAndExecuteCommand("Checking that plugin exists on all hosts", func(contentID int) string {
-		return fmt.Sprintf("%s plugin_api_version", plugin.ExecutablePath)
+		return fmt.Sprintf("source %s/greenplum_path.sh && %s plugin_api_version", operating.System.Getenv("GPHOME"), plugin.ExecutablePath)
 	}, cluster.ON_HOSTS_AND_MASTER)
 	c.CheckClusterError(remoteOutput, fmt.Sprintf("Unable to execute plugin %s", plugin.ExecutablePath), func(contentID int) string {
 		return fmt.Sprintf("Unable to execute plugin %s", plugin.ExecutablePath)
@@ -82,7 +82,7 @@ func (plugin *PluginConfig) CheckPluginExistsOnAllHosts(c cluster.Cluster) {
 
 func (plugin *PluginConfig) SetupPluginForBackupOnAllHosts(c cluster.Cluster, configPath string, backupDir string) {
 	remoteOutput := c.GenerateAndExecuteCommand("Running plugin setup for backup on all hosts", func(contentID int) string {
-		return fmt.Sprintf("%s setup_plugin_for_backup %s %s", plugin.ExecutablePath, configPath, backupDir)
+		return fmt.Sprintf("source %s/greenplum_path.sh && %s setup_plugin_for_backup %s %s", operating.System.Getenv("GPHOME"), plugin.ExecutablePath, configPath, backupDir)
 	}, cluster.ON_HOSTS_AND_MASTER)
 	c.CheckClusterError(remoteOutput, fmt.Sprintf("Unable to setup plugin %s", plugin.ExecutablePath), func(contentID int) string {
 		return fmt.Sprintf("Unable to setup plugin %s", plugin.ExecutablePath)
@@ -91,7 +91,7 @@ func (plugin *PluginConfig) SetupPluginForBackupOnAllHosts(c cluster.Cluster, co
 
 func (plugin *PluginConfig) SetupPluginForRestoreOnAllHosts(c cluster.Cluster, configPath string, backupDir string) {
 	remoteOutput := c.GenerateAndExecuteCommand("Running plugin setup for restore on all hosts", func(contentID int) string {
-		return fmt.Sprintf("%s setup_plugin_for_restore %s %s", plugin.ExecutablePath, configPath, backupDir)
+		return fmt.Sprintf("source %s/greenplum_path.sh && %s setup_plugin_for_restore %s %s", operating.System.Getenv("GPHOME"), plugin.ExecutablePath, configPath, backupDir)
 	}, cluster.ON_HOSTS_AND_MASTER)
 	c.CheckClusterError(remoteOutput, fmt.Sprintf("Unable to setup plugin %s", plugin.ExecutablePath), func(contentID int) string {
 		return fmt.Sprintf("Unable to setup plugin %s", plugin.ExecutablePath)
@@ -100,7 +100,7 @@ func (plugin *PluginConfig) SetupPluginForRestoreOnAllHosts(c cluster.Cluster, c
 
 func (plugin *PluginConfig) CleanupPluginForBackupOnAllHosts(c cluster.Cluster, configPath string, backupDir string) {
 	remoteOutput := c.GenerateAndExecuteCommand("Running plugin cleanup for backup on all hosts", func(contentID int) string {
-		return fmt.Sprintf("%s cleanup_plugin_for_backup %s %s", plugin.ExecutablePath, configPath, backupDir)
+		return fmt.Sprintf("source %s/greenplum_path.sh && %s cleanup_plugin_for_backup %s %s", operating.System.Getenv("GPHOME"), plugin.ExecutablePath, configPath, backupDir)
 	}, cluster.ON_HOSTS_AND_MASTER)
 	c.CheckClusterError(remoteOutput, fmt.Sprintf("Unable to cleanup plugin %s", plugin.ExecutablePath), func(contentID int) string {
 		return fmt.Sprintf("Unable to cleanup plugin %s", plugin.ExecutablePath)
@@ -109,7 +109,7 @@ func (plugin *PluginConfig) CleanupPluginForBackupOnAllHosts(c cluster.Cluster, 
 
 func (plugin *PluginConfig) CleanupPluginForRestoreOnAllHosts(c cluster.Cluster, configPath string, backupDir string) {
 	remoteOutput := c.GenerateAndExecuteCommand("Running plugin cleanup for restore on all hosts", func(contentID int) string {
-		return fmt.Sprintf("%s cleanup_plugin_for_restore %s %s", plugin.ExecutablePath, configPath, backupDir)
+		return fmt.Sprintf("source %s/greenplum_path.sh && %s cleanup_plugin_for_restore %s %s", operating.System.Getenv("GPHOME"), plugin.ExecutablePath, configPath, backupDir)
 	}, cluster.ON_HOSTS_AND_MASTER)
 	c.CheckClusterError(remoteOutput, fmt.Sprintf("Unable to cleanup plugin %s", plugin.ExecutablePath), func(contentID int) string {
 		return fmt.Sprintf("Unable to cleanup plugin %s", plugin.ExecutablePath)
@@ -137,7 +137,7 @@ func (plugin *PluginConfig) BackupSegmentTOCs(c cluster.Cluster, fpInfo FilePath
 
 	remoteOutput = c.GenerateAndExecuteCommand("Processing segment TOC files with plugin", func(contentID int) string {
 		tocFile := fpInfo.GetSegmentTOCFilePath(contentID)
-		return fmt.Sprintf("%s backup_file %s %s && chmod 0755 %s", plugin.ExecutablePath, plugin.ConfigPath, tocFile, tocFile)
+		return fmt.Sprintf("source %s/greenplum_path.sh && %s backup_file %s %s && chmod 0755 %s", operating.System.Getenv("GPHOME"), plugin.ExecutablePath, plugin.ConfigPath, tocFile, tocFile)
 	}, cluster.ON_SEGMENTS)
 	c.CheckClusterError(remoteOutput, "Unable to process segment TOC files using plugin", func(contentID int) string {
 		return "See gpAdminLog for gpbackup_helper on segment host for details: Error occurred with plugin"
@@ -147,7 +147,7 @@ func (plugin *PluginConfig) BackupSegmentTOCs(c cluster.Cluster, fpInfo FilePath
 func (plugin *PluginConfig) RestoreSegmentTOCs(c cluster.Cluster, fpInfo FilePathInfo) {
 	remoteOutput := c.GenerateAndExecuteCommand("Processing segment TOC files with plugin", func(contentID int) string {
 		tocFile := fpInfo.GetSegmentTOCFilePath(contentID)
-		return fmt.Sprintf("mkdir -p %s && %s restore_file %s %s", fpInfo.GetDirForContent(contentID), plugin.ExecutablePath, plugin.ConfigPath, tocFile)
+		return fmt.Sprintf("mkdir -p %s && source %s/greenplum_path.sh && %s restore_file %s %s", fpInfo.GetDirForContent(contentID), operating.System.Getenv("GPHOME"), plugin.ExecutablePath, plugin.ConfigPath, tocFile)
 	}, cluster.ON_SEGMENTS)
 	c.CheckClusterError(remoteOutput, "Unable to process segment TOC files using plugin", func(contentID int) string {
 		return fmt.Sprintf("Unable to process segment TOC files using plugin")

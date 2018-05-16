@@ -73,13 +73,15 @@ func StartAgent(c cluster.Cluster, fpInfo FilePathInfo, operation string, plugin
 			pluginStr = fmt.Sprintf(" --plugin-config /tmp/%s", configFilename)
 		}
 		helperCmdStr := fmt.Sprintf("gpbackup_helper %s --toc-file %s --oid-file %s --pipe-file %s --data-file %s --content %d%s%s", operation, tocFile, oidFile, pipeFile, backupFile, contentID, pluginStr, compressStr)
+
 		return fmt.Sprintf(`cat << HEREDOC > %s
 #!/bin/bash
+source %s/greenplum_path.sh
 %s/bin/%s
 
 HEREDOC
 
-chmod +x %s; (nohup %s > /dev/null 2>&1 &) &`, scriptFile, gphomePath, helperCmdStr, scriptFile, scriptFile)
+chmod +x %s; (nohup %s > /dev/null 2>&1 &) &`, scriptFile, gphomePath, gphomePath, helperCmdStr, scriptFile, scriptFile)
 	}, cluster.ON_SEGMENTS)
 	c.CheckClusterError(remoteOutput, "Error starting gpbackup_helper agent", func(contentID int) string {
 		return "Error starting gpbackup_helper agent"
