@@ -772,7 +772,7 @@ jobs:
           make depend
 
           make build_linux
-          version=`git describe --tags`
+          version=`git describe --tags | perl -pe 's/(.*)-([0-9]*)-(g[0-9a-f]*)/\1+dev.\2.\3/'`
           popd
 
           pushd $GOPATH/src/github.com/greenplum-db/gpbackup-s3-plugin
@@ -781,18 +781,27 @@ jobs:
           popd
 
           echo ${version} > gpbackup_version/version
+
           pushd component_gpbackup
+          # Assemble binaries
           mkdir -p bin
           cp $GOPATH/bin/gpbackup bin/
           cp $GOPATH/bin/gpbackup_helper bin/
           cp $GOPATH/bin/gprestore bin/
           cp $GOPATH/bin/gpbackup_s3_plugin bin/
           cp ../compiled_ddboost_plugin/gpbackup_ddboost_plugin bin/
-          printf "#!/bin/sh\nset -x\ntar -xzvf bin_gpbackup.tar.gz -C \$GPHOME" > install_gpdb_component
-          chmod +x install_gpdb_component
           tar -czvf bin_gpbackup.tar.gz bin/
           rm -rf bin
-          tar -czvf "gpbackup-${version}.tar.gz" bin_gpbackup.tar.gz install_gpdb_component
+
+          # Create install script
+          printf "#!/bin/sh\nset -x\ntar -xzvf bin_gpbackup.tar.gz -C \$GPHOME" > install_gpdb_component
+          chmod +x install_gpdb_component
+
+          # Create test script
+          cp ../gpbackup_version/version .
+          cp $GOPATH/src/github.com/greenplum-db/gpbackup/ci/scripts/smoke_test_component_gpbackup.sh smoke_test_gpdb_component
+
+          tar -czvf "gpbackup-${version}.tar.gz" bin_gpbackup.tar.gz install_gpdb_component smoke_test_gpdb_component version
           popd
     on_failure:
       *slack_alert
