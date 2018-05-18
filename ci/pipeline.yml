@@ -243,7 +243,7 @@ jobs:
                 aws_access_key_id: {{bucket-access-key-id}}
                 aws_secret_access_key: {{bucket-secret-access-key}}
                 bucket: {{gpbackup-s3-plugin-test-bucket}}
-                backupdir: test/backup
+                folder: test/backup
           CONFIG
 
           pushd gpbackup/plugins
@@ -384,7 +384,7 @@ jobs:
                 username: {{datadomain_user}}
                 password: {{datadomain_password}}
                 storage_unit: GPDB
-                backup_dir: gpbackup_tests
+                directory: gpbackup_tests
           CONFIG
 
           pushd \$GOPATH/src/github.com/greenplum-db/gpbackup/plugins

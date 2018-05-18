@@ -286,7 +286,7 @@ options:
   aws_access_key_id: ...
   aws_secret_access_key: ...
   bucket: my_bucket_name
-  backupdir: greenplum_backups
+  folder: greenplum_backups
 ```
 
 ## Verification using the gpbackup plugin API test bench
