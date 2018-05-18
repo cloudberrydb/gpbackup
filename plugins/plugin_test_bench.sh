@@ -48,6 +48,8 @@ echo "[RUNNING] setup_plugin_for_backup"
 $plugin setup_plugin_for_backup $plugin_config $testdir
 echo "[RUNNING] backup_file"
 $plugin backup_file $plugin_config $testfile
+# plugins should leave copies of the files locally when they run backup_file
+test -f $testfile
 echo "[RUNNING] setup_plugin_for_restore"
 $plugin setup_plugin_for_restore $plugin_config $testdir
 echo "[RUNNING] restore_file"

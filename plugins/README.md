@@ -168,7 +168,7 @@ test_plugin cleanup_plugin_for_restore /home/test_plugin_config.yaml /data_dir/b
 
 ### <a name="backup_file">backup_file</a>
 
-Given the path to a file gpbackup has created on local disk, this command should process/move this file to the remote system. gpbackup will not remove the local file after it has been backed up to the remote system so this command should also handle that operation.
+Given the path to a file gpbackup has created on local disk, this command should copy the file to the remote system. The original file should be left behind.
 
 **Usage within gpbackup:**
 
