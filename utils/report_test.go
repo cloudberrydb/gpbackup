@@ -442,7 +442,7 @@ Data File Format: Multiple Data Files Per Segment`),
 Timestamp Key: 20170101010101`)
 		contactsFileContents, _ := yaml.Marshal(utils.ContactFile{
 			Contacts: map[string][]utils.EmailContact{
-				"gpbackup": []utils.EmailContact{
+				"gpbackup": {
 					{Address: "contact1@example.com",
 						Status: map[string]bool{
 							"success":             true,
@@ -456,7 +456,7 @@ Timestamp Key: 20170101010101`)
 							"failure":             true,
 						}},
 				},
-				"gprestore": []utils.EmailContact{
+				"gprestore": {
 					{Address: "contact3@example.com"},
 					{Address: "contact4@example.org",
 						Status: map[string]bool{

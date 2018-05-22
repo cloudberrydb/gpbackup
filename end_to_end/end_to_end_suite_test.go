@@ -108,6 +108,8 @@ var _ = Describe("backup end to end integration tests", func() {
 		var err error
 		testhelper.SetupTestLogger()
 		exec.Command("dropdb", "testdb").Run()
+		exec.Command("dropdb", "restoredb").Run()
+
 		err = exec.Command("createdb", "testdb").Run()
 		if err != nil {
 			Fail(fmt.Sprintf("Could not create testdb: %v", err))
@@ -166,6 +168,22 @@ var _ = Describe("backup end to end integration tests", func() {
 			assertDataRestored(restoreConn, map[string]int{"public.foo": 0, "schema2.foo3": 0})
 			assertTablesCreated(restoreConn, 30)
 			gprestore(gprestorePath, timestamp2, "-redirect-db", "restoredb")
+
+			assertDataRestored(restoreConn, publicSchemaTupleCounts)
+			assertDataRestored(restoreConn, schema2TupleCounts)
+		})
+		It("runs gpbackup and gprestore with metadata-only backup flag", func() {
+			timestamp := gpbackup(gpbackupPath, "-metadata-only")
+			gprestore(gprestorePath, timestamp, "-redirect-db", "restoredb")
+
+			assertDataRestored(restoreConn, map[string]int{"public.foo": 0, "schema2.foo3": 0})
+			assertTablesCreated(restoreConn, 30)
+		})
+		It("runs gpbackup and gprestore with data-only backup flag", func() {
+			testutils.ExecuteSQLFile(restoreConn, "test_tables_ddl.sql")
+
+			timestamp := gpbackup(gpbackupPath, "-data-only")
+			gprestore(gprestorePath, timestamp, "-redirect-db", "restoredb")
 
 			assertDataRestored(restoreConn, publicSchemaTupleCounts)
 			assertDataRestored(restoreConn, schema2TupleCounts)
@@ -230,7 +248,7 @@ var _ = Describe("backup end to end integration tests", func() {
 		It("runs gpbackup and gprestore with the data-only flag", func() {
 			testutils.ExecuteSQLFile(restoreConn, "test_tables_ddl.sql")
 			timestamp := gpbackup(gpbackupPath)
-			gprestore(gprestorePath, timestamp,"--redirect-db", "restoredb", "--data-only")
+			gprestore(gprestorePath, timestamp, "--redirect-db", "restoredb", "--data-only")
 
 			assertDataRestored(restoreConn, publicSchemaTupleCounts)
 			assertDataRestored(restoreConn, schema2TupleCounts)
@@ -239,6 +257,7 @@ var _ = Describe("backup end to end integration tests", func() {
 			excludeFile := iohelper.MustOpenFileForWriting("/tmp/exclude-tables.txt")
 			utils.MustPrintln(excludeFile, "schema2.foo2\nschema2.returns\npublic.sales")
 			timestamp := gpbackup(gpbackupPath, "-exclude-table-file", "/tmp/exclude-tables.txt")
+
 			gprestore(gprestorePath, timestamp, "-redirect-db", "restoredb")
 
 			assertTablesCreated(restoreConn, 3)
@@ -412,8 +431,8 @@ var _ = Describe("backup end to end integration tests", func() {
 		})
 		It("runs gpbackup and gprestore on database with all objects", func() {
 			testhelper.AssertQueryRuns(backupConn, "DROP SCHEMA IF EXISTS schema2 CASCADE; DROP SCHEMA public CASCADE; CREATE SCHEMA public; DROP PROCEDURAL LANGUAGE IF EXISTS plpythonu;")
-			defer testutils.ExecuteSQLFile(backupConn, "test_tables_ddl.sql")
 			defer testutils.ExecuteSQLFile(backupConn, "test_tables_data.sql")
+			defer testutils.ExecuteSQLFile(backupConn, "test_tables_ddl.sql")
 			defer testhelper.AssertQueryRuns(backupConn, "DROP SCHEMA IF EXISTS schema2 CASCADE; DROP SCHEMA public CASCADE; CREATE SCHEMA public; DROP PROCEDURAL LANGUAGE IF EXISTS plpythonu;")
 			testutils.ExecuteSQLFile(backupConn, "gpdb4_objects.sql")
 			if backupConn.Version.AtLeast("5") {

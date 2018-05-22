@@ -43,7 +43,7 @@ var (
 var (
 	backupDir        *string
 	createDB         *bool
-	dataOnly		 *bool
+	dataOnly         *bool
 	debug            *bool
 	excludeSchemas   utils.ArrayFlags
 	excludeTableFile *string
