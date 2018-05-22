@@ -51,6 +51,7 @@ var (
 	includeSchemas   utils.ArrayFlags
 	includeTableFile *string
 	includeTables    utils.ArrayFlags
+	metadataOnly     *bool
 	numJobs          *int
 	onErrorContinue  *bool
 	pluginConfigFile *string

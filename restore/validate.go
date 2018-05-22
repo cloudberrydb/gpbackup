@@ -146,6 +146,9 @@ func ValidateBackupFlagCombinations() {
 	if backupConfig.MetadataOnly && *dataOnly {
 		gplog.Fatal(errors.Errorf("Cannot use data-only flag when restoring metadata-only backup"), "")
 	}
+	if backupConfig.DataOnly && *metadataOnly {
+		gplog.Fatal(errors.Errorf("Cannot use metadata-only flag when restoring data-only backup"), "")
+	}
 	validateBackupFlagPluginCombinations()
 }
 
@@ -166,4 +169,5 @@ func ValidateFlagCombinations() {
 	utils.CheckExclusiveFlags("exclude-schema", "include-schema")
 	utils.CheckExclusiveFlags("exclude-schema", "exclude-table", "include-table", "exclude-table-file", "include-table-file")
 	utils.CheckExclusiveFlags("exclude-table", "exclude-table-file", "leaf-partition-data")
+	utils.CheckExclusiveFlags("metadata-only", "data-only")
 }

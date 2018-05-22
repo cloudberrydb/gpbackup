@@ -30,6 +30,7 @@ func initializeFlags() {
 	flag.Var(&includeSchemas, "include-schema", "Restore only the specified schema(s). --include-schema can be specified multiple times.")
 	flag.Var(&includeTables, "include-table", "Restore only the specified table(s). --include-table can be specified multiple times.")
 	includeTableFile = flag.String("include-table-file", "", "A file containing a list of fully-qualified tables that will be restored")
+	metadataOnly = flag.Bool("metadata-only", false, "Only restore metadata, do not restore data")
 	numJobs = flag.Int("jobs", 1, "Number of parallel connections to use when restoring table data and post-data")
 	onErrorContinue = flag.Bool("on-error-continue", false, "Log errors and continue restore, instead of exiting on first error")
 	pluginConfigFile = flag.String("plugin-config", "", "The configuration file to use for a plugin")
@@ -124,11 +125,12 @@ func DoRestore() {
 	gucStatements := setGUCsForConnection(nil, 0)
 	metadataFilename := globalFPInfo.GetMetadataFilePath()
 	isDataOnly := backupConfig.DataOnly || *dataOnly
+	isMetadataOnly := backupConfig.MetadataOnly || *metadataOnly
 	if !isDataOnly {
 		restorePredata(metadataFilename)
 	}
 
-	if !backupConfig.MetadataOnly {
+	if !isMetadataOnly {
 		if *pluginConfigFile == "" {
 			backupFileCount := 2 // 1 for the actual data file, 1 for the segment TOC file
 			if !backupConfig.SingleDataFile {
