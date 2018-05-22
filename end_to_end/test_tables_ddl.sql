@@ -28,22 +28,12 @@ CREATE TABLE foo (
     i integer
 ) DISTRIBUTED BY (i);
 
-
-
---
---
-
-INSERT INTO foo SELECT generate_series(1,40000);
-
 --
 --
 
 CREATE TABLE holds (
     i integer
 ) DISTRIBUTED BY (i);
-
-
-INSERT INTO holds SELECT generate_series(1,50000);
 
 --
 --
@@ -70,27 +60,6 @@ CREATE TABLE sales (
           );
 
 
-
---
---
-
-COPY sales (id, date, amt) FROM stdin;
-1	2017-01-01	20.00
-3	2017-03-01	20.00
-25	2017-05-01	20.00
-2	2017-02-01	20.00
-4	2017-04-01	20.00
-8	2017-08-01	20.00
-15	2017-05-01	20.00
-5	2017-05-01	20.00
-9	2017-09-01	20.00
-7	2017-07-01	20.00
-11	2017-11-01	20.00
-18	2017-08-01	20.00
-12	2017-12-01	20.00
-\.
-
-
 SET search_path = schema2, pg_catalog;
 
 --
@@ -110,13 +79,6 @@ CREATE TABLE foo2 (
 CREATE TABLE foo3 (
     i integer
 ) DISTRIBUTED BY (i);
-
-
-
---
---
-
-INSERT INTO foo3 SELECT generate_series(201,300);
 
 --
 --
@@ -140,21 +102,6 @@ CREATE TABLE returns (
           PARTITION nov17 START ('2017-11-01'::date) END ('2017-12-01'::date) WITH (tablename='returns_1_prt_nov17', appendonly=false ), 
           PARTITION dec17 START ('2017-12-01'::date) END ('2018-01-01'::date) WITH (tablename='returns_1_prt_dec17', appendonly=false )
           );
-
-
-
---
---
-
-COPY returns (id, date, amt) FROM stdin;
-2	2017-02-01	20.00
-7	2017-07-01	20.00
-25	2017-05-01	20.00
-15	2017-05-01	20.00
-11	2017-11-01	20.00
-12	2017-12-01	20.00
-\.
-
 
 --
 --

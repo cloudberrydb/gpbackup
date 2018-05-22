@@ -10,7 +10,7 @@ import (
 	"github.com/greenplum-db/gp-common-go-libs/cluster"
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpbackup/utils"
-	pb "gopkg.in/cheggaaa/pb.v1"
+	"gopkg.in/cheggaaa/pb.v1"
 
 	"github.com/pkg/errors"
 )
@@ -22,6 +22,7 @@ import (
 func initializeFlags() {
 	backupDir = flag.String("backup-dir", "", "The absolute path of the directory in which the backup files to be restored are located")
 	createDB = flag.Bool("create-db", false, "Create the database before metadata restore")
+	dataOnly = flag.Bool("data-only", false, "Only restore data, do not restore metadata")
 	debug = flag.Bool("debug", false, "Print verbose and debug log messages")
 	flag.Var(&excludeSchemas, "exclude-schema", "Restore all metadata except objects in the specified schema(s). --exclude-schema can be specified multiple times.")
 	flag.Var(&excludeTables, "exclude-table", "Restore all metadata except the specified table(s). --exclude-table can be specified multiple times.")
@@ -122,7 +123,8 @@ func DoSetup() {
 func DoRestore() {
 	gucStatements := setGUCsForConnection(nil, 0)
 	metadataFilename := globalFPInfo.GetMetadataFilePath()
-	if !backupConfig.DataOnly {
+	isDataOnly := backupConfig.DataOnly || *dataOnly
+	if !isDataOnly {
 		restorePredata(metadataFilename)
 	}
 
@@ -137,7 +139,7 @@ func DoRestore() {
 		restoreData(gucStatements)
 	}
 
-	if !backupConfig.DataOnly {
+	if !isDataOnly {
 		restorePostdata(metadataFilename)
 	}
 

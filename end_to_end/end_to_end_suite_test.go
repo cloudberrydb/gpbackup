@@ -120,7 +120,8 @@ var _ = Describe("backup end to end integration tests", func() {
 		backupConn.MustConnect(1)
 		restoreConn = dbconn.NewDBConnFromEnvironment("restoredb")
 		restoreConn.MustConnect(1)
-		testutils.ExecuteSQLFile(backupConn, "test_tables.sql")
+		testutils.ExecuteSQLFile(backupConn, "test_tables_ddl.sql")
+		testutils.ExecuteSQLFile(backupConn, "test_tables_data.sql")
 		gpbackupPath, gprestorePath = buildAndInstallBinaries()
 	})
 	AfterSuite(func() {
@@ -225,6 +226,14 @@ var _ = Describe("backup end to end integration tests", func() {
 			assertDataRestored(restoreConn, map[string]int{"public.sales": 13, "public.foo": 40000})
 
 			os.Remove("/tmp/include-tables.txt")
+		})
+		It("runs gpbackup and gprestore with the data-only flag", func() {
+			testutils.ExecuteSQLFile(restoreConn, "test_tables_ddl.sql")
+			timestamp := gpbackup(gpbackupPath)
+			gprestore(gprestorePath, timestamp,"--redirect-db", "restoredb", "--data-only")
+
+			assertDataRestored(restoreConn, publicSchemaTupleCounts)
+			assertDataRestored(restoreConn, schema2TupleCounts)
 		})
 		It("runs gpbackup and gprestore with exclude-table-file flag", func() {
 			excludeFile := iohelper.MustOpenFileForWriting("/tmp/exclude-tables.txt")
@@ -403,7 +412,8 @@ var _ = Describe("backup end to end integration tests", func() {
 		})
 		It("runs gpbackup and gprestore on database with all objects", func() {
 			testhelper.AssertQueryRuns(backupConn, "DROP SCHEMA IF EXISTS schema2 CASCADE; DROP SCHEMA public CASCADE; CREATE SCHEMA public; DROP PROCEDURAL LANGUAGE IF EXISTS plpythonu;")
-			defer testutils.ExecuteSQLFile(backupConn, "test_tables.sql")
+			defer testutils.ExecuteSQLFile(backupConn, "test_tables_ddl.sql")
+			defer testutils.ExecuteSQLFile(backupConn, "test_tables_data.sql")
 			defer testhelper.AssertQueryRuns(backupConn, "DROP SCHEMA IF EXISTS schema2 CASCADE; DROP SCHEMA public CASCADE; CREATE SCHEMA public; DROP PROCEDURAL LANGUAGE IF EXISTS plpythonu;")
 			testutils.ExecuteSQLFile(backupConn, "gpdb4_objects.sql")
 			if backupConn.Version.AtLeast("5") {

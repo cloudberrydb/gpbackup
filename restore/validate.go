@@ -137,16 +137,19 @@ END AS string;`, dbname)))
 }
 
 func ValidateBackupFlagCombinations() {
-	if backupConfig.SingleDataFile {
-		if *numJobs != 1 {
-			gplog.Fatal(errors.Errorf("Cannot use jobs flag when restoring backups with a single data file per segment."), "")
-		}
+	if backupConfig.SingleDataFile && *numJobs != 1 {
+		gplog.Fatal(errors.Errorf("Cannot use jobs flag when restoring backups with a single data file per segment."), "")
 	}
-	if backupConfig.IncludeTableFiltered || backupConfig.DataOnly {
-		if *restoreGlobals {
-			gplog.Fatal(errors.Errorf("Global metadata is not backed up in table-filtered or data-only backups."), "")
-		}
+	if (backupConfig.IncludeTableFiltered || backupConfig.DataOnly) && *restoreGlobals {
+		gplog.Fatal(errors.Errorf("Global metadata is not backed up in table-filtered or data-only backups."), "")
 	}
+	if backupConfig.MetadataOnly && *dataOnly {
+		gplog.Fatal(errors.Errorf("Cannot use data-only flag when restoring metadata-only backup"), "")
+	}
+	validateBackupFlagPluginCombinations()
+}
+
+func validateBackupFlagPluginCombinations() {
 	if backupConfig.Plugin != "" && *pluginConfigFile == "" {
 		gplog.Fatal(errors.Errorf("Backup was taken with plugin %s. The --plugin-config flag must be used to restore.", backupConfig.Plugin), "")
 	} else if backupConfig.Plugin == "" && *pluginConfigFile != "" {
@@ -156,6 +159,8 @@ func ValidateBackupFlagCombinations() {
 
 func ValidateFlagCombinations() {
 	utils.CheckMandatoryFlags("timestamp")
+	utils.CheckExclusiveFlags("data-only", "with-globals")
+	utils.CheckExclusiveFlags("data-only", "create-db")
 	utils.CheckExclusiveFlags("debug", "quiet", "verbose")
 	utils.CheckExclusiveFlags("include-schema", "include-table", "include-table-file")
 	utils.CheckExclusiveFlags("exclude-schema", "include-schema")
