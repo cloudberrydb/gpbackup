@@ -268,6 +268,28 @@ CREATEEXTTABLE (protocol='gphdfs', type='writable')`)
 			}
 			Fail("Role 'testuser' is not a member of role 'usergroup'")
 		})
+		It("returns properly quoted roles in GRANT statement", func() {
+			testhelper.AssertQueryRuns(connection, `CREATE ROLE "1testrole" SUPERUSER`)
+			defer testhelper.AssertQueryRuns(connection, `DROP ROLE "1testrole"`)
+			testhelper.AssertQueryRuns(connection, `SET ROLE "1testrole"`)
+			defer testhelper.AssertQueryRuns(connection, `SET ROLE testrole`)
+			testhelper.AssertQueryRuns(connection, `CREATE ROLE "1usergroup"`)
+			defer testhelper.AssertQueryRuns(connection, `DROP ROLE "1usergroup"`)
+			testhelper.AssertQueryRuns(connection, `CREATE ROLE "1testuser"`)
+			defer testhelper.AssertQueryRuns(connection, `DROP ROLE "1testuser"`)
+			testhelper.AssertQueryRuns(connection, `GRANT "1usergroup" TO "1testuser"`)
+			expectedRoleMember := backup.RoleMember{Role: `"1usergroup"`, Member: `"1testuser"`, Grantor: `"1testrole"`, IsAdmin: false}
+
+			roleMembers := backup.GetRoleMembers(connection)
+
+			for _, roleMember := range roleMembers {
+				if roleMember.Role == `"1usergroup"` {
+					structmatcher.ExpectStructsToMatch(&expectedRoleMember, &roleMember)
+					return
+				}
+			}
+			Fail(`Role "1testuser" is not a member of role "1usergroup"`)
+		})
 	})
 	Describe("GetRoleGUCs", func() {
 		It("returns a slice of values for user level GUCs", func() {

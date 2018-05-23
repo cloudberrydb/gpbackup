@@ -299,9 +299,9 @@ type RoleMember struct {
 func GetRoleMembers(connection *dbconn.DBConn) []RoleMember {
 	query := `
 SELECT
-	pg_get_userbyid(roleid) AS role,
-	pg_get_userbyid(member) AS member,
-	pg_get_userbyid(grantor) AS grantor,
+	quote_ident(pg_get_userbyid(roleid)) AS role,
+	quote_ident(pg_get_userbyid(member)) AS member,
+	quote_ident(pg_get_userbyid(grantor)) AS grantor,
 	admin_option as isadmin
 FROM pg_auth_members
 ORDER BY roleid, member;`
