@@ -1,16 +1,16 @@
 #!/bin/bash
-set -e
+set -ex
 
 package_version=`cat version`
-if [[ `gpbackup --version` != "gpbackup $package_version" ]]
+if [[ `gpbackup --version` != "gpbackup version $package_version" ]]
 then
   exit 1
 fi
-if [[ `gprestore --version` != "gprestore $package_version" ]]
+if [[ `gprestore --version` != "gprestore version $package_version" ]]
 then
   exit 1
 fi
-if [[ `gpbackup_helper --version` != "gpbackup_helper $package_version" ]]
+if [[ `gpbackup_helper --version` != "gpbackup_helper version $package_version" ]]
 then
   exit 1
 fi

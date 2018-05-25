@@ -82,7 +82,7 @@ func InitializeGlobals() {
 
 	flag.Parse()
 	if *printVersion {
-		fmt.Printf("gpbackup_helper %s\n", version)
+		fmt.Printf("gpbackup_helper version %s\n", version)
 		os.Exit(0)
 	}
 	operating.InitializeSystemFunctions()
