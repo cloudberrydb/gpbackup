@@ -48,7 +48,7 @@ func VerifyHelperVersionOnSegments(version string, c cluster.Cluster) {
 	numIncorrect := 0
 	for contentID := range remoteOutput.Stdouts {
 		segVersion := strings.TrimSpace(remoteOutput.Stdouts[contentID])
-		segVersion = strings.Split(segVersion, " ")[1] // Format is "gpbackup_helper [version string]"
+		segVersion = strings.Split(segVersion, " ")[2] // Format is "gpbackup_helper version [version string]"
 		if segVersion != version {
 			gplog.Verbose("Version mismatch for gpbackup_helper on segment %d on host %s: Expected version %s, found version %s.", contentID, c.GetHostForContent(contentID), version, segVersion)
 			numIncorrect++
