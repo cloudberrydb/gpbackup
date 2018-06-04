@@ -241,6 +241,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			Expect(tables[0].Inherits[1]).To(Equal("public.parent_two"))
 		})
 		It("creates an unlogged table", func() {
+			testutils.SkipIfBefore6(connection)
 			rowOne := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", NotNull: false, HasDefault: false, Type: "integer", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: emptyACL}
 			rowTwo := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", NotNull: false, HasDefault: false, Type: "character varying(20)", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: emptyACL}
 			tableDef.ColumnDefs = []backup.ColumnDefinition{rowOne, rowTwo}
