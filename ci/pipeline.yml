@@ -408,7 +408,7 @@ jobs:
           make build
           make install
 
-              cat << CONFIG > \$HOME/ddboost_config.yaml
+              cat << CONFIG > \$HOME/ddboost_config_replication.yaml
               executablepath: \$GPHOME/bin/gpbackup_ddboost_plugin
               options:
                 hostname: {{datadomain_source_host}}
@@ -416,10 +416,26 @@ jobs:
                 password: {{datadomain_password}}
                 storage_unit: GPDB
                 directory: gpbackup_tests
+                replication: on
+                replication_hostname: {{datadomain_dest_host}}
+                replication_username: {{datadomain_user}}
+                replication_password: {{datadomain_password}}
+                replication_storage_unit: GPDB
+                replication_directory: gpbackup_tests
+          CONFIG
+
+              cat << CONFIG > \$HOME/ddboost_config_replication_restore.yaml
+              executablepath: \$GPHOME/bin/gpbackup_ddboost_plugin
+              options:
+                hostname: {{datadomain_dest_host}}
+                username: {{datadomain_user}}
+                password: {{datadomain_password}}
+                storage_unit: GPDB
+                directory: gpbackup_tests
           CONFIG
 
           pushd \$GOPATH/src/github.com/greenplum-db/gpbackup/plugins
-          ./plugin_test_bench.sh \$GPHOME/bin/gpbackup_ddboost_plugin \$HOME/ddboost_config.yaml
+          ./plugin_test_bench.sh \$GPHOME/bin/gpbackup_ddboost_plugin \$HOME/ddboost_config_replication.yaml \$HOME/ddboost_config_replication_restore.yaml
           SCRIPT
 
           chmod +x /tmp/run_tests.bash

@@ -296,7 +296,9 @@ We provide a test bench to ensure your plugin will work with gpbackup and gprest
 Run the test bench script using:
 
 ```
-plugin_test_bench.sh [path_to_executable] [plugin_config]
+plugin_test_bench.sh [path_to_executable] [plugin_config] [optional_config_for_secondary_destination]
 ```
 
 This will individually test each command and run a backup and restore using your plugin. This suite will upload small amounts of data to your destination system (<1MB total)
+
+If the `[optional_config_for_secondary_destination]` is provided, the test bench will also restore from this secondary destination. 

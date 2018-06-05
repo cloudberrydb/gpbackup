@@ -2,6 +2,7 @@
 
 plugin=$1
 plugin_config=$2
+secondary_plugin_config=$3
 SUPPORTED_API_VERSION="0.1.0"
 
 # ----------------------------------------------
@@ -9,9 +10,9 @@ SUPPORTED_API_VERSION="0.1.0"
 # This will put small amounts of data in the
 # plugin destination location
 # ----------------------------------------------
-if [ $# -ne 2 ]
+if [ $# -lt 2 ] || [ $# -gt 3 ]
   then
-    echo "Usage: plugin_test_bench.sh [path_to_executable] [plugin_config]"
+    echo "Usage: plugin_test_bench.sh [path_to_executable] [plugin_config] [optional_config_for_secondary_destination]"
     exit 1
 fi
 
@@ -53,11 +54,22 @@ test -f $testfile
 echo "[RUNNING] setup_plugin_for_restore"
 $plugin setup_plugin_for_restore $plugin_config $testdir
 echo "[RUNNING] restore_file"
+rm $testfile
 $plugin restore_file $plugin_config $testfile
 output=`cat $testfile`
 if [ "$output" != "$text" ]; then
   echo "Failed to backup and restore file using plugin"
   exit 1
+fi
+if [ -n "$secondary_plugin_config" ]; then
+  rm $testfile
+  echo "[RUNNING] restore_file (from secondary destination)"
+  $plugin restore_file $secondary_plugin_config $testfile
+  output=`cat $testfile`
+  if [ "$output" != "$text" ]; then
+    echo "Failed to backup and restore file using plugin from secondary destination"
+    exit 1
+  fi
 fi
 echo "[PASSED] setup_plugin_for_backup"
 echo "[PASSED] backup_file"
@@ -76,6 +88,16 @@ output=`$plugin restore_data $plugin_config $testdata`
 if [ "$output" != "$data" ]; then
   echo "Failed to backup and restore data using plugin"
   exit 1
+fi
+
+if [ -n "$secondary_plugin_config" ]; then
+  echo "[RUNNING] restore_data (from secondary destination)"
+  output=`$plugin restore_data $secondary_plugin_config $testdata`
+
+  if [ "$output" != "$data" ]; then
+    echo "Failed to backup and restore data using plugin"
+    exit 1
+  fi
 fi
 echo "[PASSED] backup_data"
 echo "[PASSED] restore_data"
@@ -117,8 +139,23 @@ if [ ! $? -eq 0 ]; then
 fi
 num_rows=`psql -d $test_db -tc "SELECT count(*) FROM test_table" | xargs`
 if [ "$num_rows" != "50000" ]; then
-  echo "Expected to restore 50000 rows, got $num_rows"
-  exit 1
+    echo "Expected to restore 50000 rows, got $num_rows"
+    exit 1
+fi
+
+if [ -n "$secondary_plugin_config" ]; then
+    dropdb $test_db
+    echo "[RUNNING] gprestore with test database from secondary destination"
+    gprestore --timestamp $timestamp --plugin-config $secondary_plugin_config --create-db --quiet
+    if [ ! $? -eq 0 ]; then
+        echo "gprestore from secondary destination failed. Check gprestore log file in ~/gpAdminLogs for details."
+        exit 1
+    fi
+    num_rows=`psql -d $test_db -tc "SELECT count(*) FROM test_table" | xargs`
+    if [ "$num_rows" != "50000" ]; then
+      echo "Expected to restore 50000 rows, got $num_rows"
+      exit 1
+    fi
 fi
 echo "[PASSED] gpbackup and gprestore"
 
@@ -128,6 +165,7 @@ echo "[PASSED] gpbackup and gprestore"
 dropdb $test_db
 rm $log_file
 rm -r /tmp/testseg
+rm -f $testfile
 
 echo "# ----------------------------------------------"
 echo "# Finished gpbackup plugin tests"
