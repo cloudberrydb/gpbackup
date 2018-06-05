@@ -49,6 +49,9 @@ SET default_with_oids = off;
 	if connection.Version.Before("5") {
 		setupQuery += "SET gp_strict_xml_parse = off;\n"
 	}
+	if connection.Version.AtLeast("5") {
+		setupQuery += "SET gp_ignore_error_table = on;\n"
+	}
 	for i := 0; i < connection.NumConns; i++ {
 		connection.MustExec(setupQuery, i)
 	}
