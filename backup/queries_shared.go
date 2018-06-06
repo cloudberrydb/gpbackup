@@ -143,6 +143,7 @@ type MetadataQueryParams struct {
 var (
 	TYPE_AGGREGATE          MetadataQueryParams
 	TYPE_CAST               MetadataQueryParams
+	TYPE_COLLATION          MetadataQueryParams
 	TYPE_CONSTRAINT         MetadataQueryParams
 	TYPE_CONVERSION         MetadataQueryParams
 	TYPE_DATABASE           MetadataQueryParams
@@ -174,6 +175,7 @@ var (
 func InitializeMetadataParams(connection *dbconn.DBConn) {
 	TYPE_AGGREGATE = MetadataQueryParams{NameField: "proname", SchemaField: "pronamespace", OwnerField: "proowner", CatalogTable: "pg_proc"}
 	TYPE_CAST = MetadataQueryParams{NameField: "typname", OidField: "oid", OidTable: "pg_type", CatalogTable: "pg_cast"}
+	TYPE_COLLATION = MetadataQueryParams{NameField: "collname", OidField: "oid", SchemaField: "collnamespace", OwnerField: "collowner", CatalogTable: "pg_collation"}
 	TYPE_CONSTRAINT = MetadataQueryParams{NameField: "conname", SchemaField: "connamespace", OidField: "oid", CatalogTable: "pg_constraint"}
 	TYPE_CONVERSION = MetadataQueryParams{NameField: "conname", OidField: "oid", SchemaField: "connamespace", OwnerField: "conowner", CatalogTable: "pg_conversion"}
 	TYPE_DATABASE = MetadataQueryParams{NameField: "datname", ACLField: "datacl", OwnerField: "datdba", CatalogTable: "pg_database", Shared: true}
