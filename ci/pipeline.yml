@@ -417,11 +417,11 @@ jobs:
                 storage_unit: GPDB
                 directory: gpbackup_tests
                 replication: on
-                replication_hostname: {{datadomain_dest_host}}
-                replication_username: {{datadomain_user}}
-                replication_password: {{datadomain_password}}
-                replication_storage_unit: GPDB
-                replication_directory: gpbackup_tests
+                remote_hostname: {{datadomain_dest_host}}
+                remote_username: {{datadomain_user}}
+                remote_password: {{datadomain_password}}
+                remote_storage_unit: GPDB
+                remote_directory: gpbackup_tests
           CONFIG
 
               cat << CONFIG > \$HOME/ddboost_config_replication_restore.yaml
