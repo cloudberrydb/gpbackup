@@ -19,7 +19,7 @@
     "structmatcher",
     "testhelper"
   ]
-  revision = "b8292cc5bc422661e0e5d58c33a79333a66247b4"
+  revision = "e1ff11c5bc81a9412a4cf9484e0131c781fa031e"
 
 [[projects]]
   name = "github.com/inconshreveable/mousetrap"

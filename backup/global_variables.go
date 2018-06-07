@@ -19,7 +19,7 @@ import (
 var (
 	backupReport   *utils.Report
 	connectionPool *dbconn.DBConn
-	globalCluster  cluster.Cluster
+	globalCluster  *cluster.Cluster
 	globalFPInfo   utils.FilePathInfo
 	globalTOC      *utils.TOC
 	objectCounts   map[string]int
@@ -69,7 +69,7 @@ func SetConnection(conn *dbconn.DBConn) {
 	connectionPool = conn
 }
 
-func SetCluster(cluster cluster.Cluster) {
+func SetCluster(cluster *cluster.Cluster) {
 	globalCluster = cluster
 }
 
