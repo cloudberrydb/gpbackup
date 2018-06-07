@@ -49,7 +49,7 @@ func CopyTableOut(connection *dbconn.DBConn, table Relation, backupFile string) 
 		 * of the data is backed up.
 		 */
 		backupFile = fmt.Sprintf("%s_%d", backupFile, table.Oid)
-		checkPipeExistsCommand := fmt.Sprintf("([[ -p %s ]] || (echo \"Pipe not found\">&2; exit 1))", backupFile)
+		checkPipeExistsCommand := fmt.Sprintf("(test -p \"%s\" || (echo \"Pipe not found\">&2; exit 1))", backupFile)
 		copyCommand = fmt.Sprintf("PROGRAM '%s && cat - > %s'", checkPipeExistsCommand, backupFile)
 	} else if usingCompression {
 		copyCommand = fmt.Sprintf("PROGRAM '%s > %s'", compressionProgram.CompressCommand, backupFile)
