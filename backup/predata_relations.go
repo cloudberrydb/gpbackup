@@ -370,7 +370,7 @@ func PrintCreateSequenceStatements(metadataFile *utils.FileWithByteCount, toc *u
 		start := metadataFile.ByteCount
 		seqFQN := sequence.ToString()
 		metadataFile.MustPrintln("\n\nCREATE SEQUENCE", seqFQN)
-		if connection.Version.AtLeast("6") {
+		if connectionPool.Version.AtLeast("6") {
 			metadataFile.MustPrintln("\tSTART WITH", sequence.StartVal)
 		} else if !sequence.IsCalled {
 			metadataFile.MustPrintln("\tSTART WITH", sequence.LastVal)

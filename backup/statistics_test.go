@@ -31,7 +31,7 @@ WHERE relname = 'testtable'
 AND relnamespace = 0;`)
 		})
 		It("prints tuple and attribute stats for single table with stats", func() {
-			testutils.SetDBVersion(connection, "6.0.0")
+			testutils.SetDBVersion(connectionPool, "6.0.0")
 			tableTestTable := backup.BasicRelation("testschema", "testtable")
 			tupleStats = backup.TupleStatistic{Schema: "testschema", Table: "testtable"}
 			attStats = []backup.AttributeStatistic{
@@ -125,7 +125,7 @@ AND relnamespace = 0;`))
 			AttNumber: 3, NullFraction: .4, Width: 10, Distinct: .5, Kind1: 20, Operator1: 10,
 			Numbers1: pq.StringArray([]string{"1", "2", "3"}), Values1: pq.StringArray([]string{"4", "5", "6"})}
 		It("generates attribute statistics query for array type", func() {
-			testutils.SetDBVersion(connection, "6.0.0")
+			testutils.SetDBVersion(connectionPool, "6.0.0")
 			attStats.Type = "_array"
 			attStatsQuery := backup.GenerateAttributeStatisticsQuery(tableTestTable, attStats)
 			Expect(attStatsQuery).To(Equal(`DELETE FROM pg_statistic WHERE starelid = 'testschema."test''table"'::regclass::oid AND staattnum = 3;
@@ -156,7 +156,7 @@ INSERT INTO pg_statistic VALUES (
 );`))
 		})
 		It("generates attribute statistics query for non-array type", func() {
-			testutils.SetDBVersion(connection, "6.0.0")
+			testutils.SetDBVersion(connectionPool, "6.0.0")
 			attStats.Type = "testtype"
 			attStatsQuery := backup.GenerateAttributeStatisticsQuery(tableTestTable, attStats)
 			Expect(attStatsQuery).To(Equal(`DELETE FROM pg_statistic WHERE starelid = 'testschema."test''table"'::regclass::oid AND staattnum = 3;

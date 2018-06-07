@@ -11,7 +11,9 @@ import (
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpbackup/utils"
-	pb "gopkg.in/cheggaaa/pb.v1"
+	"gopkg.in/cheggaaa/pb.v1"
+	"sync"
+	"sync/atomic"
 )
 
 var (
@@ -29,16 +31,29 @@ func ConstructTableAttributesList(columnDefs []ColumnDefinition) string {
 	return ""
 }
 
-func AddTableDataEntriesToTOC(tables []Relation, tableDefs map[uint32]TableDefinition, rowsCopiedMap map[uint32]int64) {
+func AddTableDataEntriesToTOC(tables []Relation, tableDefs map[uint32]TableDefinition, rowsCopiedMaps []map[uint32]int64) {
 	for _, table := range tables {
 		if !tableDefs[table.Oid].IsExternal {
+			var rowsCopied int64
+			for _, rowsCopiedMap := range rowsCopiedMaps {
+				if val, ok := rowsCopiedMap[table.Oid]; ok {
+					rowsCopied = val
+					break
+				}
+			}
 			attributes := ConstructTableAttributesList(tableDefs[table.Oid].ColumnDefs)
-			globalTOC.AddMasterDataEntry(table.Schema, table.Name, table.Oid, attributes, rowsCopiedMap[table.Oid])
+			globalTOC.AddMasterDataEntry(table.Schema, table.Name, table.Oid, attributes, rowsCopied)
 		}
 	}
 }
 
-func CopyTableOut(connection *dbconn.DBConn, table Relation, backupFile string) int64 {
+type BackupProgressCounters struct {
+	NumRegTables   int64
+	TotalRegTables int64
+	ProgressBar    utils.ProgressBar
+}
+
+func CopyTableOut(connectionPool *dbconn.DBConn, table Relation, backupFile string, connNum int) int64 {
 	usingCompression, compressionProgram := utils.GetCompressionParameters()
 	copyCommand := ""
 	if *singleDataFile {
@@ -48,7 +63,6 @@ func CopyTableOut(connection *dbconn.DBConn, table Relation, backupFile string) 
 		 * drive.  It will be copied to a user-specified directory, if any, once all
 		 * of the data is backed up.
 		 */
-		backupFile = fmt.Sprintf("%s_%d", backupFile, table.Oid)
 		checkPipeExistsCommand := fmt.Sprintf("(test -p \"%s\" || (echo \"Pipe not found\">&2; exit 1))", backupFile)
 		copyCommand = fmt.Sprintf("PROGRAM '%s && cat - > %s'", checkPipeExistsCommand, backupFile)
 	} else if usingCompression {
@@ -57,7 +71,7 @@ func CopyTableOut(connection *dbconn.DBConn, table Relation, backupFile string) 
 		copyCommand = fmt.Sprintf("'%s'", backupFile)
 	}
 	query := fmt.Sprintf("COPY %s TO %s WITH CSV DELIMITER '%s' ON SEGMENT IGNORE EXTERNAL PARTITIONS;", table.ToString(), copyCommand, tableDelim)
-	result, err := connection.Exec(query)
+	result, err := connectionPool.Exec(query, connNum)
 	if err != nil {
 		errStr := ""
 		if *singleDataFile {
@@ -70,61 +84,73 @@ func CopyTableOut(connection *dbconn.DBConn, table Relation, backupFile string) 
 	return numRows
 }
 
-func BackupDataForAllTables(tables []Relation, tableDefs map[uint32]TableDefinition) map[uint32]int64 {
-	numExtTables := 0
-	numRegTables := 1
-	totalExtTables := 0
+func BackupSingleTableData(tableDef TableDefinition, table Relation, rowsCopiedMap map[uint32]int64, counters *BackupProgressCounters, whichConn int) {
+	if !tableDef.IsExternal {
+		atomic.AddInt64(&counters.NumRegTables, 1)
+		if gplog.GetVerbosity() > gplog.LOGINFO {
+			// No progress bar at this log level, so we note table count here
+			gplog.Verbose("Writing data for table %s to file (table %d of %d)", table.ToString(), counters.NumRegTables, counters.TotalRegTables)
+		} else {
+			gplog.Verbose("Writing data for table %s to file", table.ToString())
+		}
+		backupFile := ""
+		if *singleDataFile {
+			backupFile = fmt.Sprintf("%s_%d", globalFPInfo.GetSegmentPipePathForCopyCommand(), table.Oid)
+		} else {
+			backupFile = globalFPInfo.GetTableBackupFilePathForCopyCommand(table.Oid, false)
+		}
+		rowsCopied := CopyTableOut(connectionPool, table, backupFile, whichConn)
+		rowsCopiedMap[table.Oid] = rowsCopied
+		counters.ProgressBar.Increment()
+	} else {
+		gplog.Verbose("Skipping data backup of table %s because it is an external table.", table.ToString())
+	}
+}
+
+func BackupDataForAllTables(tables []Relation, tableDefs map[uint32]TableDefinition) []map[uint32]int64 {
+	var totalExtTables int64
 	for _, table := range tables {
 		if tableDefs[table.Oid].IsExternal {
 			totalExtTables++
 		}
 	}
-	totalRegTables := len(tables) - totalExtTables
-	dataProgressBar := utils.NewProgressBar(totalRegTables, "Tables backed up: ", utils.PB_INFO)
-	dataProgressBar.Start()
-	backupFile := ""
-	if *singleDataFile {
-		backupFile = globalFPInfo.GetSegmentPipePathForCopyCommand()
+	counters := BackupProgressCounters{NumRegTables: 0, TotalRegTables: int64(len(tables)) - totalExtTables}
+	counters.ProgressBar = utils.NewProgressBar(int(counters.TotalRegTables), "Tables backed up: ", utils.PB_INFO)
+	counters.ProgressBar.Start()
+	rowsCopiedMaps := make([]map[uint32]int64, connectionPool.NumConns)
+	/*
+	 * We break when an interrupt is received and rely on
+	 * TerminateHangingCopySessions to kill any COPY statements
+	 * in progress if they don't finish on their own.
+	 */
+	tasks := make(chan Relation, len(tables))
+	var workerPool sync.WaitGroup
+	for connNum := 0; connNum < connectionPool.NumConns; connNum++ {
+		rowsCopiedMaps[connNum] = make(map[uint32]int64, 0)
+		workerPool.Add(1)
+		go func(whichConn int) {
+			defer workerPool.Done()
+			for table := range tasks {
+				if wasTerminated {
+					counters.ProgressBar.(*pb.ProgressBar).NotPrint = true
+					break
+				}
+				BackupSingleTableData(tableDefs[table.Oid], table, rowsCopiedMaps[whichConn], &counters, whichConn)
+			}
+		}(connNum)
 	}
-
-	rowsCopiedMap := make(map[uint32]int64, 0)
 	for _, table := range tables {
-		/*
-		* We break when an interrupt is received and rely on
-		* TerminateHangingCopySessions to kill any COPY statements
-		* in progress if they don't finish on their own.
-		 */
-		if wasTerminated {
-			dataProgressBar.(*pb.ProgressBar).NotPrint = true
-			break
-		}
-		tableDef := tableDefs[table.Oid]
-		isExternal := tableDef.IsExternal
-		if !isExternal {
-			if gplog.GetVerbosity() > gplog.LOGINFO {
-				// No progress bar at this log level, so we note table count here
-				gplog.Verbose("Writing data for table %s to file (table %d of %d)", table.ToString(), numRegTables, totalRegTables)
-			} else {
-				gplog.Verbose("Writing data for table %s to file", table.ToString())
-			}
-			if !*singleDataFile {
-				backupFile = globalFPInfo.GetTableBackupFilePathForCopyCommand(table.Oid, false)
-			}
-			rowsCopied := CopyTableOut(connection, table, backupFile)
-			rowsCopiedMap[table.Oid] = rowsCopied
-			numRegTables++
-			dataProgressBar.Increment()
-		} else if *leafPartitionData || tableDef.PartitionType != "l" {
-			gplog.Verbose("Skipping data backup of table %s because it is an external table.", table.ToString())
-			numExtTables++
-		}
+		tasks <- table
 	}
-	dataProgressBar.Finish()
-	printDataBackupWarnings(numExtTables)
-	return rowsCopiedMap
+	close(tasks)
+	workerPool.Wait()
+	counters.ProgressBar.Finish()
+
+	printDataBackupWarnings(totalExtTables)
+	return rowsCopiedMaps
 }
 
-func printDataBackupWarnings(numExtTables int) {
+func printDataBackupWarnings(numExtTables int64) {
 	if numExtTables > 0 {
 		s := ""
 		if numExtTables > 1 {

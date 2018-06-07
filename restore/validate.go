@@ -120,7 +120,7 @@ func ValidateFilterRelationsInBackupSet(relationList []string) {
 }
 
 func ValidateDatabaseExistence(dbname string, createDatabase bool, isFiltered bool) {
-	databaseExists, err := strconv.ParseBool(dbconn.MustSelectString(connection, fmt.Sprintf(`
+	databaseExists, err := strconv.ParseBool(dbconn.MustSelectString(connectionPool, fmt.Sprintf(`
 SELECT CASE
 	WHEN EXISTS (SELECT datname FROM pg_database WHERE datname='%s') THEN 'true'
 	ELSE 'false'

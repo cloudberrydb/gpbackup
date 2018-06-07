@@ -32,9 +32,9 @@ func SetLoggerVerbosity() {
 }
 
 func InitializeConnection(dbname string) {
-	connection = dbconn.NewDBConnFromEnvironment(dbname)
-	connection.MustConnect(*numJobs)
-	utils.SetDatabaseVersion(connection)
+	connectionPool = dbconn.NewDBConnFromEnvironment(dbname)
+	connectionPool.MustConnect(*numJobs)
+	utils.SetDatabaseVersion(connectionPool)
 	setupQuery := `
 SET application_name TO 'gprestore';
 SET search_path TO pg_catalog;
@@ -46,14 +46,14 @@ SET client_min_messages = error;
 SET standard_conforming_strings = on;
 SET default_with_oids = off;
 `
-	if connection.Version.Before("5") {
+	if connectionPool.Version.Before("5") {
 		setupQuery += "SET gp_strict_xml_parse = off;\n"
 	}
-	if connection.Version.AtLeast("5") {
+	if connectionPool.Version.AtLeast("5") {
 		setupQuery += "SET gp_ignore_error_table = on;\n"
 	}
-	for i := 0; i < connection.NumConns; i++ {
-		connection.MustExec(setupQuery, i)
+	for i := 0; i < connectionPool.NumConns; i++ {
+		connectionPool.MustExec(setupQuery, i)
 	}
 }
 
@@ -61,7 +61,7 @@ func InitializeBackupConfig() {
 	backupConfig = utils.ReadConfigFile(globalFPInfo.GetConfigFilePath())
 	utils.InitializeCompressionParameters(backupConfig.Compressed, 0)
 	utils.EnsureBackupVersionCompatibility(backupConfig.BackupVersion, version)
-	utils.EnsureDatabaseVersionCompatibility(backupConfig.DatabaseVersion, connection.Version)
+	utils.EnsureDatabaseVersionCompatibility(backupConfig.DatabaseVersion, connectionPool.Version)
 }
 
 func InitializeFilterLists() {
@@ -158,7 +158,7 @@ func setGUCsForConnection(gucStatements []utils.StatementWithType, whichConn int
 
 func restoreSchemas(schemaStatements []utils.StatementWithType, progressBar utils.ProgressBar) {
 	for _, schema := range schemaStatements {
-		_, err := connection.Exec(schema.Statement, 0)
+		_, err := connectionPool.Exec(schema.Statement, 0)
 		if err != nil {
 			fmt.Println()
 			if strings.Contains(err.Error(), "already exists") {

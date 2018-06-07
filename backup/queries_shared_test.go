@@ -30,7 +30,7 @@ var _ = Describe("backup/queries_shared tests", func() {
 	coalesce(description,'') AS comment
 FROM table o LEFT JOIN pg_description d ON (d.objoid = o.oid AND d.classoid = 'table'::regclass AND d.objsubid = 0)
 ORDER BY o.oid;`)).WillReturnRows(emptyRows)
-			backup.GetMetadataForObjectType(connection, params)
+			backup.GetMetadataForObjectType(connectionPool, params)
 		})
 		It("queries metadata for an object with a schema field", func() {
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT
@@ -44,7 +44,7 @@ JOIN pg_namespace n ON o.schema = n.oid
 WHERE n.nspname NOT LIKE 'pg_temp_%' AND n.nspname NOT LIKE 'pg_toast%' AND n.nspname NOT IN ('gp_toolkit', 'information_schema', 'pg_aoseg', 'pg_bitmapindex', 'pg_catalog')
 ORDER BY o.oid;`)).WillReturnRows(emptyRows)
 			params.SchemaField = "schema"
-			backup.GetMetadataForObjectType(connection, params)
+			backup.GetMetadataForObjectType(connectionPool, params)
 		})
 		It("queries metadata for an object with an ACL field", func() {
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT
@@ -63,7 +63,7 @@ FROM table o LEFT JOIN pg_description d ON (d.objoid = o.oid AND d.classoid = 't
 
 ORDER BY o.oid;`)).WillReturnRows(emptyRows)
 			params.ACLField = "acl"
-			backup.GetMetadataForObjectType(connection, params)
+			backup.GetMetadataForObjectType(connectionPool, params)
 		})
 		It("queries metadata for a shared object", func() {
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT
@@ -76,7 +76,7 @@ FROM table o LEFT JOIN pg_shdescription d ON (d.objoid = o.oid AND d.classoid = 
 
 ORDER BY o.oid;`)).WillReturnRows(emptyRows)
 			params.Shared = true
-			backup.GetMetadataForObjectType(connection, params)
+			backup.GetMetadataForObjectType(connectionPool, params)
 		})
 		It("returns metadata for multiple objects", func() {
 			aclRowOne := []driver.Value{"1", "gpadmin=a/gpadmin", "testrole", ""}
@@ -85,7 +85,7 @@ ORDER BY o.oid;`)).WillReturnRows(emptyRows)
 			fakeRows := sqlmock.NewRows(header).AddRow(aclRowOne...).AddRow(aclRowTwo...).AddRow(commentRow...)
 			mock.ExpectQuery(`SELECT (.*)`).WillReturnRows(fakeRows)
 			params.ACLField = "acl"
-			resultMetadataMap := backup.GetMetadataForObjectType(connection, params)
+			resultMetadataMap := backup.GetMetadataForObjectType(connectionPool, params)
 
 			expectedOne := backup.ObjectMetadata{Privileges: []backup.ACL{
 				{Grantee: "gpadmin", Insert: true},
@@ -112,7 +112,7 @@ ORDER BY o.oid;`)).WillReturnRows(emptyRows)
 	o.oid AS oid,
 	coalesce(description,'') AS comment
 FROM table o JOIN pg_description d ON (d.objoid = oid AND d.classoid = 'table'::regclass AND d.objsubid = 0);`)).WillReturnRows(emptyRows)
-			backup.GetCommentsForObjectType(connection, params)
+			backup.GetCommentsForObjectType(connectionPool, params)
 		})
 		It("returns comment for object with different comment table", func() {
 			params.CommentTable = "comment_table"
@@ -120,7 +120,7 @@ FROM table o JOIN pg_description d ON (d.objoid = oid AND d.classoid = 'table'::
 	o.oid AS oid,
 	coalesce(description,'') AS comment
 FROM table o JOIN pg_description d ON (d.objoid = oid AND d.classoid = 'comment_table'::regclass AND d.objsubid = 0);`)).WillReturnRows(emptyRows)
-			backup.GetCommentsForObjectType(connection, params)
+			backup.GetCommentsForObjectType(connectionPool, params)
 		})
 		It("returns comment for a shared object", func() {
 			params.Shared = true
@@ -128,14 +128,14 @@ FROM table o JOIN pg_description d ON (d.objoid = oid AND d.classoid = 'comment_
 	o.oid AS oid,
 	coalesce(description,'') AS comment
 FROM table o JOIN pg_shdescription d ON (d.objoid = oid AND d.classoid = 'table'::regclass);`)).WillReturnRows(emptyRows)
-			backup.GetCommentsForObjectType(connection, params)
+			backup.GetCommentsForObjectType(connectionPool, params)
 		})
 		It("returns comments for multiple objects", func() {
 			rowOne := []driver.Value{"1", "This is a metadata comment."}
 			rowTwo := []driver.Value{"2", "This is also a metadata comment."}
 			fakeRows := sqlmock.NewRows(header).AddRow(rowOne...).AddRow(rowTwo...)
 			mock.ExpectQuery(`SELECT (.*)`).WillReturnRows(fakeRows)
-			resultMetadataMap := backup.GetCommentsForObjectType(connection, params)
+			resultMetadataMap := backup.GetCommentsForObjectType(connectionPool, params)
 
 			expectedOne := backup.ObjectMetadata{Privileges: []backup.ACL{}, Comment: "This is a metadata comment."}
 			expectedTwo := backup.ObjectMetadata{Privileges: []backup.ACL{}, Comment: "This is also a metadata comment."}

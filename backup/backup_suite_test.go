@@ -8,7 +8,7 @@ package backup_test
 import (
 	"testing"
 
-	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
+	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 	"github.com/greenplum-db/gpbackup/backup"
@@ -20,14 +20,15 @@ import (
 )
 
 var (
-	connection *dbconn.DBConn
-	mock       sqlmock.Sqlmock
-	stdout     *gbytes.Buffer
-	stderr     *gbytes.Buffer
-	logfile    *gbytes.Buffer
-	buffer     = gbytes.NewBuffer()
-	toc        *utils.TOC
-	backupfile *utils.FileWithByteCount
+	connectionPool *dbconn.DBConn
+	defaultConnNum = 0
+	mock           sqlmock.Sqlmock
+	stdout         *gbytes.Buffer
+	stderr         *gbytes.Buffer
+	logfile        *gbytes.Buffer
+	buffer         = gbytes.NewBuffer()
+	toc            *utils.TOC
+	backupfile     *utils.FileWithByteCount
 )
 
 func TestBackup(t *testing.T) {
@@ -36,7 +37,7 @@ func TestBackup(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	connection, mock, stdout, stderr, logfile = testutils.SetupTestEnvironment()
+	connectionPool, mock, stdout, stderr, logfile = testutils.SetupTestEnvironment()
 	backup.SetIncludeSchemas([]string{})
 	backup.SetExcludeSchemas([]string{})
 	backup.SetIncludeTables([]string{})
@@ -45,5 +46,5 @@ var _ = BeforeSuite(func() {
 
 var _ = BeforeEach(func() {
 	buffer = gbytes.NewBuffer()
-	connection, mock = testutils.CreateAndConnectMockDB(1)
+	connectionPool, mock = testutils.CreateAndConnectMockDB(1)
 })

@@ -17,12 +17,12 @@ var (
 	tableDelim = ","
 )
 
-func CopyTableIn(connection *dbconn.DBConn, tableName string, tableAttributes string, backupFile string, singleDataFile bool, whichConn int, oid uint32) int64 {
+func CopyTableIn(connection *dbconn.DBConn, tableName string, tableAttributes string, backupFile string, singleDataFile bool, whichConn int) int64 {
 	whichConn = connection.ValidateConnNum(whichConn)
 	usingCompression, compressionProgram := utils.GetCompressionParameters()
 	copyCommand := ""
 	if singleDataFile {
-		copyCommand = fmt.Sprintf("PROGRAM 'cat %s_%d'", backupFile, oid)
+		copyCommand = fmt.Sprintf("PROGRAM 'cat %s'", backupFile)
 	} else if usingCompression && !singleDataFile {
 		copyCommand = fmt.Sprintf("PROGRAM '%s < %s'", compressionProgram.DecompressCommand, backupFile)
 	} else {
@@ -48,11 +48,11 @@ func restoreSingleTableData(entry utils.MasterDataEntry, tableNum uint32, totalT
 	}
 	backupFile := ""
 	if backupConfig.SingleDataFile {
-		backupFile = globalFPInfo.GetSegmentPipePathForCopyCommand()
+		backupFile = fmt.Sprintf("%s_%d", globalFPInfo.GetSegmentPipePathForCopyCommand(), entry.Oid)
 	} else {
 		backupFile = globalFPInfo.GetTableBackupFilePathForCopyCommand(entry.Oid, backupConfig.SingleDataFile)
 	}
-	numRowsRestored := CopyTableIn(connection, name, entry.AttributeString, backupFile, backupConfig.SingleDataFile, whichConn, entry.Oid)
+	numRowsRestored := CopyTableIn(connectionPool, name, entry.AttributeString, backupFile, backupConfig.SingleDataFile, whichConn)
 	numRowsBackedUp := entry.RowsCopied
 	CheckRowsRestored(numRowsRestored, numRowsBackedUp, name)
 }

@@ -20,8 +20,8 @@ import (
  * an error code.
  */
 func executeStatement(statement utils.StatementWithType, showProgressBar int, whichConn int) uint32 {
-	whichConn = connection.ValidateConnNum(whichConn)
-	_, err := connection.Exec(statement.Statement, whichConn)
+	whichConn = connectionPool.ValidateConnNum(whichConn)
+	_, err := connectionPool.Exec(statement.Statement, whichConn)
 	if err != nil {
 		gplog.Verbose("Error encountered when executing statement: %s Error was: %s", strings.TrimSpace(statement.Statement), err.Error())
 		if *onErrorContinue {
@@ -42,7 +42,7 @@ func executeStatement(statement utils.StatementWithType, showProgressBar int, wh
 func ExecuteStatements(statements []utils.StatementWithType, progressBar utils.ProgressBar, showProgressBar int, executeInParallel bool, whichConn ...int) {
 	var numErrors uint32
 	if !executeInParallel {
-		connNum := connection.ValidateConnNum(whichConn...)
+		connNum := connectionPool.ValidateConnNum(whichConn...)
 		for _, statement := range statements {
 			if wasTerminated {
 				return
@@ -53,7 +53,7 @@ func ExecuteStatements(statements []utils.StatementWithType, progressBar utils.P
 	} else {
 		tasks := make(chan utils.StatementWithType, len(statements))
 		var workerPool sync.WaitGroup
-		for i := 0; i < connection.NumConns; i++ {
+		for i := 0; i < connectionPool.NumConns; i++ {
 			workerPool.Add(1)
 			go func(whichConn int) {
 				for statement := range tasks {

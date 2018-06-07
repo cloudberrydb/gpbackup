@@ -15,10 +15,10 @@ import (
  */
 
 func validateFilterLists() {
-	ValidateFilterSchemas(connection, *excludeSchemas)
-	ValidateFilterSchemas(connection, *includeSchemas)
-	ValidateFilterTables(connection, *excludeTables)
-	ValidateFilterTables(connection, *includeTables)
+	ValidateFilterSchemas(connectionPool, *excludeSchemas)
+	ValidateFilterSchemas(connectionPool, *includeSchemas)
+	ValidateFilterTables(connectionPool, *excludeTables)
+	ValidateFilterTables(connectionPool, *includeTables)
 }
 
 func ValidateFilterSchemas(connection *dbconn.DBConn, schemaList []string) {
@@ -79,8 +79,8 @@ func ValidateFlagCombinations(flags *pflag.FlagSet) {
 	utils.CheckExclusiveFlags(flags, "exclude-schema", "include-schema")
 	utils.CheckExclusiveFlags(flags, "exclude-schema", "exclude-table", "include-table", "exclude-table-file", "include-table-file")
 	utils.CheckExclusiveFlags(flags, "exclude-table", "exclude-table-file", "leaf-partition-data")
+	utils.CheckExclusiveFlags(flags, "jobs", "metadata-only", "single-data-file")
 	utils.CheckExclusiveFlags(flags, "metadata-only", "leaf-partition-data")
-	utils.CheckExclusiveFlags(flags, "metadata-only", "single-data-file")
 	utils.CheckExclusiveFlags(flags, "no-compression", "compression-level")
 	if *pluginConfigFile != "" && !(*singleDataFile || *metadataOnly) {
 		gplog.Fatal(errors.Errorf("--plugin-config must be specified with either --single-data-file or --metadata-only"), "")

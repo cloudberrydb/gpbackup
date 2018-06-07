@@ -416,7 +416,7 @@ var _ = Describe("backup end to end integration tests", func() {
 		})
 		It("runs gpbackup and gprestore with jobs flag", func() {
 			backupdir := "/tmp/parallel"
-			timestamp := gpbackup(gpbackupPath, "--backup-dir", backupdir)
+			timestamp := gpbackup(gpbackupPath, "--backup-dir", backupdir, "--jobs", "4")
 			gprestore(gprestorePath, timestamp, "--redirect-db", "restoredb", "--backup-dir", backupdir, "--jobs", "4")
 
 			assertRelationsCreated(restoreConn, 32)

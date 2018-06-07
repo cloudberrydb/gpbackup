@@ -29,6 +29,7 @@ func initializeFlags(cmd *cobra.Command) {
 	includeSchemas = cmd.Flags().StringSlice("include-schema", []string{}, "Back up only the specified schema(s). --include-schema can be specified multiple times.")
 	includeTables = cmd.Flags().StringSlice("include-table", []string{}, "Back up only the specified table(s). --include-table can be specified multiple times.")
 	includeTableFile = cmd.Flags().String("include-table-file", "", "A file containing a list of fully-qualified tables to be included in the backup")
+	numJobs = cmd.Flags().Int("jobs", 1, "The number of parallel connections to use when backing up data")
 	leafPartitionData = cmd.Flags().Bool("leaf-partition-data", false, "For partition tables, create one data file per leaf partition instead of one data file for the whole table")
 	metadataOnly = cmd.Flags().Bool("metadata-only", false, "Only back up metadata, do not back up data")
 	noCompression = cmd.Flags().Bool("no-compression", false, "Disable compression of data files")
@@ -63,15 +64,15 @@ func DoSetup() {
 	utils.CreateBackupLockFile(timestamp)
 
 	gplog.Info("Starting backup of database %s", *dbname)
-	InitializeConnection()
+	InitializeConnectionPool()
 
 	InitializeFilterLists()
 	InitializeBackupReport()
 	validateFilterLists()
 
-	segConfig := cluster.MustGetSegmentConfiguration(connection)
+	segConfig := cluster.MustGetSegmentConfiguration(connectionPool)
 	globalCluster = cluster.NewCluster(segConfig)
-	segPrefix := utils.GetSegPrefix(connection)
+	segPrefix := utils.GetSegPrefix(connectionPool)
 	globalFPInfo = utils.NewFilePathInfo(globalCluster.SegDirMap, *backupDir, timestamp, segPrefix)
 	CreateBackupDirectoriesOnAllHosts()
 	globalTOC = &utils.TOC{}
@@ -122,7 +123,9 @@ func DoBackup() {
 	}
 
 	globalTOC.WriteToFileAndMakeReadOnly(globalFPInfo.GetTOCFilePath())
-	connection.MustCommit()
+	for connNum := 0; connNum < connectionPool.NumConns; connNum++ {
+		connectionPool.MustCommit(connNum)
+	}
 	metadataFile.Close()
 	if *pluginConfigFile != "" {
 		pluginConfig.BackupFile(metadataFilename)
@@ -142,7 +145,7 @@ func backupGlobal(metadataFile *utils.FileWithByteCount) {
 
 	if len(*includeSchemas) == 0 {
 		BackupResourceQueues(metadataFile)
-		if connection.Version.AtLeast("5") {
+		if connectionPool.Version.AtLeast("5") {
 			BackupResourceGroups(metadataFile)
 		}
 		BackupRoles(metadataFile)
@@ -162,14 +165,14 @@ func backupPredata(metadataFile *utils.FileWithByteCount, tables []Relation, tab
 	gplog.Info("Writing pre-data metadata")
 
 	BackupSchemas(metadataFile)
-	if len(*includeSchemas) == 0 && connection.Version.AtLeast("5") {
+	if len(*includeSchemas) == 0 && connectionPool.Version.AtLeast("5") {
 		BackupExtensions(metadataFile)
 	}
 
-	if connection.Version.AtLeast("6") {
+	if connectionPool.Version.AtLeast("6") {
 		BackupCollations(metadataFile)
 	}
-	procLangs := GetProceduralLanguages(connection)
+	procLangs := GetProceduralLanguages(connectionPool)
 	langFuncs, otherFuncs, functionMetadata := RetrieveFunctions(procLangs)
 	types, typeMetadata, funcInfoMap := RetrieveTypes()
 
@@ -178,11 +181,11 @@ func backupPredata(metadataFile *utils.FileWithByteCount, tables []Relation, tab
 	}
 
 	BackupShellTypes(metadataFile, types)
-	if connection.Version.AtLeast("5") {
+	if connectionPool.Version.AtLeast("5") {
 		BackupEnumTypes(metadataFile, typeMetadata)
 	}
 
-	relationMetadata := GetMetadataForObjectType(connection, TYPE_RELATION)
+	relationMetadata := GetMetadataForObjectType(connectionPool, TYPE_RELATION)
 	sequences, sequenceOwnerColumns := RetrieveSequences()
 	BackupCreateSequences(metadataFile, sequences, relationMetadata)
 
@@ -193,14 +196,14 @@ func backupPredata(metadataFile *utils.FileWithByteCount, tables []Relation, tab
 
 	if len(*includeSchemas) == 0 {
 		BackupProtocols(metadataFile, funcInfoMap)
-		if connection.Version.AtLeast("6") {
+		if connectionPool.Version.AtLeast("6") {
 			BackupForeignDataWrappers(metadataFile, funcInfoMap)
 			BackupForeignServers(metadataFile)
 			BackupUserMappings(metadataFile)
 		}
 	}
 
-	if connection.Version.AtLeast("5") {
+	if connectionPool.Version.AtLeast("5") {
 		BackupTSParsers(metadataFile)
 		BackupTSTemplates(metadataFile)
 		BackupTSDictionaries(metadataFile)
@@ -208,7 +211,7 @@ func backupPredata(metadataFile *utils.FileWithByteCount, tables []Relation, tab
 	}
 
 	BackupOperators(metadataFile)
-	if connection.Version.AtLeast("5") {
+	if connectionPool.Version.AtLeast("5") {
 		BackupOperatorFamilies(metadataFile)
 	}
 	BackupOperatorClasses(metadataFile)
@@ -231,7 +234,7 @@ func backupTablePredata(metadataFile *utils.FileWithByteCount, tables []Relation
 	}
 	gplog.Info("Writing table metadata")
 
-	relationMetadata := GetMetadataForObjectType(connection, TYPE_RELATION)
+	relationMetadata := GetMetadataForObjectType(connectionPool, TYPE_RELATION)
 
 	sequences, sequenceOwnerColumns := RetrieveSequences()
 	BackupCreateSequences(metadataFile, sequences, relationMetadata)
@@ -263,8 +266,8 @@ func backupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
 		utils.StartAgent(globalCluster, globalFPInfo, "--backup-agent", *pluginConfigFile, compressStr)
 	}
 	gplog.Info("Writing data to file")
-	rowsCopiedMap := BackupDataForAllTables(tables, tableDefs)
-	AddTableDataEntriesToTOC(tables, tableDefs, rowsCopiedMap)
+	rowsCopiedMaps := BackupDataForAllTables(tables, tableDefs)
+	AddTableDataEntriesToTOC(tables, tableDefs, rowsCopiedMaps)
 	if *singleDataFile && *pluginConfigFile != "" {
 		pluginConfig.BackupSegmentTOCs(globalCluster, globalFPInfo)
 	}
@@ -381,14 +384,14 @@ func DoCleanup() {
 			if wasTerminated {
 				utils.CleanUpSegmentHelperProcesses(globalCluster, globalFPInfo, "backup")
 				// It is possible for the COPY command to become orphaned if an agent process is killed
-				utils.TerminateHangingCopySessions(connection, globalFPInfo, "gpbackup")
+				utils.TerminateHangingCopySessions(connectionPool, globalFPInfo, "gpbackup")
 			}
 		}
 		timestampLockFile := fmt.Sprintf("/tmp/%s.lck", globalFPInfo.Timestamp)
 		_ = os.Remove(timestampLockFile) // Don't check error, as DoTeardown may have removed it already
 	}
-	if connection != nil {
-		connection.Close()
+	if connectionPool != nil {
+		connectionPool.Close()
 	}
 }
 

@@ -17,15 +17,15 @@ import (
  * Non-flag variables
  */
 var (
-	backupReport  *utils.Report
-	connection    *dbconn.DBConn
-	globalCluster cluster.Cluster
-	globalFPInfo  utils.FilePathInfo
-	globalTOC     *utils.TOC
-	objectCounts  map[string]int
-	pluginConfig  *utils.PluginConfig
-	version       string
-	wasTerminated bool
+	backupReport   *utils.Report
+	connectionPool *dbconn.DBConn
+	globalCluster  cluster.Cluster
+	globalFPInfo   utils.FilePathInfo
+	globalTOC      *utils.TOC
+	objectCounts   map[string]int
+	pluginConfig   *utils.PluginConfig
+	version        string
+	wasTerminated  bool
 
 	/*
 	 * Used for synchronizing DoCleanup.  In DoInit() we increment the group
@@ -50,6 +50,7 @@ var (
 	includeSchemas    *[]string
 	includeTableFile  *string
 	includeTables     *[]string
+	numJobs           *int
 	leafPartitionData *bool
 	metadataOnly      *bool
 	noCompression     *bool
@@ -65,7 +66,7 @@ var (
  */
 
 func SetConnection(conn *dbconn.DBConn) {
-	connection = conn
+	connectionPool = conn
 }
 
 func SetCluster(cluster cluster.Cluster) {

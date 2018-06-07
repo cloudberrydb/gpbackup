@@ -18,11 +18,11 @@ import (
 func tableAndSchemaFilterClause() string {
 	filterClause := SchemaFilterClause("n")
 	if len(*excludeTables) > 0 {
-		excludeOids := GetOidsFromTableList(connection, *excludeTables)
+		excludeOids := GetOidsFromTableList(connectionPool, *excludeTables)
 		filterClause += fmt.Sprintf("\nAND c.oid NOT IN (%s)", strings.Join(excludeOids, ", "))
 	}
 	if len(*includeTables) > 0 {
-		includeOids := GetOidsFromTableList(connection, *includeTables)
+		includeOids := GetOidsFromTableList(connectionPool, *includeTables)
 		filterClause += fmt.Sprintf("\nAND c.oid IN (%s)", strings.Join(includeOids, ", "))
 	}
 	return filterClause

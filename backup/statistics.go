@@ -58,7 +58,7 @@ func GenerateAttributeStatisticsQuery(table Relation, attStat AttributeStatistic
 	starelidStr := fmt.Sprintf("'%s'::regclass::oid", strings.Replace(table.ToString(), "'", "''", -1))
 	// The entry may or may not already exist, so we can't either just UPDATE or just INSERT without a DELETE.
 	inheritStr := ""
-	if connection.Version.AtLeast("6") {
+	if connectionPool.Version.AtLeast("6") {
 		inheritStr = fmt.Sprintf("\n\t%t::boolean,", attStat.Inherit)
 	}
 	attributeQuery := fmt.Sprintf(`DELETE FROM pg_statistic WHERE starelid = %s AND staattnum = %d;

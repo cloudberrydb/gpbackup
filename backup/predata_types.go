@@ -63,7 +63,7 @@ func PrintCreateBaseTypeStatement(metadataFile *utils.FileWithByteCount, toc *ut
 	if base.Send != "" {
 		metadataFile.MustPrintf(",\n\tSEND = %s", base.Send)
 	}
-	if connection.Version.AtLeast("5") {
+	if connectionPool.Version.AtLeast("5") {
 		if base.ModIn != "" {
 			metadataFile.MustPrintf(",\n\tTYPMOD_IN = %s", base.ModIn)
 		}

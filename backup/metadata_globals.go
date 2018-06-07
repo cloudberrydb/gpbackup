@@ -178,7 +178,7 @@ func PrintCreateRoleStatements(metadataFile *utils.FileWithByteCount, toc *utils
 
 		attrs = append(attrs, fmt.Sprintf("RESOURCE QUEUE %s", role.ResQueue))
 
-		if connection.Version.AtLeast("5") {
+		if connectionPool.Version.AtLeast("5") {
 			attrs = append(attrs, fmt.Sprintf("RESOURCE GROUP %s", role.ResGroup))
 		}
 
@@ -240,7 +240,7 @@ func PrintCreateTablespaceStatements(metadataFile *utils.FileWithByteCount, toc 
 	for _, tablespace := range tablespaces {
 		start := metadataFile.ByteCount
 		fileLocStr := ""
-		if connection.Version.Before("6") {
+		if connectionPool.Version.Before("6") {
 			fileLocStr = "FILESPACE"
 		} else {
 			fileLocStr = "LOCATION"

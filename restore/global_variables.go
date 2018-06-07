@@ -19,7 +19,7 @@ import (
 
 var (
 	backupConfig     *utils.BackupConfig
-	connection       *dbconn.DBConn
+	connectionPool   *dbconn.DBConn
 	globalCluster    cluster.Cluster
 	globalFPInfo     utils.FilePathInfo
 	globalTOC        *utils.TOC
@@ -72,7 +72,7 @@ func SetBackupConfig(config *utils.BackupConfig) {
 }
 
 func SetConnection(conn *dbconn.DBConn) {
-	connection = conn
+	connectionPool = conn
 }
 
 func SetCluster(cluster cluster.Cluster) {

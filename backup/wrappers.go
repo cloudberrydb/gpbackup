@@ -32,34 +32,37 @@ func SetLoggerVerbosity() {
 	}
 }
 
-func InitializeConnection() {
-	connection = dbconn.NewDBConnFromEnvironment(*dbname)
-	connection.MustConnect(1)
-	connection.MustExec("SET application_name TO 'gpbackup'")
-	utils.SetDatabaseVersion(connection)
-	InitializeMetadataParams(connection)
-	connection.MustBegin()
-	SetSessionGUCs()
+func InitializeConnectionPool() {
+	connectionPool = dbconn.NewDBConnFromEnvironment(*dbname)
+	connectionPool.MustConnect(*numJobs)
+	utils.SetDatabaseVersion(connectionPool)
+	InitializeMetadataParams(connectionPool)
+	fmt.Println(connectionPool.NumConns)
+	for connNum := 0; connNum < connectionPool.NumConns; connNum++ {
+		connectionPool.MustExec("SET application_name TO 'gpbackup'", connNum)
+		connectionPool.MustBegin(connNum)
+		SetSessionGUCs(connNum)
+	}
 }
 
-func SetSessionGUCs() {
+func SetSessionGUCs(connNum int) {
 	// These GUCs ensure the dumps portability accross systems
-	connection.MustExec("SET search_path TO pg_catalog")
-	connection.MustExec("SET statement_timeout = 0")
-	connection.MustExec("SET DATESTYLE = ISO")
-	if connection.Version.AtLeast("5") {
-		connection.MustExec("SET synchronize_seqscans TO off")
+	connectionPool.MustExec("SET search_path TO pg_catalog", connNum)
+	connectionPool.MustExec("SET statement_timeout = 0", connNum)
+	connectionPool.MustExec("SET DATESTYLE = ISO", connNum)
+	if connectionPool.Version.AtLeast("5") {
+		connectionPool.MustExec("SET synchronize_seqscans TO off", connNum)
 	}
-	if connection.Version.AtLeast("6") {
-		connection.MustExec("SET INTERVALSTYLE = POSTGRES")
+	if connectionPool.Version.AtLeast("6") {
+		connectionPool.MustExec("SET INTERVALSTYLE = POSTGRES", connNum)
 	}
 }
 
 func InitializeBackupReport() {
-	dbname := dbconn.MustSelectString(connection, fmt.Sprintf("select quote_ident(datname) AS string FROM pg_database where datname='%s'", connection.DBName))
+	dbname := dbconn.MustSelectString(connectionPool, fmt.Sprintf("select quote_ident(datname) AS string FROM pg_database where datname='%s'", connectionPool.DBName))
 	config := utils.BackupConfig{
 		DatabaseName:    dbname,
-		DatabaseVersion: connection.Version.VersionString,
+		DatabaseVersion: connectionPool.Version.VersionString,
 		BackupVersion:   version,
 	}
 	isIncludeSchemaFiltered := len(*includeSchemas) > 0
@@ -69,7 +72,7 @@ func InitializeBackupReport() {
 	dbSize := ""
 	if !*metadataOnly && !isIncludeSchemaFiltered && !isIncludeTableFiltered && !isExcludeSchemaFiltered && !isExcludeTableFiltered {
 		gplog.Verbose("Getting database size")
-		dbSize = GetDBSize(connection)
+		dbSize = GetDBSize(connectionPool)
 	}
 
 	backupReport = &utils.Report{
@@ -105,8 +108,8 @@ func CreateBackupDirectoriesOnAllHosts() {
 
 func RetrieveAndProcessTables() ([]Relation, []Relation, map[uint32]TableDefinition) {
 	gplog.Info("Gathering list of tables for backup")
-	tables := GetAllUserTables(connection)
-	LockTables(connection, tables)
+	tables := GetAllUserTables(connectionPool)
+	LockTables(connectionPool, tables)
 
 	/*
 	 * We expand the includeTables list to include parent and leaf partitions that may not have been
@@ -120,7 +123,7 @@ func RetrieveAndProcessTables() ([]Relation, []Relation, map[uint32]TableDefinit
 		}
 		*includeTables = expandedIncludeTables
 	}
-	tableDefs := ConstructDefinitionsForTables(connection, tables)
+	tableDefs := ConstructDefinitionsForTables(connectionPool, tables)
 	metadataTables, dataTables := SplitTablesByPartitionType(tables, tableDefs, userPassedIncludeTables)
 	objectCounts["Tables"] = len(metadataTables)
 
@@ -129,45 +132,45 @@ func RetrieveAndProcessTables() ([]Relation, []Relation, map[uint32]TableDefinit
 
 func RetrieveFunctions(procLangs []ProceduralLanguage) ([]Function, []Function, MetadataMap) {
 	gplog.Verbose("Retrieving function information")
-	functions := GetFunctionsAllVersions(connection)
+	functions := GetFunctionsAllVersions(connectionPool)
 	objectCounts["Functions"] = len(functions)
-	functionMetadata := GetMetadataForObjectType(connection, TYPE_FUNCTION)
-	functions = ConstructFunctionDependencies(connection, functions)
+	functionMetadata := GetMetadataForObjectType(connectionPool, TYPE_FUNCTION)
+	functions = ConstructFunctionDependencies(connectionPool, functions)
 	langFuncs, otherFuncs := ExtractLanguageFunctions(functions, procLangs)
 	return langFuncs, otherFuncs, functionMetadata
 }
 
 func RetrieveTypes() ([]Type, MetadataMap, map[uint32]FunctionInfo) {
 	gplog.Verbose("Retrieving type information")
-	shells := GetShellTypes(connection)
-	bases := GetBaseTypes(connection)
-	funcInfoMap := GetFunctionOidToInfoMap(connection)
-	if connection.Version.Before("5") {
-		bases = ConstructBaseTypeDependencies4(connection, bases, funcInfoMap)
+	shells := GetShellTypes(connectionPool)
+	bases := GetBaseTypes(connectionPool)
+	funcInfoMap := GetFunctionOidToInfoMap(connectionPool)
+	if connectionPool.Version.Before("5") {
+		bases = ConstructBaseTypeDependencies4(connectionPool, bases, funcInfoMap)
 	} else {
-		bases = ConstructBaseTypeDependencies5(connection, bases)
+		bases = ConstructBaseTypeDependencies5(connectionPool, bases)
 	}
 	types := append(shells, bases...)
-	composites := GetCompositeTypes(connection)
-	composites = ConstructCompositeTypeDependencies(connection, composites)
+	composites := GetCompositeTypes(connectionPool)
+	composites = ConstructCompositeTypeDependencies(connectionPool, composites)
 	types = append(types, composites...)
-	domains := GetDomainTypes(connection)
-	domains = ConstructDomainDependencies(connection, domains)
+	domains := GetDomainTypes(connectionPool)
+	domains = ConstructDomainDependencies(connectionPool, domains)
 	types = append(types, domains...)
 	objectCounts["Types"] = len(types)
-	typeMetadata := GetMetadataForObjectType(connection, TYPE_TYPE)
+	typeMetadata := GetMetadataForObjectType(connectionPool, TYPE_TYPE)
 	return types, typeMetadata, funcInfoMap
 }
 
 func RetrieveConstraints(tables ...Relation) ([]Constraint, MetadataMap) {
-	constraints := GetConstraints(connection, tables...)
-	conMetadata := GetCommentsForObjectType(connection, TYPE_CONSTRAINT)
+	constraints := GetConstraints(connectionPool, tables...)
+	conMetadata := GetCommentsForObjectType(connectionPool, TYPE_CONSTRAINT)
 	return constraints, conMetadata
 }
 
 func RetrieveSequences() ([]Sequence, map[string]string) {
-	sequenceOwnerTables, sequenceOwnerColumns := GetSequenceColumnOwnerMap(connection)
-	sequences := GetAllSequences(connection, sequenceOwnerTables)
+	sequenceOwnerTables, sequenceOwnerColumns := GetSequenceColumnOwnerMap(connectionPool)
+	sequences := GetAllSequences(connectionPool, sequenceOwnerTables)
 	return sequences, sequenceOwnerColumns
 }
 
@@ -177,7 +180,7 @@ func RetrieveSequences() ([]Sequence, map[string]string) {
 
 func LogBackupInfo() {
 	gplog.Info("Backup Timestamp = %s", globalFPInfo.Timestamp)
-	gplog.Info("Backup Database = %s", connection.DBName)
+	gplog.Info("Backup Database = %s", connectionPool.DBName)
 	params := strings.Split(backupReport.BackupParamsString, "\n")
 	for _, param := range params {
 		gplog.Verbose(param)
@@ -185,7 +188,7 @@ func LogBackupInfo() {
 }
 
 func BackupSessionGUCs(metadataFile *utils.FileWithByteCount) {
-	gucs := GetSessionGUCs(connection)
+	gucs := GetSessionGUCs(connectionPool)
 	PrintSessionGUCs(metadataFile, globalTOC, gucs)
 }
 
@@ -195,54 +198,54 @@ func BackupSessionGUCs(metadataFile *utils.FileWithByteCount) {
 
 func BackupTablespaces(metadataFile *utils.FileWithByteCount) {
 	gplog.Verbose("Writing CREATE TABLESPACE statements to metadata file")
-	tablespaces := GetTablespaces(connection)
+	tablespaces := GetTablespaces(connectionPool)
 	objectCounts["Tablespaces"] = len(tablespaces)
-	tablespaceMetadata := GetMetadataForObjectType(connection, TYPE_TABLESPACE)
+	tablespaceMetadata := GetMetadataForObjectType(connectionPool, TYPE_TABLESPACE)
 	PrintCreateTablespaceStatements(metadataFile, globalTOC, tablespaces, tablespaceMetadata)
 }
 
 func BackupCreateDatabase(metadataFile *utils.FileWithByteCount) {
 	gplog.Verbose("Writing CREATE DATABASE statement to metadata file")
-	db := GetDatabaseInfo(connection)
-	dbMetadata := GetMetadataForObjectType(connection, TYPE_DATABASE)
+	db := GetDatabaseInfo(connectionPool)
+	dbMetadata := GetMetadataForObjectType(connectionPool, TYPE_DATABASE)
 	PrintCreateDatabaseStatement(metadataFile, globalTOC, db, dbMetadata)
 }
 
 func BackupDatabaseGUCs(metadataFile *utils.FileWithByteCount) {
 	gplog.Verbose("Writing database GUCs to metadata file")
-	databaseGucs := GetDatabaseGUCs(connection)
+	databaseGucs := GetDatabaseGUCs(connectionPool)
 	objectCounts["Database GUCs"] = len(databaseGucs)
-	PrintDatabaseGUCs(metadataFile, globalTOC, databaseGucs, connection.DBName)
+	PrintDatabaseGUCs(metadataFile, globalTOC, databaseGucs, connectionPool.DBName)
 }
 
 func BackupResourceQueues(metadataFile *utils.FileWithByteCount) {
 	gplog.Verbose("Writing CREATE RESOURCE QUEUE statements to metadata file")
-	resQueues := GetResourceQueues(connection)
+	resQueues := GetResourceQueues(connectionPool)
 	objectCounts["Resource Queues"] = len(resQueues)
-	resQueueMetadata := GetCommentsForObjectType(connection, TYPE_RESOURCEQUEUE)
+	resQueueMetadata := GetCommentsForObjectType(connectionPool, TYPE_RESOURCEQUEUE)
 	PrintCreateResourceQueueStatements(metadataFile, globalTOC, resQueues, resQueueMetadata)
 }
 
 func BackupResourceGroups(metadataFile *utils.FileWithByteCount) {
 	gplog.Verbose("Writing CREATE RESOURCE GROUP statements to metadata file")
-	resGroups := GetResourceGroups(connection)
+	resGroups := GetResourceGroups(connectionPool)
 	objectCounts["Resource Groups"] = len(resGroups)
-	resGroupMetadata := GetCommentsForObjectType(connection, TYPE_RESOURCEGROUP)
+	resGroupMetadata := GetCommentsForObjectType(connectionPool, TYPE_RESOURCEGROUP)
 	PrintCreateResourceGroupStatements(metadataFile, globalTOC, resGroups, resGroupMetadata)
 }
 
 func BackupRoles(metadataFile *utils.FileWithByteCount) {
 	gplog.Verbose("Writing CREATE ROLE statements to metadata file")
-	roles := GetRoles(connection)
+	roles := GetRoles(connectionPool)
 	objectCounts["Roles"] = len(roles)
-	roleGUCs := GetRoleGUCs(connection)
-	roleMetadata := GetCommentsForObjectType(connection, TYPE_ROLE)
+	roleGUCs := GetRoleGUCs(connectionPool)
+	roleMetadata := GetCommentsForObjectType(connectionPool, TYPE_ROLE)
 	PrintCreateRoleStatements(metadataFile, globalTOC, roles, roleGUCs, roleMetadata)
 }
 
 func BackupRoleGrants(metadataFile *utils.FileWithByteCount) {
 	gplog.Verbose("Writing GRANT ROLE statements to metadata file")
-	roleMembers := GetRoleMembers(connection)
+	roleMembers := GetRoleMembers(connectionPool)
 	PrintRoleMembershipStatements(metadataFile, globalTOC, roleMembers)
 }
 
@@ -252,9 +255,9 @@ func BackupRoleGrants(metadataFile *utils.FileWithByteCount) {
 
 func BackupSchemas(metadataFile *utils.FileWithByteCount) {
 	gplog.Verbose("Writing CREATE SCHEMA statements to metadata file")
-	schemas := GetAllUserSchemas(connection)
+	schemas := GetAllUserSchemas(connectionPool)
 	objectCounts["Schemas"] = len(schemas)
-	schemaMetadata := GetMetadataForObjectType(connection, TYPE_SCHEMA)
+	schemaMetadata := GetMetadataForObjectType(connectionPool, TYPE_SCHEMA)
 	PrintCreateSchemaStatements(metadataFile, globalTOC, schemas, schemaMetadata)
 }
 
@@ -264,29 +267,29 @@ func BackupProceduralLanguages(metadataFile *utils.FileWithByteCount, procLangs 
 	for _, langFunc := range langFuncs {
 		PrintCreateFunctionStatement(metadataFile, globalTOC, langFunc, functionMetadata[langFunc.Oid])
 	}
-	procLangMetadata := GetMetadataForObjectType(connection, TYPE_PROCLANGUAGE)
+	procLangMetadata := GetMetadataForObjectType(connectionPool, TYPE_PROCLANGUAGE)
 	PrintCreateLanguageStatements(metadataFile, globalTOC, procLangs, funcInfoMap, procLangMetadata)
 }
 
 func BackupForeignDataWrappers(metadataFile *utils.FileWithByteCount, funcInfoMap map[uint32]FunctionInfo) {
 	gplog.Verbose("Writing CREATE FOREIGN DATA WRAPPER statements to metadata file")
-	wrappers := GetForeignDataWrappers(connection)
+	wrappers := GetForeignDataWrappers(connectionPool)
 	objectCounts["Foreign Data Wrappers"] = len(wrappers)
-	fdwMetadata := GetMetadataForObjectType(connection, TYPE_FOREIGNDATAWRAPPER)
+	fdwMetadata := GetMetadataForObjectType(connectionPool, TYPE_FOREIGNDATAWRAPPER)
 	PrintCreateForeignDataWrapperStatements(metadataFile, globalTOC, wrappers, funcInfoMap, fdwMetadata)
 }
 
 func BackupForeignServers(metadataFile *utils.FileWithByteCount) {
 	gplog.Verbose("Writing CREATE SERVER statements to metadata file")
-	servers := GetForeignServers(connection)
+	servers := GetForeignServers(connectionPool)
 	objectCounts["Foreign Servers"] = len(servers)
-	serverMetadata := GetMetadataForObjectType(connection, TYPE_FOREIGNSERVER)
+	serverMetadata := GetMetadataForObjectType(connectionPool, TYPE_FOREIGNSERVER)
 	PrintCreateServerStatements(metadataFile, globalTOC, servers, serverMetadata)
 }
 
 func BackupUserMappings(metadataFile *utils.FileWithByteCount) {
 	gplog.Verbose("Writing CREATE USER MAPPING statements to metadata file")
-	mappings := GetUserMappings(connection)
+	mappings := GetUserMappings(connectionPool)
 	objectCounts["User Mappings"] = len(mappings)
 	PrintCreateUserMappingStatements(metadataFile, globalTOC, mappings)
 }
@@ -297,7 +300,7 @@ func BackupShellTypes(metadataFile *utils.FileWithByteCount, types []Type) {
 }
 
 func BackupEnumTypes(metadataFile *utils.FileWithByteCount, typeMetadata MetadataMap) {
-	enums := GetEnumTypes(connection)
+	enums := GetEnumTypes(connectionPool)
 	gplog.Verbose("Writing CREATE TYPE statements for enum types to metadata file")
 	objectCounts["Types"] += len(enums)
 	PrintCreateEnumTypeStatements(metadataFile, globalTOC, enums, typeMetadata)
@@ -314,11 +317,11 @@ func BackupFunctionsAndTypesAndTables(metadataFile *utils.FileWithByteCount, oth
 	gplog.Verbose("Writing CREATE FUNCTION statements to metadata file")
 	gplog.Verbose("Writing CREATE TYPE statements for base, composite, and domain types to metadata file")
 	gplog.Verbose("Writing CREATE TABLE statements to metadata file")
-	tables = ConstructTableDependencies(connection, tables, tableDefs, false)
+	tables = ConstructTableDependencies(connectionPool, tables, tableDefs, false)
 	sortedSlice := SortFunctionsAndTypesAndTablesInDependencyOrder(otherFuncs, types, tables)
 	filteredMetadata := ConstructFunctionAndTypeAndTableMetadataMap(functionMetadata, typeMetadata, relationMetadata)
 	PrintCreateDependentTypeAndFunctionAndTablesStatements(metadataFile, globalTOC, sortedSlice, filteredMetadata, tableDefs, constraints)
-	extPartInfo, partInfoMap := GetExternalPartitionInfo(connection)
+	extPartInfo, partInfoMap := GetExternalPartitionInfo(connectionPool)
 	if len(extPartInfo) > 0 {
 		gplog.Verbose("Writing EXCHANGE PARTITION statements to metadata file")
 		PrintExchangeExternalPartitionStatements(metadataFile, globalTOC, extPartInfo, partInfoMap, tables)
@@ -328,14 +331,14 @@ func BackupFunctionsAndTypesAndTables(metadataFile *utils.FileWithByteCount, oth
 // This function should be used only with a table-only backup.  For an unfiltered backup, the above function is used.
 func BackupTables(metadataFile *utils.FileWithByteCount, tables []Relation, relationMetadata MetadataMap, tableDefs map[uint32]TableDefinition, constraints []Constraint) {
 	gplog.Verbose("Writing CREATE TABLE statements to metadata file")
-	tables = ConstructTableDependencies(connection, tables, tableDefs, true)
+	tables = ConstructTableDependencies(connectionPool, tables, tableDefs, true)
 	sortable := make([]Sortable, 0)
 	for _, table := range tables {
 		sortable = append(sortable, table)
 	}
 	sortedSlice := TopologicalSort(sortable)
 	PrintCreateDependentTypeAndFunctionAndTablesStatements(metadataFile, globalTOC, sortedSlice, relationMetadata, tableDefs, constraints)
-	extPartInfo, partInfoMap := GetExternalPartitionInfo(connection)
+	extPartInfo, partInfoMap := GetExternalPartitionInfo(connectionPool)
 	if len(extPartInfo) > 0 {
 		gplog.Verbose("Writing EXCHANGE PARTITION statements to metadata file")
 		PrintExchangeExternalPartitionStatements(metadataFile, globalTOC, extPartInfo, partInfoMap, tables)
@@ -344,113 +347,113 @@ func BackupTables(metadataFile *utils.FileWithByteCount, tables []Relation, rela
 
 func BackupProtocols(metadataFile *utils.FileWithByteCount, funcInfoMap map[uint32]FunctionInfo) {
 	gplog.Verbose("Writing CREATE PROTOCOL statements to metadata file")
-	protocols := GetExternalProtocols(connection)
+	protocols := GetExternalProtocols(connectionPool)
 	objectCounts["Protocols"] = len(protocols)
-	protoMetadata := GetMetadataForObjectType(connection, TYPE_PROTOCOL)
+	protoMetadata := GetMetadataForObjectType(connectionPool, TYPE_PROTOCOL)
 	PrintCreateExternalProtocolStatements(metadataFile, globalTOC, protocols, funcInfoMap, protoMetadata)
 }
 
 func BackupTSParsers(metadataFile *utils.FileWithByteCount) {
 	gplog.Verbose("Writing CREATE TEXT SEARCH PARSER statements to metadata file")
-	parsers := GetTextSearchParsers(connection)
+	parsers := GetTextSearchParsers(connectionPool)
 	objectCounts["Text Search Parsers"] = len(parsers)
-	parserMetadata := GetCommentsForObjectType(connection, TYPE_TSPARSER)
+	parserMetadata := GetCommentsForObjectType(connectionPool, TYPE_TSPARSER)
 	PrintCreateTextSearchParserStatements(metadataFile, globalTOC, parsers, parserMetadata)
 }
 
 func BackupTSTemplates(metadataFile *utils.FileWithByteCount) {
 	gplog.Verbose("Writing CREATE TEXT SEARCH TEMPLATE statements to metadata file")
-	templates := GetTextSearchTemplates(connection)
+	templates := GetTextSearchTemplates(connectionPool)
 	objectCounts["Text Search Templates"] = len(templates)
-	templateMetadata := GetCommentsForObjectType(connection, TYPE_TSTEMPLATE)
+	templateMetadata := GetCommentsForObjectType(connectionPool, TYPE_TSTEMPLATE)
 	PrintCreateTextSearchTemplateStatements(metadataFile, globalTOC, templates, templateMetadata)
 }
 
 func BackupTSDictionaries(metadataFile *utils.FileWithByteCount) {
 	gplog.Verbose("Writing CREATE TEXT SEARCH DICTIONARY statements to metadata file")
-	dictionaries := GetTextSearchDictionaries(connection)
+	dictionaries := GetTextSearchDictionaries(connectionPool)
 	objectCounts["Text Search Dictionaries"] = len(dictionaries)
-	dictionaryMetadata := GetMetadataForObjectType(connection, TYPE_TSDICTIONARY)
+	dictionaryMetadata := GetMetadataForObjectType(connectionPool, TYPE_TSDICTIONARY)
 	PrintCreateTextSearchDictionaryStatements(metadataFile, globalTOC, dictionaries, dictionaryMetadata)
 }
 
 func BackupTSConfigurations(metadataFile *utils.FileWithByteCount) {
 	gplog.Verbose("Writing CREATE TEXT SEARCH CONFIGURATION statements to metadata file")
-	configurations := GetTextSearchConfigurations(connection)
+	configurations := GetTextSearchConfigurations(connectionPool)
 	objectCounts["Text Search Configurations"] = len(configurations)
-	configurationMetadata := GetMetadataForObjectType(connection, TYPE_TSCONFIGURATION)
+	configurationMetadata := GetMetadataForObjectType(connectionPool, TYPE_TSCONFIGURATION)
 	PrintCreateTextSearchConfigurationStatements(metadataFile, globalTOC, configurations, configurationMetadata)
 }
 
 func BackupConversions(metadataFile *utils.FileWithByteCount) {
 	gplog.Verbose("Writing CREATE CONVERSION statements to metadata file")
-	conversions := GetConversions(connection)
+	conversions := GetConversions(connectionPool)
 	objectCounts["Conversions"] = len(conversions)
-	convMetadata := GetMetadataForObjectType(connection, TYPE_CONVERSION)
+	convMetadata := GetMetadataForObjectType(connectionPool, TYPE_CONVERSION)
 	PrintCreateConversionStatements(metadataFile, globalTOC, conversions, convMetadata)
 }
 
 func BackupOperators(metadataFile *utils.FileWithByteCount) {
 	gplog.Verbose("Writing CREATE OPERATOR statements to metadata file")
-	operators := GetOperators(connection)
+	operators := GetOperators(connectionPool)
 	objectCounts["Operators"] = len(operators)
-	operatorMetadata := GetMetadataForObjectType(connection, TYPE_OPERATOR)
+	operatorMetadata := GetMetadataForObjectType(connectionPool, TYPE_OPERATOR)
 	PrintCreateOperatorStatements(metadataFile, globalTOC, operators, operatorMetadata)
 }
 
 func BackupOperatorFamilies(metadataFile *utils.FileWithByteCount) {
 	gplog.Verbose("Writing CREATE OPERATOR FAMILY statements to metadata file")
-	operatorFamilies := GetOperatorFamilies(connection)
+	operatorFamilies := GetOperatorFamilies(connectionPool)
 	objectCounts["Operator Families"] = len(operatorFamilies)
-	operatorFamilyMetadata := GetMetadataForObjectType(connection, TYPE_OPERATORFAMILY)
+	operatorFamilyMetadata := GetMetadataForObjectType(connectionPool, TYPE_OPERATORFAMILY)
 	PrintCreateOperatorFamilyStatements(metadataFile, globalTOC, operatorFamilies, operatorFamilyMetadata)
 }
 
 func BackupOperatorClasses(metadataFile *utils.FileWithByteCount) {
 	gplog.Verbose("Writing CREATE OPERATOR CLASS statements to metadata file")
-	operatorClasses := GetOperatorClasses(connection)
+	operatorClasses := GetOperatorClasses(connectionPool)
 	objectCounts["Operator Classes"] = len(operatorClasses)
-	operatorClassMetadata := GetMetadataForObjectType(connection, TYPE_OPERATORCLASS)
+	operatorClassMetadata := GetMetadataForObjectType(connectionPool, TYPE_OPERATORCLASS)
 	PrintCreateOperatorClassStatements(metadataFile, globalTOC, operatorClasses, operatorClassMetadata)
 }
 
 func BackupAggregates(metadataFile *utils.FileWithByteCount, funcInfoMap map[uint32]FunctionInfo) {
 	gplog.Verbose("Writing CREATE AGGREGATE statements to metadata file")
-	aggregates := GetAggregates(connection)
+	aggregates := GetAggregates(connectionPool)
 	objectCounts["Aggregates"] = len(aggregates)
-	aggMetadata := GetMetadataForObjectType(connection, TYPE_AGGREGATE)
+	aggMetadata := GetMetadataForObjectType(connectionPool, TYPE_AGGREGATE)
 	PrintCreateAggregateStatements(metadataFile, globalTOC, aggregates, funcInfoMap, aggMetadata)
 }
 
 func BackupCasts(metadataFile *utils.FileWithByteCount) {
 	gplog.Verbose("Writing CREATE CAST statements to metadata file")
-	casts := GetCasts(connection)
+	casts := GetCasts(connectionPool)
 	objectCounts["Casts"] = len(casts)
-	castMetadata := GetCommentsForObjectType(connection, TYPE_CAST)
+	castMetadata := GetCommentsForObjectType(connectionPool, TYPE_CAST)
 	PrintCreateCastStatements(metadataFile, globalTOC, casts, castMetadata)
 }
 
 func BackupCollations(metadataFile *utils.FileWithByteCount) {
 	gplog.Verbose("Writing CREATE COLLATION statements to metadata file")
-	collations := GetCollations(connection)
+	collations := GetCollations(connectionPool)
 	objectCounts["Collations"] = len(collations)
-	collationMetadata := GetMetadataForObjectType(connection, TYPE_COLLATION)
+	collationMetadata := GetMetadataForObjectType(connectionPool, TYPE_COLLATION)
 	PrintCreateCollationStatements(metadataFile, globalTOC, collations, collationMetadata)
 }
 
 func BackupExtensions(metadataFile *utils.FileWithByteCount) {
 	gplog.Verbose("Writing CREATE EXTENSION statements to metadata file")
-	extensions := GetExtensions(connection)
+	extensions := GetExtensions(connectionPool)
 	objectCounts["Extensions"] = len(extensions)
-	extensionMetadata := GetCommentsForObjectType(connection, TYPE_EXTENSION)
+	extensionMetadata := GetCommentsForObjectType(connectionPool, TYPE_EXTENSION)
 	PrintCreateExtensionStatements(metadataFile, globalTOC, extensions, extensionMetadata)
 }
 
 func BackupViews(metadataFile *utils.FileWithByteCount, relationMetadata MetadataMap) {
 	gplog.Verbose("Writing CREATE VIEW statements to metadata file")
-	views := GetViews(connection)
+	views := GetViews(connectionPool)
 	objectCounts["Views"] = len(views)
-	views = ConstructViewDependencies(connection, views)
+	views = ConstructViewDependencies(connectionPool, views)
 	views = SortViews(views)
 	PrintCreateViewStatements(metadataFile, globalTOC, views, relationMetadata)
 }
@@ -466,25 +469,25 @@ func BackupConstraints(metadataFile *utils.FileWithByteCount, constraints []Cons
 
 func BackupIndexes(metadataFile *utils.FileWithByteCount) {
 	gplog.Verbose("Writing CREATE INDEX statements to metadata file")
-	indexes := GetIndexes(connection)
+	indexes := GetIndexes(connectionPool)
 	objectCounts["Indexes"] = len(indexes)
-	indexMetadata := GetCommentsForObjectType(connection, TYPE_INDEX)
+	indexMetadata := GetCommentsForObjectType(connectionPool, TYPE_INDEX)
 	PrintCreateIndexStatements(metadataFile, globalTOC, indexes, indexMetadata)
 }
 
 func BackupRules(metadataFile *utils.FileWithByteCount) {
 	gplog.Verbose("Writing CREATE RULE statements to metadata file")
-	rules := GetRules(connection)
+	rules := GetRules(connectionPool)
 	objectCounts["Rules"] = len(rules)
-	ruleMetadata := GetCommentsForObjectType(connection, TYPE_RULE)
+	ruleMetadata := GetCommentsForObjectType(connectionPool, TYPE_RULE)
 	PrintCreateRuleStatements(metadataFile, globalTOC, rules, ruleMetadata)
 }
 
 func BackupTriggers(metadataFile *utils.FileWithByteCount) {
 	gplog.Verbose("Writing CREATE TRIGGER statements to metadata file")
-	triggers := GetTriggers(connection)
+	triggers := GetTriggers(connectionPool)
 	objectCounts["Triggers"] = len(triggers)
-	triggerMetadata := GetCommentsForObjectType(connection, TYPE_TRIGGER)
+	triggerMetadata := GetCommentsForObjectType(connectionPool, TYPE_TRIGGER)
 	PrintCreateTriggerStatements(metadataFile, globalTOC, triggers, triggerMetadata)
 }
 
@@ -493,8 +496,8 @@ func BackupTriggers(metadataFile *utils.FileWithByteCount) {
  */
 
 func BackupStatistics(statisticsFile *utils.FileWithByteCount, tables []Relation) {
-	attStats := GetAttributeStatistics(connection, tables)
-	tupleStats := GetTupleStatistics(connection, tables)
+	attStats := GetAttributeStatistics(connectionPool, tables)
+	tupleStats := GetTupleStatistics(connectionPool, tables)
 
 	BackupSessionGUCs(statisticsFile)
 	PrintStatisticsStatements(statisticsFile, globalTOC, tables, attStats, tupleStats)

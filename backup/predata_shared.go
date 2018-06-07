@@ -131,7 +131,7 @@ func PrintObjectMetadata(file *utils.FileWithByteCount, obj ObjectMetadata, obje
 		file.MustPrintln(comment)
 	}
 	if owner := obj.GetOwnerStatement(objectName, objectType); owner != "" {
-		if !(connection.Version.Before("5") && objectType == "LANGUAGE") {
+		if !(connectionPool.Version.Before("5") && objectType == "LANGUAGE") {
 			// Languages have implicit owners in 4.3, but do not support ALTER OWNER
 			file.MustPrintln(owner)
 		}

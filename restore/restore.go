@@ -75,7 +75,7 @@ func DoSetup() {
 	gplog.Info("Restore Key = %s", *timestamp)
 
 	InitializeConnection("postgres")
-	segConfig := cluster.MustGetSegmentConfiguration(connection)
+	segConfig := cluster.MustGetSegmentConfiguration(connectionPool)
 	globalCluster = cluster.NewCluster(segConfig)
 	segPrefix := utils.ParseSegPrefix(*backupDir)
 	globalFPInfo = utils.NewFilePathInfo(globalCluster.SegDirMap, *backupDir, *timestamp, segPrefix)
@@ -111,7 +111,7 @@ func DoSetup() {
 	 * should not error out for validation reasons once the restore database exists.
 	 */
 	if !*createDB {
-		ValidateFilterRelationsInRestoreDatabase(connection, *includeRelation)
+		ValidateFilterRelationsInRestoreDatabase(connectionPool, *includeRelation)
 	}
 }
 
@@ -162,7 +162,7 @@ func restoreGlobal(metadataFilename string) {
 	if *redirect != "" {
 		statements = utils.SubstituteRedirectDatabaseInStatements(statements, backupConfig.DatabaseName, *redirect)
 	}
-	statements = utils.RemoveActiveRole(connection.User, statements)
+	statements = utils.RemoveActiveRole(connectionPool.User, statements)
 	ExecuteRestoreMetadataStatements(statements, "Global objects", nil, utils.PB_VERBOSE, false)
 	gplog.Info("Global database metadata restore complete")
 }
@@ -210,44 +210,35 @@ func restoreData(gucStatements []utils.StatementWithType) {
 	dataProgressBar.Start()
 
 	/*
-	 * In both the serial and parallel cases, we break when an interrupt is
-	 * received and rely on TerminateHangingCopySessions to kill any COPY
+	 * We break when an interrupt is received and rely on
+	 * TerminateHangingCopySessions to kill any COPY
 	 * statements in progress if they don't finish on their own.
 	 */
-	if connection.NumConns == 1 {
-		for i, entry := range filteredMasterDataEntries {
-			if wasTerminated {
-				dataProgressBar.(*pb.ProgressBar).NotPrint = true
-				return
-			}
-			restoreSingleTableData(entry, uint32(i)+1, totalTables, 0)
-			dataProgressBar.Increment()
-		}
-	} else {
-		var tableNum uint32 = 1
-		tasks := make(chan utils.MasterDataEntry, totalTables)
-		var workerPool sync.WaitGroup
-		for i := 0; i < connection.NumConns; i++ {
-			workerPool.Add(1)
-			go func(whichConn int) {
-				setGUCsForConnection(gucStatements, whichConn)
-				for entry := range tasks {
-					if wasTerminated {
-						break
-					}
-					restoreSingleTableData(entry, tableNum, totalTables, whichConn)
-					atomic.AddUint32(&tableNum, 1)
-					dataProgressBar.Increment()
+	var tableNum uint32 = 1
+	tasks := make(chan utils.MasterDataEntry, totalTables)
+	var workerPool sync.WaitGroup
+	for i := 0; i < connectionPool.NumConns; i++ {
+		workerPool.Add(1)
+		go func(whichConn int) {
+			defer workerPool.Done()
+			setGUCsForConnection(gucStatements, whichConn)
+			for entry := range tasks {
+				if wasTerminated {
+					dataProgressBar.(*pb.ProgressBar).NotPrint = true
+					break
 				}
-				workerPool.Done()
-			}(i)
-		}
-		for _, entry := range filteredMasterDataEntries {
-			tasks <- entry
-		}
-		close(tasks)
-		workerPool.Wait()
+				restoreSingleTableData(entry, tableNum, totalTables, whichConn)
+				atomic.AddUint32(&tableNum, 1)
+				dataProgressBar.Increment()
+			}
+		}(i)
 	}
+	for _, entry := range filteredMasterDataEntries {
+		tasks <- entry
+	}
+	close(tasks)
+	workerPool.Wait()
+
 	dataProgressBar.Finish()
 	err := CheckAgentErrorsOnSegments()
 	if err != nil {
@@ -270,8 +261,8 @@ func restorePostdata(metadataFilename string) {
 	firstBatch, secondBatch := BatchPostdataStatements(statements)
 	progressBar := utils.NewProgressBar(len(statements), "Post-data objects restored: ", utils.PB_VERBOSE)
 	progressBar.Start()
-	ExecuteRestoreMetadataStatements(firstBatch, "", progressBar, utils.PB_VERBOSE, connection.NumConns > 1)
-	ExecuteRestoreMetadataStatements(secondBatch, "", progressBar, utils.PB_VERBOSE, connection.NumConns > 1)
+	ExecuteRestoreMetadataStatements(firstBatch, "", progressBar, utils.PB_VERBOSE, connectionPool.NumConns > 1)
+	ExecuteRestoreMetadataStatements(secondBatch, "", progressBar, utils.PB_VERBOSE, connectionPool.NumConns > 1)
 	progressBar.Finish()
 	gplog.Info("Post-data metadata restore complete")
 }
@@ -310,7 +301,7 @@ func DoTeardown() {
 
 	if globalFPInfo.Timestamp != "" {
 		reportFilename := globalFPInfo.GetRestoreReportFilePath(restoreStartTime)
-		utils.WriteRestoreReportFile(reportFilename, globalFPInfo.Timestamp, restoreStartTime, connection, version, errMsg)
+		utils.WriteRestoreReportFile(reportFilename, globalFPInfo.Timestamp, restoreStartTime, connectionPool, version, errMsg)
 		utils.EmailReport(globalCluster, globalFPInfo.Timestamp, reportFilename, "gprestore")
 		if pluginConfig != nil {
 			pluginConfig.CleanupPluginForRestoreOnAllHosts(globalCluster, pluginConfig.ConfigPath, globalFPInfo.GetDirForContent(-1))
@@ -335,11 +326,11 @@ func DoCleanup() {
 		utils.CleanUpSegmentHelperProcesses(globalCluster, globalFPInfo, "restore")
 		utils.CleanUpHelperFilesOnAllHosts(globalCluster, globalFPInfo)
 		if wasTerminated { // These should all end on their own in a successful restore
-			utils.TerminateHangingCopySessions(connection, globalFPInfo, "gprestore")
+			utils.TerminateHangingCopySessions(connectionPool, globalFPInfo, "gprestore")
 		}
 	}
-	if connection != nil {
-		connection.Close()
+	if connectionPool != nil {
+		connectionPool.Close()
 	}
 }
 
