@@ -87,21 +87,14 @@ var _ = Describe("restore/validate tests", func() {
 		})
 	})
 	Describe("ValidateFilterTablesInBackupSet", func() {
-		sequence := utils.StatementWithType{ObjectType: "SEQUENCE", Statement: "CREATE SEQUENCE schema1.somesequence"}
-		sequenceLen := uint64(len(sequence.Statement))
-		table1 := utils.StatementWithType{ObjectType: "TABLE", Statement: "CREATE TABLE schema1.table1"}
-		table1Len := uint64(len(table1.Statement))
-		table2 := utils.StatementWithType{ObjectType: "TABLE", Statement: "CREATE TABLE schema2.table2"}
-		table2Len := uint64(len(table2.Statement))
 		var toc *utils.TOC
 		var backupfile *utils.FileWithByteCount
 		BeforeEach(func() {
 			toc, backupfile = testutils.InitializeTestTOC(buffer, "predata")
-			backupfile.ByteCount = table1Len
 			toc.AddPredataEntry("schema1", "table1", "TABLE", "", 0, backupfile)
 			toc.AddMasterDataEntry("schema1", "table1", 1, "(i)", 0)
-			backupfile.ByteCount += table2Len
-			toc.AddPredataEntry("schema2", "table2", "TABLE", "", table1Len, backupfile)
+
+			toc.AddPredataEntry("schema2", "table2", "TABLE", "", 0, backupfile)
 			toc.AddMasterDataEntry("schema2", "table2", 2, "(j)", 0)
 			backupfile.ByteCount += sequenceLen
 			toc.AddPredataEntry("schema1", "somesequence", "SEQUENCE", "", table1Len+table2Len, backupfile)
