@@ -90,12 +90,12 @@ type StatementWithType struct {
 	Statement       string
 }
 
-func (toc *TOC) GetSQLStatementForObjectTypes(section string, metadataFile io.ReaderAt, includeObjectTypes []string, excludeObjectTypes []string, includeSchemas []string, excludeSchemas []string, includeTables []string, excludeTables []string) []StatementWithType {
+func (toc *TOC) GetSQLStatementForObjectTypes(section string, metadataFile io.ReaderAt, includeObjectTypes []string, excludeObjectTypes []string, includeSchemas []string, excludeSchemas []string, includeRelations []string, excludeRelations []string) []StatementWithType {
 	entries := *toc.metadataEntryMap[section]
-	objectSet, schemaSet, tableSet := constructFilterSets(includeObjectTypes, excludeObjectTypes, includeSchemas, excludeSchemas, includeTables, excludeTables)
+	objectSet, schemaSet, relationSet := constructFilterSets(includeObjectTypes, excludeObjectTypes, includeSchemas, excludeSchemas, includeRelations, excludeRelations)
 	statements := make([]StatementWithType, 0)
 	for _, entry := range entries {
-		if shouldIncludeStatement(entry, objectSet, schemaSet, tableSet) {
+		if shouldIncludeStatement(entry, objectSet, schemaSet, relationSet) {
 			contents := make([]byte, entry.EndByte-entry.StartByte)
 			_, err := metadataFile.ReadAt(contents, int64(entry.StartByte))
 			gplog.FatalOnError(err)
@@ -105,8 +105,8 @@ func (toc *TOC) GetSQLStatementForObjectTypes(section string, metadataFile io.Re
 	return statements
 }
 
-func constructFilterSets(includeObjectTypes []string, excludeObjectTypes []string, includeSchemas []string, excludeSchemas []string, includeTables []string, excludeTables []string) (*FilterSet, *FilterSet, *FilterSet) {
-	var objectSet, schemaSet, tableSet *FilterSet
+func constructFilterSets(includeObjectTypes []string, excludeObjectTypes []string, includeSchemas []string, excludeSchemas []string, includeRelations []string, excludeRelations []string) (*FilterSet, *FilterSet, *FilterSet) {
+	var objectSet, schemaSet, relationSet *FilterSet
 	if len(includeObjectTypes) > 0 {
 		objectSet = NewIncludeSet(includeObjectTypes)
 	} else {
@@ -117,22 +117,23 @@ func constructFilterSets(includeObjectTypes []string, excludeObjectTypes []strin
 	} else {
 		schemaSet = NewExcludeSet(excludeSchemas)
 	}
-	if len(includeTables) > 0 {
-		tableSet = NewIncludeSet(includeTables)
+	if len(includeRelations) > 0 {
+		relationSet = NewIncludeSet(includeRelations)
 	} else {
-		tableSet = NewExcludeSet(excludeTables)
+		relationSet = NewExcludeSet(excludeRelations)
 	}
-	return objectSet, schemaSet, tableSet
+	return objectSet, schemaSet, relationSet
 }
 
-func shouldIncludeStatement(entry MetadataEntry, objectSet *FilterSet, schemaSet *FilterSet, tableSet *FilterSet) bool {
+func shouldIncludeStatement(entry MetadataEntry, objectSet *FilterSet, schemaSet *FilterSet, relationSet *FilterSet) bool {
 	shouldIncludeObject := objectSet.MatchesFilter(entry.ObjectType)
 	shouldIncludeSchema := schemaSet.MatchesFilter(entry.Schema)
-	tableFQN := MakeFQN(entry.Schema, entry.Name)
-	shouldIncludeTable := (tableSet.IsExclude && entry.ObjectType != "TABLE" && entry.ReferenceObject == "") ||
-		(entry.ObjectType == "TABLE" && tableSet.MatchesFilter(tableFQN)) || // Tables should match the filter
-		(entry.ReferenceObject != "" && tableSet.MatchesFilter(entry.ReferenceObject)) // Include tables that filtered tables depend on
-	return shouldIncludeObject && shouldIncludeSchema && shouldIncludeTable
+	relationFQN := MakeFQN(entry.Schema, entry.Name)
+	shouldIncludeRelation := (relationSet.IsExclude && entry.ObjectType != "TABLE" && entry.ObjectType != "VIEW" && entry.ObjectType != "SEQUENCE" && entry.ReferenceObject == "") ||
+		((entry.ObjectType == "TABLE" || entry.ObjectType == "VIEW" || entry.ObjectType == "SEQUENCE") && relationSet.MatchesFilter(relationFQN) && entry.ReferenceObject == "") || // Relations should match the filter
+		(entry.ReferenceObject != "" && relationSet.MatchesFilter(entry.ReferenceObject)) // Include relations that filtered tables depend on
+
+	return shouldIncludeObject && shouldIncludeSchema && shouldIncludeRelation
 }
 
 func (toc *TOC) GetAllSQLStatements(section string, metadataFile io.ReaderAt) []StatementWithType {

@@ -59,34 +59,34 @@ var _ = Describe("restore/validate tests", func() {
 			restore.ValidateFilterSchemasInBackupSet(filterList)
 		})
 	})
-	Describe("ValidateFilterTablesInRestoreDatabase", func() {
-		It("passes if there are no filter tables", func() {
-			restore.ValidateFilterTablesInRestoreDatabase(connection, filterList)
+	Describe("ValidateFilterRelationsInRestoreDatabase", func() {
+		It("passes if there are no filter relations", func() {
+			restore.ValidateFilterRelationsInRestoreDatabase(connection, filterList)
 		})
 		It("passes if table is not present in database", func() {
 			no_table_rows := sqlmock.NewRows([]string{"string"})
 			mock.ExpectQuery("SELECT (.*)").WillReturnRows(no_table_rows)
 			filterList = []string{"public.table2"}
-			restore.ValidateFilterTablesInRestoreDatabase(connection, filterList)
+			restore.ValidateFilterRelationsInRestoreDatabase(connection, filterList)
 		})
 		It("panics if single table is present in database", func() {
 			single_table_row := sqlmock.NewRows([]string{"string"}).
 				AddRow("public.table1")
 			mock.ExpectQuery("SELECT (.*)").WillReturnRows(single_table_row)
 			filterList = []string{"public.table1"}
-			defer testhelper.ShouldPanicWithMessage("Table public.table1 already exists")
-			restore.ValidateFilterTablesInRestoreDatabase(connection, filterList)
+			defer testhelper.ShouldPanicWithMessage("Relation public.table1 already exists")
+			restore.ValidateFilterRelationsInRestoreDatabase(connection, filterList)
 		})
 		It("panics if multiple tables are present in database", func() {
 			two_table_rows := sqlmock.NewRows([]string{"string"}).
-				AddRow("public.table1").AddRow("public.table2")
+				AddRow("public.table1").AddRow("public.view1")
 			mock.ExpectQuery("SELECT (.*)").WillReturnRows(two_table_rows)
-			filterList = []string{"public.table1", "public.table2"}
-			defer testhelper.ShouldPanicWithMessage("Table public.table1 already exists")
-			restore.ValidateFilterTablesInRestoreDatabase(connection, filterList)
+			filterList = []string{"public.table1", "public.view1"}
+			defer testhelper.ShouldPanicWithMessage("Relation public.table1 already exists")
+			restore.ValidateFilterRelationsInRestoreDatabase(connection, filterList)
 		})
 	})
-	Describe("ValidateFilterTablesInBackupSet", func() {
+	Describe("ValidateFilterRelationsInBackupSet", func() {
 		var toc *utils.TOC
 		var backupfile *utils.FileWithByteCount
 		BeforeEach(func() {
@@ -96,37 +96,50 @@ var _ = Describe("restore/validate tests", func() {
 
 			toc.AddPredataEntry("schema2", "table2", "TABLE", "", 0, backupfile)
 			toc.AddMasterDataEntry("schema2", "table2", 2, "(j)", 0)
-			backupfile.ByteCount += sequenceLen
-			toc.AddPredataEntry("schema1", "somesequence", "SEQUENCE", "", table1Len+table2Len, backupfile)
+
+			toc.AddPredataEntry("schema1", "somesequence", "SEQUENCE", "", 0, backupfile)
+			toc.AddPredataEntry("schema1", "someview", "VIEW", "", 0, backupfile)
+			toc.AddPredataEntry("schema1", "somefunction", "FUNCTION", "", 0, backupfile)
+
 			restore.SetTOC(toc)
 		})
 		It("table exists in normal backup", func() {
 			restore.SetBackupConfig(&utils.BackupConfig{})
 			filterList = []string{"schema1.table1"}
-			restore.ValidateFilterTablesInBackupSet(filterList)
+			restore.ValidateFilterRelationsInBackupSet(filterList)
 		})
 		It("table does not exist in normal backup", func() {
 			restore.SetBackupConfig(&utils.BackupConfig{})
 			filterList = []string{"schema1.table3"}
-			defer testhelper.ShouldPanicWithMessage("Could not find the following table(s) in the backup set: schema1.table3")
-			restore.ValidateFilterTablesInBackupSet(filterList)
+			defer testhelper.ShouldPanicWithMessage("Could not find the following relation(s) in the backup set: schema1.table3")
+			restore.ValidateFilterRelationsInBackupSet(filterList)
 		})
-		It("table does not exist in normal backup but sequence with same name exists", func() {
+		It("sequence exists in normal backup", func() {
 			restore.SetBackupConfig(&utils.BackupConfig{})
 			filterList = []string{"schema1.somesequence"}
-			defer testhelper.ShouldPanicWithMessage("Could not find the following table(s) in the backup set: schema1.somesequence")
-			restore.ValidateFilterTablesInBackupSet(filterList)
+			restore.ValidateFilterRelationsInBackupSet(filterList)
+		})
+		It("view exists in normal backup", func() {
+			restore.SetBackupConfig(&utils.BackupConfig{})
+			filterList = []string{"schema1.someview"}
+			restore.ValidateFilterRelationsInBackupSet(filterList)
 		})
 		It("table exists in data-only backup", func() {
 			restore.SetBackupConfig(&utils.BackupConfig{DataOnly: true})
 			filterList = []string{"schema1.table1"}
-			restore.ValidateFilterTablesInBackupSet(filterList)
+			restore.ValidateFilterRelationsInBackupSet(filterList)
+		})
+		It("relation does not exist in backup but function with same name does", func() {
+			restore.SetBackupConfig(&utils.BackupConfig{})
+			filterList = []string{"schema1.somefunction"}
+			defer testhelper.ShouldPanicWithMessage("Could not find the following relation(s) in the backup set: schema1.somefunction")
+			restore.ValidateFilterRelationsInBackupSet(filterList)
 		})
 		It("table does not exist in data-only backup", func() {
 			restore.SetBackupConfig(&utils.BackupConfig{DataOnly: true})
 			filterList = []string{"schema1.table3"}
-			defer testhelper.ShouldPanicWithMessage("Could not find the following table(s) in the backup set: schema1.table3")
-			restore.ValidateFilterTablesInBackupSet(filterList)
+			defer testhelper.ShouldPanicWithMessage("Could not find the following relation(s) in the backup set: schema1.table3")
+			restore.ValidateFilterRelationsInBackupSet(filterList)
 		})
 	})
 	Describe("ValidateDatabaseExistence", func() {

@@ -18,7 +18,7 @@ import (
 
 func validateFilterListsInBackupSet() {
 	ValidateFilterSchemasInBackupSet(*includeSchemas)
-	ValidateFilterTablesInBackupSet(*includeTables)
+	ValidateFilterRelationsInBackupSet(*includeRelation)
 }
 
 func ValidateFilterSchemasInBackupSet(schemaList []string) {
@@ -59,49 +59,49 @@ func ValidateFilterSchemasInBackupSet(schemaList []string) {
 	gplog.Fatal(errors.Errorf("Could not find the following schema(s) in the backup set: %s", strings.Join(keys, ", ")), "")
 }
 
-func ValidateFilterTablesInRestoreDatabase(connection *dbconn.DBConn, tableList []string) {
-	if len(tableList) > 0 {
-		utils.ValidateFQNs(tableList)
-		quotedTablesStr := utils.SliceToQuotedString(tableList)
+func ValidateFilterRelationsInRestoreDatabase(connection *dbconn.DBConn, relationList []string) {
+	if len(relationList) > 0 {
+		utils.ValidateFQNs(relationList)
+		quotedTablesStr := utils.SliceToQuotedString(relationList)
 		query := fmt.Sprintf(`
 SELECT
 	n.nspname || '.' || c.relname AS string
 FROM pg_namespace n
 JOIN pg_class c ON n.oid = c.relnamespace
 WHERE quote_ident(n.nspname) || '.' || quote_ident(c.relname) IN (%s)`, quotedTablesStr)
-		resultTables := dbconn.MustSelectStringSlice(connection, query)
-		if len(resultTables) > 0 {
-			gplog.Fatal(nil, "Table %s already exists", resultTables[0])
+		resultRelations := dbconn.MustSelectStringSlice(connection, query)
+		if len(resultRelations) > 0 {
+			gplog.Fatal(nil, "Relation %s already exists", resultRelations[0])
 		}
 	}
 }
 
-func ValidateFilterTablesInBackupSet(tableList []string) {
-	tableMap := make(map[string]bool, len(tableList))
-	for _, table := range tableList {
-		tableMap[table] = true
+func ValidateFilterRelationsInBackupSet(relationList []string) {
+	relationMap := make(map[string]bool, len(relationList))
+	for _, relation := range relationList {
+		relationMap[relation] = true
 	}
-	if len(tableList) > 0 {
+	if len(relationList) > 0 {
 		if !backupConfig.DataOnly {
 			for _, entry := range globalTOC.PredataEntries {
-				if entry.ObjectType != "TABLE" {
+				if entry.ObjectType != "TABLE" && entry.ObjectType != "SEQUENCE" && entry.ObjectType != "VIEW" {
 					continue
 				}
 				fqn := utils.MakeFQN(entry.Schema, entry.Name)
-				if _, ok := tableMap[fqn]; ok {
-					delete(tableMap, fqn)
+				if _, ok := relationMap[fqn]; ok {
+					delete(relationMap, fqn)
 				}
-				if len(tableMap) == 0 {
+				if len(relationMap) == 0 {
 					return
 				}
 			}
 		} else {
 			for _, entry := range globalTOC.DataEntries {
 				fqn := utils.MakeFQN(entry.Schema, entry.Name)
-				if _, ok := tableMap[fqn]; ok {
-					delete(tableMap, fqn)
+				if _, ok := relationMap[fqn]; ok {
+					delete(relationMap, fqn)
 				}
-				if len(tableMap) == 0 {
+				if len(relationMap) == 0 {
 					return
 				}
 			}
@@ -110,13 +110,13 @@ func ValidateFilterTablesInBackupSet(tableList []string) {
 		return
 	}
 
-	keys := make([]string, len(tableMap))
+	keys := make([]string, len(relationMap))
 	i := 0
-	for k := range tableMap {
+	for k := range relationMap {
 		keys[i] = k
 		i++
 	}
-	gplog.Fatal(errors.Errorf("Could not find the following table(s) in the backup set: %s", strings.Join(keys, ", ")), "")
+	gplog.Fatal(errors.Errorf("Could not find the following relation(s) in the backup set: %s", strings.Join(keys, ", ")), "")
 }
 
 func ValidateDatabaseExistence(dbname string, createDatabase bool, isFiltered bool) {

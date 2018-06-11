@@ -24,6 +24,13 @@ SET default_tablespace = '';
 --
 --
 
+CREATE SEQUENCE myseq START 100;
+
+CREATE VIEW myview AS SELECT '1';
+
+--
+--
+
 CREATE TABLE foo (
     i integer
 ) DISTRIBUTED BY (i);

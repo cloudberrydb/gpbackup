@@ -25,12 +25,12 @@ func initializeFlags(cmd *cobra.Command) {
 	dataOnly = cmd.Flags().Bool("data-only", false, "Only restore data, do not restore metadata")
 	debug = cmd.Flags().Bool("debug", false, "Print verbose and debug log messages")
 	excludeSchemas = cmd.Flags().StringSlice("exclude-schema", []string{}, "Restore all metadata except objects in the specified schema(s). --exclude-schema can be specified multiple times.")
-	excludeTables = cmd.Flags().StringSlice("exclude-table", []string{}, "Restore all metadata except the specified table(s). --exclude-table can be specified multiple times.")
-	excludeTableFile = cmd.Flags().String("exclude-table-file", "", "A file containing a list of fully-qualified tables that will not be restored")
+	excludeRelations = cmd.Flags().StringSlice("exclude-table", []string{}, "Restore all metadata except the specified relation(s). --exclude-table can be specified multiple times.")
+	excludeRelationFile = cmd.Flags().String("exclude-table-file", "", "A file containing a list of fully-qualified relation(s) that will not be restored")
 	cmd.Flags().Bool("help", false, "Help for gprestore")
 	includeSchemas = cmd.Flags().StringSlice("include-schema", []string{}, "Restore only the specified schema(s). --include-schema can be specified multiple times.")
-	includeTables = cmd.Flags().StringSlice("include-table", []string{}, "Restore only the specified table(s). --include-table can be specified multiple times.")
-	includeTableFile = cmd.Flags().String("include-table-file", "", "A file containing a list of fully-qualified tables that will be restored")
+	includeRelation = cmd.Flags().StringSlice("include-table", []string{}, "Restore only the specified relation(s). --include-table can be specified multiple times.")
+	includeRelationFile = cmd.Flags().String("include-table-file", "", "A file containing a list of fully-qualified relation(s) that will be restored")
 	metadataOnly = cmd.Flags().Bool("metadata-only", false, "Only restore metadata, do not restore data")
 	numJobs = cmd.Flags().Int("jobs", 1, "Number of parallel connections to use when restoring table data and post-data")
 	onErrorContinue = cmd.Flags().Bool("on-error-continue", false, "Log errors and continue restore, instead of exiting on first error")
@@ -111,7 +111,7 @@ func DoSetup() {
 	 * should not error out for validation reasons once the restore database exists.
 	 */
 	if !*createDB {
-		ValidateFilterTablesInRestoreDatabase(connection, *includeTables)
+		ValidateFilterRelationsInRestoreDatabase(connection, *includeRelation)
 	}
 }
 
@@ -191,7 +191,7 @@ func restoreData(gucStatements []utils.StatementWithType) {
 		return
 	}
 	gplog.Info("Restoring data")
-	filteredMasterDataEntries := globalTOC.GetDataEntriesMatching(*includeSchemas, *excludeSchemas, *includeTables, *excludeTables)
+	filteredMasterDataEntries := globalTOC.GetDataEntriesMatching(*includeSchemas, *excludeSchemas, *includeRelation, *excludeRelations)
 	if backupConfig.SingleDataFile {
 		gplog.Verbose("Initializing pipes and gpbackup_helper on segments for single data file restore")
 		utils.VerifyHelperVersionOnSegments(version, globalCluster)

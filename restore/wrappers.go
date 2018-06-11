@@ -65,11 +65,11 @@ func InitializeBackupConfig() {
 }
 
 func InitializeFilterLists() {
-	if *excludeTableFile != "" {
-		*excludeTables = iohelper.MustReadLinesFromFile(*excludeTableFile)
+	if *excludeRelationFile != "" {
+		*excludeRelations = iohelper.MustReadLinesFromFile(*excludeRelationFile)
 	}
-	if *includeTableFile != "" {
-		*includeTables = iohelper.MustReadLinesFromFile(*includeTableFile)
+	if *includeRelationFile != "" {
+		*includeRelation = iohelper.MustReadLinesFromFile(*includeRelationFile)
 	}
 }
 
@@ -114,20 +114,20 @@ func RecoverMetadataFilesUsingPlugin() {
  * Metadata and/or data restore wrapper functions
  */
 
-func GetRestoreMetadataStatements(section string, filename string, includeObjectTypes []string, excludeObjectTypes []string, filterSchemas bool, filterTables bool) []utils.StatementWithType {
+func GetRestoreMetadataStatements(section string, filename string, includeObjectTypes []string, excludeObjectTypes []string, filterSchemas bool, filterRelations bool) []utils.StatementWithType {
 	metadataFile := iohelper.MustOpenFileForReading(filename)
 	var statements []utils.StatementWithType
-	if len(includeObjectTypes) > 0 || len(excludeObjectTypes) > 0 || filterSchemas || filterTables {
-		var inSchemas, exSchemas, inTables, exTables []string
+	if len(includeObjectTypes) > 0 || len(excludeObjectTypes) > 0 || filterSchemas || filterRelations {
+		var inSchemas, exSchemas, inRelations, exRelations []string
 		if filterSchemas {
 			inSchemas = *includeSchemas
 			exSchemas = *excludeSchemas
 		}
-		if filterTables {
-			inTables = *includeTables
-			exTables = *excludeTables
+		if filterRelations {
+			inRelations = *includeRelation
+			exRelations = *excludeRelations
 		}
-		statements = globalTOC.GetSQLStatementForObjectTypes(section, metadataFile, includeObjectTypes, excludeObjectTypes, inSchemas, exSchemas, inTables, exTables)
+		statements = globalTOC.GetSQLStatementForObjectTypes(section, metadataFile, includeObjectTypes, excludeObjectTypes, inSchemas, exSchemas, inRelations, exRelations)
 	} else {
 		statements = globalTOC.GetAllSQLStatements(section, metadataFile)
 	}

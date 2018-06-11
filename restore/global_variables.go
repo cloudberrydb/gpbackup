@@ -41,26 +41,26 @@ var (
  */
 
 var (
-	backupDir        *string
-	createDB         *bool
-	dataOnly         *bool
-	debug            *bool
-	excludeSchemas   *[]string
-	excludeTableFile *string
-	excludeTables    *[]string
-	includeSchemas   *[]string
-	includeTableFile *string
-	includeTables    *[]string
-	metadataOnly     *bool
-	numJobs          *int
-	onErrorContinue  *bool
-	pluginConfigFile *string
-	quiet            *bool
-	redirect         *string
-	restoreGlobals   *bool
-	timestamp        *string
-	verbose          *bool
-	withStats        *bool
+	backupDir           *string
+	createDB            *bool
+	dataOnly            *bool
+	debug               *bool
+	excludeSchemas      *[]string
+	excludeRelationFile *string
+	excludeRelations    *[]string
+	includeSchemas      *[]string
+	includeRelationFile *string
+	includeRelation     *[]string
+	metadataOnly        *bool
+	numJobs             *int
+	onErrorContinue     *bool
+	pluginConfigFile    *string
+	quiet               *bool
+	redirect            *string
+	restoreGlobals      *bool
+	timestamp           *string
+	verbose             *bool
+	withStats           *bool
 )
 
 /*
