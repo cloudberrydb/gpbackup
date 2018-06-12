@@ -37,7 +37,6 @@ func InitializeConnectionPool() {
 	connectionPool.MustConnect(*numJobs)
 	utils.SetDatabaseVersion(connectionPool)
 	InitializeMetadataParams(connectionPool)
-	fmt.Println(connectionPool.NumConns)
 	for connNum := 0; connNum < connectionPool.NumConns; connNum++ {
 		connectionPool.MustExec("SET application_name TO 'gpbackup'", connNum)
 		connectionPool.MustBegin(connNum)
