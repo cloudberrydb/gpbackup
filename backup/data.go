@@ -13,7 +13,6 @@ import (
 	"github.com/greenplum-db/gpbackup/utils"
 	"gopkg.in/cheggaaa/pb.v1"
 	"sync"
-	"sync/atomic"
 )
 
 var (
@@ -50,6 +49,7 @@ func AddTableDataEntriesToTOC(tables []Relation, tableDefs map[uint32]TableDefin
 type BackupProgressCounters struct {
 	NumRegTables   int64
 	TotalRegTables int64
+	mutex          sync.Mutex
 	ProgressBar    utils.ProgressBar
 }
 
@@ -86,13 +86,17 @@ func CopyTableOut(connectionPool *dbconn.DBConn, table Relation, backupFile stri
 
 func BackupSingleTableData(tableDef TableDefinition, table Relation, rowsCopiedMap map[uint32]int64, counters *BackupProgressCounters, whichConn int) {
 	if !tableDef.IsExternal {
-		atomic.AddInt64(&counters.NumRegTables, 1)
+		counters.mutex.Lock()
+		counters.NumRegTables++
+		numTables := counters.NumRegTables //We save this so it won't be modified before we log it
+		counters.mutex.Unlock()
 		if gplog.GetVerbosity() > gplog.LOGINFO {
 			// No progress bar at this log level, so we note table count here
-			gplog.Verbose("Writing data for table %s to file (table %d of %d)", table.ToString(), counters.NumRegTables, counters.TotalRegTables)
+			gplog.Verbose("Writing data for table %s to file (table %d of %d)", table.ToString(), numTables, counters.TotalRegTables)
 		} else {
 			gplog.Verbose("Writing data for table %s to file", table.ToString())
 		}
+
 		backupFile := ""
 		if *singleDataFile {
 			backupFile = fmt.Sprintf("%s_%d", globalFPInfo.GetSegmentPipePathForCopyCommand(), table.Oid)
