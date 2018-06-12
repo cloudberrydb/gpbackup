@@ -18,7 +18,7 @@ import (
 
 func validateFilterListsInBackupSet() {
 	ValidateFilterSchemasInBackupSet(*includeSchemas)
-	ValidateFilterRelationsInBackupSet(*includeRelation)
+	ValidateFilterRelationsInBackupSet(*includeRelations)
 }
 
 func ValidateFilterSchemasInBackupSet(schemaList []string) {

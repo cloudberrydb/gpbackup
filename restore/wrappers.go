@@ -69,7 +69,7 @@ func InitializeFilterLists() {
 		*excludeRelations = iohelper.MustReadLinesFromFile(*excludeRelationFile)
 	}
 	if *includeRelationFile != "" {
-		*includeRelation = iohelper.MustReadLinesFromFile(*includeRelationFile)
+		*includeRelations = iohelper.MustReadLinesFromFile(*includeRelationFile)
 	}
 }
 
@@ -124,7 +124,7 @@ func GetRestoreMetadataStatements(section string, filename string, includeObject
 			exSchemas = *excludeSchemas
 		}
 		if filterRelations {
-			inRelations = *includeRelation
+			inRelations = *includeRelations
 			exRelations = *excludeRelations
 		}
 		statements = globalTOC.GetSQLStatementForObjectTypes(section, metadataFile, includeObjectTypes, excludeObjectTypes, inSchemas, exSchemas, inRelations, exRelations)

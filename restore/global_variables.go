@@ -50,7 +50,7 @@ var (
 	excludeRelations    *[]string
 	includeSchemas      *[]string
 	includeRelationFile *string
-	includeRelation     *[]string
+	includeRelations    *[]string
 	metadataOnly        *bool
 	numJobs             *int
 	onErrorContinue     *bool

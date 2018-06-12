@@ -29,7 +29,7 @@ func initializeFlags(cmd *cobra.Command) {
 	excludeRelationFile = cmd.Flags().String("exclude-table-file", "", "A file containing a list of fully-qualified relation(s) that will not be restored")
 	cmd.Flags().Bool("help", false, "Help for gprestore")
 	includeSchemas = cmd.Flags().StringSlice("include-schema", []string{}, "Restore only the specified schema(s). --include-schema can be specified multiple times.")
-	includeRelation = cmd.Flags().StringSlice("include-table", []string{}, "Restore only the specified relation(s). --include-table can be specified multiple times.")
+	includeRelations = cmd.Flags().StringSlice("include-table", []string{}, "Restore only the specified relation(s). --include-table can be specified multiple times.")
 	includeRelationFile = cmd.Flags().String("include-table-file", "", "A file containing a list of fully-qualified relation(s) that will be restored")
 	metadataOnly = cmd.Flags().Bool("metadata-only", false, "Only restore metadata, do not restore data")
 	numJobs = cmd.Flags().Int("jobs", 1, "Number of parallel connections to use when restoring table data and post-data")
@@ -111,7 +111,7 @@ func DoSetup() {
 	 * should not error out for validation reasons once the restore database exists.
 	 */
 	if !*createDB {
-		ValidateFilterRelationsInRestoreDatabase(connectionPool, *includeRelation)
+		ValidateFilterRelationsInRestoreDatabase(connectionPool, *includeRelations)
 	}
 }
 
@@ -191,7 +191,7 @@ func restoreData(gucStatements []utils.StatementWithType) {
 		return
 	}
 	gplog.Info("Restoring data")
-	filteredMasterDataEntries := globalTOC.GetDataEntriesMatching(*includeSchemas, *excludeSchemas, *includeRelation, *excludeRelations)
+	filteredMasterDataEntries := globalTOC.GetDataEntriesMatching(*includeSchemas, *excludeSchemas, *includeRelations, *excludeRelations)
 	if backupConfig.SingleDataFile {
 		gplog.Verbose("Initializing pipes and gpbackup_helper on segments for single data file restore")
 		utils.VerifyHelperVersionOnSegments(version, globalCluster)
