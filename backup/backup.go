@@ -101,7 +101,7 @@ func DoBackup() {
 	BackupSessionGUCs(metadataFile)
 	if !*dataOnly {
 		if len(*includeTables) > 0 {
-			backupTablePredata(metadataFile, metadataTables, tableDefs)
+			backupRelationPredata(metadataFile, metadataTables, tableDefs)
 		} else {
 			backupGlobal(metadataFile)
 			backupPredata(metadataFile, metadataTables, tableDefs)
@@ -228,7 +228,7 @@ func backupPredata(metadataFile *utils.FileWithByteCount, tables []Relation, tab
 	}
 }
 
-func backupTablePredata(metadataFile *utils.FileWithByteCount, tables []Relation, tableDefs map[uint32]TableDefinition) {
+func backupRelationPredata(metadataFile *utils.FileWithByteCount, tables []Relation, tableDefs map[uint32]TableDefinition) {
 	if wasTerminated {
 		return
 	}
@@ -243,6 +243,8 @@ func backupTablePredata(metadataFile *utils.FileWithByteCount, tables []Relation
 
 	BackupTables(metadataFile, tables, relationMetadata, tableDefs, constraints)
 	PrintAlterSequenceStatements(metadataFile, globalTOC, sequences, sequenceOwnerColumns)
+
+	BackupViews(metadataFile, relationMetadata)
 
 	BackupConstraints(metadataFile, constraints, conMetadata)
 	gplog.Info("Table metadata backup complete")

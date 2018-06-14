@@ -28,14 +28,14 @@ func tableAndSchemaFilterClause() string {
 	return filterClause
 }
 
-func GetOidsFromTableList(connection *dbconn.DBConn, tableNames []string) []string {
-	tableList := utils.SliceToQuotedString(tableNames)
+func GetOidsFromTableList(connection *dbconn.DBConn, relationNames []string) []string {
+	relList := utils.SliceToQuotedString(relationNames)
 	query := fmt.Sprintf(`
 SELECT
 	c.oid AS string
 FROM pg_class c
 JOIN pg_namespace n ON c.relnamespace = n.oid
-WHERE quote_ident(n.nspname) || '.' || quote_ident(c.relname) IN (%s)`, tableList)
+WHERE quote_ident(n.nspname) || '.' || quote_ident(c.relname) IN (%s)`, relList)
 	return dbconn.MustSelectStringSlice(connection, query)
 }
 
@@ -475,7 +475,7 @@ AND p.oid NOT IN (select objid from pg_depend where deptype = 'e')`
 
 	query := ""
 	// If we are filtering on tables, we only want to record dependencies on other tables in the list
-	if isTableFiltered {
+	if isTableFiltered && len(tableOidList) > 0 {
 		query = fmt.Sprintf("%s\nWHERE objid IN (%s);", tableQuery, strings.Join(tableOidList, ","))
 	} else {
 		query = fmt.Sprintf("%s\nUNION\n%s;", nonTableQuery, tableQuery)
@@ -508,7 +508,7 @@ AND p.oid NOT IN (select objid from pg_depend where deptype = 'e')`
 	return tables
 }
 
-func GetAllSequenceRelations(connection *dbconn.DBConn, sequenceOwnerTables map[string]string) []Relation {
+func GetAllSequenceRelations(connection *dbconn.DBConn) []Relation {
 	query := fmt.Sprintf(`SELECT
 	n.oid AS schemaoid,
 	c.oid AS oid,
@@ -520,28 +520,13 @@ LEFT JOIN pg_namespace n
 WHERE relkind = 'S'
 AND %s
 AND c.oid NOT IN (select objid from pg_depend where deptype = 'e')
-ORDER BY n.nspname, c.relname;`, SchemaFilterClause("n"))
+ORDER BY n.nspname, c.relname;`, tableAndSchemaFilterClause())
 
 	results := make([]Relation, 0)
 	err := connection.Select(&results, query)
 	gplog.FatalOnError(err)
 
-	var tableSet *utils.FilterSet
-	if len(*excludeTables) > 0 {
-		tableSet = utils.NewExcludeSet(*excludeTables)
-	} else if len(*includeTables) > 0 {
-		tableSet = utils.NewIncludeSet(*includeTables)
-	} else {
-		return results
-	}
-
-	filteredSequences := make([]Relation, 0)
-	for _, sequence := range results {
-		if tableSet.MatchesFilter(sequenceOwnerTables[sequence.ToString()]) {
-			filteredSequences = append(filteredSequences, sequence)
-		}
-	}
-	return filteredSequences
+	return results
 }
 
 type SequenceDefinition struct {
@@ -567,21 +552,22 @@ func GetSequenceDefinition(connection *dbconn.DBConn, seqName string) SequenceDe
 }
 
 func GetSequenceColumnOwnerMap(connection *dbconn.DBConn) (map[string]string, map[string]string) {
-	query := `SELECT
+	query := fmt.Sprintf(`SELECT
 	quote_ident(n.nspname) AS schema,
 	quote_ident(s.relname) AS name,
-	quote_ident(t.relname) AS tablename,
+	quote_ident(c.relname) AS tablename,
 	quote_ident(a.attname) AS columnname
 FROM pg_depend d
 JOIN pg_attribute a
 	ON a.attrelid = d.refobjid AND a.attnum = d.refobjsubid
 JOIN pg_class s
 	ON s.oid = d.objid
-JOIN pg_class t
-	ON t.oid = d.refobjid
+JOIN pg_class c
+	ON c.oid = d.refobjid
 JOIN pg_namespace n
 	ON n.oid = s.relnamespace
-WHERE s.relkind = 'S';`
+WHERE s.relkind = 'S'
+AND %s;`, tableAndSchemaFilterClause())
 
 	results := make([]struct {
 		Schema     string
@@ -626,8 +612,9 @@ SELECT
 	pg_get_viewdef(c.oid) AS definition
 FROM pg_class c
 LEFT JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE c.relkind = 'v'::"char" AND %s
-AND c.oid NOT IN (select objid from pg_depend where deptype = 'e');`, SchemaFilterClause("n"))
+WHERE c.relkind = 'v'::"char"
+AND %s
+AND c.oid NOT IN (select objid from pg_depend where deptype = 'e');`, tableAndSchemaFilterClause())
 	err := connection.Select(&results, query)
 	gplog.FatalOnError(err)
 	return results

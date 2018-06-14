@@ -24,9 +24,13 @@ SET default_tablespace = '';
 --
 --
 
-CREATE SEQUENCE myseq START 100;
+CREATE SEQUENCE myseq1 START 100;
 
-CREATE VIEW myview AS SELECT '1';
+CREATE SEQUENCE myseq2 START 100;
+
+CREATE VIEW myview1 AS SELECT '1';
+
+CREATE VIEW myview2 AS SELECT '1';
 
 --
 --

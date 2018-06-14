@@ -731,18 +731,25 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 		baseSequence := backup.BasicRelation("public", "seq_name")
 		seqDefault := backup.Sequence{Relation: baseSequence, SequenceDefinition: backup.SequenceDefinition{Name: "seq_name", LastVal: 7, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 5, LogCnt: 42, IsCycled: false, IsCalled: true}}
 		emptyColumnOwnerMap := make(map[string]string, 0)
-		columnOwnerMap := map[string]string{"public.seq_name": "tablename.col_one"}
 		It("prints nothing for a sequence without an owning column", func() {
 			sequences := []backup.Sequence{seqDefault}
 			backup.PrintAlterSequenceStatements(backupfile, toc, sequences, emptyColumnOwnerMap)
 			Expect(len(toc.PredataEntries)).To(Equal(0))
 			testhelper.NotExpectRegexp(buffer, `ALTER SEQUENCE`)
 		})
+		It("does not write an alter sequence statement for a sequence that is not in the backup", func() {
+			columnOwnerMap := map[string]string{"public.seq_name2": "public.tablename.col_one"}
+			sequences := []backup.Sequence{seqDefault}
+			backup.PrintAlterSequenceStatements(backupfile, toc, sequences, columnOwnerMap)
+			Expect(len(toc.PredataEntries)).To(Equal(0))
+			testhelper.NotExpectRegexp(buffer, `ALTER SEQUENCE`)
+		})
 		It("can print an ALTER SEQUENCE statement for a sequence with an owning column", func() {
+			columnOwnerMap := map[string]string{"public.seq_name": "public.tablename.col_one"}
 			sequences := []backup.Sequence{seqDefault}
 			backup.PrintAlterSequenceStatements(backupfile, toc, sequences, columnOwnerMap)
 			testutils.ExpectEntry(toc.PredataEntries, 0, "public", "", "seq_name", "SEQUENCE OWNER")
-			testutils.AssertBufferContents(toc.PredataEntries, buffer, `ALTER SEQUENCE public.seq_name OWNED BY tablename.col_one;`)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `ALTER SEQUENCE public.seq_name OWNED BY public.tablename.col_one;`)
 		})
 	})
 	Describe("SplitTablesByPartitionType", func() {
@@ -913,6 +920,28 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 			expectedName := `"long!naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa_ext_part_"`
 			suffixName := backup.AppendExtPartSuffix(tablename)
 			Expect(suffixName).To(Equal(expectedName))
+		})
+	})
+	Describe("ExpandIncludeRelations", func() {
+		testTables := []backup.Relation{backup.BasicRelation("testschema", "foo1"), backup.BasicRelation("testschema", "foo2")}
+		It("returns an empty slice if no includeRelations were specified", func() {
+			backup.SetIncludeTables([]string{})
+			resultIncludeRelations := backup.ExpandIncludeRelations(testTables)
+			Expect(len(resultIncludeRelations)).To(Equal(0))
+		})
+		It("returns original include list if the new tables list is a subset of existing list", func() {
+			backup.SetIncludeTables([]string{"testschema.foo1", "testschema.foo2", "testschema.foo3"})
+			resultIncludeRelations := backup.ExpandIncludeRelations(testTables)
+			sort.Strings(resultIncludeRelations)
+			Expect(len(resultIncludeRelations)).To(Equal(3))
+			Expect(resultIncludeRelations).To(Equal([]string{"testschema.foo1", "testschema.foo2", "testschema.foo3"}))
+		})
+		It("returns expanded include list if there are new tables to add", func() {
+			backup.SetIncludeTables([]string{"testschema.foo2", "testschema.foo3"})
+			resultIncludeRelations := backup.ExpandIncludeRelations(testTables)
+			sort.Strings(resultIncludeRelations)
+			Expect(len(resultIncludeRelations)).To(Equal(3))
+			Expect(resultIncludeRelations).To(Equal([]string{"testschema.foo1", "testschema.foo2", "testschema.foo3"}))
 		})
 	})
 	Describe("ConstructColumnPrivilegesMap", func() {

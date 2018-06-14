@@ -123,6 +123,25 @@ func AppendExtPartSuffix(name string) string {
 	return name + SUFFIX
 }
 
+func ExpandIncludeRelations(tables []Relation) []string {
+	if len(*includeTables) == 0 {
+		return *includeTables
+	}
+
+	includeMap := make(map[string]bool, 0)
+	for _, relation := range *includeTables {
+		includeMap[relation] = true
+	}
+
+	expandedIncludeRelations := *includeTables
+	for _, table := range tables {
+		if _, ok := includeMap[table.FQN()]; !ok {
+			expandedIncludeRelations = append(expandedIncludeRelations, table.FQN())
+		}
+	}
+	return expandedIncludeRelations
+}
+
 type TableDefinition struct {
 	DistPolicy      string
 	PartDef         string
@@ -348,7 +367,7 @@ type Sequence struct {
 }
 
 func GetAllSequences(connection *dbconn.DBConn, sequenceOwnerTables map[string]string) []Sequence {
-	sequenceRelations := GetAllSequenceRelations(connection, sequenceOwnerTables)
+	sequenceRelations := GetAllSequenceRelations(connection)
 	sequences := make([]Sequence, 0)
 	for _, seqRelation := range sequenceRelations {
 		seqDef := GetSequenceDefinition(connection, seqRelation.ToString())

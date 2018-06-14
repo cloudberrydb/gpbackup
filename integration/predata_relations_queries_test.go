@@ -631,7 +631,7 @@ SET SUBPARTITION TEMPLATE
 			defer testhelper.AssertQueryRuns(connection, "DROP SCHEMA testschema CASCADE")
 			testhelper.AssertQueryRuns(connection, "CREATE SEQUENCE testschema.my_sequence2")
 
-			sequences := backup.GetAllSequenceRelations(connection, map[string]string{})
+			sequences := backup.GetAllSequenceRelations(connection)
 
 			mySequence := backup.BasicRelation("public", "my_sequence")
 			mySequence2 := backup.BasicRelation("testschema", "my_sequence2")
@@ -650,42 +650,64 @@ SET SUBPARTITION TEMPLATE
 			mySequence := backup.BasicRelation("testschema", "my_sequence")
 
 			backup.SetIncludeSchemas([]string{"testschema"})
-			sequences := backup.GetAllSequenceRelations(connection, map[string]string{})
+			sequences := backup.GetAllSequenceRelations(connection)
 
 			Expect(len(sequences)).To(Equal(1))
 			structmatcher.ExpectStructsToMatchExcluding(&mySequence, &sequences[0], "SchemaOid", "Oid")
 		})
-		It("returns a slice of sequences owned by included tables", func() {
+		It("does not return sequences owned by included tables", func() {
 			testhelper.AssertQueryRuns(connection, "CREATE SEQUENCE public.my_sequence START 10")
-			testhelper.AssertQueryRuns(connection, "CREATE SEQUENCE public.no_table_sequence START 5")
-			defer testhelper.AssertQueryRuns(connection, "DROP SEQUENCE public.no_table_sequence")
+
+			testhelper.AssertQueryRuns(connection, "CREATE TABLE public.seq_table(i int)")
+			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.seq_table")
+			testhelper.AssertQueryRuns(connection, "ALTER SEQUENCE public.my_sequence OWNED BY public.seq_table.i")
+
+			backup.SetIncludeTables([]string{"public.seq_table"})
+			sequences := backup.GetAllSequenceRelations(connection)
+
+			Expect(len(sequences)).To(Equal(0))
+		})
+		It("returns sequences owned by excluded tables if the sequence is not excluded", func() {
+			testhelper.AssertQueryRuns(connection, "CREATE SEQUENCE public.my_sequence START 10")
 
 			testhelper.AssertQueryRuns(connection, "CREATE TABLE public.seq_table(i int)")
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.seq_table")
 			testhelper.AssertQueryRuns(connection, "ALTER SEQUENCE public.my_sequence OWNED BY public.seq_table.i")
 			mySequence := backup.BasicRelation("public", "my_sequence")
 
-			backup.SetIncludeTables([]string{"public.seq_table"})
-			sequences := backup.GetAllSequenceRelations(connection, map[string]string{"public.my_sequence": "public.seq_table"})
+			backup.SetExcludeTables([]string{"public.seq_table"})
+			sequences := backup.GetAllSequenceRelations(connection)
 
 			Expect(len(sequences)).To(Equal(1))
 			structmatcher.ExpectStructsToMatchExcluding(&mySequence, &sequences[0], "SchemaOid", "Oid")
 		})
-		It("does not return sequences owned by excluded tables", func() {
-			testhelper.AssertQueryRuns(connection, "CREATE SEQUENCE public.my_sequence START 10")
-			testhelper.AssertQueryRuns(connection, "CREATE SEQUENCE public.no_table_sequence START 5")
-			defer testhelper.AssertQueryRuns(connection, "DROP SEQUENCE public.no_table_sequence")
+		It("does not return an excluded sequence", func() {
+			testhelper.AssertQueryRuns(connection, "CREATE SEQUENCE public.sequence1 START 10")
+			defer testhelper.AssertQueryRuns(connection, "DROP SEQUENCE public.sequence1")
+			testhelper.AssertQueryRuns(connection, "CREATE SEQUENCE public.sequence2 START 10")
+			defer testhelper.AssertQueryRuns(connection, "DROP SEQUENCE public.sequence2")
 
-			testhelper.AssertQueryRuns(connection, "CREATE TABLE public.seq_table(i int)")
-			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.seq_table")
-			testhelper.AssertQueryRuns(connection, "ALTER SEQUENCE public.my_sequence OWNED BY public.seq_table.i")
-			noTableSequence := backup.BasicRelation("public", "no_table_sequence")
+			sequence2 := backup.BasicRelation("public", "sequence2")
 
-			backup.SetExcludeTables([]string{"public.seq_table"})
-			sequences := backup.GetAllSequenceRelations(connection, map[string]string{"public.my_sequence": "public.seq_table"})
+			backup.SetExcludeTables([]string{"public.sequence1"})
+			sequences := backup.GetAllSequenceRelations(connection)
 
 			Expect(len(sequences)).To(Equal(1))
-			structmatcher.ExpectStructsToMatchExcluding(&noTableSequence, &sequences[0], "SchemaOid", "Oid")
+			structmatcher.ExpectStructsToMatchExcluding(&sequence2, &sequences[0], "SchemaOid", "Oid")
+		})
+		It("returns only the included sequence", func() {
+			testhelper.AssertQueryRuns(connection, "CREATE SEQUENCE public.sequence1 START 10")
+			defer testhelper.AssertQueryRuns(connection, "DROP SEQUENCE public.sequence1")
+			testhelper.AssertQueryRuns(connection, "CREATE SEQUENCE public.sequence2 START 10")
+			defer testhelper.AssertQueryRuns(connection, "DROP SEQUENCE public.sequence2")
+
+			sequence1 := backup.BasicRelation("public", "sequence1")
+
+			backup.SetIncludeTables([]string{"public.sequence1"})
+			sequences := backup.GetAllSequenceRelations(connection)
+
+			Expect(len(sequences)).To(Equal(1))
+			structmatcher.ExpectStructsToMatchExcluding(&sequence1, &sequences[0], "SchemaOid", "Oid")
 		})
 	})
 	Describe("GetSequenceDefinition", func() {
@@ -744,6 +766,33 @@ SET SUBPARTITION TEMPLATE
 			Expect(len(sequenceOwnerColumns)).To(Equal(1))
 			Expect(sequenceOwnerTables["public.my_sequence"]).To(Equal("public.with_sequence"))
 			Expect(sequenceOwnerColumns["public.my_sequence"]).To(Equal("public.with_sequence.a"))
+		})
+		It("does not return sequence owner columns if the owning table is not backed up", func() {
+			testhelper.AssertQueryRuns(connection, "CREATE TABLE public.my_table(a int, b char(20));")
+			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.my_table")
+			testhelper.AssertQueryRuns(connection, "CREATE SEQUENCE public.my_sequence OWNED BY public.my_table.a;")
+			defer testhelper.AssertQueryRuns(connection, "DROP SEQUENCE public.my_sequence")
+
+			backup.SetExcludeTables([]string{"public.my_table"})
+			sequenceOwnerTables, sequenceOwnerColumns := backup.GetSequenceColumnOwnerMap(connection)
+			Expect(len(sequenceOwnerTables)).To(Equal(0))
+			Expect(len(sequenceOwnerColumns)).To(Equal(0))
+
+			backup.SetExcludeTables([]string{})
+			backup.SetIncludeTables([]string{"public.my_sequence"})
+			sequenceOwnerTables, sequenceOwnerColumns = backup.GetSequenceColumnOwnerMap(connection)
+			Expect(len(sequenceOwnerTables)).To(Equal(0))
+			Expect(len(sequenceOwnerColumns)).To(Equal(0))
+
+			backup.SetIncludeTables([]string{"public.my_sequence", "public.my_table"})
+			sequenceOwnerTables, sequenceOwnerColumns = backup.GetSequenceColumnOwnerMap(connection)
+			Expect(len(sequenceOwnerTables)).To(Equal(1))
+			Expect(len(sequenceOwnerColumns)).To(Equal(1))
+
+			backup.SetIncludeTables([]string{"public.my_table"})
+			sequenceOwnerTables, sequenceOwnerColumns = backup.GetSequenceColumnOwnerMap(connection)
+			Expect(len(sequenceOwnerTables)).To(Equal(1))
+			Expect(len(sequenceOwnerColumns)).To(Equal(1))
 		})
 	})
 	Describe("GetAllSequences", func() {
@@ -879,6 +928,11 @@ SET SUBPARTITION TEMPLATE
 		It("constructs dependencies correctly if there are no table dependencies", func() {
 			tables := []backup.Relation{}
 			tables = backup.ConstructTableDependencies(connection, tables, tableDefs, false)
+			Expect(len(tables)).To(Equal(0))
+		})
+		It("constructs dependencies correctly if there are no table dependencies while filtering", func() {
+			tables := []backup.Relation{}
+			tables = backup.ConstructTableDependencies(connection, tables, tableDefs, true)
 			Expect(len(tables)).To(Equal(0))
 		})
 		It("constructs dependencies correctly if there are two dependent tables but one is not in the backup set", func() {

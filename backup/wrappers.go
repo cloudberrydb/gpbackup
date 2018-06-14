@@ -114,16 +114,11 @@ func RetrieveAndProcessTables() ([]Relation, []Relation, map[uint32]TableDefinit
 	 * We expand the includeTables list to include parent and leaf partitions that may not have been
 	 * specified by the user but are used in the backup for metadata or data.
 	 */
-	userPassedIncludeTables := *includeTables
-	if len(*includeTables) > 0 {
-		expandedIncludeTables := make([]string, 0)
-		for _, table := range tables {
-			expandedIncludeTables = append(expandedIncludeTables, table.FQN())
-		}
-		*includeTables = expandedIncludeTables
-	}
+	userPassedIncludeRelations := *includeTables
+	*includeTables = ExpandIncludeRelations(tables)
+
 	tableDefs := ConstructDefinitionsForTables(connectionPool, tables)
-	metadataTables, dataTables := SplitTablesByPartitionType(tables, tableDefs, userPassedIncludeTables)
+	metadataTables, dataTables := SplitTablesByPartitionType(tables, tableDefs, userPassedIncludeRelations)
 	objectCounts["Tables"] = len(metadataTables)
 
 	return metadataTables, dataTables, tableDefs
