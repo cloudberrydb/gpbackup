@@ -124,16 +124,16 @@ func AppendExtPartSuffix(name string) string {
 }
 
 func ExpandIncludeRelations(tables []Relation) []string {
-	if len(*includeTables) == 0 {
-		return *includeTables
+	if len(*includeRelations) == 0 {
+		return *includeRelations
 	}
 
 	includeMap := make(map[string]bool, 0)
-	for _, relation := range *includeTables {
+	for _, relation := range *includeRelations {
 		includeMap[relation] = true
 	}
 
-	expandedIncludeRelations := *includeTables
+	expandedIncludeRelations := *includeRelations
 	for _, table := range tables {
 		if _, ok := includeMap[table.FQN()]; !ok {
 			expandedIncludeRelations = append(expandedIncludeRelations, table.FQN())

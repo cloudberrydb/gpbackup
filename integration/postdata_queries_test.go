@@ -148,7 +148,7 @@ PARTITION BY RANGE (date)
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE testschema.simple_table")
 			testhelper.AssertQueryRuns(connection, "CREATE INDEX simple_table_idx1 ON testschema.simple_table(i)")
 			defer testhelper.AssertQueryRuns(connection, "DROP INDEX testschema.simple_table_idx1")
-			backup.SetIncludeTables([]string{"testschema.simple_table"})
+			backup.SetIncludeRelations([]string{"testschema.simple_table"})
 
 			index1 := backup.IndexDefinition{Oid: 0, Name: "simple_table_idx1", OwningSchema: "testschema", OwningTable: "simple_table", Def: "CREATE INDEX simple_table_idx1 ON testschema.simple_table USING btree (i)"}
 
@@ -233,7 +233,7 @@ PARTITION BY RANGE (date)
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE testschema.rule_table1")
 			testhelper.AssertQueryRuns(connection, "CREATE RULE double_insert AS ON INSERT TO testschema.rule_table1 DO INSERT INTO testschema.rule_table1 (i) VALUES (1)")
 			defer testhelper.AssertQueryRuns(connection, "DROP RULE double_insert ON testschema.rule_table1")
-			backup.SetIncludeTables([]string{"testschema.rule_table1"})
+			backup.SetIncludeRelations([]string{"testschema.rule_table1"})
 
 			rule1 := backup.QuerySimpleDefinition{Oid: 0, Name: "double_insert", OwningSchema: "testschema", OwningTable: "rule_table1", Def: "CREATE RULE double_insert AS ON INSERT TO testschema.rule_table1 DO INSERT INTO testschema.rule_table1 (i) VALUES (1);"}
 
@@ -311,7 +311,7 @@ PARTITION BY RANGE (date)
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE testschema.trigger_table1")
 			testhelper.AssertQueryRuns(connection, `CREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON testschema.trigger_table1 FOR EACH STATEMENT EXECUTE PROCEDURE "RI_FKey_check_ins"()`)
 			defer testhelper.AssertQueryRuns(connection, "DROP TRIGGER sync_trigger_table1 ON testschema.trigger_table1")
-			backup.SetIncludeTables([]string{"testschema.trigger_table1"})
+			backup.SetIncludeRelations([]string{"testschema.trigger_table1"})
 
 			trigger1 := backup.QuerySimpleDefinition{Oid: 0, Name: "sync_trigger_table1", OwningSchema: "testschema", OwningTable: "trigger_table1", Def: `CREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON testschema.trigger_table1 FOR EACH STATEMENT EXECUTE PROCEDURE "RI_FKey_check_ins"()`}
 

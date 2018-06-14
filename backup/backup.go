@@ -23,12 +23,12 @@ func initializeFlags(cmd *cobra.Command) {
 	dbname = cmd.Flags().String("dbname", "", "The database to be backed up")
 	debug = cmd.Flags().Bool("debug", false, "Print verbose and debug log messages")
 	excludeSchemas = cmd.Flags().StringSlice("exclude-schema", []string{}, "Back up all metadata except objects in the specified schema(s). --exclude-schema can be specified multiple times.")
-	excludeTables = cmd.Flags().StringSlice("exclude-table", []string{}, "Back up all metadata except the specified table(s). --exclude-table can be specified multiple times.")
-	excludeTableFile = cmd.Flags().String("exclude-table-file", "", "A file containing a list of fully-qualified tables to be excluded from the backup")
+	excludeRelations = cmd.Flags().StringSlice("exclude-table", []string{}, "Back up all metadata except the specified table(s). --exclude-table can be specified multiple times.")
+	excludeRelationFile = cmd.Flags().String("exclude-table-file", "", "A file containing a list of fully-qualified tables to be excluded from the backup")
 	cmd.Flags().Bool("help", false, "Help for gpbackup")
 	includeSchemas = cmd.Flags().StringSlice("include-schema", []string{}, "Back up only the specified schema(s). --include-schema can be specified multiple times.")
-	includeTables = cmd.Flags().StringSlice("include-table", []string{}, "Back up only the specified table(s). --include-table can be specified multiple times.")
-	includeTableFile = cmd.Flags().String("include-table-file", "", "A file containing a list of fully-qualified tables to be included in the backup")
+	includeRelations = cmd.Flags().StringSlice("include-table", []string{}, "Back up only the specified table(s). --include-table can be specified multiple times.")
+	includeRelationFile = cmd.Flags().String("include-table-file", "", "A file containing a list of fully-qualified tables to be included in the backup")
 	numJobs = cmd.Flags().Int("jobs", 1, "The number of parallel connections to use when backing up data")
 	leafPartitionData = cmd.Flags().Bool("leaf-partition-data", false, "For partition tables, create one data file per leaf partition instead of one data file for the whole table")
 	metadataOnly = cmd.Flags().Bool("metadata-only", false, "Only back up metadata, do not back up data")
@@ -100,7 +100,7 @@ func DoBackup() {
 
 	BackupSessionGUCs(metadataFile)
 	if !*dataOnly {
-		if len(*includeTables) > 0 {
+		if len(*includeRelations) > 0 {
 			backupRelationPredata(metadataFile, metadataTables, tableDefs)
 		} else {
 			backupGlobal(metadataFile)

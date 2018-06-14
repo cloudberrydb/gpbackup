@@ -65,9 +65,9 @@ func InitializeBackupReport() {
 		BackupVersion:   version,
 	}
 	isIncludeSchemaFiltered := len(*includeSchemas) > 0
-	isIncludeTableFiltered := len(*includeTables) > 0
+	isIncludeTableFiltered := len(*includeRelations) > 0
 	isExcludeSchemaFiltered := len(*excludeSchemas) > 0
-	isExcludeTableFiltered := len(*excludeTables) > 0
+	isExcludeTableFiltered := len(*excludeRelations) > 0
 	dbSize := ""
 	if !*metadataOnly && !isIncludeSchemaFiltered && !isIncludeTableFiltered && !isExcludeSchemaFiltered && !isExcludeTableFiltered {
 		gplog.Verbose("Getting database size")
@@ -84,11 +84,11 @@ func InitializeBackupReport() {
 }
 
 func InitializeFilterLists() {
-	if *excludeTableFile != "" {
-		*excludeTables = iohelper.MustReadLinesFromFile(*excludeTableFile)
+	if *excludeRelationFile != "" {
+		*excludeRelations = iohelper.MustReadLinesFromFile(*excludeRelationFile)
 	}
-	if *includeTableFile != "" {
-		*includeTables = iohelper.MustReadLinesFromFile(*includeTableFile)
+	if *includeRelationFile != "" {
+		*includeRelations = iohelper.MustReadLinesFromFile(*includeRelationFile)
 	}
 }
 
@@ -111,11 +111,11 @@ func RetrieveAndProcessTables() ([]Relation, []Relation, map[uint32]TableDefinit
 	LockTables(connectionPool, tables)
 
 	/*
-	 * We expand the includeTables list to include parent and leaf partitions that may not have been
+	 * We expand the includeRelations list to include parent and leaf partitions that may not have been
 	 * specified by the user but are used in the backup for metadata or data.
 	 */
-	userPassedIncludeRelations := *includeTables
-	*includeTables = ExpandIncludeRelations(tables)
+	userPassedIncludeRelations := *includeRelations
+	*includeRelations = ExpandIncludeRelations(tables)
 
 	tableDefs := ConstructDefinitionsForTables(connectionPool, tables)
 	metadataTables, dataTables := SplitTablesByPartitionType(tables, tableDefs, userPassedIncludeRelations)

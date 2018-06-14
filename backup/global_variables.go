@@ -39,26 +39,26 @@ var (
  * Command-line flags
  */
 var (
-	backupDir         *string
-	compressionLevel  *int
-	dataOnly          *bool
-	dbname            *string
-	debug             *bool
-	excludeSchemas    *[]string
-	excludeTableFile  *string
-	excludeTables     *[]string
-	includeSchemas    *[]string
-	includeTableFile  *string
-	includeTables     *[]string
-	numJobs           *int
-	leafPartitionData *bool
-	metadataOnly      *bool
-	noCompression     *bool
-	pluginConfigFile  *string
-	quiet             *bool
-	singleDataFile    *bool
-	verbose           *bool
-	withStats         *bool
+	backupDir           *string
+	compressionLevel    *int
+	dataOnly            *bool
+	dbname              *string
+	debug               *bool
+	excludeSchemas      *[]string
+	excludeRelationFile *string
+	excludeRelations    *[]string
+	includeSchemas      *[]string
+	includeRelationFile *string
+	includeRelations    *[]string
+	numJobs             *int
+	leafPartitionData   *bool
+	metadataOnly        *bool
+	noCompression       *bool
+	pluginConfigFile    *string
+	quiet               *bool
+	singleDataFile      *bool
+	verbose             *bool
+	withStats           *bool
 )
 
 /*
@@ -77,8 +77,8 @@ func SetExcludeSchemas(schemas []string) {
 	excludeSchemas = &schemas
 }
 
-func SetExcludeTables(tables []string) {
-	excludeTables = &tables
+func SetExcludeRelations(relations []string) {
+	excludeRelations = &relations
 }
 
 func SetFPInfo(fpInfo utils.FilePathInfo) {
@@ -89,8 +89,8 @@ func SetIncludeSchemas(schemas []string) {
 	includeSchemas = &schemas
 }
 
-func SetIncludeTables(tables []string) {
-	includeTables = &tables
+func SetIncludeRelations(relations []string) {
+	includeRelations = &relations
 }
 
 func SetLeafPartitionData(which bool) {

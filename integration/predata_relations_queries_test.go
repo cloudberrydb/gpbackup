@@ -36,8 +36,8 @@ var _ = Describe("backup integration tests", func() {
 		Context("Retrieving external partitions", func() {
 			It("returns parent and external leaf partition table if the filter includes a leaf table and leaf-partition-data is set", func() {
 				backup.SetLeafPartitionData(true)
-				backup.SetIncludeTables([]string{"public.partition_table_1_prt_boys"})
-				defer backup.SetIncludeTables([]string{})
+				backup.SetIncludeRelations([]string{"public.partition_table_1_prt_boys"})
+				defer backup.SetIncludeRelations([]string{})
 				testhelper.AssertQueryRuns(connection, `CREATE TABLE public.partition_table (id int, gender char(1))
 DISTRIBUTED BY (id)
 PARTITION BY LIST (gender)
@@ -64,8 +64,8 @@ FORMAT 'csv';`)
 				Expect(tableNames).To(Equal(expectedTableNames))
 			})
 			It("returns external partition tables for an included parent table if the filter includes a parent partition table", func() {
-				backup.SetIncludeTables([]string{"public.partition_table1", "public.partition_table2_1_prt_other"})
-				defer backup.SetIncludeTables([]string{})
+				backup.SetIncludeRelations([]string{"public.partition_table1", "public.partition_table2_1_prt_other"})
+				defer backup.SetIncludeRelations([]string{})
 				testhelper.AssertQueryRuns(connection, `CREATE TABLE public.partition_table1 (id int, gender char(1))
 DISTRIBUTED BY (id)
 PARTITION BY LIST (gender)
@@ -160,8 +160,8 @@ PARTITION BY LIST (gender)
 				Expect(tableNames).To(Equal(expectedTableNames))
 			})
 			It("returns parent and included child partition table if the filter includes a leaf table; with and without leaf-partition-data", func() {
-				backup.SetIncludeTables([]string{"public.rank_1_prt_girls"})
-				defer backup.SetIncludeTables([]string{})
+				backup.SetIncludeRelations([]string{"public.rank_1_prt_girls"})
+				defer backup.SetIncludeRelations([]string{})
 				createStmt := `CREATE TABLE public.rank (id int, rank int, year int, gender
 char(1), count int )
 DISTRIBUTED BY (id)
@@ -197,8 +197,8 @@ PARTITION BY LIST (gender)
 			})
 			It("returns child partition tables for an included parent table if the leaf-partition-data flag is set and the filter includes a parent partition table", func() {
 				backup.SetLeafPartitionData(true)
-				backup.SetIncludeTables([]string{"public.rank"})
-				defer backup.SetIncludeTables([]string{})
+				backup.SetIncludeRelations([]string{"public.rank"})
+				defer backup.SetIncludeRelations([]string{})
 				createStmt := `CREATE TABLE public.rank (id int, rank int, year int, gender
 char(1), count int )
 DISTRIBUTED BY (id)
@@ -248,7 +248,7 @@ PARTITION BY LIST (gender)
 			testhelper.AssertQueryRuns(connection, "CREATE TABLE testschema.foo(i int)")
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE testschema.foo")
 
-			backup.SetIncludeTables([]string{"testschema.foo"})
+			backup.SetIncludeRelations([]string{"testschema.foo"})
 			tables := backup.GetAllUserTables(connection)
 
 			tableFoo := backup.BasicRelation("testschema", "foo")
@@ -264,7 +264,7 @@ PARTITION BY LIST (gender)
 			testhelper.AssertQueryRuns(connection, "CREATE TABLE testschema.foo(i int)")
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE testschema.foo")
 
-			backup.SetExcludeTables([]string{"testschema.foo"})
+			backup.SetExcludeRelations([]string{"testschema.foo"})
 			tables := backup.GetAllUserTables(connection)
 
 			tableFoo := backup.BasicRelation("public", "foo")
@@ -283,7 +283,7 @@ PARTITION BY LIST (gender)
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE testschema.bar")
 
 			backup.SetIncludeSchemas([]string{"testschema"})
-			backup.SetExcludeTables([]string{"testschema.foo"})
+			backup.SetExcludeRelations([]string{"testschema.foo"})
 			tables := backup.GetAllUserTables(connection)
 
 			tableFoo := backup.BasicRelation("testschema", "bar")
@@ -662,7 +662,7 @@ SET SUBPARTITION TEMPLATE
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.seq_table")
 			testhelper.AssertQueryRuns(connection, "ALTER SEQUENCE public.my_sequence OWNED BY public.seq_table.i")
 
-			backup.SetIncludeTables([]string{"public.seq_table"})
+			backup.SetIncludeRelations([]string{"public.seq_table"})
 			sequences := backup.GetAllSequenceRelations(connection)
 
 			Expect(len(sequences)).To(Equal(0))
@@ -675,7 +675,7 @@ SET SUBPARTITION TEMPLATE
 			testhelper.AssertQueryRuns(connection, "ALTER SEQUENCE public.my_sequence OWNED BY public.seq_table.i")
 			mySequence := backup.BasicRelation("public", "my_sequence")
 
-			backup.SetExcludeTables([]string{"public.seq_table"})
+			backup.SetExcludeRelations([]string{"public.seq_table"})
 			sequences := backup.GetAllSequenceRelations(connection)
 
 			Expect(len(sequences)).To(Equal(1))
@@ -689,7 +689,7 @@ SET SUBPARTITION TEMPLATE
 
 			sequence2 := backup.BasicRelation("public", "sequence2")
 
-			backup.SetExcludeTables([]string{"public.sequence1"})
+			backup.SetExcludeRelations([]string{"public.sequence1"})
 			sequences := backup.GetAllSequenceRelations(connection)
 
 			Expect(len(sequences)).To(Equal(1))
@@ -703,7 +703,7 @@ SET SUBPARTITION TEMPLATE
 
 			sequence1 := backup.BasicRelation("public", "sequence1")
 
-			backup.SetIncludeTables([]string{"public.sequence1"})
+			backup.SetIncludeRelations([]string{"public.sequence1"})
 			sequences := backup.GetAllSequenceRelations(connection)
 
 			Expect(len(sequences)).To(Equal(1))
@@ -773,23 +773,23 @@ SET SUBPARTITION TEMPLATE
 			testhelper.AssertQueryRuns(connection, "CREATE SEQUENCE public.my_sequence OWNED BY public.my_table.a;")
 			defer testhelper.AssertQueryRuns(connection, "DROP SEQUENCE public.my_sequence")
 
-			backup.SetExcludeTables([]string{"public.my_table"})
+			backup.SetExcludeRelations([]string{"public.my_table"})
 			sequenceOwnerTables, sequenceOwnerColumns := backup.GetSequenceColumnOwnerMap(connection)
 			Expect(len(sequenceOwnerTables)).To(Equal(0))
 			Expect(len(sequenceOwnerColumns)).To(Equal(0))
 
-			backup.SetExcludeTables([]string{})
-			backup.SetIncludeTables([]string{"public.my_sequence"})
+			backup.SetExcludeRelations([]string{})
+			backup.SetIncludeRelations([]string{"public.my_sequence"})
 			sequenceOwnerTables, sequenceOwnerColumns = backup.GetSequenceColumnOwnerMap(connection)
 			Expect(len(sequenceOwnerTables)).To(Equal(0))
 			Expect(len(sequenceOwnerColumns)).To(Equal(0))
 
-			backup.SetIncludeTables([]string{"public.my_sequence", "public.my_table"})
+			backup.SetIncludeRelations([]string{"public.my_sequence", "public.my_table"})
 			sequenceOwnerTables, sequenceOwnerColumns = backup.GetSequenceColumnOwnerMap(connection)
 			Expect(len(sequenceOwnerTables)).To(Equal(1))
 			Expect(len(sequenceOwnerColumns)).To(Equal(1))
 
-			backup.SetIncludeTables([]string{"public.my_table"})
+			backup.SetIncludeRelations([]string{"public.my_table"})
 			sequenceOwnerTables, sequenceOwnerColumns = backup.GetSequenceColumnOwnerMap(connection)
 			Expect(len(sequenceOwnerTables)).To(Equal(1))
 			Expect(len(sequenceOwnerColumns)).To(Equal(1))

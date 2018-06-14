@@ -17,8 +17,8 @@ import (
 func validateFilterLists() {
 	ValidateFilterSchemas(connectionPool, *excludeSchemas)
 	ValidateFilterSchemas(connectionPool, *includeSchemas)
-	ValidateFilterTables(connectionPool, *excludeTables)
-	ValidateFilterTables(connectionPool, *includeTables)
+	ValidateFilterTables(connectionPool, *excludeRelations)
+	ValidateFilterTables(connectionPool, *includeRelations)
 }
 
 func ValidateFilterSchemas(connection *dbconn.DBConn, schemaList []string) {

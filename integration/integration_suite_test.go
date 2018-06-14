@@ -80,8 +80,8 @@ var _ = BeforeEach(func() {
 	buffer = bytes.NewBuffer([]byte(""))
 	backup.SetExcludeSchemas([]string{})
 	backup.SetIncludeSchemas([]string{})
-	backup.SetExcludeTables([]string{})
-	backup.SetIncludeTables([]string{})
+	backup.SetExcludeRelations([]string{})
+	backup.SetIncludeRelations([]string{})
 })
 
 var _ = AfterSuite(func() {

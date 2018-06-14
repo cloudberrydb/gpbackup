@@ -15,20 +15,20 @@ import (
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
-func tableAndSchemaFilterClause() string {
+func relationAndSchemaFilterClause() string {
 	filterClause := SchemaFilterClause("n")
-	if len(*excludeTables) > 0 {
-		excludeOids := GetOidsFromTableList(connectionPool, *excludeTables)
+	if len(*excludeRelations) > 0 {
+		excludeOids := GetOidsFromRelationList(connectionPool, *excludeRelations)
 		filterClause += fmt.Sprintf("\nAND c.oid NOT IN (%s)", strings.Join(excludeOids, ", "))
 	}
-	if len(*includeTables) > 0 {
-		includeOids := GetOidsFromTableList(connectionPool, *includeTables)
+	if len(*includeRelations) > 0 {
+		includeOids := GetOidsFromRelationList(connectionPool, *includeRelations)
 		filterClause += fmt.Sprintf("\nAND c.oid IN (%s)", strings.Join(includeOids, ", "))
 	}
 	return filterClause
 }
 
-func GetOidsFromTableList(connection *dbconn.DBConn, relationNames []string) []string {
+func GetOidsFromRelationList(connection *dbconn.DBConn, relationNames []string) []string {
 	relList := utils.SliceToQuotedString(relationNames)
 	query := fmt.Sprintf(`
 SELECT
@@ -40,7 +40,7 @@ WHERE quote_ident(n.nspname) || '.' || quote_ident(c.relname) IN (%s)`, relList)
 }
 
 func GetAllUserTables(connection *dbconn.DBConn) []Relation {
-	if len(*includeTables) > 0 {
+	if len(*includeRelations) > 0 {
 		return GetUserTablesWithIncludeFiltering(connection)
 	}
 	return GetUserTables(connection)
@@ -77,7 +77,7 @@ WHERE %s
 %s
 AND relkind = 'r'
 AND c.oid NOT IN (select objid from pg_depend where deptype = 'e')
-ORDER BY c.oid;`, tableAndSchemaFilterClause(), childPartitionFilter)
+ORDER BY c.oid;`, relationAndSchemaFilterClause(), childPartitionFilter)
 
 	results := make([]Relation, 0)
 	err := connection.Select(&results, query)
@@ -86,7 +86,7 @@ ORDER BY c.oid;`, tableAndSchemaFilterClause(), childPartitionFilter)
 }
 
 func GetUserTablesWithIncludeFiltering(connection *dbconn.DBConn) []Relation {
-	includeOids := GetOidsFromTableList(connection, *includeTables)
+	includeOids := GetOidsFromRelationList(connection, *includeRelations)
 	oidStr := strings.Join(includeOids, ", ")
 	childPartitionFilter := ""
 	if *leafPartitionData {
@@ -247,7 +247,7 @@ LEFT JOIN pg_description d ON (d.objoid = a.attrelid AND d.classoid = 'pg_class'
 WHERE %s
 AND a.attnum > 0::pg_catalog.int2
 AND a.attisdropped = 'f'
-ORDER BY a.attrelid, a.attnum;`, optionsQuery, tableAndSchemaFilterClause())
+ORDER BY a.attrelid, a.attnum;`, optionsQuery, relationAndSchemaFilterClause())
 
 	results := make([]ColumnDefinition, 0)
 	err := connection.Select(&results, query)
@@ -297,7 +297,7 @@ WHERE %s
 AND a.attnum > 0::pg_catalog.int2
 AND a.attisdropped = 'f'
 ORDER BY a.attrelid, a.attname;
-`, tableAndSchemaFilterClause())
+`, relationAndSchemaFilterClause())
 
 	results := make([]ColumnPrivilegesQueryStruct, 0)
 	err := connection.Select(&results, query)
@@ -520,7 +520,7 @@ LEFT JOIN pg_namespace n
 WHERE relkind = 'S'
 AND %s
 AND c.oid NOT IN (select objid from pg_depend where deptype = 'e')
-ORDER BY n.nspname, c.relname;`, tableAndSchemaFilterClause())
+ORDER BY n.nspname, c.relname;`, relationAndSchemaFilterClause())
 
 	results := make([]Relation, 0)
 	err := connection.Select(&results, query)
@@ -567,7 +567,7 @@ JOIN pg_class c
 JOIN pg_namespace n
 	ON n.oid = s.relnamespace
 WHERE s.relkind = 'S'
-AND %s;`, tableAndSchemaFilterClause())
+AND %s;`, relationAndSchemaFilterClause())
 
 	results := make([]struct {
 		Schema     string
@@ -614,7 +614,7 @@ FROM pg_class c
 LEFT JOIN pg_namespace n ON n.oid = c.relnamespace
 WHERE c.relkind = 'v'::"char"
 AND %s
-AND c.oid NOT IN (select objid from pg_depend where deptype = 'e');`, tableAndSchemaFilterClause())
+AND c.oid NOT IN (select objid from pg_depend where deptype = 'e');`, relationAndSchemaFilterClause())
 	err := connection.Select(&results, query)
 	gplog.FatalOnError(err)
 	return results

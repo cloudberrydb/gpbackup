@@ -857,7 +857,7 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 					8: {PartitionType: "n"},
 				}
 				backup.SetLeafPartitionData(false)
-				backup.SetIncludeTables([]string{})
+				backup.SetIncludeRelations([]string{})
 				metadataTables, dataTables := backup.SplitTablesByPartitionType(tables, tableDefs, includeList)
 
 				Expect(metadataTables).To(Equal(expectedMetadataTables))
@@ -883,7 +883,7 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 					2: {PartitionType: "l", IsExternal: true},
 				}
 				backup.SetLeafPartitionData(false)
-				backup.SetIncludeTables([]string{})
+				backup.SetIncludeRelations([]string{})
 				metadataTables, _ := backup.SplitTablesByPartitionType(tables, tableDefs, includeList)
 
 				expectedTables := []backup.Relation{
@@ -925,19 +925,19 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 	Describe("ExpandIncludeRelations", func() {
 		testTables := []backup.Relation{backup.BasicRelation("testschema", "foo1"), backup.BasicRelation("testschema", "foo2")}
 		It("returns an empty slice if no includeRelations were specified", func() {
-			backup.SetIncludeTables([]string{})
+			backup.SetIncludeRelations([]string{})
 			resultIncludeRelations := backup.ExpandIncludeRelations(testTables)
 			Expect(len(resultIncludeRelations)).To(Equal(0))
 		})
 		It("returns original include list if the new tables list is a subset of existing list", func() {
-			backup.SetIncludeTables([]string{"testschema.foo1", "testschema.foo2", "testschema.foo3"})
+			backup.SetIncludeRelations([]string{"testschema.foo1", "testschema.foo2", "testschema.foo3"})
 			resultIncludeRelations := backup.ExpandIncludeRelations(testTables)
 			sort.Strings(resultIncludeRelations)
 			Expect(len(resultIncludeRelations)).To(Equal(3))
 			Expect(resultIncludeRelations).To(Equal([]string{"testschema.foo1", "testschema.foo2", "testschema.foo3"}))
 		})
 		It("returns expanded include list if there are new tables to add", func() {
-			backup.SetIncludeTables([]string{"testschema.foo2", "testschema.foo3"})
+			backup.SetIncludeRelations([]string{"testschema.foo2", "testschema.foo3"})
 			resultIncludeRelations := backup.ExpandIncludeRelations(testTables)
 			sort.Strings(resultIncludeRelations)
 			Expect(len(resultIncludeRelations)).To(Equal(3))

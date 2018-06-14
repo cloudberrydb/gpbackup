@@ -40,8 +40,8 @@ var _ = BeforeSuite(func() {
 	connectionPool, mock, stdout, stderr, logfile = testutils.SetupTestEnvironment()
 	backup.SetIncludeSchemas([]string{})
 	backup.SetExcludeSchemas([]string{})
-	backup.SetIncludeTables([]string{})
-	backup.SetExcludeTables([]string{})
+	backup.SetIncludeRelations([]string{})
+	backup.SetExcludeRelations([]string{})
 })
 
 var _ = BeforeEach(func() {

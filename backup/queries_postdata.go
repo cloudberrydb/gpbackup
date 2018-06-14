@@ -82,7 +82,7 @@ LEFT JOIN pg_tablespace s
 WHERE %s
 AND i.indisprimary = 'f'
 AND n.nspname || '.' || c.relname NOT IN (SELECT partitionschemaname || '.' || partitiontablename FROM pg_partitions)
-ORDER BY name;`, tableAndSchemaFilterClause())
+ORDER BY name;`, relationAndSchemaFilterClause())
 
 		results := make([]IndexDefinition, 0)
 		err := connection.Select(&results, query)
@@ -121,7 +121,7 @@ WHERE %s
 AND i.indisprimary = 'f'
 AND n.nspname || '.' || c.relname NOT IN (SELECT partitionschemaname || '.' || partitiontablename FROM pg_partitions)
 AND con.conindid IS NULL
-ORDER BY name;`, tableAndSchemaFilterClause())
+ORDER BY name;`, relationAndSchemaFilterClause())
 		err := connection.Select(&resultIndexes, query)
 		gplog.FatalOnError(err)
 	}
@@ -163,7 +163,7 @@ JOIN pg_namespace n
 WHERE %s
 AND rulename NOT LIKE '%%RETURN'
 AND rulename NOT LIKE 'pg_%%'
-ORDER BY rulename;`, tableAndSchemaFilterClause())
+ORDER BY rulename;`, relationAndSchemaFilterClause())
 
 	results := make([]QuerySimpleDefinition, 0)
 	err := connection.Select(&results, query)
@@ -191,7 +191,7 @@ JOIN pg_namespace n
 WHERE %s
 AND tgname NOT LIKE 'pg_%%'
 AND %s
-ORDER BY tgname;`, tableAndSchemaFilterClause(), constraintClause)
+ORDER BY tgname;`, relationAndSchemaFilterClause(), constraintClause)
 
 	results := make([]QuerySimpleDefinition, 0)
 	err := connection.Select(&results, query)

@@ -115,7 +115,7 @@ ORDER BY name;
 		filterClause := fmt.Sprintf("%s\nAND c.oid IN (%s)", SchemaFilterClause("n"), strings.Join(oidList, ","))
 		query = fmt.Sprintf(tableQuery, filterClause)
 	} else {
-		tableQuery = fmt.Sprintf(tableQuery, tableAndSchemaFilterClause())
+		tableQuery = fmt.Sprintf(tableQuery, relationAndSchemaFilterClause())
 		query = fmt.Sprintf("%s\nUNION\n%s", tableQuery, nonTableQuery)
 	}
 	results := make([]Constraint, 0)
