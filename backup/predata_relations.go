@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"strings"
 
+	"math"
+
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpbackup/utils"
@@ -383,8 +385,8 @@ func GetAllSequences(connection *dbconn.DBConn, sequenceOwnerTables map[string]s
  * minVal and maxVal come from SEQ_MINVALUE and SEQ_MAXVALUE, defined in include/commands/sequence.h.
  */
 func PrintCreateSequenceStatements(metadataFile *utils.FileWithByteCount, toc *utils.TOC, sequences []Sequence, sequenceMetadata MetadataMap) {
-	maxVal := int64(9223372036854775807)
-	minVal := int64(-9223372036854775807)
+	maxVal := int64(math.MaxInt64)
+	minVal := int64(math.MinInt64)
 	for _, sequence := range sequences {
 		start := metadataFile.ByteCount
 		seqFQN := sequence.ToString()

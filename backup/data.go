@@ -8,11 +8,12 @@ import (
 	"fmt"
 	"strings"
 
+	"sync"
+
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpbackup/utils"
 	"gopkg.in/cheggaaa/pb.v1"
-	"sync"
 )
 
 var (

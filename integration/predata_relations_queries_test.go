@@ -10,6 +10,8 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"math"
 )
 
 var _ = Describe("backup integration tests", func() {
@@ -717,7 +719,7 @@ SET SUBPARTITION TEMPLATE
 
 			resultSequenceDef := backup.GetSequenceDefinition(connection, "public.my_sequence")
 
-			expectedSequence := backup.SequenceDefinition{Name: "my_sequence", LastVal: 1, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1}
+			expectedSequence := backup.SequenceDefinition{Name: "my_sequence", LastVal: 1, Increment: 1, MaxVal: math.MaxInt64, MinVal: 1, CacheVal: 1}
 			if connection.Version.Before("5") {
 				expectedSequence.LogCnt = 1 // In GPDB 4.3, sequence log count is one-indexed
 			}
@@ -811,9 +813,9 @@ SET SUBPARTITION TEMPLATE
 			defer testhelper.AssertQueryRuns(connection, "DROP SEQUENCE public.seq_two")
 
 			seqOneRelation := backup.BasicRelation("public", "seq_one")
-			seqOneDef := backup.SequenceDefinition{Name: "seq_one", LastVal: 3, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1, StartVal: startValOne}
+			seqOneDef := backup.SequenceDefinition{Name: "seq_one", LastVal: 3, Increment: 1, MaxVal: math.MaxInt64, MinVal: 1, CacheVal: 1, StartVal: startValOne}
 			seqTwoRelation := backup.BasicRelation("public", "seq_two")
-			seqTwoDef := backup.SequenceDefinition{Name: "seq_two", LastVal: 7, Increment: 1, MaxVal: 9223372036854775807, MinVal: 1, CacheVal: 1, StartVal: startValTwo}
+			seqTwoDef := backup.SequenceDefinition{Name: "seq_two", LastVal: 7, Increment: 1, MaxVal: math.MaxInt64, MinVal: 1, CacheVal: 1, StartVal: startValTwo}
 			if connection.Version.Before("5") {
 				seqOneDef.LogCnt = 1 // In GPDB 4.3, sequence log count is one-indexed
 				seqTwoDef.LogCnt = 1
