@@ -83,7 +83,7 @@ func BackupConfigurationValidation() {
 
 	tocFilename := globalFPInfo.GetTOCFilePath()
 	globalTOC = utils.NewTOC(tocFilename)
-	globalTOC.InitializeEntryMap()
+	globalTOC.InitializeMetadataEntryMap()
 	ValidateBackupFlagCombinations()
 
 	validateFilterListsInBackupSet()

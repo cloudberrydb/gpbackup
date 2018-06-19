@@ -28,8 +28,9 @@ var _ = Describe("backup integration tests", func() {
 
 			tables := backup.GetAllUserTables(connection)
 
-			tableFoo := backup.BasicRelation("public", "foo")
-			tableTestTable := backup.BasicRelation("testschema", "testtable")
+			tableFoo := backup.Relation{Schema: "public", Name: "foo", Storage: backup.HEAP}
+
+			tableTestTable := backup.Relation{Schema: "testschema", Name: "testtable", Storage: backup.HEAP}
 
 			Expect(len(tables)).To(Equal(2))
 			structmatcher.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "Oid")
@@ -132,7 +133,7 @@ PARTITION BY LIST (gender)
 
 				tables := backup.GetAllUserTables(connection)
 
-				tableRank := backup.BasicRelation("public", "rank")
+				tableRank := backup.Relation{Schema: "public", Name: "rank", Storage: backup.HEAP}
 
 				Expect(len(tables)).To(Equal(1))
 				structmatcher.ExpectStructsToMatchExcluding(&tableRank, &tables[0], "SchemaOid", "Oid")
@@ -237,7 +238,7 @@ PARTITION BY LIST (gender)
 			backup.SetIncludeSchemas([]string{"testschema"})
 			tables := backup.GetAllUserTables(connection)
 
-			tableFoo := backup.BasicRelation("testschema", "foo")
+			tableFoo := backup.Relation{Schema: "testschema", Name: "foo", Storage: backup.HEAP}
 
 			Expect(len(tables)).To(Equal(1))
 			structmatcher.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "Oid")
@@ -253,7 +254,7 @@ PARTITION BY LIST (gender)
 			backup.SetIncludeRelations([]string{"testschema.foo"})
 			tables := backup.GetAllUserTables(connection)
 
-			tableFoo := backup.BasicRelation("testschema", "foo")
+			tableFoo := backup.Relation{Schema: "testschema", Name: "foo", Storage: backup.HEAP}
 
 			Expect(len(tables)).To(Equal(1))
 			structmatcher.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "Oid")
@@ -269,7 +270,7 @@ PARTITION BY LIST (gender)
 			backup.SetExcludeRelations([]string{"testschema.foo"})
 			tables := backup.GetAllUserTables(connection)
 
-			tableFoo := backup.BasicRelation("public", "foo")
+			tableFoo := backup.Relation{Schema: "public", Name: "foo", Storage: backup.HEAP}
 
 			Expect(len(tables)).To(Equal(1))
 			structmatcher.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "Oid")
@@ -288,8 +289,7 @@ PARTITION BY LIST (gender)
 			backup.SetExcludeRelations([]string{"testschema.foo"})
 			tables := backup.GetAllUserTables(connection)
 
-			tableFoo := backup.BasicRelation("testschema", "bar")
-
+			tableFoo := backup.Relation{Schema: "testschema", Name: "bar", Storage: backup.HEAP}
 			Expect(len(tables)).To(Equal(1))
 			structmatcher.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "Oid")
 		})
@@ -635,8 +635,8 @@ SET SUBPARTITION TEMPLATE
 
 			sequences := backup.GetAllSequenceRelations(connection)
 
-			mySequence := backup.BasicRelation("public", "my_sequence")
-			mySequence2 := backup.BasicRelation("testschema", "my_sequence2")
+			mySequence := backup.Relation{Schema: "public", Name: "my_sequence"}
+			mySequence2 := backup.Relation{Schema: "testschema", Name: "my_sequence2"}
 
 			Expect(len(sequences)).To(Equal(2))
 			structmatcher.ExpectStructsToMatchExcluding(&mySequence, &sequences[0], "SchemaOid", "Oid")
@@ -649,7 +649,7 @@ SET SUBPARTITION TEMPLATE
 			testhelper.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
 			defer testhelper.AssertQueryRuns(connection, "DROP SCHEMA testschema CASCADE")
 			testhelper.AssertQueryRuns(connection, "CREATE SEQUENCE testschema.my_sequence")
-			mySequence := backup.BasicRelation("testschema", "my_sequence")
+			mySequence := backup.Relation{Schema: "testschema", Name: "my_sequence"}
 
 			backup.SetIncludeSchemas([]string{"testschema"})
 			sequences := backup.GetAllSequenceRelations(connection)
@@ -675,7 +675,7 @@ SET SUBPARTITION TEMPLATE
 			testhelper.AssertQueryRuns(connection, "CREATE TABLE public.seq_table(i int)")
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.seq_table")
 			testhelper.AssertQueryRuns(connection, "ALTER SEQUENCE public.my_sequence OWNED BY public.seq_table.i")
-			mySequence := backup.BasicRelation("public", "my_sequence")
+			mySequence := backup.Relation{Schema: "public", Name: "my_sequence"}
 
 			backup.SetExcludeRelations([]string{"public.seq_table"})
 			sequences := backup.GetAllSequenceRelations(connection)
@@ -689,7 +689,7 @@ SET SUBPARTITION TEMPLATE
 			testhelper.AssertQueryRuns(connection, "CREATE SEQUENCE public.sequence2 START 10")
 			defer testhelper.AssertQueryRuns(connection, "DROP SEQUENCE public.sequence2")
 
-			sequence2 := backup.BasicRelation("public", "sequence2")
+			sequence2 := backup.Relation{Schema: "public", Name: "sequence2"}
 
 			backup.SetExcludeRelations([]string{"public.sequence1"})
 			sequences := backup.GetAllSequenceRelations(connection)
@@ -703,7 +703,7 @@ SET SUBPARTITION TEMPLATE
 			testhelper.AssertQueryRuns(connection, "CREATE SEQUENCE public.sequence2 START 10")
 			defer testhelper.AssertQueryRuns(connection, "DROP SEQUENCE public.sequence2")
 
-			sequence1 := backup.BasicRelation("public", "sequence1")
+			sequence1 := backup.Relation{Schema: "public", Name: "sequence1"}
 
 			backup.SetIncludeRelations([]string{"public.sequence1"})
 			sequences := backup.GetAllSequenceRelations(connection)
@@ -812,9 +812,10 @@ SET SUBPARTITION TEMPLATE
 			testhelper.AssertQueryRuns(connection, "CREATE SEQUENCE public.seq_two START 7")
 			defer testhelper.AssertQueryRuns(connection, "DROP SEQUENCE public.seq_two")
 
-			seqOneRelation := backup.BasicRelation("public", "seq_one")
+			seqOneRelation := backup.Relation{Schema: "public", Name: "seq_one"}
+
 			seqOneDef := backup.SequenceDefinition{Name: "seq_one", LastVal: 3, Increment: 1, MaxVal: math.MaxInt64, MinVal: 1, CacheVal: 1, StartVal: startValOne}
-			seqTwoRelation := backup.BasicRelation("public", "seq_two")
+			seqTwoRelation := backup.Relation{Schema: "public", Name: "seq_two"}
 			seqTwoDef := backup.SequenceDefinition{Name: "seq_two", LastVal: 7, Increment: 1, MaxVal: math.MaxInt64, MinVal: 1, CacheVal: 1, StartVal: startValTwo}
 			if connection.Version.Before("5") {
 				seqOneDef.LogCnt = 1 // In GPDB 4.3, sequence log count is one-indexed
@@ -859,9 +860,10 @@ SET SUBPARTITION TEMPLATE
 		})
 	})
 	Describe("ConstructTableDependencies", func() {
-		child := backup.BasicRelation("public", "child")
-		childOne := backup.BasicRelation("public", "child_one")
-		childTwo := backup.BasicRelation("public", "child_two")
+		child := backup.Relation{Schema: "public", Name: "child", Storage: backup.HEAP}
+		childOne := backup.Relation{Schema: "public", Name: "child_one", Storage: backup.HEAP}
+		childTwo := backup.Relation{Schema: "public", Name: "child_two", Storage: backup.HEAP}
+
 		tableDefs := map[uint32]backup.TableDefinition{}
 		It("constructs dependencies correctly if there is one table dependent on one table", func() {
 			testhelper.AssertQueryRuns(connection, "CREATE TABLE public.parent(i int)")
@@ -969,7 +971,8 @@ FORMAT 'csv';`)
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.partition_table_ext_part_")
 			testhelper.AssertQueryRuns(connection, `ALTER TABLE public.partition_table EXCHANGE PARTITION girls WITH TABLE public.partition_table_ext_part_ WITHOUT VALIDATION;`)
 
-			partition := backup.BasicRelation("public", "partition_table_ext_part_")
+			partition := backup.Relation{Schema: "public", Name: "partition_table_ext_part_", Storage: backup.HEAP}
+
 			partition.Oid = testutils.OidFromObjectName(connection, "public", "partition_table_ext_part_", backup.TYPE_RELATION)
 			tables := []backup.Relation{partition}
 			partTableDefs := map[uint32]backup.TableDefinition{partition.Oid: {IsExternal: true, PartitionType: "l"}}

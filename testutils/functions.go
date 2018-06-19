@@ -334,7 +334,7 @@ func SkipIfBefore6(connection *dbconn.DBConn) {
 
 func InitializeTestTOC(buffer io.Writer, which string) (*utils.TOC, *utils.FileWithByteCount) {
 	toc := &utils.TOC{}
-	toc.InitializeEntryMap()
+	toc.InitializeMetadataEntryMap()
 	backupfile := utils.NewFileWithByteCount(buffer)
 	backupfile.Filename = which
 	return toc, backupfile

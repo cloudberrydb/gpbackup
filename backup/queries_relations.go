@@ -69,7 +69,8 @@ SELECT
 	n.oid AS schemaoid,
 	c.oid AS oid,
 	quote_ident(n.nspname) AS schema,
-	quote_ident(c.relname) AS name
+	quote_ident(c.relname) AS name,
+	c.relstorage AS storage
 FROM pg_class c
 JOIN pg_namespace n
 	ON c.relnamespace = n.oid
@@ -118,7 +119,8 @@ SELECT
 	n.oid AS schemaoid,
 	c.oid AS oid,
 	quote_ident(n.nspname) AS schema,
-	quote_ident(c.relname) AS name
+	quote_ident(c.relname) AS name,
+	c.relstorage AS storage
 FROM pg_class c
 JOIN pg_namespace n
 	ON c.relnamespace = n.oid

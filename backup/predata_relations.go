@@ -21,9 +21,20 @@ type Relation struct {
 	Oid         uint32
 	Schema      string
 	Name        string
+	Storage     StorageType
 	DependsUpon []string // Used for dependency sorting
 	Inherits    []string // Only used for printing INHERITS statement
 }
+
+type StorageType string
+
+const (
+	AO       StorageType = "ao"
+	CO       StorageType = "c"
+	HEAP     StorageType = "h"
+	VIRTUAL  StorageType = "v"
+	EXTERNAL StorageType = "x"
+)
 
 /*
  * This function prints a table in fully-qualified schema.table format, with

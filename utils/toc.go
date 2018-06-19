@@ -8,16 +8,17 @@ import (
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gp-common-go-libs/iohelper"
 	"github.com/greenplum-db/gp-common-go-libs/operating"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 )
 
 type TOC struct {
-	metadataEntryMap  map[string]*[]MetadataEntry
-	GlobalEntries     []MetadataEntry
-	PredataEntries    []MetadataEntry
-	PostdataEntries   []MetadataEntry
-	StatisticsEntries []MetadataEntry
-	DataEntries       []MasterDataEntry
+	metadataEntryMap    map[string]*[]MetadataEntry
+	GlobalEntries       []MetadataEntry
+	PredataEntries      []MetadataEntry
+	PostdataEntries     []MetadataEntry
+	StatisticsEntries   []MetadataEntry
+	DataEntries         []MasterDataEntry
+	IncrementalMetadata IncrementalEntries
 }
 
 type SegmentTOC struct {
@@ -44,6 +45,15 @@ type MasterDataEntry struct {
 type SegmentDataEntry struct {
 	StartByte uint64
 	EndByte   uint64
+}
+
+type IncrementalEntries struct {
+	AO map[string]AOEntry
+}
+
+type AOEntry struct {
+	Modcount         int64
+	LastDDLTimestamp string
 }
 
 func NewTOC(filename string) *TOC {
@@ -203,7 +213,7 @@ func RemoveActiveRole(activeUser string, statements []StatementWithType) []State
 	return newStatements
 }
 
-func (toc *TOC) InitializeEntryMap() {
+func (toc *TOC) InitializeMetadataEntryMap() {
 	toc.metadataEntryMap = make(map[string]*[]MetadataEntry, 4)
 	toc.metadataEntryMap["global"] = &toc.GlobalEntries
 	toc.metadataEntryMap["predata"] = &toc.PredataEntries
@@ -233,6 +243,10 @@ func (toc *TOC) AddStatisticsEntry(schema string, name string, objectType string
 
 func (toc *TOC) AddMasterDataEntry(schema string, name string, oid uint32, attributeString string, rowsCopied int64) {
 	toc.DataEntries = append(toc.DataEntries, MasterDataEntry{schema, name, oid, attributeString, rowsCopied})
+}
+
+func (toc *TOC) AddIncrementalAOEntry(aoTableFQN string, modcount int64, lastDDLTimestamp string) {
+	toc.IncrementalMetadata.AO[aoTableFQN] = AOEntry{Modcount: modcount, LastDDLTimestamp: lastDDLTimestamp}
 }
 
 func (toc *SegmentTOC) AddSegmentDataEntry(oid uint, startByte uint64, endByte uint64) {

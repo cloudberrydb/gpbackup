@@ -76,7 +76,8 @@ func DoSetup() {
 	globalFPInfo = utils.NewFilePathInfo(globalCluster, *backupDir, timestamp, segPrefix)
 	CreateBackupDirectoriesOnAllHosts()
 	globalTOC = &utils.TOC{}
-	globalTOC.InitializeEntryMap()
+	globalTOC.InitializeMetadataEntryMap()
+	globalTOC.IncrementalMetadata.AO = make(map[string]utils.AOEntry)
 
 	if *pluginConfigFile != "" {
 		pluginConfig = utils.ReadPluginConfig(*pluginConfigFile)
@@ -115,6 +116,7 @@ func DoBackup() {
 	 * or only external tables
 	 */
 	if !backupReport.MetadataOnly {
+
 		backupData(dataTables, tableDefs)
 	}
 
