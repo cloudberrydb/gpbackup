@@ -77,7 +77,6 @@ func DoSetup() {
 	CreateBackupDirectoriesOnAllHosts()
 	globalTOC = &utils.TOC{}
 	globalTOC.InitializeMetadataEntryMap()
-	globalTOC.IncrementalMetadata.AO = make(map[string]utils.AOEntry)
 
 	if *pluginConfigFile != "" {
 		pluginConfig = utils.ReadPluginConfig(*pluginConfigFile)
@@ -108,6 +107,7 @@ func DoBackup() {
 			backupPredata(metadataFile, metadataTables, tableDefs)
 		}
 		backupPostdata(metadataFile)
+		BackupIncrementalMetadata()
 	}
 
 	/*
@@ -116,7 +116,6 @@ func DoBackup() {
 	 * or only external tables
 	 */
 	if !backupReport.MetadataOnly {
-
 		backupData(dataTables, tableDefs)
 	}
 

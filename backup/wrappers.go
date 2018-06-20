@@ -496,3 +496,9 @@ func BackupStatistics(statisticsFile *utils.FileWithByteCount, tables []Relation
 	BackupSessionGUCs(statisticsFile)
 	PrintStatisticsStatements(statisticsFile, globalTOC, tables, attStats, tupleStats)
 }
+
+func BackupIncrementalMetadata() {
+	gplog.Verbose("Writing incremental metadata to the TOC")
+	aoTableEntries := GetAOIncrementalMetadata(connectionPool)
+	globalTOC.IncrementalMetadata.AO = aoTableEntries
+}

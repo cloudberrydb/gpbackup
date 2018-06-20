@@ -245,10 +245,6 @@ func (toc *TOC) AddMasterDataEntry(schema string, name string, oid uint32, attri
 	toc.DataEntries = append(toc.DataEntries, MasterDataEntry{schema, name, oid, attributeString, rowsCopied})
 }
 
-func (toc *TOC) AddIncrementalAOEntry(aoTableFQN string, modcount int64, lastDDLTimestamp string) {
-	toc.IncrementalMetadata.AO[aoTableFQN] = AOEntry{Modcount: modcount, LastDDLTimestamp: lastDDLTimestamp}
-}
-
 func (toc *SegmentTOC) AddSegmentDataEntry(oid uint, startByte uint64, endByte uint64) {
 	// We use uint for oid since the flags package does not have a uint32 flag
 	toc.DataEntries[oid] = SegmentDataEntry{startByte, endByte}
