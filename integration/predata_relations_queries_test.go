@@ -28,9 +28,9 @@ var _ = Describe("backup integration tests", func() {
 
 			tables := backup.GetAllUserTables(connection)
 
-			tableFoo := backup.Relation{Schema: "public", Name: "foo", Storage: backup.HEAP}
+			tableFoo := backup.Relation{Schema: "public", Name: "foo"}
 
-			tableTestTable := backup.Relation{Schema: "testschema", Name: "testtable", Storage: backup.HEAP}
+			tableTestTable := backup.Relation{Schema: "testschema", Name: "testtable"}
 
 			Expect(len(tables)).To(Equal(2))
 			structmatcher.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "Oid")
@@ -133,7 +133,7 @@ PARTITION BY LIST (gender)
 
 				tables := backup.GetAllUserTables(connection)
 
-				tableRank := backup.Relation{Schema: "public", Name: "rank", Storage: backup.HEAP}
+				tableRank := backup.Relation{Schema: "public", Name: "rank"}
 
 				Expect(len(tables)).To(Equal(1))
 				structmatcher.ExpectStructsToMatchExcluding(&tableRank, &tables[0], "SchemaOid", "Oid")
@@ -238,7 +238,7 @@ PARTITION BY LIST (gender)
 			backup.SetIncludeSchemas([]string{"testschema"})
 			tables := backup.GetAllUserTables(connection)
 
-			tableFoo := backup.Relation{Schema: "testschema", Name: "foo", Storage: backup.HEAP}
+			tableFoo := backup.Relation{Schema: "testschema", Name: "foo"}
 
 			Expect(len(tables)).To(Equal(1))
 			structmatcher.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "Oid")
@@ -254,7 +254,7 @@ PARTITION BY LIST (gender)
 			backup.SetIncludeRelations([]string{"testschema.foo"})
 			tables := backup.GetAllUserTables(connection)
 
-			tableFoo := backup.Relation{Schema: "testschema", Name: "foo", Storage: backup.HEAP}
+			tableFoo := backup.Relation{Schema: "testschema", Name: "foo"}
 
 			Expect(len(tables)).To(Equal(1))
 			structmatcher.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "Oid")
@@ -270,7 +270,7 @@ PARTITION BY LIST (gender)
 			backup.SetExcludeRelations([]string{"testschema.foo"})
 			tables := backup.GetAllUserTables(connection)
 
-			tableFoo := backup.Relation{Schema: "public", Name: "foo", Storage: backup.HEAP}
+			tableFoo := backup.Relation{Schema: "public", Name: "foo"}
 
 			Expect(len(tables)).To(Equal(1))
 			structmatcher.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "Oid")
@@ -289,7 +289,7 @@ PARTITION BY LIST (gender)
 			backup.SetExcludeRelations([]string{"testschema.foo"})
 			tables := backup.GetAllUserTables(connection)
 
-			tableFoo := backup.Relation{Schema: "testschema", Name: "bar", Storage: backup.HEAP}
+			tableFoo := backup.Relation{Schema: "testschema", Name: "bar"}
 			Expect(len(tables)).To(Equal(1))
 			structmatcher.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "Oid")
 		})
@@ -860,9 +860,9 @@ SET SUBPARTITION TEMPLATE
 		})
 	})
 	Describe("ConstructTableDependencies", func() {
-		child := backup.Relation{Schema: "public", Name: "child", Storage: backup.HEAP}
-		childOne := backup.Relation{Schema: "public", Name: "child_one", Storage: backup.HEAP}
-		childTwo := backup.Relation{Schema: "public", Name: "child_two", Storage: backup.HEAP}
+		child := backup.Relation{Schema: "public", Name: "child"}
+		childOne := backup.Relation{Schema: "public", Name: "child_one"}
+		childTwo := backup.Relation{Schema: "public", Name: "child_two"}
 
 		tableDefs := map[uint32]backup.TableDefinition{}
 		It("constructs dependencies correctly if there is one table dependent on one table", func() {
@@ -971,7 +971,7 @@ FORMAT 'csv';`)
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.partition_table_ext_part_")
 			testhelper.AssertQueryRuns(connection, `ALTER TABLE public.partition_table EXCHANGE PARTITION girls WITH TABLE public.partition_table_ext_part_ WITHOUT VALIDATION;`)
 
-			partition := backup.Relation{Schema: "public", Name: "partition_table_ext_part_", Storage: backup.HEAP}
+			partition := backup.Relation{Schema: "public", Name: "partition_table_ext_part_"}
 
 			partition.Oid = testutils.OidFromObjectName(connection, "public", "partition_table_ext_part_", backup.TYPE_RELATION)
 			tables := []backup.Relation{partition}
