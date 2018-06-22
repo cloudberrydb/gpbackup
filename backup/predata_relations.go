@@ -33,15 +33,6 @@ func (t Relation) ToString() string {
 	return utils.MakeFQN(t.Schema, t.Name)
 }
 
-func BasicRelation(schema string, relation string) Relation {
-	return Relation{
-		SchemaOid: 0,
-		Schema:    schema,
-		Oid:       0,
-		Name:      relation,
-	}
-}
-
 /*
  * Given a list of Relations, this function returns a sorted list of their Schemas.
  * It assumes that the Relation list is sorted by schema and then by table, so it

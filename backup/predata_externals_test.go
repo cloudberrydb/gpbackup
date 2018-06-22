@@ -11,7 +11,7 @@ import (
 )
 
 var _ = Describe("backup/predata_externals tests", func() {
-	testTable := backup.BasicRelation("public", "tablename")
+	testTable := backup.Relation{Schema: "public", Name: "tablename"}
 
 	distRandom := "DISTRIBUTED RANDOMLY"
 

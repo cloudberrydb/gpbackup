@@ -72,7 +72,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 		)
 		BeforeEach(func() {
 			extTableEmpty = backup.ExternalTableDefinition{Oid: 0, Type: -2, Protocol: -2, Location: "", ExecLocation: "ALL_SEGMENTS", FormatType: "t", FormatOpts: "", Options: "", Command: "", RejectLimit: 0, RejectLimitType: "", ErrTableName: "", ErrTableSchema: "", Encoding: "UTF-8", Writable: false, URIs: nil}
-			testTable = backup.BasicRelation("public", "testtable")
+			testTable = backup.Relation{Schema: "public", Name: "testtable"}
 			tableDef = backup.TableDefinition{DistPolicy: "DISTRIBUTED RANDOMLY", ExtTableDef: extTableEmpty}
 			tableDefs = map[uint32]backup.TableDefinition{}
 		})
@@ -177,7 +177,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			structmatcher.ExpectStructsToMatchExcluding(&tableDef, &resultTableDef, "ColumnDefs.Oid", "ExtTableDef")
 		})
 		It("creates a table with a non-default tablespace", func() {
-			testTable = backup.BasicRelation("public", "testtable2")
+			testTable = backup.Relation{Schema: "public", Name: "testtable2"}
 			if connection.Version.Before("6") {
 				testhelper.AssertQueryRuns(connection, "CREATE TABLESPACE test_tablespace FILESPACE test_dir")
 			} else {
@@ -260,7 +260,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 	Describe("PrintPostCreateTableStatements", func() {
 		var (
 			extTableEmpty = backup.ExternalTableDefinition{Oid: 0, Type: -2, Protocol: -2, Location: "", ExecLocation: "ALL_SEGMENTS", FormatType: "t", FormatOpts: "", Options: "", Command: "", RejectLimit: 0, RejectLimitType: "", ErrTableName: "", ErrTableSchema: "", Encoding: "UTF-8", Writable: false, URIs: nil}
-			testTable     = backup.BasicRelation("public", "testtable")
+			testTable     = backup.Relation{Schema: "public", Name: "testtable"}
 			tableRow      = backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", NotNull: false, HasDefault: false, Type: "integer", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: []backup.ACL{}}
 			tableMetadata backup.ObjectMetadata
 			tableDef      backup.TableDefinition

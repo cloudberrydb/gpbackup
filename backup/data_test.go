@@ -139,7 +139,7 @@ var _ bool = Describe("backup/data tests", func() {
 	})
 	Describe("CheckDBContainsData", func() {
 		config := utils.BackupConfig{}
-		testTable := []backup.Relation{backup.BasicRelation("public", "testtable")}
+		testTable := []backup.Relation{{Schema: "public", Name: "testtable"}}
 
 		BeforeEach(func() {
 			config.MetadataOnly = false

@@ -27,7 +27,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				ExecLocation: "ALL_SEGMENTS", FormatType: "t", FormatOpts: "delimiter '	' null '\\N' escape '\\'",
 				Options: "", Command: "", RejectLimit: 0, RejectLimitType: "", ErrTableName: "", ErrTableSchema: "", Encoding: "UTF8",
 				Writable: false, URIs: []string{"file://tmp/ext_table_file"}}
-			testTable = backup.BasicRelation("public", "testtable")
+			testTable = backup.Relation{Schema: "public", Name: "testtable"}
 			tableDef = backup.TableDefinition{IsExternal: true}
 			os.Create("/tmp/ext_table_file")
 		})

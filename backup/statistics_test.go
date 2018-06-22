@@ -18,7 +18,7 @@ var _ = Describe("backup/statistics tests", func() {
 			toc, backupfile = testutils.InitializeTestTOC(buffer, "statistics")
 		})
 		It("prints tuple and attribute stats for single table with no stats", func() {
-			tableTestTable := backup.BasicRelation("testschema", "testtable")
+			tableTestTable := backup.Relation{Schema: "testschema", Name: "testtable"}
 			tupleStats = backup.TupleStatistic{Schema: "testschema", Table: "testtable"}
 			attStats = []backup.AttributeStatistic{}
 			backup.PrintStatisticsStatementsForTable(backupfile, toc, tableTestTable, attStats, tupleStats)
@@ -32,7 +32,7 @@ AND relnamespace = 0;`)
 		})
 		It("prints tuple and attribute stats for single table with stats", func() {
 			testutils.SetDBVersion(connectionPool, "6.0.0")
-			tableTestTable := backup.BasicRelation("testschema", "testtable")
+			tableTestTable := backup.Relation{Schema: "testschema", Name: "testtable"}
 			tupleStats = backup.TupleStatistic{Schema: "testschema", Table: "testtable"}
 			attStats = []backup.AttributeStatistic{
 				{Schema: "testschema", Table: "testtable", AttName: "testattWithArray", Type: "_array"},
@@ -107,7 +107,7 @@ INSERT INTO pg_statistic VALUES (
 	})
 	Describe("GenerateTupleStatisticsQuery", func() {
 		It("generates tuple statistics query with a single quote in the table name", func() {
-			tableTestTable := backup.BasicRelation("testschema", `"test'table"`)
+			tableTestTable := backup.Relation{Schema: "testschema", Name: `"test'table"`}
 			tupleStats := backup.TupleStatistic{Schema: "testschema", Table: `"test'table"`}
 			tupleQuery := backup.GenerateTupleStatisticsQuery(tableTestTable, tupleStats)
 			Expect(tupleQuery).To(Equal(`UPDATE pg_class
@@ -120,7 +120,7 @@ AND relnamespace = 0;`))
 
 	})
 	Describe("GenerateAttributeStatisticsQuery", func() {
-		tableTestTable := backup.BasicRelation("testschema", `"test'table"`)
+		tableTestTable := backup.Relation{Schema: "testschema", Name: `"test'table"`}
 		attStats := backup.AttributeStatistic{Schema: "testschema", Table: "testtable", AttName: "testatt", Type: "", Relid: 2,
 			AttNumber: 3, NullFraction: .4, Width: 10, Distinct: .5, Kind1: 20, Operator1: 10,
 			Numbers1: pq.StringArray([]string{"1", "2", "3"}), Values1: pq.StringArray([]string{"4", "5", "6"})}

@@ -16,7 +16,7 @@ import (
 )
 
 var _ = Describe("backup/predata_relations tests", func() {
-	testTable := backup.BasicRelation("public", "tablename")
+	testTable := backup.Relation{Schema: "public", Name: "tablename"}
 
 	distRandom := "DISTRIBUTED RANDOMLY"
 	distSingle := "DISTRIBUTED BY (i)"
@@ -457,7 +457,7 @@ SET SUBPARTITION TEMPLATE
 	Describe("PrintPostCreateTableStatements", func() {
 		rowCommentOne := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", Type: "integer", StatTarget: -1, Comment: "This is a column comment.", ACL: []backup.ACL{}}
 		rowCommentTwo := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "j", Type: "integer", StatTarget: -1, Comment: "This is another column comment.", ACL: []backup.ACL{}}
-		testTable := backup.BasicRelation("public", "tablename")
+		testTable := backup.Relation{Schema: "public", Name: "tablename"}
 		tableDef := backup.TableDefinition{}
 		BeforeEach(func() {
 			tableDef = backup.TableDefinition{DistPolicy: distRandom, PartDef: partDefEmpty, PartTemplateDef: partTemplateDefEmpty, StorageOpts: heapOpts, ExtTableDef: extTableEmpty}
@@ -730,7 +730,7 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 		})
 	})
 	Describe("PrintAlterSequenceStatements", func() {
-		baseSequence := backup.BasicRelation("public", "seq_name")
+		baseSequence := backup.Relation{Schema: "public", Name: "seq_name"}
 		seqDefault := backup.Sequence{Relation: baseSequence, SequenceDefinition: backup.SequenceDefinition{Name: "seq_name", LastVal: 7, Increment: 1, MaxVal: math.MaxInt64, MinVal: 1, CacheVal: 5, LogCnt: 42, IsCycled: false, IsCalled: true}}
 		emptyColumnOwnerMap := make(map[string]string, 0)
 		It("prints nothing for a sequence without an owning column", func() {
@@ -925,7 +925,7 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 		})
 	})
 	Describe("ExpandIncludeRelations", func() {
-		testTables := []backup.Relation{backup.BasicRelation("testschema", "foo1"), backup.BasicRelation("testschema", "foo2")}
+		testTables := []backup.Relation{{Schema: "testschema", Name: "foo1"}, {Schema: "testschema", Name: "foo2"}}
 		It("returns an empty slice if no includeRelations were specified", func() {
 			backup.SetIncludeRelations([]string{})
 			resultIncludeRelations := backup.ExpandIncludeRelations(testTables)
