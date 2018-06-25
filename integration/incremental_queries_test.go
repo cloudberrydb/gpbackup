@@ -10,6 +10,14 @@ import (
 )
 
 var _ = Describe("backup integration tests", func() {
+	const (
+		dropTableSQL  = "DROP TABLE %s"
+		addColumnSQL  = "ALTER TABLE %s ADD COLUMN k int DEFAULT 0"
+		dropColumnSQL = "ALTER TABLE %s DROP COLUMN k"
+		insertSQL     = "INSERT INTO %s values(10)"
+		deleteSQL     = "DELETE FROM %s"
+	)
+
 	var aoTableFQN = "public.ao_foo"
 	var aoCOTableFQN = "public.ao_co_foo"
 	var aoPartParentTableFQN = "public.ao_part"
@@ -20,17 +28,17 @@ var _ = Describe("backup integration tests", func() {
 		testhelper.AssertQueryRuns(connection,
 			fmt.Sprintf("CREATE TABLE %s (i int) WITH (appendonly=true,orientation='column')", aoCOTableFQN))
 		testhelper.AssertQueryRuns(connection,
-			fmt.Sprintf(`CREATE TABLE %s (id int, letter char(1)) WITH (appendonly=true)
-	DISTRIBUTED BY (id)
-	PARTITION BY LIST (letter)
+			fmt.Sprintf(`CREATE TABLE %s (i int) WITH (appendonly=true)
+	DISTRIBUTED BY (i)
+	PARTITION BY LIST (i)
 	(
-		PARTITION child VALUES ('C')
+		PARTITION child VALUES (10)
 	);`, aoPartParentTableFQN))
 	})
 	AfterEach(func() {
-		testhelper.AssertQueryRuns(connection, fmt.Sprintf("DROP TABLE %s", aoTableFQN))
-		testhelper.AssertQueryRuns(connection, fmt.Sprintf("DROP TABLE %s", aoCOTableFQN))
-		testhelper.AssertQueryRuns(connection, fmt.Sprintf("DROP TABLE %s", aoPartParentTableFQN))
+		testhelper.AssertQueryRuns(connection, fmt.Sprintf(dropTableSQL, aoTableFQN))
+		testhelper.AssertQueryRuns(connection, fmt.Sprintf(dropTableSQL, aoCOTableFQN))
+		testhelper.AssertQueryRuns(connection, fmt.Sprintf(dropTableSQL, aoPartParentTableFQN))
 	})
 	Describe("GetAOIncrementalMetadata", func() {
 		Context("AO, AO_CO and AO partition tables are only just created", func() {
@@ -58,16 +66,16 @@ var _ = Describe("backup integration tests", func() {
 				BeforeEach(func() {
 					initialAOIncrementalMetadata = backup.GetAOIncrementalMetadata(connection)
 
-					testhelper.AssertQueryRuns(connection, fmt.Sprintf("INSERT INTO %s values(10)", aoTableFQN))
-					testhelper.AssertQueryRuns(connection, fmt.Sprintf("INSERT INTO %s values(10)", aoCOTableFQN))
-					testhelper.AssertQueryRuns(connection, fmt.Sprintf("INSERT INTO %s values(10, 'C')", aoPartParentTableFQN))
+					testhelper.AssertQueryRuns(connection, fmt.Sprintf(insertSQL, aoTableFQN))
+					testhelper.AssertQueryRuns(connection, fmt.Sprintf(insertSQL, aoCOTableFQN))
+					testhelper.AssertQueryRuns(connection, fmt.Sprintf(insertSQL, aoPartParentTableFQN))
 
 					aoIncrementalMetadata = backup.GetAOIncrementalMetadata(connection)
 				})
 				AfterEach(func() {
-					testhelper.AssertQueryRuns(connection, fmt.Sprintf("DELETE FROM %s", aoTableFQN))
-					testhelper.AssertQueryRuns(connection, fmt.Sprintf("DELETE FROM %s", aoCOTableFQN))
-					testhelper.AssertQueryRuns(connection, fmt.Sprintf("DELETE FROM %s", aoPartParentTableFQN))
+					testhelper.AssertQueryRuns(connection, fmt.Sprintf(deleteSQL, aoTableFQN))
+					testhelper.AssertQueryRuns(connection, fmt.Sprintf(deleteSQL, aoCOTableFQN))
+					testhelper.AssertQueryRuns(connection, fmt.Sprintf(deleteSQL, aoPartParentTableFQN))
 				})
 				It("should increase modcount for non partition tables", func() {
 					Expect(aoIncrementalMetadata[aoTableFQN].Modcount).
@@ -94,15 +102,15 @@ var _ = Describe("backup integration tests", func() {
 				var initialAOIncrementalMetadata map[string]utils.AOEntry
 				var aoIncrementalMetadata map[string]utils.AOEntry
 				BeforeEach(func() {
-					testhelper.AssertQueryRuns(connection, fmt.Sprintf("INSERT INTO %s values(10)", aoTableFQN))
-					testhelper.AssertQueryRuns(connection, fmt.Sprintf("INSERT INTO %s values(10)", aoCOTableFQN))
-					testhelper.AssertQueryRuns(connection, fmt.Sprintf("INSERT INTO %s values(10, 'C')", aoPartParentTableFQN))
+					testhelper.AssertQueryRuns(connection, fmt.Sprintf(insertSQL, aoTableFQN))
+					testhelper.AssertQueryRuns(connection, fmt.Sprintf(insertSQL, aoCOTableFQN))
+					testhelper.AssertQueryRuns(connection, fmt.Sprintf(insertSQL, aoPartParentTableFQN))
 
 					initialAOIncrementalMetadata = backup.GetAOIncrementalMetadata(connection)
 
-					testhelper.AssertQueryRuns(connection, fmt.Sprintf("DELETE FROM %s", aoTableFQN))
-					testhelper.AssertQueryRuns(connection, fmt.Sprintf("DELETE FROM %s", aoCOTableFQN))
-					testhelper.AssertQueryRuns(connection, fmt.Sprintf("DELETE FROM %s", aoPartParentTableFQN))
+					testhelper.AssertQueryRuns(connection, fmt.Sprintf(deleteSQL, aoTableFQN))
+					testhelper.AssertQueryRuns(connection, fmt.Sprintf(deleteSQL, aoCOTableFQN))
+					testhelper.AssertQueryRuns(connection, fmt.Sprintf(deleteSQL, aoPartParentTableFQN))
 
 					aoIncrementalMetadata = backup.GetAOIncrementalMetadata(connection)
 				})
@@ -135,9 +143,9 @@ var _ = Describe("backup integration tests", func() {
 				BeforeEach(func() {
 					initialAOIncrementalMetadata = backup.GetAOIncrementalMetadata(connection)
 
-					testhelper.AssertQueryRuns(connection, fmt.Sprintf("ALTER TABLE %s ADD COLUMN k int", aoTableFQN))
-					testhelper.AssertQueryRuns(connection, fmt.Sprintf("ALTER TABLE %s ADD COLUMN k int", aoCOTableFQN))
-					testhelper.AssertQueryRuns(connection, fmt.Sprintf("ALTER TABLE %s ADD COLUMN k int", aoPartParentTableFQN))
+					testhelper.AssertQueryRuns(connection, fmt.Sprintf(addColumnSQL, aoTableFQN))
+					testhelper.AssertQueryRuns(connection, fmt.Sprintf(addColumnSQL, aoCOTableFQN))
+					testhelper.AssertQueryRuns(connection, fmt.Sprintf(addColumnSQL, aoPartParentTableFQN))
 
 					aoIncrementalMetadata = backup.GetAOIncrementalMetadata(connection)
 				})
@@ -155,14 +163,14 @@ var _ = Describe("backup integration tests", func() {
 			})
 			Context("After a column drop", func() {
 				BeforeEach(func() {
-					testhelper.AssertQueryRuns(connection, fmt.Sprintf("ALTER TABLE %s ADD COLUMN k int", aoTableFQN))
-					testhelper.AssertQueryRuns(connection, fmt.Sprintf("ALTER TABLE %s ADD COLUMN k int", aoCOTableFQN))
-					testhelper.AssertQueryRuns(connection, fmt.Sprintf("ALTER TABLE %s ADD COLUMN k int", aoPartParentTableFQN))
+					testhelper.AssertQueryRuns(connection, fmt.Sprintf(addColumnSQL, aoTableFQN))
+					testhelper.AssertQueryRuns(connection, fmt.Sprintf(addColumnSQL, aoCOTableFQN))
+					testhelper.AssertQueryRuns(connection, fmt.Sprintf(addColumnSQL, aoPartParentTableFQN))
 					initialAOIncrementalMetadata = backup.GetAOIncrementalMetadata(connection)
 
-					testhelper.AssertQueryRuns(connection, fmt.Sprintf("ALTER TABLE %s DROP COLUMN k", aoTableFQN))
-					testhelper.AssertQueryRuns(connection, fmt.Sprintf("ALTER TABLE %s DROP COLUMN k", aoCOTableFQN))
-					testhelper.AssertQueryRuns(connection, fmt.Sprintf("ALTER TABLE %s DROP COLUMN k", aoPartParentTableFQN))
+					testhelper.AssertQueryRuns(connection, fmt.Sprintf(dropColumnSQL, aoTableFQN))
+					testhelper.AssertQueryRuns(connection, fmt.Sprintf(dropColumnSQL, aoCOTableFQN))
+					testhelper.AssertQueryRuns(connection, fmt.Sprintf(dropColumnSQL, aoPartParentTableFQN))
 
 					aoIncrementalMetadata = backup.GetAOIncrementalMetadata(connection)
 				})
@@ -204,12 +212,12 @@ var _ = Describe("backup integration tests", func() {
 				BeforeEach(func() {
 					initialAOIncrementalMetadata = backup.GetAOIncrementalMetadata(connection)
 
-					testhelper.AssertQueryRuns(connection, fmt.Sprintf("INSERT INTO %s values(10)", aoTableFQN))
-					testhelper.AssertQueryRuns(connection, fmt.Sprintf("ALTER TABLE %s ADD COLUMN k int", aoTableFQN))
-					testhelper.AssertQueryRuns(connection, fmt.Sprintf("INSERT INTO %s values(10)", aoCOTableFQN))
-					testhelper.AssertQueryRuns(connection, fmt.Sprintf("ALTER TABLE %s ADD COLUMN k int", aoCOTableFQN))
-					testhelper.AssertQueryRuns(connection, fmt.Sprintf("INSERT INTO %s values(10, 'C')", aoPartParentTableFQN))
-					testhelper.AssertQueryRuns(connection, fmt.Sprintf("ALTER TABLE %s ADD COLUMN k int", aoPartParentTableFQN))
+					testhelper.AssertQueryRuns(connection, fmt.Sprintf(insertSQL, aoTableFQN))
+					testhelper.AssertQueryRuns(connection, fmt.Sprintf(addColumnSQL, aoTableFQN))
+					testhelper.AssertQueryRuns(connection, fmt.Sprintf(insertSQL, aoCOTableFQN))
+					testhelper.AssertQueryRuns(connection, fmt.Sprintf(addColumnSQL, aoCOTableFQN))
+					testhelper.AssertQueryRuns(connection, fmt.Sprintf(insertSQL, aoPartParentTableFQN))
+					testhelper.AssertQueryRuns(connection, fmt.Sprintf(addColumnSQL, aoPartParentTableFQN))
 
 					aoIncrementalMetadata = backup.GetAOIncrementalMetadata(connection)
 				})
