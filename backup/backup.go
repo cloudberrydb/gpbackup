@@ -29,6 +29,7 @@ func initializeFlags(cmd *cobra.Command) {
 	cmd.Flags().StringSlice(INCLUDE_SCHEMA, []string{}, "Back up only the specified schema(s). --include-schema can be specified multiple times.")
 	cmd.Flags().StringSlice(INCLUDE_RELATION, []string{}, "Back up only the specified table(s). --include-table can be specified multiple times.")
 	cmd.Flags().String(INCLUDE_RELATION_FILE, "", "A file containing a list of fully-qualified tables to be included in the backup")
+	cmd.Flags().String("incremental", "", "Only back up data for tables that have been modified since the last backup")
 	cmd.Flags().Int(JOBS, 1, "The number of parallel connections to use when backing up data")
 	cmd.Flags().Bool(LEAF_PARTITION_DATA, false, "For partition tables, create one data file per leaf partition instead of one data file for the whole table")
 	cmd.Flags().Bool(METADATA_ONLY, false, "Only back up metadata, do not back up data")
@@ -119,7 +120,14 @@ func DoBackup() {
 	 * or only external tables
 	 */
 	if !backupReport.MetadataOnly {
-		backupData(dataTables, tableDefs)
+		filteredTables := dataTables
+
+		// TODO: change to bool check
+		if *incremental != "" {
+			lastBackupTOC := GetLastBackupTOC()
+			filteredTables = FilterTablesForIncremental(lastBackupTOC, globalTOC, dataTables)
+		}
+		backupData(filteredTables, tableDefs)
 	}
 
 	if MustGetFlagBool(WITH_STATS) {
