@@ -279,7 +279,7 @@ CREATE EXTERNAL TABLE sales_1_prt_yr_1_external_partition__ (
     region text
 ) LOCATION (
     'gpfdist://gpdb_test:8080/sales_2010'
-) ON ALL
+)
 FORMAT 'csv' (delimiter E',' null E'' escape E'"' quote E'"')
 ENCODING 'UTF8';
 
