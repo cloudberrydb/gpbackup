@@ -408,12 +408,18 @@ func GetTableType(connection *dbconn.DBConn) map[uint32]string {
 }
 
 func GetPartitionDefinitions(connection *dbconn.DBConn) map[uint32]string {
-	query := `SELECT parrelid AS oid, pg_get_partition_def(parrelid, true, true) AS value FROM pg_partition`
+	query := fmt.Sprintf(`SELECT p.parrelid AS oid, pg_get_partition_def(p.parrelid, true, true) AS value FROM pg_partition p
+	JOIN pg_class c ON p.parrelid = c.oid
+	JOIN pg_namespace n ON c.relnamespace = n.oid
+	WHERE %s`, relationAndSchemaFilterClause())
 	return SelectAsOidToStringMap(connection, query)
 }
 
 func GetPartitionTemplates(connection *dbconn.DBConn) map[uint32]string {
-	query := fmt.Sprintf("SELECT parrelid AS oid, pg_get_partition_template_def(parrelid, true, true) AS value FROM pg_partition")
+	query := fmt.Sprintf(`SELECT p.parrelid AS oid, pg_get_partition_template_def(p.parrelid, true, true) AS value FROM pg_partition p
+	JOIN pg_class c ON p.parrelid = c.oid
+	JOIN pg_namespace n ON c.relnamespace = n.oid
+	WHERE %s`, relationAndSchemaFilterClause())
 	return SelectAsOidToStringMap(connection, query)
 }
 

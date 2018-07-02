@@ -493,12 +493,12 @@ PARTITION BY RANGE (year)
 			Expect(result).To(Equal(""))
 		})
 		It("returns a value for a partition definition", func() {
-			testhelper.AssertQueryRuns(connection, `CREATE TABLE public.part_table (id int, rank int, year int, gender 
-char(1), count int ) 
+			testhelper.AssertQueryRuns(connection, `CREATE TABLE public.part_table (id int, rank int, year int, gender
+char(1), count int )
 DISTRIBUTED BY (id)
 PARTITION BY LIST (gender)
-( PARTITION girls VALUES ('F'), 
-  PARTITION boys VALUES ('M'), 
+( PARTITION girls VALUES ('F'),
+  PARTITION boys VALUES ('M'),
   DEFAULT PARTITION other );
 			`)
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.part_table")
@@ -515,8 +515,219 @@ PARTITION BY LIST (gender)
           )`
 			Expect(result).To(Equal(expectedResult))
 		})
-	})
+		It("returns a value for a partition definition for a specific table", func() {
+			testhelper.AssertQueryRuns(connection, `CREATE TABLE public.part_table (id int, rank int, year int, gender
+char(1), count int )
+DISTRIBUTED BY (id)
+PARTITION BY LIST (gender)
+( PARTITION girls VALUES ('F'),
+  PARTITION boys VALUES ('M'),
+  DEFAULT PARTITION other );
+			`)
+			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.part_table")
+			testhelper.AssertQueryRuns(connection, `CREATE TABLE public.part_table2 (id int, rank int, year int, gender
+char(1), count int )
+DISTRIBUTED BY (id)
+PARTITION BY LIST (gender)
+( PARTITION girls VALUES ('F'),
+  PARTITION boys VALUES ('M'),
+  DEFAULT PARTITION other );
+			`)
+			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.part_table2")
+			oid := testutils.OidFromObjectName(connection, "public", "part_table", backup.TYPE_RELATION)
 
+			backup.SetIncludeRelations([]string{"public.part_table"})
+
+			results := backup.GetPartitionDefinitions(connection)
+			Expect(len(results)).To(Equal(1))
+			result := results[oid]
+
+			// The spacing is very specific here and is output from the postgres function
+			expectedResult := `PARTITION BY LIST(gender) 
+          (
+          PARTITION girls VALUES('F') WITH (tablename='part_table_1_prt_girls', appendonly=false ), 
+          PARTITION boys VALUES('M') WITH (tablename='part_table_1_prt_boys', appendonly=false ), 
+          DEFAULT PARTITION other  WITH (tablename='part_table_1_prt_other', appendonly=false )
+          )`
+			Expect(result).To(Equal(expectedResult))
+		})
+		It("returns a value for a partition definition in a specific schema", func() {
+			testhelper.AssertQueryRuns(connection, `CREATE TABLE public.part_table (id int, rank int, year int, gender
+char(1), count int )
+DISTRIBUTED BY (id)
+PARTITION BY LIST (gender)
+( PARTITION girls VALUES ('F'),
+  PARTITION boys VALUES ('M'),
+  DEFAULT PARTITION other );
+			`)
+			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.part_table")
+			testhelper.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
+			defer testhelper.AssertQueryRuns(connection, "DROP SCHEMA testschema CASCADE")
+			testhelper.AssertQueryRuns(connection, `CREATE TABLE testschema.part_table (id int, rank int, year int, gender
+char(1), count int )
+DISTRIBUTED BY (id)
+PARTITION BY LIST (gender)
+( PARTITION girls VALUES ('F'),
+  PARTITION boys VALUES ('M'),
+  DEFAULT PARTITION other );
+			`)
+			oid := testutils.OidFromObjectName(connection, "testschema", "part_table", backup.TYPE_RELATION)
+
+			backup.SetIncludeSchemas([]string{"testschema"})
+
+			results := backup.GetPartitionDefinitions(connection)
+			Expect(len(results)).To(Equal(1))
+			result := results[oid]
+
+			// The spacing is very specific here and is output from the postgres function
+			expectedResult := `PARTITION BY LIST(gender) 
+          (
+          PARTITION girls VALUES('F') WITH (tablename='part_table_1_prt_girls', appendonly=false ), 
+          PARTITION boys VALUES('M') WITH (tablename='part_table_1_prt_boys', appendonly=false ), 
+          DEFAULT PARTITION other  WITH (tablename='part_table_1_prt_other', appendonly=false )
+          )`
+			Expect(result).To(Equal(expectedResult))
+		})
+	})
+	Describe("GetPartitionTemplates", func() {
+		It("returns empty string when no partition definition template exists", func() {
+			testhelper.AssertQueryRuns(connection, "CREATE TABLE public.simple_table(i int)")
+			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.simple_table")
+			oid := testutils.OidFromObjectName(connection, "public", "simple_table", backup.TYPE_RELATION)
+
+			result := backup.GetPartitionTemplates(connection)[oid]
+
+			Expect(result).To(Equal(""))
+		})
+		It("returns a value for a subpartition template", func() {
+			testhelper.AssertQueryRuns(connection, `CREATE TABLE public.part_table (trans_id int, date date, amount decimal(9,2), region text)
+  DISTRIBUTED BY (trans_id)
+  PARTITION BY RANGE (date)
+  SUBPARTITION BY LIST (region)
+  SUBPARTITION TEMPLATE
+    ( SUBPARTITION usa VALUES ('usa'),
+      SUBPARTITION asia VALUES ('asia'),
+      SUBPARTITION europe VALUES ('europe'),
+      DEFAULT SUBPARTITION other_regions )
+  ( START (date '2014-01-01') INCLUSIVE
+    END (date '2014-04-01') EXCLUSIVE
+    EVERY (INTERVAL '1 month') ) `)
+			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.part_table")
+			oid := testutils.OidFromObjectName(connection, "public", "part_table", backup.TYPE_RELATION)
+
+			result := backup.GetPartitionTemplates(connection)[oid]
+
+			// The spacing is very specific here and is output from the postgres function
+			expectedResult := `ALTER TABLE public.part_table 
+SET SUBPARTITION TEMPLATE  
+          (
+          SUBPARTITION usa VALUES('usa') WITH (tablename='part_table'), 
+          SUBPARTITION asia VALUES('asia') WITH (tablename='part_table'), 
+          SUBPARTITION europe VALUES('europe') WITH (tablename='part_table'), 
+          DEFAULT SUBPARTITION other_regions  WITH (tablename='part_table')
+          )
+`
+
+			Expect(result).To(Equal(expectedResult))
+		})
+		It("returns a value for a subpartition template for a specific table", func() {
+			testhelper.AssertQueryRuns(connection, `CREATE TABLE public.part_table (trans_id int, date date, amount decimal(9,2), region text)
+  DISTRIBUTED BY (trans_id)
+  PARTITION BY RANGE (date)
+  SUBPARTITION BY LIST (region)
+  SUBPARTITION TEMPLATE
+    ( SUBPARTITION usa VALUES ('usa'),
+      SUBPARTITION asia VALUES ('asia'),
+      SUBPARTITION europe VALUES ('europe'),
+      DEFAULT SUBPARTITION other_regions )
+  ( START (date '2014-01-01') INCLUSIVE
+    END (date '2014-04-01') EXCLUSIVE
+    EVERY (INTERVAL '1 month') ) `)
+			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.part_table")
+			testhelper.AssertQueryRuns(connection, `CREATE TABLE public.part_table2 (trans_id int, date date, amount decimal(9,2), region text)
+  DISTRIBUTED BY (trans_id)
+  PARTITION BY RANGE (date)
+  SUBPARTITION BY LIST (region)
+  SUBPARTITION TEMPLATE
+    ( SUBPARTITION usa VALUES ('usa'),
+      SUBPARTITION asia VALUES ('asia'),
+      SUBPARTITION europe VALUES ('europe'),
+      DEFAULT SUBPARTITION other_regions )
+  ( START (date '2014-01-01') INCLUSIVE
+    END (date '2014-04-01') EXCLUSIVE
+    EVERY (INTERVAL '1 month') ) `)
+			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.part_table2")
+			oid := testutils.OidFromObjectName(connection, "public", "part_table", backup.TYPE_RELATION)
+
+			backup.SetIncludeRelations([]string{"public.part_table"})
+
+			results := backup.GetPartitionTemplates(connection)
+			Expect(len(results)).To(Equal(1))
+			result := results[oid]
+
+			// The spacing is very specific here and is output from the postgres function
+			expectedResult := `ALTER TABLE public.part_table 
+SET SUBPARTITION TEMPLATE  
+          (
+          SUBPARTITION usa VALUES('usa') WITH (tablename='part_table'), 
+          SUBPARTITION asia VALUES('asia') WITH (tablename='part_table'), 
+          SUBPARTITION europe VALUES('europe') WITH (tablename='part_table'), 
+          DEFAULT SUBPARTITION other_regions  WITH (tablename='part_table')
+          )
+`
+
+			Expect(result).To(Equal(expectedResult))
+		})
+		It("returns a value for a subpartition template in a specific schema", func() {
+			testhelper.AssertQueryRuns(connection, `CREATE TABLE public.part_table (trans_id int, date date, amount decimal(9,2), region text)
+  DISTRIBUTED BY (trans_id)
+  PARTITION BY RANGE (date)
+  SUBPARTITION BY LIST (region)
+  SUBPARTITION TEMPLATE
+    ( SUBPARTITION usa VALUES ('usa'),
+      SUBPARTITION asia VALUES ('asia'),
+      SUBPARTITION europe VALUES ('europe'),
+      DEFAULT SUBPARTITION other_regions )
+  ( START (date '2014-01-01') INCLUSIVE
+    END (date '2014-04-01') EXCLUSIVE
+    EVERY (INTERVAL '1 month') ) `)
+			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.part_table")
+			testhelper.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
+			defer testhelper.AssertQueryRuns(connection, "DROP SCHEMA testschema CASCADE")
+			testhelper.AssertQueryRuns(connection, `CREATE TABLE testschema.part_table (trans_id int, date date, amount decimal(9,2), region text)
+  DISTRIBUTED BY (trans_id)
+  PARTITION BY RANGE (date)
+  SUBPARTITION BY LIST (region)
+  SUBPARTITION TEMPLATE
+    ( SUBPARTITION usa VALUES ('usa'),
+      SUBPARTITION asia VALUES ('asia'),
+      SUBPARTITION europe VALUES ('europe'),
+      DEFAULT SUBPARTITION other_regions )
+  ( START (date '2014-01-01') INCLUSIVE
+    END (date '2014-04-01') EXCLUSIVE
+    EVERY (INTERVAL '1 month') ) `)
+			oid := testutils.OidFromObjectName(connection, "testschema", "part_table", backup.TYPE_RELATION)
+
+			backup.SetIncludeSchemas([]string{"testschema"})
+
+			results := backup.GetPartitionTemplates(connection)
+			Expect(len(results)).To(Equal(1))
+			result := results[oid]
+
+			// The spacing is very specific here and is output from the postgres function
+			expectedResult := `ALTER TABLE testschema.part_table 
+SET SUBPARTITION TEMPLATE  
+          (
+          SUBPARTITION usa VALUES('usa') WITH (tablename='part_table'), 
+          SUBPARTITION asia VALUES('asia') WITH (tablename='part_table'), 
+          SUBPARTITION europe VALUES('europe') WITH (tablename='part_table'), 
+          DEFAULT SUBPARTITION other_regions  WITH (tablename='part_table')
+          )
+`
+
+			Expect(result).To(Equal(expectedResult))
+		})
+	})
 	Describe("GetTableType", func() {
 		It("Returns a map when a table OF type exists", func() {
 			testutils.SkipIfBefore6(connection)
@@ -561,48 +772,6 @@ PARTITION BY LIST (gender)
 		})
 	})
 
-	Describe("GetPartitionTemplates", func() {
-		It("returns empty string when no partition definition template exists", func() {
-			testhelper.AssertQueryRuns(connection, "CREATE TABLE public.simple_table(i int)")
-			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.simple_table")
-			oid := testutils.OidFromObjectName(connection, "public", "simple_table", backup.TYPE_RELATION)
-
-			result := backup.GetPartitionTemplates(connection)[oid]
-
-			Expect(result).To(Equal(""))
-		})
-		It("returns a value for a subpartition template", func() {
-			testhelper.AssertQueryRuns(connection, `CREATE TABLE public.part_table (trans_id int, date date, amount decimal(9,2), region text)
-  DISTRIBUTED BY (trans_id)
-  PARTITION BY RANGE (date)
-  SUBPARTITION BY LIST (region)
-  SUBPARTITION TEMPLATE
-    ( SUBPARTITION usa VALUES ('usa'),
-      SUBPARTITION asia VALUES ('asia'),
-      SUBPARTITION europe VALUES ('europe'),
-      DEFAULT SUBPARTITION other_regions )
-  ( START (date '2014-01-01') INCLUSIVE
-    END (date '2014-04-01') EXCLUSIVE
-    EVERY (INTERVAL '1 month') ) `)
-			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.part_table")
-			oid := testutils.OidFromObjectName(connection, "public", "part_table", backup.TYPE_RELATION)
-
-			result := backup.GetPartitionTemplates(connection)[oid]
-
-			// The spacing is very specific here and is output from the postgres function
-			expectedResult := `ALTER TABLE public.part_table 
-SET SUBPARTITION TEMPLATE  
-          (
-          SUBPARTITION usa VALUES('usa') WITH (tablename='part_table'), 
-          SUBPARTITION asia VALUES('asia') WITH (tablename='part_table'), 
-          SUBPARTITION europe VALUES('europe') WITH (tablename='part_table'), 
-          DEFAULT SUBPARTITION other_regions  WITH (tablename='part_table')
-          )
-`
-
-			Expect(result).To(Equal(expectedResult))
-		})
-	})
 	Describe("GetTableStorageOptions", func() {
 		It("returns an empty string when no table storage options exist ", func() {
 			testhelper.AssertQueryRuns(connection, "CREATE TABLE public.simple_table(i int)")
