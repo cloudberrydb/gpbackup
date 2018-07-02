@@ -32,12 +32,12 @@ func getAllModCounts(connection *dbconn.DBConn) map[string]int64 {
 }
 
 func getAOSegTableFQNs(connection *dbconn.DBConn) map[string]string {
-	query := `
+	query := fmt.Sprintf(`
 	SELECT
 		seg.aotablefqn,
-		'pg_aoseg.' || quote_ident(c1.relname) AS aosegtablefqn
+		'pg_aoseg.' || quote_ident(aoseg_c.relname) AS aosegtablefqn
 	FROM
-		pg_class c1
+		pg_class aoseg_c
 	JOIN
 		(
 			SELECT
@@ -49,22 +49,24 @@ func getAOSegTableFQNs(connection *dbconn.DBConn) map[string]string {
 				JOIN
 				(
 					SELECT
-						c2.oid,
-						quote_ident(n.nspname)|| '.' || quote_ident(c2.relname) AS aotablefqn
+						c.oid,
+						quote_ident(n.nspname)|| '.' || quote_ident(c.relname) AS aotablefqn
 					FROM
-						pg_class c2
+						pg_class c
 						JOIN
 						pg_namespace n
-						ON c2.relnamespace = n.oid
+						ON c.relnamespace = n.oid
 					WHERE
 						relstorage IN ( 'ao', 'co' )
+					AND
+						%s
 				) aotables
 				ON
 					pg_ao.relid = aotables.oid
 		) seg
 	ON
-		c1.oid = seg.segrelid
-`
+		aoseg_c.oid = seg.segrelid
+`, relationAndSchemaFilterClause())
 	results := make([]struct {
 		AOTableFQN    string
 		AOSegTableFQN string
@@ -96,40 +98,42 @@ func getModCount(connection *dbconn.DBConn, aosegtablefqn string) int64 {
 }
 
 func getLastDDLTimestamps(connection *dbconn.DBConn) map[string]string {
-	query := `
+	query := fmt.Sprintf(`
 	SELECT
-		quote_ident(n.nspname) || '.' || quote_ident(aorelname) as aotablefqn,
+		quote_ident(aoschema) || '.' || quote_ident(aorelname) as aotablefqn,
 		lastddltimestamp
 	FROM
 		(
 			SELECT
-				oid AS aooid,
-				relname AS aorelname,
-				relnamespace
+				c.oid AS aooid,
+				n.nspname AS aoschema,
+				c.relname AS aorelname
 			FROM
-				pg_class
+				pg_class c
+			JOIN
+				pg_namespace n
+			ON
+				c.relnamespace = n.oid
 			WHERE
-				relstorage IN ('ao', 'co')
+				c.relstorage IN ('ao', 'co')
+			AND
+				%s
 		) aotables
 	JOIN
 		(
 			SELECT
-				objid,
-				MAX(statime) AS lastddltimestamp
+				lo.objid,
+				MAX(lo.statime) AS lastddltimestamp
 			FROM
-				pg_stat_last_operation
+				pg_stat_last_operation lo
 			WHERE
-				staactionname IN ('CREATE', 'ALTER', 'TRUNCATE')
+				lo.staactionname IN ('CREATE', 'ALTER', 'TRUNCATE')
 			GROUP BY
-				objid
+				lo.objid
 		) lastop
 	ON
 		aotables.aooid = lastop.objid
-	JOIN 
-		pg_namespace n
-	ON
-		aotables.relnamespace = n.oid
-`
+`, relationAndSchemaFilterClause())
 
 	var results []struct {
 		AOTableFQN       string

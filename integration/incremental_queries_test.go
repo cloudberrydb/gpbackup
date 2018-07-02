@@ -2,6 +2,7 @@ package integration
 
 import (
 	"fmt"
+
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/utils"
@@ -233,6 +234,29 @@ var _ = Describe("backup integration tests", func() {
 						To(Not(Equal(initialAOIncrementalMetadata[aoCOTableFQN].LastDDLTimestamp)))
 					Expect(aoIncrementalMetadata[aoPartChildTableFQN].LastDDLTimestamp).
 						To(Not(Equal(initialAOIncrementalMetadata[aoCOTableFQN].LastDDLTimestamp)))
+				})
+			})
+		})
+		Context("Filtered backup", func() {
+			var aoIncrementalMetadata map[string]utils.AOEntry
+			Context("During a table-filtered backup", func() {
+				It("only retrieves ao metadata for specific tables", func() {
+					backup.SetIncludeRelations([]string{aoTableFQN})
+
+					aoIncrementalMetadata = backup.GetAOIncrementalMetadata(connection)
+					Expect(len(aoIncrementalMetadata)).To(Equal(1))
+				})
+			})
+			Context("During a schema-filtered backup", func() {
+				It("only retrieves ao metadata for tables in a specific schema", func() {
+					testhelper.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
+					defer testhelper.AssertQueryRuns(connection, "DROP SCHEMA testschema CASCADE")
+					testhelper.AssertQueryRuns(connection, "CREATE TABLE testschema.ao_foo (i int) WITH (appendonly=true)")
+
+					backup.SetIncludeSchemas([]string{"testschema"})
+
+					aoIncrementalMetadata = backup.GetAOIncrementalMetadata(connection)
+					Expect(len(aoIncrementalMetadata)).To(Equal(1))
 				})
 			})
 		})
