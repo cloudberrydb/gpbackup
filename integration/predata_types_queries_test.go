@@ -71,9 +71,9 @@ var _ = Describe("backup integration tests", func() {
 
 			Expect(len(results)).To(Equal(1))
 			if connection.Version.Before("5") {
-				structmatcher.ExpectStructsToMatchExcluding(&results[0], &baseTypeDefault, "Oid", "ModIn", "ModOut")
+				structmatcher.ExpectStructsToMatchExcluding(&baseTypeDefault, &results[0], "Oid", "ModIn", "ModOut")
 			} else {
-				structmatcher.ExpectStructsToMatchExcluding(&results[0], &baseTypeDefault, "Oid")
+				structmatcher.ExpectStructsToMatchExcluding(&baseTypeDefault, &results[0], "Oid")
 			}
 		})
 		It("returns a slice for a base type with custom configuration", func() {
@@ -92,13 +92,13 @@ var _ = Describe("backup integration tests", func() {
 
 			Expect(len(results)).To(Equal(1))
 			if connection.Version.Before("5") {
-				structmatcher.ExpectStructsToMatchExcluding(&results[0], &baseTypeCustom, "Oid", "ModIn", "ModOut")
+				structmatcher.ExpectStructsToMatchExcluding(&baseTypeCustom, &results[0], "Oid", "ModIn", "ModOut")
 			} else if connection.Version.Before("6") {
-				structmatcher.ExpectStructsToMatchExcluding(&results[0], &baseTypeCustom, "Oid")
+				structmatcher.ExpectStructsToMatchExcluding(&baseTypeCustom, &results[0], "Oid")
 			} else {
 				baseTypeCustom.Category = "N"
 				baseTypeCustom.Preferred = true
-				structmatcher.ExpectStructsToMatchExcluding(&results[0], &baseTypeCustom, "Oid")
+				structmatcher.ExpectStructsToMatchExcluding(&baseTypeCustom, &results[0], "Oid")
 			}
 		})
 		It("returns a slice for an enum type", func() {
@@ -109,7 +109,7 @@ var _ = Describe("backup integration tests", func() {
 			results := backup.GetEnumTypes(connection)
 
 			Expect(len(results)).To(Equal(1))
-			structmatcher.ExpectStructsToMatchExcluding(&results[0], &enumType, "Oid")
+			structmatcher.ExpectStructsToMatchExcluding(&enumType, &results[0], "Oid")
 		})
 		It("does not return types for sequences or views", func() {
 			testhelper.AssertQueryRuns(connection, "CREATE SEQUENCE public.my_sequence START 10")
@@ -134,7 +134,7 @@ var _ = Describe("backup integration tests", func() {
 		})
 		It("returns a slice for a domain type", func() {
 			domainType := backup.Type{
-				Oid: 1, Type: "d", Schema: "public", Name: "domain1", DefaultVal: "4", BaseType: `"numeric"`, NotNull: false,
+				Oid: 1, Type: "d", Schema: "public", Name: "domain1", DefaultVal: "4", BaseType: "numeric", NotNull: false,
 			}
 			testhelper.AssertQueryRuns(connection, "CREATE DOMAIN public.domain1 AS numeric DEFAULT 4")
 			defer testhelper.AssertQueryRuns(connection, "DROP DOMAIN public.domain1")
@@ -142,7 +142,7 @@ var _ = Describe("backup integration tests", func() {
 			results := backup.GetDomainTypes(connection)
 
 			Expect(len(results)).To(Equal(1))
-			structmatcher.ExpectStructsToMatchIncluding(&results[0], &domainType, "Schema", "Name", "Type", "DefaultVal", "BaseType", "NotNull")
+			structmatcher.ExpectStructsToMatchIncluding(&domainType, &results[0], "Schema", "Name", "Type", "DefaultVal", "BaseType", "NotNull")
 		})
 		It("returns a slice for a type in a specific schema", func() {
 			testhelper.AssertQueryRuns(connection, "CREATE TYPE public.shell_type")

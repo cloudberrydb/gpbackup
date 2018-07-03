@@ -40,7 +40,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			}
 			enumType = backup.Type{Type: "e", Schema: "public", Name: "enum_type", EnumLabels: "'enum_labels'", Category: "U"}
 			domainType = testutils.DefaultTypeDefinition("d", "domain_type")
-			domainType.BaseType = `"numeric"`
+			domainType.BaseType = "numeric"
 			domainType.DefaultVal = "5"
 			domainType.NotNull = true
 			types = []backup.Type{shellType, baseType, compositeType, domainType}

@@ -220,7 +220,7 @@ func getCompositeTypeAttributes(connection *dbconn.DBConn) map[uint32]pq.StringA
 	query := `
 SELECT
 	t.oid AS typeoid,
-	array_agg(E'\t' || quote_ident(a.attname) || ' ' || pg_catalog.format_type(a.atttypid, NULL) ORDER BY a.attnum) AS attributes
+	array_agg(E'\t' || quote_ident(a.attname) || ' ' || pg_catalog.format_type(a.atttypid, a.atttypmod) ORDER BY a.attnum) AS attributes
 FROM pg_type t
 JOIN pg_attribute a ON t.typrelid = a.attrelid
 WHERE t.typtype = 'c'
@@ -245,11 +245,10 @@ SELECT
 	quote_ident(t.typname) AS name,
 	t.typtype,
 	coalesce(t.typdefault, '') AS defaultval,
-	coalesce(quote_ident(b.typname), '') AS basetype,
+	format_type(t.typbasetype, t.typtypmod) AS basetype,
 	t.typnotnull
 FROM pg_type t
 JOIN pg_namespace n ON t.typnamespace = n.oid
-JOIN pg_type b ON t.typbasetype = b.oid
 WHERE %s
 AND t.typtype = 'd'
 AND %s
