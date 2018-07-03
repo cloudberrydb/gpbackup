@@ -125,13 +125,13 @@ var _ = Describe("backup integration tests", func() {
 			}
 			Fail("Resource group 'someGroup' was not found.")
 		})
-		It("returns a slice for a resource group with memory_auditor=cgroup", func() {
-			testhelper.AssertQueryRuns(connection, `CREATE RESOURCE GROUP "someGroup" WITH (CPU_RATE_LIMIT=10, MEMORY_LIMIT=20, MEMORY_SHARED_QUOTA=25, MEMORY_SPILL_RATIO=30, CONCURRENCY=0, MEMORY_AUDITOR=cgroup);`)
+		It("returns a slice for a resource group with memory_auditor=vmtracker", func() {
+			testhelper.AssertQueryRuns(connection, `CREATE RESOURCE GROUP "someGroup" WITH (CPU_RATE_LIMIT=10, MEMORY_LIMIT=20, MEMORY_SHARED_QUOTA=25, MEMORY_SPILL_RATIO=30, CONCURRENCY=0, MEMORY_AUDITOR=vmtracker);`)
 			defer testhelper.AssertQueryRuns(connection, `DROP RESOURCE GROUP "someGroup"`)
 
 			results := backup.GetResourceGroups(connection)
 
-			someGroup := backup.ResourceGroup{Oid: 1, Name: `"someGroup"`, CPURateLimit: 10, MemoryLimit: 20, Concurrency: 0, MemorySharedQuota: 25, MemorySpillRatio: 30, MemoryAuditor: 1, Cpuset: "-1"}
+			someGroup := backup.ResourceGroup{Oid: 1, Name: `"someGroup"`, CPURateLimit: 10, MemoryLimit: 20, Concurrency: 0, MemorySharedQuota: 25, MemorySpillRatio: 30, MemoryAuditor: 0, Cpuset: "-1"}
 
 			for _, resultGroup := range results {
 				if resultGroup.Name == `"someGroup"` {

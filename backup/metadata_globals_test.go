@@ -149,12 +149,15 @@ COMMENT ON RESOURCE QUEUE "commentQueue" IS 'This is a resource queue comment.';
 
 			backup.PrintCreateResourceGroupStatements(backupfile, toc, resGroups, emptyResGroupMetadata)
 			testutils.ExpectEntry(toc.GlobalEntries, 0, "", "", "default_group", "RESOURCE GROUP")
-			testutils.AssertBufferContents(toc.GlobalEntries, buffer,
-				`ALTER RESOURCE GROUP default_group SET MEMORY_LIMIT 20;`,
-				`ALTER RESOURCE GROUP default_group SET MEMORY_SHARED_QUOTA 25;`,
-				`ALTER RESOURCE GROUP default_group SET MEMORY_SPILL_RATIO 30;`,
-				`ALTER RESOURCE GROUP default_group SET CONCURRENCY 15;`,
-				`ALTER RESOURCE GROUP default_group SET CPU_RATE_LIMIT 10;`)
+			testutils.AssertBufferContents(toc.GlobalEntries, buffer, `ALTER RESOURCE GROUP default_group SET MEMORY_LIMIT 20;
+
+ALTER RESOURCE GROUP default_group SET MEMORY_SHARED_QUOTA 25;
+
+ALTER RESOURCE GROUP default_group SET MEMORY_SPILL_RATIO 30;
+
+ALTER RESOURCE GROUP default_group SET CONCURRENCY 15;
+
+ALTER RESOURCE GROUP default_group SET CPU_RATE_LIMIT 10;`)
 		})
 		It("prints memory_auditor resource groups", func() {
 			someGroup := backup.ResourceGroup{Oid: 1, Name: "some_group", CPURateLimit: 10, MemoryLimit: 20, Concurrency: 15, MemorySharedQuota: 25, MemorySpillRatio: 30}
@@ -182,9 +185,8 @@ COMMENT ON RESOURCE QUEUE "commentQueue" IS 'This is a resource queue comment.';
 		})
 	})
 	Describe("PrintResetResourceGroupStatements", func() {
-		var emptyResGroupMetadata = map[uint32]backup.ObjectMetadata{}
 		It("prints prepare resource groups", func() {
-			backup.PrintResetResourceGroupStatements(backupfile, toc, emptyResGroupMetadata)
+			backup.PrintResetResourceGroupStatements(backupfile, toc)
 			testutils.ExpectEntry(toc.GlobalEntries, 0, "", "", "admin_group", "RESOURCE GROUP")
 			testutils.AssertBufferContents(toc.GlobalEntries, buffer,
 				`ALTER RESOURCE GROUP admin_group SET CPU_RATE_LIMIT 1;`,
