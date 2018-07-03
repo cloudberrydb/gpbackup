@@ -36,7 +36,7 @@ var _ = Describe("backup integration tests", func() {
 			}
 			compositeType = backup.Type{
 				Oid: 1, Type: "c", Schema: "public", Name: "composite_type",
-				Attributes: pq.StringArray{"\tname integer", "\tname2 integer", "\tname1 text"},
+				Attributes: pq.StringArray{"\tname integer", "\tname2 numeric(8,2)", "\tname1 text"},
 			}
 			enumType = backup.Type{
 				Oid: 1, Type: "e", Schema: "public", Name: "enum_type", EnumLabels: "'label1',\n\t'label2',\n\t'label3'",
@@ -52,13 +52,13 @@ var _ = Describe("backup integration tests", func() {
 			structmatcher.ExpectStructsToMatchIncluding(&shellType, &results[0], "Schema", "Name", "Type")
 		})
 		It("returns a slice of composite types", func() {
-			testhelper.AssertQueryRuns(connection, "CREATE TYPE public.composite_type AS (name int4, name2 int, name1 text);")
+			testhelper.AssertQueryRuns(connection, "CREATE TYPE public.composite_type AS (name int4, name2 numeric(8,2), name1 text);")
 			defer testhelper.AssertQueryRuns(connection, "DROP TYPE public.composite_type")
 
 			results := backup.GetCompositeTypes(connection)
 
 			Expect(len(results)).To(Equal(1))
-			structmatcher.ExpectStructsToMatchIncluding(&compositeType, &results[0], "Type", "Schema", "Name")
+			structmatcher.ExpectStructsToMatchIncluding(&compositeType, &results[0], "Type", "Schema", "Name", "Attributes")
 		})
 		It("returns a slice for a base type with default values", func() {
 			testhelper.AssertQueryRuns(connection, "CREATE TYPE public.base_type")
@@ -134,9 +134,9 @@ var _ = Describe("backup integration tests", func() {
 		})
 		It("returns a slice for a domain type", func() {
 			domainType := backup.Type{
-				Oid: 1, Type: "d", Schema: "public", Name: "domain1", DefaultVal: "4", BaseType: "numeric", NotNull: false,
+				Oid: 1, Type: "d", Schema: "public", Name: "domain1", DefaultVal: "4", BaseType: "numeric(8,2)", NotNull: false,
 			}
-			testhelper.AssertQueryRuns(connection, "CREATE DOMAIN public.domain1 AS numeric DEFAULT 4")
+			testhelper.AssertQueryRuns(connection, "CREATE DOMAIN public.domain1 AS numeric(8,2) DEFAULT 4")
 			defer testhelper.AssertQueryRuns(connection, "DROP DOMAIN public.domain1")
 
 			results := backup.GetDomainTypes(connection)
