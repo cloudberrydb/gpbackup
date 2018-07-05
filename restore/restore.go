@@ -134,7 +134,14 @@ func DoRestore() {
 			}
 			VerifyBackupFileCountOnSegments(backupFileCount)
 		}
-		restoreData(gucStatements)
+		fpInfoList := make([]utils.FilePathInfo, 0)
+		for _, entry := range backupConfig.RestorePlan {
+			segPrefix := utils.ParseSegPrefix(MustGetFlagString(BACKUP_DIR))
+
+			fpInfo := utils.NewFilePathInfo(globalCluster, MustGetFlagString(BACKUP_DIR), entry.Timestamp, segPrefix)
+			fpInfoList = append(fpInfoList, fpInfo)
+		}
+		restoreData(fpInfoList, gucStatements)
 	}
 
 	if !isDataOnly {
@@ -161,7 +168,7 @@ func restoreGlobal(metadataFilename string) {
 	objectTypes := []string{"SESSION GUCS", "DATABASE GUC", "DATABASE METADATA", "RESOURCE QUEUE", "RESOURCE GROUP", "ROLE", "ROLE GRANT", "TABLESPACE"}
 	gplog.Info("Restoring global metadata")
 	statements := GetRestoreMetadataStatements("global", metadataFilename, objectTypes, []string{}, false, false)
-	if REDIRECT_DB != "" {
+	if MustGetFlagString(REDIRECT_DB) != "" {
 		statements = utils.SubstituteRedirectDatabaseInStatements(statements, backupConfig.DatabaseName, MustGetFlagString(REDIRECT_DB))
 	}
 	statements = utils.RemoveActiveRole(connectionPool.User, statements)
@@ -188,13 +195,24 @@ func restorePredata(metadataFilename string) {
 	gplog.Info("Pre-data metadata restore complete")
 }
 
-func restoreData(gucStatements []utils.StatementWithType) {
+func restoreData(fpInfoList []utils.FilePathInfo, gucStatements []utils.StatementWithType) {
 	if wasTerminated {
 		return
 	}
-	gplog.Info("Restoring data")
-	filteredMasterDataEntries := globalTOC.GetDataEntriesMatching(MustGetFlagStringSlice(INCLUDE_SCHEMA), MustGetFlagStringSlice(EXCLUDE_SCHEMA),
-		MustGetFlagStringSlice(INCLUDE_RELATION), MustGetFlagStringSlice(EXCLUDE_RELATION))
+	latestRestorePlan := backupConfig.RestorePlan
+	for i, fpInfo := range fpInfoList {
+		gplog.Info("Restoring data from backup with timestamp: %s", fpInfo.Timestamp)
+		restorePlanTableFQNs := latestRestorePlan[i].TableFQNs
+		restoreDataFromTimestamp(fpInfo, restorePlanTableFQNs, gucStatements)
+	}
+}
+
+func restoreDataFromTimestamp(fpInfo utils.FilePathInfo, restorePlanTableFQNs []string, gucStatements []utils.StatementWithType) {
+	tocFilename := fpInfo.GetTOCFilePath()
+	toc := utils.NewTOC(tocFilename)
+	filteredMasterDataEntries := toc.GetDataEntriesMatching(MustGetFlagStringSlice(INCLUDE_SCHEMA), MustGetFlagStringSlice(EXCLUDE_SCHEMA),
+		MustGetFlagStringSlice(INCLUDE_RELATION), MustGetFlagStringSlice(EXCLUDE_RELATION), restorePlanTableFQNs)
+
 	if backupConfig.SingleDataFile {
 		gplog.Verbose("Initializing pipes and gpbackup_helper on segments for single data file restore")
 		utils.VerifyHelperVersionOnSegments(version, globalCluster)
@@ -202,16 +220,14 @@ func restoreData(gucStatements []utils.StatementWithType) {
 		for i, entry := range filteredMasterDataEntries {
 			filteredOids[i] = fmt.Sprintf("%d", entry.Oid)
 		}
-		utils.WriteOidListToSegments(filteredOids, globalCluster, globalFPInfo)
+		utils.WriteOidListToSegments(filteredOids, globalCluster, fpInfo)
 		firstOid := fmt.Sprintf("%d", filteredMasterDataEntries[0].Oid)
-		utils.CreateFirstSegmentPipeOnAllHosts(firstOid, globalCluster, globalFPInfo)
-		utils.StartAgent(globalCluster, globalFPInfo, "--restore-agent", MustGetFlagString(PLUGIN_CONFIG), "")
+		utils.CreateFirstSegmentPipeOnAllHosts(firstOid, globalCluster, fpInfo)
+		utils.StartAgent(globalCluster, fpInfo, "--restore-agent", MustGetFlagString(PLUGIN_CONFIG), "")
 	}
-
 	totalTables := len(filteredMasterDataEntries)
 	dataProgressBar := utils.NewProgressBar(totalTables, "Tables restored: ", utils.PB_INFO)
 	dataProgressBar.Start()
-
 	/*
 	 * We break when an interrupt is received and rely on
 	 * TerminateHangingCopySessions to kill any COPY
@@ -230,7 +246,7 @@ func restoreData(gucStatements []utils.StatementWithType) {
 					dataProgressBar.(*pb.ProgressBar).NotPrint = true
 					break
 				}
-				restoreSingleTableData(entry, tableNum, totalTables, whichConn)
+				restoreSingleTableData(&fpInfo, entry, tableNum, totalTables, whichConn)
 				atomic.AddUint32(&tableNum, 1)
 				dataProgressBar.Increment()
 			}
@@ -241,7 +257,6 @@ func restoreData(gucStatements []utils.StatementWithType) {
 	}
 	close(tasks)
 	workerPool.Wait()
-
 	dataProgressBar.Finish()
 	err := CheckAgentErrorsOnSegments()
 	if err != nil {
