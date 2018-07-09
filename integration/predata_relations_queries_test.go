@@ -1163,9 +1163,8 @@ FORMAT 'csv';`)
 	 i int
  ) LOCATION (
 	 's3://192.168.0.1'
- ) ON ALL
+ )
  FORMAT 'csv' (delimiter E',' null E'' escape E'"' quote E'"')
- OPTIONS ()
  ENCODING 'UTF8';`)
 
 			defer testhelper.AssertQueryRuns(connection, "DROP EXTERNAL TABLE public.ext_tbl")
