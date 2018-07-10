@@ -8,21 +8,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-/* This file contains functions to sort objects that have dependencies among themselves.
- *  For example, functions and types can be dependent on one another, we cannot simply
- *  dump all functions and then all types.
- *  The following objects are included the dependency sorting logic:
- *   - Functions
- *   - Types
- *   - Tables
- *   - Protocols
- */
-
-/*
- * We need to include arguments to differentiate functions with the same name;
- * we don't use IdentArgs because we already have Arguments in the funcInfoMap.
- */
-func SortObjectsInDependencyOrder(functions []Function, types []Type, tables []Relation, protocols []ExternalProtocol) []Sortable {
+func SortFunctionsAndTypesAndTablesInDependencyOrder(functions []Function, types []Type, tables []Relation) []Sortable {
 	objects := make([]Sortable, 0)
 	for _, function := range functions {
 		objects = append(objects, function)
@@ -35,14 +21,11 @@ func SortObjectsInDependencyOrder(functions []Function, types []Type, tables []R
 	for _, table := range tables {
 		objects = append(objects, table)
 	}
-	for _, protocol := range protocols {
-		objects = append(objects, protocol)
-	}
 	sorted := TopologicalSort(objects)
 	return sorted
 }
 
-func ConstructDependentObjectMetadataMap(functions MetadataMap, types MetadataMap, tables MetadataMap, protocols MetadataMap) MetadataMap {
+func ConstructFunctionAndTypeAndTableMetadataMap(functions MetadataMap, types MetadataMap, tables MetadataMap) MetadataMap {
 	metadataMap := make(MetadataMap, 0)
 	for k, v := range functions {
 		metadataMap[k] = v
@@ -51,9 +34,6 @@ func ConstructDependentObjectMetadataMap(functions MetadataMap, types MetadataMa
 		metadataMap[k] = v
 	}
 	for k, v := range tables {
-		metadataMap[k] = v
-	}
-	for k, v := range protocols {
 		metadataMap[k] = v
 	}
 	return metadataMap
@@ -88,10 +68,6 @@ func (t Type) FQN() string {
 	return utils.MakeFQN(t.Schema, t.Name)
 }
 
-func (p ExternalProtocol) FQN() string {
-	return p.Name
-}
-
 func (r Relation) Dependencies() []string {
 	return r.DependsUpon
 }
@@ -106,10 +82,6 @@ func (f Function) Dependencies() []string {
 
 func (t Type) Dependencies() []string {
 	return t.DependsUpon
-}
-
-func (p ExternalProtocol) Dependencies() []string {
-	return p.DependsUpon
 }
 
 func SortViews(views []View) []View {

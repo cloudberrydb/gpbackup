@@ -450,7 +450,7 @@ GRANT ALL ON FOREIGN SERVER foreignserver TO testrole;`)
 			structmatcher.ExpectStructsToMatch(&expected, result)
 		})
 	})
-	Describe("PrintDependentObjectStatements", func() {
+	Describe("PrintCreateDependentTypeAndFunctionAndTablesStatements", func() {
 		var (
 			objects      []backup.Sortable
 			metadataMap  backup.MetadataMap
@@ -464,12 +464,6 @@ GRANT ALL ON FOREIGN SERVER foreignserver TO testrole;`)
 				backup.Type{Oid: 3, Schema: "public", Name: "composite", Type: "c", Attributes: pq.StringArray{"\tfoo integer"}, Category: "U"},
 				backup.Type{Oid: 4, Schema: "public", Name: "domain", Type: "d", BaseType: "numeric", Category: "U"},
 				backup.Relation{Oid: 5, Schema: "public", Name: "relation"},
-				backup.ExternalProtocol{Oid: 6, Name: "ext_protocol", Trusted: true, ReadFunction: 2, WriteFunction: 1, Validator: 0,
-					FuncMap: map[uint32]string{
-						1: "public.write_to_s3",
-						2: "public.read_from_s3",
-					},
-				},
 			}
 			metadataMap = backup.MetadataMap{
 				1: backup.ObjectMetadata{Comment: "function"},
@@ -477,17 +471,16 @@ GRANT ALL ON FOREIGN SERVER foreignserver TO testrole;`)
 				3: backup.ObjectMetadata{Comment: "composite type"},
 				4: backup.ObjectMetadata{Comment: "domain"},
 				5: backup.ObjectMetadata{Comment: "relation"},
-				6: backup.ObjectMetadata{Comment: "protocol"},
 			}
 			tableDefsMap = map[uint32]backup.TableDefinition{
 				5: {DistPolicy: "DISTRIBUTED RANDOMLY", ColumnDefs: []backup.ColumnDefinition{}},
 			}
 		})
-		It("prints create statements for dependent types, functions, protocols, and tables (domain has a constraint)", func() {
+		It("prints create statements for dependent types, functions, and tables (domain has a constraint)", func() {
 			constraints := []backup.Constraint{
 				{Name: "check_constraint", ConDef: "CHECK (VALUE > 2)", OwningObject: "public.domain"},
 			}
-			backup.PrintDependentObjectStatements(backupfile, toc, objects, metadataMap, tableDefsMap, constraints)
+			backup.PrintCreateDependentTypeAndFunctionAndTablesStatements(backupfile, toc, objects, metadataMap, tableDefsMap, constraints)
 			testhelper.ExpectRegexp(buffer, `
 CREATE FUNCTION public.function(integer, integer) RETURNS integer AS
 $_$SELECT $1 + $2$_$
@@ -524,17 +517,11 @@ CREATE TABLE public.relation (
 
 
 COMMENT ON TABLE public.relation IS 'relation';
-
-
-CREATE TRUSTED PROTOCOL ext_protocol (readfunc = public.read_from_s3, writefunc = public.write_to_s3);
-
-
-COMMENT ON PROTOCOL ext_protocol IS 'protocol';
 `)
 		})
-		It("prints create statements for dependent types, functions, protocols, and tables (no domain constraint)", func() {
+		It("prints create statements for dependent types, functions, and tables (no domain constraint)", func() {
 			constraints := []backup.Constraint{}
-			backup.PrintDependentObjectStatements(backupfile, toc, objects, metadataMap, tableDefsMap, constraints)
+			backup.PrintCreateDependentTypeAndFunctionAndTablesStatements(backupfile, toc, objects, metadataMap, tableDefsMap, constraints)
 			testhelper.ExpectRegexp(buffer, `
 CREATE FUNCTION public.function(integer, integer) RETURNS integer AS
 $_$SELECT $1 + $2$_$
@@ -570,12 +557,6 @@ CREATE TABLE public.relation (
 
 
 COMMENT ON TABLE public.relation IS 'relation';
-
-
-CREATE TRUSTED PROTOCOL ext_protocol (readfunc = public.read_from_s3, writefunc = public.write_to_s3);
-
-
-COMMENT ON PROTOCOL ext_protocol IS 'protocol';
 `)
 		})
 	})

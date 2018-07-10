@@ -97,31 +97,21 @@ var _ = Describe("backup integration create statement tests", func() {
 			structmatcher.ExpectStructsToMatchExcluding(&extTable, &resultTableDef, "Oid")
 		})
 	})
-	Describe("PrintCreateExternalProtocolStatement", func() {
-		protocolReadOnly := backup.ExternalProtocol{Oid: 1, Name: "s3_read", Owner: "testrole", Trusted: true, ReadFunction: 2, WriteFunction: 0, Validator: 0,
-			FuncMap: map[uint32]string{
-				1: "public.write_to_s3",
-				2: "public.read_from_s3",
-			},
+	Describe("PrintCreateExternalProtocolStatements", func() {
+		funcInfoMap := map[uint32]backup.FunctionInfo{
+			1: {QualifiedName: "public.write_to_s3", Arguments: "", IsInternal: false},
+			2: {QualifiedName: "public.read_from_s3", Arguments: "", IsInternal: false},
 		}
-		protocolWriteOnly := backup.ExternalProtocol{Oid: 1, Name: "s3_write", Owner: "testrole", Trusted: false, ReadFunction: 0, WriteFunction: 1, Validator: 0,
-			FuncMap: map[uint32]string{
-				1: "public.write_to_s3",
-				2: "public.read_from_s3",
-			},
-		}
-		protocolReadWrite := backup.ExternalProtocol{Oid: 1, Name: "s3_read_write", Owner: "testrole", Trusted: false, ReadFunction: 2, WriteFunction: 1, Validator: 0,
-			FuncMap: map[uint32]string{
-				1: "public.write_to_s3",
-				2: "public.read_from_s3",
-			},
-		}
-		emptyMetadata := backup.ObjectMetadata{}
+		protocolReadOnly := backup.ExternalProtocol{Oid: 1, Name: "s3_read", Owner: "testrole", Trusted: true, ReadFunction: 2, WriteFunction: 0, Validator: 0}
+		protocolWriteOnly := backup.ExternalProtocol{Oid: 1, Name: "s3_write", Owner: "testrole", Trusted: false, ReadFunction: 0, WriteFunction: 1, Validator: 0}
+		protocolReadWrite := backup.ExternalProtocol{Oid: 1, Name: "s3_read_write", Owner: "testrole", Trusted: false, ReadFunction: 2, WriteFunction: 1, Validator: 0}
+		emptyMetadataMap := backup.MetadataMap{}
 
 		It("creates a trusted protocol with a read function, privileges, and an owner", func() {
-			protoMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{backup.ACL{Grantee: "testrole", Select: true, Insert: true}}, Owner: "testrole"}
+			externalProtocols := []backup.ExternalProtocol{protocolReadOnly}
+			protoMetadataMap := testutils.DefaultMetadataMap("PROTOCOL", true, true, false)
 
-			backup.PrintCreateExternalProtocolStatement(backupfile, toc, protocolReadOnly, protoMetadata)
+			backup.PrintCreateExternalProtocolStatements(backupfile, toc, externalProtocols, funcInfoMap, protoMetadataMap)
 
 			testhelper.AssertQueryRuns(connection, "CREATE OR REPLACE FUNCTION public.read_from_s3() RETURNS integer AS '$libdir/gps3ext.so', 's3_import' LANGUAGE C STABLE;")
 			defer testhelper.AssertQueryRuns(connection, "DROP FUNCTION public.read_from_s3()")
@@ -132,10 +122,12 @@ var _ = Describe("backup integration create statement tests", func() {
 			resultExternalProtocols := backup.GetExternalProtocols(connection)
 
 			Expect(len(resultExternalProtocols)).To(Equal(1))
-			structmatcher.ExpectStructsToMatchExcluding(&protocolReadOnly, &resultExternalProtocols[0], "Oid", "ReadFunction", "FuncMap")
+			structmatcher.ExpectStructsToMatchExcluding(&protocolReadOnly, &resultExternalProtocols[0], "Oid", "ReadFunction")
 		})
 		It("creates a protocol with a write function", func() {
-			backup.PrintCreateExternalProtocolStatement(backupfile, toc, protocolWriteOnly, emptyMetadata)
+			externalProtocols := []backup.ExternalProtocol{protocolWriteOnly}
+
+			backup.PrintCreateExternalProtocolStatements(backupfile, toc, externalProtocols, funcInfoMap, emptyMetadataMap)
 
 			testhelper.AssertQueryRuns(connection, "CREATE OR REPLACE FUNCTION public.write_to_s3() RETURNS integer AS '$libdir/gps3ext.so', 's3_export' LANGUAGE C STABLE;")
 			defer testhelper.AssertQueryRuns(connection, "DROP FUNCTION public.write_to_s3()")
@@ -146,10 +138,12 @@ var _ = Describe("backup integration create statement tests", func() {
 			resultExternalProtocols := backup.GetExternalProtocols(connection)
 
 			Expect(len(resultExternalProtocols)).To(Equal(1))
-			structmatcher.ExpectStructsToMatchExcluding(&protocolWriteOnly, &resultExternalProtocols[0], "Oid", "WriteFunction", "FuncMap")
+			structmatcher.ExpectStructsToMatchExcluding(&protocolWriteOnly, &resultExternalProtocols[0], "Oid", "WriteFunction")
 		})
 		It("creates a protocol with a read and write function", func() {
-			backup.PrintCreateExternalProtocolStatement(backupfile, toc, protocolReadWrite, emptyMetadata)
+			externalProtocols := []backup.ExternalProtocol{protocolReadWrite}
+
+			backup.PrintCreateExternalProtocolStatements(backupfile, toc, externalProtocols, funcInfoMap, emptyMetadataMap)
 
 			testhelper.AssertQueryRuns(connection, "CREATE OR REPLACE FUNCTION public.read_from_s3() RETURNS integer AS '$libdir/gps3ext.so', 's3_import' LANGUAGE C STABLE;")
 			defer testhelper.AssertQueryRuns(connection, "DROP FUNCTION public.read_from_s3()")
@@ -163,7 +157,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			resultExternalProtocols := backup.GetExternalProtocols(connection)
 
 			Expect(len(resultExternalProtocols)).To(Equal(1))
-			structmatcher.ExpectStructsToMatchExcluding(&protocolReadWrite, &resultExternalProtocols[0], "Oid", "ReadFunction", "WriteFunction", "FuncMap")
+			structmatcher.ExpectStructsToMatchExcluding(&protocolReadWrite, &resultExternalProtocols[0], "Oid", "ReadFunction", "WriteFunction")
 		})
 	})
 	Describe("PrintExchangeExternalPartitionStatements", func() {
