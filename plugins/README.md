@@ -202,8 +202,6 @@ Called once for each file created by gpbackup after the files have been written 
 
 [filepath_to_back_up](#filepath)
 
-[scope](#scope)
-
 **Return Value:** None
 
 **Example:**
