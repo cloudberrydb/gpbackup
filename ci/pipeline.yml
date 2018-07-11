@@ -617,6 +617,8 @@ jobs:
       inputs:
       - name: gpbackup
         path: go/src/github.com/greenplum-db/gpbackup
+      - name: ccp_src
+      - name: cluster_env_files
       run:
         path: "sh"
         args:
