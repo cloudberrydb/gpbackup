@@ -81,10 +81,10 @@ var _ = Describe("backup integration create statement tests", func() {
 			structmatcher.ExpectStructsToMatchExcluding(&uniqueConstraint, &resultConstraints[0], "Oid")
 		})
 		It("creates a primary key constraint", func() {
-			constraints := []backup.Constraint{}
+			constraints := []backup.Constraint{pkConstraint}
 			backup.PrintConstraintStatements(backupfile, toc, constraints, conMetadataMap)
 
-			testhelper.AssertQueryRuns(connection, "CREATE TABLE public.constraints_other_table(b text PRIMARY KEY)")
+			testhelper.AssertQueryRuns(connection, "CREATE TABLE public.constraints_other_table(b text)")
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.constraints_other_table CASCADE")
 			testhelper.AssertQueryRuns(connection, buffer.String())
 
