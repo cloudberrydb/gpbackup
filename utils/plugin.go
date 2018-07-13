@@ -91,43 +91,44 @@ func (plugin *PluginConfig) CheckPluginExistsOnAllHosts(c *cluster.Cluster) {
 
 /*-----------------------------Hooks------------------------------------------*/
 
-func (plugin *PluginConfig) SetupPluginForBackup(c *cluster.Cluster, configPath string, backupDir string) {
+func (plugin *PluginConfig) SetupPluginForBackup(c *cluster.Cluster, fpInfo FilePathInfo) {
 	const command = "setup_plugin_for_backup"
 	const verboseCommandMsg = "Running plugin setup for backup on %s"
-	plugin.executeHook(c, verboseCommandMsg, command, configPath, backupDir, false)
+	plugin.executeHook(c, verboseCommandMsg, command, fpInfo, false)
 }
 
-func (plugin *PluginConfig) SetupPluginForRestore(c *cluster.Cluster, configPath string, backupDir string) {
+func (plugin *PluginConfig) SetupPluginForRestore(c *cluster.Cluster, fpInfo FilePathInfo) {
 	const command = "setup_plugin_for_restore"
 	const verboseCommandMsg = "Running plugin setup for restore on %s"
-	plugin.executeHook(c, verboseCommandMsg, command, configPath, backupDir, false)
+	plugin.executeHook(c, verboseCommandMsg, command, fpInfo, false)
 }
 
-func (plugin *PluginConfig) CleanupPluginForBackup(c *cluster.Cluster, configPath string, backupDir string) {
+func (plugin *PluginConfig) CleanupPluginForBackup(c *cluster.Cluster, fpInfo FilePathInfo) {
 	const command = "cleanup_plugin_for_backup"
 	const verboseCommandMsg = "Running plugin cleanup for backup on %s"
-	plugin.executeHook(c, verboseCommandMsg, command, configPath, backupDir, true)
+	plugin.executeHook(c, verboseCommandMsg, command, fpInfo, true)
 }
 
-func (plugin *PluginConfig) CleanupPluginForRestore(c *cluster.Cluster, configPath string, backupDir string) {
+func (plugin *PluginConfig) CleanupPluginForRestore(c *cluster.Cluster, fpInfo FilePathInfo) {
 	const command = "cleanup_plugin_for_restore"
 	const verboseCommandMsg = "Running plugin cleanup for restore on %s"
-	plugin.executeHook(c, verboseCommandMsg, command, configPath, backupDir, true)
+	plugin.executeHook(c, verboseCommandMsg, command, fpInfo, true)
 }
 
-func (plugin *PluginConfig) executeHook(c *cluster.Cluster, verboseCommandMsg,
-	command, configPath, backupDir string, noFatal bool) {
+func (plugin *PluginConfig) executeHook(c *cluster.Cluster, verboseCommandMsg string,
+	command string, fpInfo FilePathInfo, noFatal bool) {
 	// Execute command once on master
 	scope := Master
-	hookFunc := plugin.buildHookFunc(command, configPath, backupDir, scope)
+	hookFunc := plugin.buildHookFunc(command, fpInfo, scope)
 	verboseErrorMsg, errorMsgFunc := plugin.buildHookErrorMsgAndFunc(command, scope)
+	masterContentID := -1
 	masterOutput, masterErr := c.ExecuteLocalCommand(plugin.buildHookString(command,
-		configPath, backupDir, scope))
+		fpInfo, scope, masterContentID))
 	gplog.FatalOnError(masterErr, masterOutput)
 
 	// Execute command once on each segment host
 	scope = SegmentHost
-	hookFunc = plugin.buildHookFunc(command, configPath, backupDir, scope)
+	hookFunc = plugin.buildHookFunc(command, fpInfo, scope)
 	verboseErrorMsg, errorMsgFunc = plugin.buildHookErrorMsgAndFunc(command, scope)
 	verboseCommandHostMasterMsg := fmt.Sprintf(verboseCommandMsg, "segment hosts")
 	remoteOutput := c.GenerateAndExecuteCommand(verboseCommandHostMasterMsg, hookFunc, cluster.ON_HOSTS)
@@ -135,24 +136,25 @@ func (plugin *PluginConfig) executeHook(c *cluster.Cluster, verboseCommandMsg,
 
 	// Execute command once for each segment
 	scope = Segment
-	hookFunc = plugin.buildHookFunc(command, configPath, backupDir, scope)
+	hookFunc = plugin.buildHookFunc(command, fpInfo, scope)
 	verboseErrorMsg, errorMsgFunc = plugin.buildHookErrorMsgAndFunc(command, scope)
 	verboseCommandSegMsg := fmt.Sprintf(verboseCommandMsg, "segments")
 	remoteOutput = c.GenerateAndExecuteCommand(verboseCommandSegMsg, hookFunc, cluster.ON_SEGMENTS)
 	c.CheckClusterError(remoteOutput, verboseErrorMsg, errorMsgFunc, noFatal)
 }
 
-func (plugin *PluginConfig) buildHookFunc(command, configPath, backupDir string,
-	scope PluginScope) func(int) string {
+func (plugin *PluginConfig) buildHookFunc(command string,
+	fpInfo FilePathInfo, scope PluginScope) func(int) string {
 	return func(contentID int) string {
-		return plugin.buildHookString(command, configPath, backupDir, scope)
+		return plugin.buildHookString(command, fpInfo, scope, contentID)
 	}
 }
 
-func (plugin *PluginConfig) buildHookString(command, configPath,
-	backupDir string, scope PluginScope) string {
+func (plugin *PluginConfig) buildHookString(command string,
+	fpInfo FilePathInfo, scope PluginScope, contentID int) string {
+	backupDir := fpInfo.GetDirForContent(contentID)
 	return fmt.Sprintf("source %s/greenplum_path.sh && %s %s %s %s %s",
-		operating.System.Getenv("GPHOME"), plugin.ExecutablePath, command, configPath, backupDir, scope)
+		operating.System.Getenv("GPHOME"), plugin.ExecutablePath, command, plugin.ConfigPath, backupDir, scope)
 }
 
 func (plugin *PluginConfig) buildHookErrorMsgAndFunc(command string,
