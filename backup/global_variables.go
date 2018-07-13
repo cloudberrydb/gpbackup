@@ -54,6 +54,7 @@ const (
 	INCLUDE_RELATION      = "include-table"
 	INCLUDE_RELATION_FILE = "include-table-file"
 	INCLUDE_SCHEMA        = "include-schema"
+	INCREMENTAL           = "incremental"
 	JOBS                  = "jobs"
 	LEAF_PARTITION_DATA   = "leaf-partition-data"
 	METADATA_ONLY         = "metadata-only"

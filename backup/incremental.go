@@ -31,7 +31,7 @@ func GetLastBackupTOC() *utils.TOC {
 	// TODO: get last backup timestamp and pass to NewFilePathInfo
 	// TODO: handle case for first backup
 	lastBackupFPInfo := utils.NewFilePathInfo(globalCluster, globalFPInfo.UserSpecifiedBackupDir,
-		*incremental, globalFPInfo.UserSpecifiedSegPrefix)
+		MustGetFlagString(INCREMENTAL), globalFPInfo.UserSpecifiedSegPrefix)
 	lastBackupTOCFilePath := lastBackupFPInfo.GetTOCFilePath()
 	lastBackupTOC := utils.NewTOC(lastBackupTOCFilePath)
 
@@ -40,7 +40,7 @@ func GetLastBackupTOC() *utils.TOC {
 
 func CreateRestorePlan(backupSetTables []Relation, dataTables []Relation) {
 	restorePlan := make([]utils.RestorePlanEntry, 0)
-	if *incremental != "" {
+	if MustGetFlagString(INCREMENTAL) != "" {
 		restorePlan = GetLastBackupRestorePlan()
 	}
 
@@ -90,7 +90,7 @@ func GetLastBackupRestorePlan() []utils.RestorePlanEntry {
 	// TODO: get last backup TS and pass to NewFilePathInfo
 	// TODO: handle case for first backup
 	lastBackupFPInfo := utils.NewFilePathInfo(globalCluster, globalFPInfo.UserSpecifiedBackupDir,
-		*incremental, globalFPInfo.UserSpecifiedSegPrefix)
+		MustGetFlagString(INCREMENTAL), globalFPInfo.UserSpecifiedSegPrefix)
 	lastBackupConfigFile := lastBackupFPInfo.GetConfigFilePath()
 	lastBackupRestorePlan := utils.ReadConfigFile(lastBackupConfigFile).RestorePlan
 
