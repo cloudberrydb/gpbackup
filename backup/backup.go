@@ -2,20 +2,20 @@ package backup
 
 import (
 	"fmt"
-	"os"
-	"sync"
-	"time"
-
 	"github.com/greenplum-db/gp-common-go-libs/cluster"
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpbackup/utils"
 	"github.com/spf13/cobra"
+	"os"
+	"sync"
+	"time"
 )
 
 /*
  * We define and initialize flags separately to avoid import conflicts in tests.
  * The flag variables, and setter functions for them, are in global_variables.go.
  */
+
 func initializeFlags(cmd *cobra.Command) {
 	cmd.Flags().String(BACKUP_DIR, "", "The absolute path of the directory to which all backup files will be written")
 	cmd.Flags().Int(COMPRESSION_LEVEL, 0, "Level of compression to use during data backup. Valid values are between 1 and 9.")
@@ -149,6 +149,9 @@ func DoBackup() {
 			pluginConfig.BackupFile(globalFPInfo.GetStatisticsFilePath())
 		}
 	}
+
+	newHistoryEntry := HistoryEntryFromFlagSet(globalFPInfo.Timestamp, cmdFlags)
+	WriteBackupHistory(globalFPInfo.GetBackupHistoryFilePath(), newHistoryEntry)
 }
 
 func backupGlobal(metadataFile *utils.FileWithByteCount) {

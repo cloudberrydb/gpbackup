@@ -46,6 +46,7 @@ var _ = BeforeSuite(func() {
 var _ = BeforeEach(func() {
 	cmdFlags = pflag.NewFlagSet("gpbackup", pflag.ExitOnError)
 
+	cmdFlags.String(backup.DBNAME, "", "")
 	cmdFlags.Bool(backup.SINGLE_DATA_FILE, false, "")
 	cmdFlags.Bool(backup.LEAF_PARTITION_DATA, false, "")
 	cmdFlags.StringSlice(backup.INCLUDE_SCHEMA, []string{}, "")

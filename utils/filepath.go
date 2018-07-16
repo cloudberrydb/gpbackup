@@ -98,6 +98,10 @@ func (backupFPInfo *FilePathInfo) GetBackupFilePath(filetype string) string {
 	return path.Join(backupFPInfo.GetDirForContent(-1), fmt.Sprintf("gpbackup_%s_%s", backupFPInfo.Timestamp, metadataFilenameMap[filetype]))
 }
 
+func (backupFPInfo *FilePathInfo) GetBackupHistoryFilePath() string {
+	return path.Join(operating.System.Getenv("MASTER_DATA_DIRECTORY"), "backup_history.yaml")
+}
+
 func (backupFPInfo *FilePathInfo) GetMetadataFilePath() string {
 	return backupFPInfo.GetBackupFilePath("metadata")
 }
