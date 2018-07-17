@@ -1,7 +1,6 @@
 package backup
 
 import (
-	"fmt"
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
@@ -11,16 +10,12 @@ func FilterTablesForIncremental(lastBackupTOC, currentTOC *utils.TOC, tables []R
 		currentAOEntry, isAOTable := currentTOC.IncrementalMetadata.AO[table.ToString()]
 		if !isAOTable {
 			filteredTables = append(filteredTables, table)
-			fmt.Println(table.ToString(), "is a heap table")
 			continue
 		}
 		previousAOEntry := lastBackupTOC.IncrementalMetadata.AO[table.ToString()]
 
 		if previousAOEntry.Modcount != currentAOEntry.Modcount || previousAOEntry.LastDDLTimestamp != currentAOEntry.LastDDLTimestamp {
 			filteredTables = append(filteredTables, table)
-			fmt.Println(table.ToString(), "has changed")
-		} else {
-			fmt.Println(table.ToString(), "has not changed")
 		}
 	}
 
