@@ -7,6 +7,7 @@ import (
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 	"github.com/greenplum-db/gpbackup/utils"
 
+	"github.com/nightlyone/lockfile"
 	"github.com/spf13/pflag"
 )
 
@@ -28,6 +29,7 @@ var (
 	pluginConfig   *utils.PluginConfig
 	version        string
 	wasTerminated  bool
+	backupLockFile lockfile.Lockfile
 
 	/*
 	 * Used for synchronizing DoCleanup.  In DoInit() we increment the group

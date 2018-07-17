@@ -64,7 +64,7 @@ func DoFlagValidation(cmd *cobra.Command) {
 func DoSetup() {
 	SetLoggerVerbosity()
 	timestamp := utils.CurrentTimestamp()
-	utils.CreateBackupLockFile(timestamp)
+	CreateBackupLockFile(timestamp)
 
 	gplog.Info("Starting backup of database %s", MustGetFlagString(DBNAME))
 	InitializeConnectionPool()
@@ -365,10 +365,9 @@ func DoTeardown() {
 		configFilename := globalFPInfo.GetConfigFilePath()
 
 		time.Sleep(time.Second) // We sleep for 1 second to ensure multiple backups do not start within the same second.
-		timestampLockFile := fmt.Sprintf("/tmp/%s.lck", globalFPInfo.Timestamp)
-		err := os.Remove(timestampLockFile)
+		err := backupLockFile.Unlock()
 		if err != nil {
-			gplog.Warn("Failed to remove lock file %s.", timestampLockFile)
+			gplog.Warn("Failed to remove lock file %s.", backupLockFile)
 		}
 
 		backupReport.ConstructBackupParamsString()

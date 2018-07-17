@@ -8,14 +8,12 @@ package utils
 import (
 	"fmt"
 	"io"
-	"os"
 	"regexp"
 	"strings"
 
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gp-common-go-libs/iohelper"
 	"github.com/greenplum-db/gp-common-go-libs/operating"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -46,14 +44,6 @@ func EscapeSingleQuotes(str string) string {
 /*
  * Generic file/directory manipulation functions
  */
-
-func CreateBackupLockFile(timestamp string) {
-	timestampLockFile := fmt.Sprintf("/tmp/%s.lck", timestamp)
-	_, err := operating.System.OpenFileWrite(timestampLockFile, os.O_CREATE|os.O_EXCL, 0644)
-	if err != nil {
-		gplog.Fatal(errors.Errorf("A backup with timestamp %s is already in progress. Wait 1 second and try the backup again.", timestamp), "")
-	}
-}
 
 func GetUserAndHostInfo() (string, string, string) {
 	currentUser, _ := operating.System.CurrentUser()

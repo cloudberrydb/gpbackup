@@ -9,6 +9,8 @@ import (
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gp-common-go-libs/iohelper"
 	"github.com/greenplum-db/gpbackup/utils"
+	"github.com/nightlyone/lockfile"
+	"github.com/pkg/errors"
 )
 
 /*
@@ -95,6 +97,17 @@ func InitializeFilterLists() {
 		includeRelations := iohelper.MustReadLinesFromFile(MustGetFlagString(INCLUDE_RELATION_FILE))
 		err := cmdFlags.Set(INCLUDE_RELATION, strings.Join(includeRelations, ","))
 		gplog.FatalOnError(err)
+	}
+}
+
+func CreateBackupLockFile(timestamp string) {
+	var err error
+	timestampLockFile := fmt.Sprintf("/tmp/%s.lck", timestamp)
+	backupLockFile, err = lockfile.New(timestampLockFile)
+	gplog.FatalOnError(err)
+	err = backupLockFile.TryLock()
+	if err != nil {
+		gplog.Fatal(errors.Errorf("A backup with timestamp %s is already in progress. Wait 1 second and try the backup again.", timestamp), "")
 	}
 }
 
