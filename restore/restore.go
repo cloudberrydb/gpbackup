@@ -13,6 +13,7 @@ import (
 	"gopkg.in/cheggaaa/pb.v1"
 
 	"github.com/pkg/errors"
+	"github.com/spf13/pflag"
 )
 
 /*
@@ -20,32 +21,35 @@ import (
  * The flag variables, and setter functions for them, are in global_variables.go.
  */
 func initializeFlags(cmd *cobra.Command) {
-	cmd.Flags().String(BACKUP_DIR, "", "The absolute path of the directory in which the backup files to be restored are located")
-	cmd.Flags().Bool(CREATE_DB, false, "Create the database before metadata restore")
-	cmd.Flags().Bool(DATA_ONLY, false, "Only restore data, do not restore metadata")
-	cmd.Flags().Bool(DEBUG, false, "Print verbose and debug log messages")
-	cmd.Flags().StringSlice(EXCLUDE_SCHEMA, []string{}, "Restore all metadata except objects in the specified schema(s). --exclude-schema can be specified multiple times.")
-	cmd.Flags().StringSlice(EXCLUDE_RELATION, []string{}, "Restore all metadata except the specified relation(s). --exclude-table can be specified multiple times.")
-	cmd.Flags().String(EXCLUDE_RELATION_FILE, "", "A file containing a list of fully-qualified relation(s) that will not be restored")
-	cmd.Flags().Bool("help", false, "Help for gprestore")
-	cmd.Flags().StringSlice(INCLUDE_SCHEMA, []string{}, "Restore only the specified schema(s). --include-schema can be specified multiple times.")
-	cmd.Flags().StringSlice(INCLUDE_RELATION, []string{}, "Restore only the specified relation(s). --include-table can be specified multiple times.")
-	cmd.Flags().String(INCLUDE_RELATION_FILE, "", "A file containing a list of fully-qualified relation(s) that will be restored")
-	cmd.Flags().Bool(METADATA_ONLY, false, "Only restore metadata, do not restore data")
-	cmd.Flags().Int(JOBS, 1, "Number of parallel connections to use when restoring table data and post-data")
-	cmd.Flags().Bool(ON_ERROR_CONTINUE, false, "Log errors and continue restore, instead of exiting on first error")
-	cmd.Flags().String(PLUGIN_CONFIG, "", "The configuration file to use for a plugin")
-	cmd.Flags().Bool("version", false, "Print version number and exit")
-	cmd.Flags().Bool(QUIET, false, "Suppress non-warning, non-error log messages")
-	cmd.Flags().String(REDIRECT_DB, "", "Restore to the specified database instead of the database that was backed up")
-	cmd.Flags().Bool(WITH_GLOBALS, false, "Restore global metadata")
-	cmd.Flags().String(TIMESTAMP, "", "The timestamp to be restored, in the format YYYYMMDDHHMMSS")
-	cmd.Flags().Bool(VERBOSE, false, "Print verbose log messages")
-	cmd.Flags().Bool(WITH_STATS, false, "Restore query plan statistics")
+	SetFlagDefaults(cmd.Flags())
 
 	_ = cmd.MarkFlagRequired(TIMESTAMP)
 
 	cmdFlags = cmd.Flags()
+}
+func SetFlagDefaults(flagSet *pflag.FlagSet) {
+	flagSet.String(BACKUP_DIR, "", "The absolute path of the directory in which the backup files to be restored are located")
+	flagSet.Bool(CREATE_DB, false, "Create the database before metadata restore")
+	flagSet.Bool(DATA_ONLY, false, "Only restore data, do not restore metadata")
+	flagSet.Bool(DEBUG, false, "Print verbose and debug log messages")
+	flagSet.StringSlice(EXCLUDE_SCHEMA, []string{}, "Restore all metadata except objects in the specified schema(s). --exclude-schema can be specified multiple times.")
+	flagSet.StringSlice(EXCLUDE_RELATION, []string{}, "Restore all metadata except the specified relation(s). --exclude-table can be specified multiple times.")
+	flagSet.String(EXCLUDE_RELATION_FILE, "", "A file containing a list of fully-qualified relation(s) that will not be restored")
+	flagSet.Bool("help", false, "Help for gprestore")
+	flagSet.StringSlice(INCLUDE_SCHEMA, []string{}, "Restore only the specified schema(s). --include-schema can be specified multiple times.")
+	flagSet.StringSlice(INCLUDE_RELATION, []string{}, "Restore only the specified relation(s). --include-table can be specified multiple times.")
+	flagSet.String(INCLUDE_RELATION_FILE, "", "A file containing a list of fully-qualified relation(s) that will be restored")
+	flagSet.Bool(METADATA_ONLY, false, "Only restore metadata, do not restore data")
+	flagSet.Int(JOBS, 1, "Number of parallel connections to use when restoring table data and post-data")
+	flagSet.Bool(ON_ERROR_CONTINUE, false, "Log errors and continue restore, instead of exiting on first error")
+	flagSet.String(PLUGIN_CONFIG, "", "The configuration file to use for a plugin")
+	flagSet.Bool("version", false, "Print version number and exit")
+	flagSet.Bool(QUIET, false, "Suppress non-warning, non-error log messages")
+	flagSet.String(REDIRECT_DB, "", "Restore to the specified database instead of the database that was backed up")
+	flagSet.Bool(WITH_GLOBALS, false, "Restore global metadata")
+	flagSet.String(TIMESTAMP, "", "The timestamp to be restored, in the format YYYYMMDDHHMMSS")
+	flagSet.Bool(VERBOSE, false, "Print verbose log messages")
+	flagSet.Bool(WITH_STATS, false, "Restore query plan statistics")
 }
 
 // This function handles setup that can be done before parsing flags.

@@ -6,6 +6,7 @@ import (
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpbackup/utils"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"os"
 	"sync"
 	"time"
@@ -17,34 +18,38 @@ import (
  */
 
 func initializeFlags(cmd *cobra.Command) {
-	cmd.Flags().String(BACKUP_DIR, "", "The absolute path of the directory to which all backup files will be written")
-	cmd.Flags().Int(COMPRESSION_LEVEL, 0, "Level of compression to use during data backup. Valid values are between 1 and 9.")
-	cmd.Flags().Bool(DATA_ONLY, false, "Only back up data, do not back up metadata")
-	cmd.Flags().String(DBNAME, "", "The database to be backed up")
-	cmd.Flags().Bool(DEBUG, false, "Print verbose and debug log messages")
-	cmd.Flags().StringSlice(EXCLUDE_SCHEMA, []string{}, "Back up all metadata except objects in the specified schema(s). --exclude-schema can be specified multiple times.")
-	cmd.Flags().StringSlice(EXCLUDE_RELATION, []string{}, "Back up all metadata except the specified table(s). --exclude-table can be specified multiple times.")
-	cmd.Flags().String(EXCLUDE_RELATION_FILE, "", "A file containing a list of fully-qualified tables to be excluded from the backup")
-	cmd.Flags().String(FROM_TIMESTAMP, "", "A timestamp to use to base the current incremental backup off")
-	cmd.Flags().Bool("help", false, "Help for gpbackup")
-	cmd.Flags().StringSlice(INCLUDE_SCHEMA, []string{}, "Back up only the specified schema(s). --include-schema can be specified multiple times.")
-	cmd.Flags().StringSlice(INCLUDE_RELATION, []string{}, "Back up only the specified table(s). --include-table can be specified multiple times.")
-	cmd.Flags().String(INCLUDE_RELATION_FILE, "", "A file containing a list of fully-qualified tables to be included in the backup")
-	cmd.Flags().Bool(INCREMENTAL, false, "Only back up data for AO tables that have been modified since the last backup")
-	cmd.Flags().Int(JOBS, 1, "The number of parallel connections to use when backing up data")
-	cmd.Flags().Bool(LEAF_PARTITION_DATA, false, "For partition tables, create one data file per leaf partition instead of one data file for the whole table")
-	cmd.Flags().Bool(METADATA_ONLY, false, "Only back up metadata, do not back up data")
-	cmd.Flags().Bool(NO_COMPRESSION, false, "Disable compression of data files")
-	cmd.Flags().String(PLUGIN_CONFIG, "", "The configuration file to use for a plugin")
-	cmd.Flags().Bool("version", false, "Print version number and exit")
-	cmd.Flags().Bool(QUIET, false, "Suppress non-warning, non-error log messages")
-	cmd.Flags().Bool(SINGLE_DATA_FILE, false, "Back up all data to a single file instead of one per table")
-	cmd.Flags().Bool(VERBOSE, false, "Print verbose log messages")
-	cmd.Flags().Bool(WITH_STATS, false, "Back up query plan statistics")
+	SetFlagDefaults(cmd.Flags())
 
 	_ = cmd.MarkFlagRequired(DBNAME)
 
 	cmdFlags = cmd.Flags()
+}
+
+func SetFlagDefaults(flagSet *pflag.FlagSet) {
+	flagSet.String(BACKUP_DIR, "", "The absolute path of the directory to which all backup files will be written")
+	flagSet.Int(COMPRESSION_LEVEL, 0, "Level of compression to use during data backup. Valid values are between 1 and 9.")
+	flagSet.Bool(DATA_ONLY, false, "Only back up data, do not back up metadata")
+	flagSet.String(DBNAME, "", "The database to be backed up")
+	flagSet.Bool(DEBUG, false, "Print verbose and debug log messages")
+	flagSet.StringSlice(EXCLUDE_SCHEMA, []string{}, "Back up all metadata except objects in the specified schema(s). --exclude-schema can be specified multiple times.")
+	flagSet.StringSlice(EXCLUDE_RELATION, []string{}, "Back up all metadata except the specified table(s). --exclude-table can be specified multiple times.")
+	flagSet.String(EXCLUDE_RELATION_FILE, "", "A file containing a list of fully-qualified tables to be excluded from the backup")
+	flagSet.String(FROM_TIMESTAMP, "", "A timestamp to use to base the current incremental backup off")
+	flagSet.Bool("help", false, "Help for gpbackup")
+	flagSet.StringSlice(INCLUDE_SCHEMA, []string{}, "Back up only the specified schema(s). --include-schema can be specified multiple times.")
+	flagSet.StringSlice(INCLUDE_RELATION, []string{}, "Back up only the specified table(s). --include-table can be specified multiple times.")
+	flagSet.String(INCLUDE_RELATION_FILE, "", "A file containing a list of fully-qualified tables to be included in the backup")
+	flagSet.Bool(INCREMENTAL, false, "Only back up data for AO tables that have been modified since the last backup")
+	flagSet.Int(JOBS, 1, "The number of parallel connections to use when backing up data")
+	flagSet.Bool(LEAF_PARTITION_DATA, false, "For partition tables, create one data file per leaf partition instead of one data file for the whole table")
+	flagSet.Bool(METADATA_ONLY, false, "Only back up metadata, do not back up data")
+	flagSet.Bool(NO_COMPRESSION, false, "Disable compression of data files")
+	flagSet.String(PLUGIN_CONFIG, "", "The configuration file to use for a plugin")
+	flagSet.Bool("version", false, "Print version number and exit")
+	flagSet.Bool(QUIET, false, "Suppress non-warning, non-error log messages")
+	flagSet.Bool(SINGLE_DATA_FILE, false, "Back up all data to a single file instead of one per table")
+	flagSet.Bool(VERBOSE, false, "Print verbose log messages")
+	flagSet.Bool(WITH_STATS, false, "Back up query plan statistics")
 }
 
 // This function handles setup that can be done before parsing flags.
@@ -95,6 +100,11 @@ func DoSetup() {
 func DoBackup() {
 	LogBackupInfo()
 
+	var lastBackupTimestamp string
+	if MustGetFlagBool(INCREMENTAL) {
+		lastBackupTimestamp = GetLatestMatchingBackupTimestamp()
+	}
+
 	objectCounts = make(map[string]int, 0)
 
 	metadataTables, dataTables, tableDefs := RetrieveAndProcessTables()
@@ -124,10 +134,9 @@ func DoBackup() {
 		backupSetTables := dataTables
 
 		lastBackupRestorePlan := make([]utils.RestorePlanEntry, 0)
-		if MustGetFlagBool(INCREMENTAL) {
-			lastBackupTimestamp := GetLastBackupTimestamp()
-
+		if lastBackupTimestamp != "" {
 			lastBackupTOC := GetLastBackupTOC(lastBackupTimestamp)
+			gplog.Info("Basing incremental backup off of backup with timestamp = %s", lastBackupTimestamp)
 			backupSetTables = FilterTablesForIncremental(lastBackupTOC, globalTOC, dataTables)
 			lastBackupRestorePlan = GetLastBackupRestorePlan(lastBackupTimestamp)
 		}

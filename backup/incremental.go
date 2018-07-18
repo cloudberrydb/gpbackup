@@ -1,7 +1,9 @@
 package backup
 
 import (
+	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpbackup/utils"
+	"github.com/pkg/errors"
 )
 
 func FilterTablesForIncremental(lastBackupTOC, currentTOC *utils.TOC, tables []Relation) []Relation {
@@ -22,11 +24,38 @@ func FilterTablesForIncremental(lastBackupTOC, currentTOC *utils.TOC, tables []R
 	return filteredTables
 }
 
-func GetLastBackupTimestamp() string {
+func GetLatestMatchingBackupTimestamp() string {
 	if fromTimestamp := MustGetFlagString(FROM_TIMESTAMP); fromTimestamp != "" {
 		return fromTimestamp
 	}
-	return ""
+
+	history := NewHistory(globalFPInfo.GetBackupHistoryFilePath())
+	latestMatchingBackupHistoryEntry := GetLatestMatchingHistoryEntry(history)
+	if latestMatchingBackupHistoryEntry == nil {
+		gplog.FatalOnError(errors.Errorf("There was no matching previous backup found with the flags provided. " +
+			"Please take a full backup."))
+	}
+
+	return latestMatchingBackupHistoryEntry.Timestamp
+}
+
+func GetLatestMatchingHistoryEntry(history *History) *HistoryEntry {
+	for _, historyEntry := range history.Entries {
+		if historyEntry.BackupDir == MustGetFlagString(BACKUP_DIR) &&
+			historyEntry.Dbname == MustGetFlagString(DBNAME) &&
+			historyEntry.LeafPartitionData == MustGetFlagBool(LEAF_PARTITION_DATA) &&
+			historyEntry.PluginConfigFile == MustGetFlagString(PLUGIN_CONFIG) &&
+			historyEntry.SingleDataFile == MustGetFlagBool(SINGLE_DATA_FILE) &&
+			historyEntry.NoCompression == MustGetFlagBool(NO_COMPRESSION) &&
+			utils.NewIncludeSet(historyEntry.IncludeRelations).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(INCLUDE_RELATION))) &&
+			utils.NewIncludeSet(historyEntry.IncludeSchemas).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(INCLUDE_SCHEMA))) &&
+			utils.NewIncludeSet(historyEntry.ExcludeRelations).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(EXCLUDE_RELATION))) &&
+			utils.NewIncludeSet(historyEntry.ExcludeSchemas).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(EXCLUDE_SCHEMA))) {
+			return &historyEntry
+		}
+	}
+
+	return nil
 }
 
 func GetLastBackupTOC(lastBackupTimestamp string) *utils.TOC {

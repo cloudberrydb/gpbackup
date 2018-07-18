@@ -96,4 +96,25 @@ var _ = Describe("utils/set tests", func() {
 			Expect(inc.AlwaysMatchesFilter).To(BeTrue())
 		})
 	})
+	Describe("Equals", func() {
+		set1 := utils.NewIncludeSet([]string{"foo", "bar"})
+		set1Copy := utils.NewIncludeSet([]string{"foo", "bar"})
+		set2 := utils.NewIncludeSet([]string{"foo"})
+		set3 := utils.NewIncludeSet([]string{"foo", "baz"})
+
+		Context("sets have different elements", func() {
+			It("returns false if sets have different number of elements", func() {
+				Expect(set1.Equals(set2)).To(BeFalse())
+			})
+			It("returns false if sets have different elements", func() {
+				Expect(set1.Equals(set3)).To(BeFalse())
+			})
+		})
+		It("returns true if sets have the same elements", func() {
+			Expect(set1.Equals(set1Copy)).To(BeTrue())
+		})
+		It("returns true if both sets are empty", func() {
+			Expect(utils.NewIncludeSet([]string{}).Equals(utils.NewIncludeSet([]string{}))).To(BeTrue())
+		})
+	})
 })

@@ -48,7 +48,7 @@ var _ bool = Describe("backup/history tests", func() {
 
 				resultHistory := backup.NewHistory(historyFilePath)
 
-				structmatcher.ExpectStructsToMatch(&backup.History{}, resultHistory)
+				structmatcher.ExpectStructsToMatch(&backup.History{Entries: []backup.HistoryEntry{}}, resultHistory)
 
 				operating.System.Stat = os.Stat
 			})

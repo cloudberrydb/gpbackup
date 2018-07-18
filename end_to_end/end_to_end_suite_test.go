@@ -452,12 +452,33 @@ var _ = Describe("backup end to end integration tests", func() {
 				testhelper.AssertQueryRuns(backupConn, "INSERT into schema2.ao1 values(1001)")
 				defer testhelper.AssertQueryRuns(backupConn, "DELETE from schema2.ao1 where i=1001")
 				incremental1Timestamp := gpbackup(gpbackupPath, backupHelperPath,
-					"--incremental", "--from-timestamp", fullBackupTimestamp)
+					"--incremental", "--leaf-partition-data", "--from-timestamp", fullBackupTimestamp)
 
 				testhelper.AssertQueryRuns(backupConn, "INSERT into schema2.ao1 values(1002)")
 				defer testhelper.AssertQueryRuns(backupConn, "DELETE from schema2.ao1 where i=1002")
 				incremental2Timestamp := gpbackup(gpbackupPath, backupHelperPath,
-					"--incremental", "--from-timestamp", incremental1Timestamp)
+					"--incremental", "--leaf-partition-data", "--from-timestamp", incremental1Timestamp)
+
+				gprestore(gprestorePath, restoreHelperPath, incremental2Timestamp, "--redirect-db", "restoredb")
+
+				assertRelationsCreated(restoreConn, 36)
+				assertDataRestored(restoreConn, publicSchemaTupleCounts)
+				schema2TupleCounts["schema2.ao1"] = 1002
+				assertDataRestored(restoreConn, schema2TupleCounts)
+			})
+
+			It("restores from an incremental backup specified without a timestamp", func() {
+				_ = gpbackup(gpbackupPath, backupHelperPath)
+
+				testhelper.AssertQueryRuns(backupConn, "INSERT into schema2.ao1 values(1001)")
+				defer testhelper.AssertQueryRuns(backupConn, "DELETE from schema2.ao1 where i=1001")
+				_ = gpbackup(gpbackupPath, backupHelperPath,
+					"--incremental", "--leaf-partition-data")
+
+				testhelper.AssertQueryRuns(backupConn, "INSERT into schema2.ao1 values(1002)")
+				defer testhelper.AssertQueryRuns(backupConn, "DELETE from schema2.ao1 where i=1002")
+				incremental2Timestamp := gpbackup(gpbackupPath, backupHelperPath,
+					"--incremental", "--leaf-partition-data")
 
 				gprestore(gprestorePath, restoreHelperPath, incremental2Timestamp, "--redirect-db", "restoredb")
 

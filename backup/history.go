@@ -34,7 +34,7 @@ type History struct {
 }
 
 func NewHistory(filename string) *History {
-	history := &History{}
+	history := &History{Entries: make([]HistoryEntry, 0)}
 	if historyFileExists := iohelper.FileExistsAndIsReadable(filename); historyFileExists {
 		contents, err := operating.System.ReadFile(filename)
 
@@ -70,15 +70,16 @@ func (history *History) AddHistoryEntry(historyEntry *HistoryEntry) {
 
 func WriteBackupHistory(historyFilePath string, historyEntry *HistoryEntry) {
 	lock := lockHistoryFile()
+	defer func() {
+		_ = lock.Unlock()
+	}()
 
 	history := NewHistory(historyFilePath)
-	if history.Entries == nil {
+	if len(history.Entries) == 0 {
 		gplog.Verbose("No existing backup history file could be found. Creating new backup history file.")
 	}
 	history.AddHistoryEntry(historyEntry)
 	history.writeToFileAndMakeReadOnly(historyFilePath)
-
-	_ = lock.Unlock()
 }
 
 func lockHistoryFile() lockfile.Lockfile {

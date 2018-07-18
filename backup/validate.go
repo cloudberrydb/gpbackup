@@ -88,6 +88,9 @@ func ValidateFlagCombinations(flags *pflag.FlagSet) {
 	if MustGetFlagString(FROM_TIMESTAMP) != "" && !MustGetFlagBool(INCREMENTAL) {
 		gplog.Fatal(errors.Errorf("--from-timestamp must be specified with --incremental"), "")
 	}
+	if MustGetFlagBool(INCREMENTAL) && !MustGetFlagBool(LEAF_PARTITION_DATA) {
+		gplog.Fatal(errors.Errorf("--leaf-partition-data must be specified with --incremental"), "")
+	}
 }
 
 func ValidateFlagValues() {

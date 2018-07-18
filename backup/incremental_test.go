@@ -1,6 +1,7 @@
 package backup_test
 
 import (
+	"github.com/greenplum-db/gp-common-go-libs/structmatcher"
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
 	"github.com/greenplum-db/gpbackup/utils"
@@ -70,6 +71,34 @@ var _ = Describe("backup/incremental tests", func() {
 
 		It("Should NOT include the unmodified AO table", func() {
 			Expect(filteredTables).To(Not(ContainElement(tblAOUnchanged)))
+		})
+	})
+
+	Describe("GetLatestMatchingHistoryEntry", func() {
+		history := backup.History{Entries: []backup.HistoryEntry{
+			{Dbname: "test2", Timestamp: "timestamp4"},
+			{Dbname: "test1", Timestamp: "timestamp3"},
+			{Dbname: "test2", Timestamp: "timestamp2"},
+			{Dbname: "test1", Timestamp: "timestamp1"},
+		}}
+		It("Should return the latest backup's timestamp with matching Dbname", func() {
+			cmdFlags.Set(backup.DBNAME, "test1")
+
+			latestBackupHistoryEntry := backup.GetLatestMatchingHistoryEntry(&history)
+
+			structmatcher.ExpectStructsToMatch(history.Entries[1], latestBackupHistoryEntry)
+		})
+		It("should return nil with no matching Dbname", func() {
+			cmdFlags.Set(backup.DBNAME, "test3")
+
+			latestBackupHistoryEntry := backup.GetLatestMatchingHistoryEntry(&history)
+
+			Expect(latestBackupHistoryEntry).To(BeNil())
+		})
+		It("should return nil with an empty history", func() {
+			latestBackupHistoryEntry := backup.GetLatestMatchingHistoryEntry(&backup.History{Entries: []backup.HistoryEntry{}})
+
+			Expect(latestBackupHistoryEntry).To(BeNil())
 		})
 	})
 

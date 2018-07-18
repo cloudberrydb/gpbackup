@@ -66,3 +66,16 @@ func (s *FilterSet) Delete(item string) {
 		s.AlwaysMatchesFilter = true
 	}
 }
+
+func (s *FilterSet) Equals(s1 *FilterSet) bool {
+	if s.Length() != s1.Length() {
+		return false
+	}
+
+	for k := range s.Set {
+		if _, ok := s1.Set[k]; !ok {
+			return false
+		}
+	}
+	return true
+}
