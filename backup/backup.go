@@ -100,9 +100,9 @@ func DoSetup() {
 func DoBackup() {
 	LogBackupInfo()
 
-	var lastBackupTimestamp string
+	var latestBackupTimestamp string
 	if MustGetFlagBool(INCREMENTAL) {
-		lastBackupTimestamp = GetLatestMatchingBackupTimestamp()
+		latestBackupTimestamp = GetLatestMatchingBackupTimestamp()
 	}
 
 	objectCounts = make(map[string]int, 0)
@@ -133,14 +133,20 @@ func DoBackup() {
 	if !backupReport.MetadataOnly {
 		backupSetTables := dataTables
 
-		lastBackupRestorePlan := make([]utils.RestorePlanEntry, 0)
-		if lastBackupTimestamp != "" {
-			lastBackupTOC := GetLastBackupTOC(lastBackupTimestamp)
-			gplog.Info("Basing incremental backup off of backup with timestamp = %s", lastBackupTimestamp)
-			backupSetTables = FilterTablesForIncremental(lastBackupTOC, globalTOC, dataTables)
-			lastBackupRestorePlan = GetLastBackupRestorePlan(lastBackupTimestamp)
+		latestMatchingBackupRestorePlan := make([]utils.RestorePlanEntry, 0)
+		if latestBackupTimestamp != "" {
+			gplog.Info("Basing incremental backup off of backup with timestamp = %s", latestBackupTimestamp)
+
+			fpInfo := utils.NewFilePathInfo(globalCluster, globalFPInfo.UserSpecifiedBackupDir,
+				latestBackupTimestamp, globalFPInfo.UserSpecifiedSegPrefix)
+
+			latestMatchingBackupTOC := utils.NewTOC(fpInfo.GetTOCFilePath())
+			latestMatchingBackupRestorePlan = utils.ReadConfigFile(fpInfo.GetConfigFilePath()).RestorePlan
+
+			backupSetTables = FilterTablesForIncremental(latestMatchingBackupTOC, globalTOC, dataTables)
 		}
-		backupReport.RestorePlan = PopulateRestorePlan(backupSetTables, lastBackupRestorePlan, dataTables)
+
+		backupReport.RestorePlan = PopulateRestorePlan(backupSetTables, latestMatchingBackupRestorePlan, dataTables)
 
 		backupData(backupSetTables, tableDefs)
 	}

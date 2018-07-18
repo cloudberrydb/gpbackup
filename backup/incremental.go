@@ -58,24 +58,6 @@ func GetLatestMatchingHistoryEntry(history *History) *HistoryEntry {
 	return nil
 }
 
-func GetLastBackupTOC(lastBackupTimestamp string) *utils.TOC {
-	lastBackupFPInfo := utils.NewFilePathInfo(globalCluster, globalFPInfo.UserSpecifiedBackupDir,
-		lastBackupTimestamp, globalFPInfo.UserSpecifiedSegPrefix)
-	lastBackupTOCFilePath := lastBackupFPInfo.GetTOCFilePath()
-	lastBackupTOC := utils.NewTOC(lastBackupTOCFilePath)
-
-	return lastBackupTOC
-}
-
-func GetLastBackupRestorePlan(lastBackupTimestamp string) []utils.RestorePlanEntry {
-	lastBackupFPInfo := utils.NewFilePathInfo(globalCluster, globalFPInfo.UserSpecifiedBackupDir,
-		lastBackupTimestamp, globalFPInfo.UserSpecifiedSegPrefix)
-	lastBackupConfigFile := lastBackupFPInfo.GetConfigFilePath()
-	lastBackupRestorePlan := utils.ReadConfigFile(lastBackupConfigFile).RestorePlan
-
-	return lastBackupRestorePlan
-}
-
 func PopulateRestorePlan(changedTables []Relation,
 	restorePlan []utils.RestorePlanEntry, allTables []Relation) []utils.RestorePlanEntry {
 	currBackupRestorePlanEntry := utils.RestorePlanEntry{
