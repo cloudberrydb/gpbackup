@@ -25,11 +25,12 @@ func initializeFlags(cmd *cobra.Command) {
 	cmd.Flags().StringSlice(EXCLUDE_SCHEMA, []string{}, "Back up all metadata except objects in the specified schema(s). --exclude-schema can be specified multiple times.")
 	cmd.Flags().StringSlice(EXCLUDE_RELATION, []string{}, "Back up all metadata except the specified table(s). --exclude-table can be specified multiple times.")
 	cmd.Flags().String(EXCLUDE_RELATION_FILE, "", "A file containing a list of fully-qualified tables to be excluded from the backup")
+	cmd.Flags().String(FROM_TIMESTAMP, "", "A timestamp to use to base the current incremental backup off")
 	cmd.Flags().Bool("help", false, "Help for gpbackup")
 	cmd.Flags().StringSlice(INCLUDE_SCHEMA, []string{}, "Back up only the specified schema(s). --include-schema can be specified multiple times.")
 	cmd.Flags().StringSlice(INCLUDE_RELATION, []string{}, "Back up only the specified table(s). --include-table can be specified multiple times.")
 	cmd.Flags().String(INCLUDE_RELATION_FILE, "", "A file containing a list of fully-qualified tables to be included in the backup")
-	cmd.Flags().String(INCREMENTAL, "", "Only back up data for tables that have been modified since the last backup")
+	cmd.Flags().Bool(INCREMENTAL, false, "Only back up data for AO tables that have been modified since the last backup")
 	cmd.Flags().Int(JOBS, 1, "The number of parallel connections to use when backing up data")
 	cmd.Flags().Bool(LEAF_PARTITION_DATA, false, "For partition tables, create one data file per leaf partition instead of one data file for the whole table")
 	cmd.Flags().Bool(METADATA_ONLY, false, "Only back up metadata, do not back up data")
@@ -122,13 +123,15 @@ func DoBackup() {
 	if !backupReport.MetadataOnly {
 		backupSetTables := dataTables
 
-		// TODO: change to bool check
-		if MustGetFlagString(INCREMENTAL) != "" {
-			lastBackupTOC := GetLastBackupTOC()
-			backupSetTables = FilterTablesForIncremental(lastBackupTOC, globalTOC, dataTables)
-		}
+		lastBackupRestorePlan := make([]utils.RestorePlanEntry, 0)
+		if MustGetFlagBool(INCREMENTAL) {
+			lastBackupTimestamp := GetLastBackupTimestamp()
 
-		CreateRestorePlan(backupSetTables, dataTables)
+			lastBackupTOC := GetLastBackupTOC(lastBackupTimestamp)
+			backupSetTables = FilterTablesForIncremental(lastBackupTOC, globalTOC, dataTables)
+			lastBackupRestorePlan = GetLastBackupRestorePlan(lastBackupTimestamp)
+		}
+		backupReport.RestorePlan = PopulateRestorePlan(backupSetTables, lastBackupRestorePlan, dataTables)
 
 		backupData(backupSetTables, tableDefs)
 	}

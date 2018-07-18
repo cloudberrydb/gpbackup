@@ -22,24 +22,29 @@ func FilterTablesForIncremental(lastBackupTOC, currentTOC *utils.TOC, tables []R
 	return filteredTables
 }
 
-func GetLastBackupTOC() *utils.TOC {
-	// TODO: get last backup timestamp and pass to NewFilePathInfo
-	// TODO: handle case for first backup
+func GetLastBackupTimestamp() string {
+	if fromTimestamp := MustGetFlagString(FROM_TIMESTAMP); fromTimestamp != "" {
+		return fromTimestamp
+	}
+	return ""
+}
+
+func GetLastBackupTOC(lastBackupTimestamp string) *utils.TOC {
 	lastBackupFPInfo := utils.NewFilePathInfo(globalCluster, globalFPInfo.UserSpecifiedBackupDir,
-		MustGetFlagString(INCREMENTAL), globalFPInfo.UserSpecifiedSegPrefix)
+		lastBackupTimestamp, globalFPInfo.UserSpecifiedSegPrefix)
 	lastBackupTOCFilePath := lastBackupFPInfo.GetTOCFilePath()
 	lastBackupTOC := utils.NewTOC(lastBackupTOCFilePath)
 
 	return lastBackupTOC
 }
 
-func CreateRestorePlan(backupSetTables []Relation, dataTables []Relation) {
-	restorePlan := make([]utils.RestorePlanEntry, 0)
-	if MustGetFlagString(INCREMENTAL) != "" {
-		restorePlan = GetLastBackupRestorePlan()
-	}
+func GetLastBackupRestorePlan(lastBackupTimestamp string) []utils.RestorePlanEntry {
+	lastBackupFPInfo := utils.NewFilePathInfo(globalCluster, globalFPInfo.UserSpecifiedBackupDir,
+		lastBackupTimestamp, globalFPInfo.UserSpecifiedSegPrefix)
+	lastBackupConfigFile := lastBackupFPInfo.GetConfigFilePath()
+	lastBackupRestorePlan := utils.ReadConfigFile(lastBackupConfigFile).RestorePlan
 
-	backupReport.RestorePlan = PopulateRestorePlan(backupSetTables, restorePlan, dataTables)
+	return lastBackupRestorePlan
 }
 
 func PopulateRestorePlan(changedTables []Relation,
@@ -79,15 +84,4 @@ func PopulateRestorePlan(changedTables []Relation,
 	restorePlan = append(restorePlan, currBackupRestorePlanEntry)
 
 	return restorePlan
-}
-
-func GetLastBackupRestorePlan() []utils.RestorePlanEntry {
-	// TODO: get last backup TS and pass to NewFilePathInfo
-	// TODO: handle case for first backup
-	lastBackupFPInfo := utils.NewFilePathInfo(globalCluster, globalFPInfo.UserSpecifiedBackupDir,
-		MustGetFlagString(INCREMENTAL), globalFPInfo.UserSpecifiedSegPrefix)
-	lastBackupConfigFile := lastBackupFPInfo.GetConfigFilePath()
-	lastBackupRestorePlan := utils.ReadConfigFile(lastBackupConfigFile).RestorePlan
-
-	return lastBackupRestorePlan
 }

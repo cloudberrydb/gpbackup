@@ -74,7 +74,7 @@ WHERE quote_ident(n.nspname) || '.' || quote_ident(c.relname) IN (%s)`, quotedTa
 
 func ValidateFlagCombinations(flags *pflag.FlagSet) {
 	utils.CheckExclusiveFlags(flags, DEBUG, QUIET, VERBOSE)
-	utils.CheckExclusiveFlags(flags, DATA_ONLY, METADATA_ONLY)
+	utils.CheckExclusiveFlags(flags, DATA_ONLY, METADATA_ONLY, INCREMENTAL)
 	utils.CheckExclusiveFlags(flags, INCLUDE_SCHEMA, INCLUDE_RELATION, INCLUDE_RELATION_FILE)
 	utils.CheckExclusiveFlags(flags, EXCLUDE_SCHEMA, INCLUDE_SCHEMA)
 	utils.CheckExclusiveFlags(flags, EXCLUDE_SCHEMA, EXCLUDE_RELATION, INCLUDE_RELATION, EXCLUDE_RELATION_FILE, INCLUDE_RELATION_FILE)
@@ -84,6 +84,15 @@ func ValidateFlagCombinations(flags *pflag.FlagSet) {
 	utils.CheckExclusiveFlags(flags, NO_COMPRESSION, COMPRESSION_LEVEL)
 	if MustGetFlagString(PLUGIN_CONFIG) != "" && !(MustGetFlagBool(SINGLE_DATA_FILE) || MustGetFlagBool(METADATA_ONLY)) {
 		gplog.Fatal(errors.Errorf("--plugin-config must be specified with either --single-data-file or --metadata-only"), "")
+	}
+	if MustGetFlagString(FROM_TIMESTAMP) != "" {
+		if !MustGetFlagBool(INCREMENTAL) {
+			gplog.Fatal(errors.Errorf("--from-timestamp must be specified with --incremental"), "")
+		}
+		if !utils.IsValidTimestamp(MustGetFlagString(FROM_TIMESTAMP)) {
+			gplog.Fatal(errors.Errorf("Timestamp %s is invalid.  Timestamps must be in the format YYYYMMDDHHMMSS.",
+				MustGetFlagString(FROM_TIMESTAMP)), "")
+		}
 	}
 }
 

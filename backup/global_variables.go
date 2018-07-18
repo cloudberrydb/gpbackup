@@ -53,6 +53,7 @@ const (
 	EXCLUDE_RELATION      = "exclude-table"
 	EXCLUDE_RELATION_FILE = "exclude-table-file"
 	EXCLUDE_SCHEMA        = "exclude-schema"
+	FROM_TIMESTAMP        = "from-timestamp"
 	INCLUDE_RELATION      = "include-table"
 	INCLUDE_RELATION_FILE = "include-table-file"
 	INCLUDE_SCHEMA        = "include-schema"

@@ -446,16 +446,18 @@ var _ = Describe("backup end to end integration tests", func() {
 			})
 		})
 		Describe("Incremental", func() {
-			It("restores from an incremental backup", func() {
+			It("restores from an incremental backup specified with a timestamp", func() {
 				fullBackupTimestamp := gpbackup(gpbackupPath, backupHelperPath)
 
 				testhelper.AssertQueryRuns(backupConn, "INSERT into schema2.ao1 values(1001)")
 				defer testhelper.AssertQueryRuns(backupConn, "DELETE from schema2.ao1 where i=1001")
-				incremental1Timestamp := gpbackup(gpbackupPath, backupHelperPath, "--incremental", fullBackupTimestamp)
+				incremental1Timestamp := gpbackup(gpbackupPath, backupHelperPath,
+					"--incremental", "--from-timestamp", fullBackupTimestamp)
 
 				testhelper.AssertQueryRuns(backupConn, "INSERT into schema2.ao1 values(1002)")
 				defer testhelper.AssertQueryRuns(backupConn, "DELETE from schema2.ao1 where i=1002")
-				incremental2Timestamp := gpbackup(gpbackupPath, backupHelperPath, "--incremental", incremental1Timestamp)
+				incremental2Timestamp := gpbackup(gpbackupPath, backupHelperPath,
+					"--incremental", "--from-timestamp", incremental1Timestamp)
 
 				gprestore(gprestorePath, restoreHelperPath, incremental2Timestamp, "--redirect-db", "restoredb")
 
