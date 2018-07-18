@@ -85,14 +85,18 @@ func ValidateFlagCombinations(flags *pflag.FlagSet) {
 	if MustGetFlagString(PLUGIN_CONFIG) != "" && !(MustGetFlagBool(SINGLE_DATA_FILE) || MustGetFlagBool(METADATA_ONLY)) {
 		gplog.Fatal(errors.Errorf("--plugin-config must be specified with either --single-data-file or --metadata-only"), "")
 	}
-	if MustGetFlagString(FROM_TIMESTAMP) != "" {
-		if !MustGetFlagBool(INCREMENTAL) {
-			gplog.Fatal(errors.Errorf("--from-timestamp must be specified with --incremental"), "")
-		}
-		if !utils.IsValidTimestamp(MustGetFlagString(FROM_TIMESTAMP)) {
-			gplog.Fatal(errors.Errorf("Timestamp %s is invalid.  Timestamps must be in the format YYYYMMDDHHMMSS.",
-				MustGetFlagString(FROM_TIMESTAMP)), "")
-		}
+	if MustGetFlagString(FROM_TIMESTAMP) != "" && !MustGetFlagBool(INCREMENTAL) {
+		gplog.Fatal(errors.Errorf("--from-timestamp must be specified with --incremental"), "")
+	}
+}
+
+func ValidateFlagValues() {
+	utils.ValidateFullPath(MustGetFlagString(BACKUP_DIR))
+	utils.ValidateFullPath(MustGetFlagString(PLUGIN_CONFIG))
+	ValidateCompressionLevel(MustGetFlagInt(COMPRESSION_LEVEL))
+	if MustGetFlagString(FROM_TIMESTAMP) != "" && !utils.IsValidTimestamp(MustGetFlagString(FROM_TIMESTAMP)) {
+		gplog.Fatal(errors.Errorf("Timestamp %s is invalid.  Timestamps must be in the format YYYYMMDDHHMMSS.",
+			MustGetFlagString(FROM_TIMESTAMP)), "")
 	}
 }
 
@@ -101,10 +105,4 @@ func ValidateCompressionLevel(compressionLevel int) {
 	if compressionLevel < 0 || compressionLevel > 9 {
 		gplog.Fatal(errors.Errorf("Compression level must be between 1 and 9"), "")
 	}
-}
-
-func ValidateFlagValues() {
-	utils.ValidateFullPath(MustGetFlagString(BACKUP_DIR))
-	utils.ValidateFullPath(MustGetFlagString(PLUGIN_CONFIG))
-	ValidateCompressionLevel(MustGetFlagInt(COMPRESSION_LEVEL))
 }

@@ -12,11 +12,9 @@ import (
 )
 
 var _ bool = Describe("backup/history tests", func() {
-	var (
-		testEntry1      backup.HistoryEntry
-		testEntry2      backup.HistoryEntry
-		historyFilePath = "/tmp/history_file.yaml"
-	)
+	var testEntry1, testEntry2, testEntry3 backup.HistoryEntry
+	var historyFilePath = "/tmp/history_file.yaml"
+
 	BeforeEach(func() {
 		testEntry1 = backup.HistoryEntry{
 			Dbname:           "testdb1",
@@ -33,6 +31,14 @@ var _ bool = Describe("backup/history tests", func() {
 			IncludeRelations: []string{},
 			IncludeSchemas:   []string{},
 			Timestamp:        "timestamp2",
+		}
+		testEntry3 = backup.HistoryEntry{
+			Dbname:           "testdb3",
+			ExcludeRelations: []string{},
+			ExcludeSchemas:   []string{"public"},
+			IncludeRelations: []string{},
+			IncludeSchemas:   []string{},
+			Timestamp:        "timestamp3",
 		}
 	})
 	Describe("NewHistory", func() {
@@ -72,12 +78,12 @@ var _ bool = Describe("backup/history tests", func() {
 		})
 	})
 	Describe("AddHistoryEntry", func() {
-		It("adds the most recent history entry at the start of the list", func() {
-			testHistory := backup.History{Entries: []backup.HistoryEntry{testEntry1}}
+		It("adds the most recent history entry and keeps the list sorted", func() {
+			testHistory := backup.History{Entries: []backup.HistoryEntry{testEntry3, testEntry1}}
 
 			testHistory.AddHistoryEntry(&testEntry2)
 
-			expectedHistory := backup.History{Entries: []backup.HistoryEntry{testEntry2, testEntry1}}
+			expectedHistory := backup.History{Entries: []backup.HistoryEntry{testEntry3, testEntry2, testEntry1}}
 			structmatcher.ExpectStructsToMatch(&expectedHistory, &testHistory)
 		})
 	})

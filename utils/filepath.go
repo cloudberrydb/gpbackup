@@ -99,7 +99,8 @@ func (backupFPInfo *FilePathInfo) GetBackupFilePath(filetype string) string {
 }
 
 func (backupFPInfo *FilePathInfo) GetBackupHistoryFilePath() string {
-	return path.Join(operating.System.Getenv("MASTER_DATA_DIRECTORY"), "backup_history.yaml")
+	masterDataDirectoryPath := backupFPInfo.SegDirMap[-1]
+	return path.Join(masterDataDirectoryPath, "backup_history.yaml")
 }
 
 func (backupFPInfo *FilePathInfo) GetMetadataFilePath() string {

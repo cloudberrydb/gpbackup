@@ -72,6 +72,9 @@ func WriteBackupHistory(historyFilePath string, historyEntry *HistoryEntry) {
 	lock := lockHistoryFile()
 
 	history := NewHistory(historyFilePath)
+	if history.Entries == nil {
+		gplog.Verbose("No existing backup history file could be found. Creating new backup history file.")
+	}
 	history.AddHistoryEntry(historyEntry)
 	history.writeToFileAndMakeReadOnly(historyFilePath)
 
