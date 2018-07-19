@@ -75,7 +75,7 @@ var _ = Describe("backup/incremental tests", func() {
 	})
 
 	Describe("GetLatestMatchingHistoryEntry", func() {
-		history := backup.History{Entries: []backup.HistoryEntry{
+		history := utils.History{Entries: []utils.HistoryEntry{
 			{Dbname: "test2", Timestamp: "timestamp4"},
 			{Dbname: "test1", Timestamp: "timestamp3"},
 			{Dbname: "test2", Timestamp: "timestamp2"},
@@ -96,7 +96,7 @@ var _ = Describe("backup/incremental tests", func() {
 			Expect(latestBackupHistoryEntry).To(BeNil())
 		})
 		It("should return nil with an empty history", func() {
-			latestBackupHistoryEntry := backup.GetLatestMatchingHistoryEntry(&backup.History{Entries: []backup.HistoryEntry{}})
+			latestBackupHistoryEntry := backup.GetLatestMatchingHistoryEntry(&utils.History{Entries: []utils.HistoryEntry{}})
 
 			Expect(latestBackupHistoryEntry).To(BeNil())
 		})

@@ -1,10 +1,9 @@
-package backup
+package utils
 
 import (
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gp-common-go-libs/iohelper"
 	"github.com/greenplum-db/gp-common-go-libs/operating"
-	"github.com/greenplum-db/gpbackup/utils"
 	"github.com/nightlyone/lockfile"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -103,7 +102,7 @@ func (history *History) writeToFileAndMakeReadOnly(filename string) {
 	historyFile := iohelper.MustOpenFileForWriting(filename)
 	historyFileContents, err := yaml.Marshal(history)
 	gplog.FatalOnError(err)
-	utils.MustPrintBytes(historyFile, historyFileContents)
+	MustPrintBytes(historyFile, historyFileContents)
 	err = operating.System.Chmod(filename, 0444)
 	gplog.FatalOnError(err)
 }

@@ -8,11 +8,13 @@ import (
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 	"github.com/greenplum-db/gp-common-go-libs/operating"
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
+	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
 	"github.com/greenplum-db/gpbackup/utils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
+	"github.com/spf13/pflag"
 )
 
 var (
@@ -31,8 +33,16 @@ func TestUtils(t *testing.T) {
 	RunSpecs(t, "utils tests")
 }
 
+var backupCmdFlags *pflag.FlagSet
+
 var _ = BeforeSuite(func() {
 	connection, mock, stdout, stderr, logfile = testutils.SetupTestEnvironment()
+
+	backupCmdFlags = pflag.NewFlagSet("gpbackup", pflag.ExitOnError)
+
+	backup.SetFlagDefaults(backupCmdFlags)
+
+	backup.SetCmdFlags(backupCmdFlags)
 })
 
 var _ = BeforeEach(func() {

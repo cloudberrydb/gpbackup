@@ -168,8 +168,8 @@ func DoBackup() {
 		}
 	}
 
-	newHistoryEntry := HistoryEntryFromFlagSet(globalFPInfo.Timestamp, cmdFlags)
-	WriteBackupHistory(globalFPInfo.GetBackupHistoryFilePath(), newHistoryEntry)
+	newHistoryEntry := utils.HistoryEntryFromFlagSet(globalFPInfo.Timestamp, cmdFlags)
+	utils.WriteBackupHistory(globalFPInfo.GetBackupHistoryFilePath(), newHistoryEntry)
 }
 
 func backupGlobal(metadataFile *utils.FileWithByteCount) {
