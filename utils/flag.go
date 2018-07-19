@@ -13,6 +13,36 @@ import (
 	"github.com/spf13/pflag"
 )
 
+const (
+	BACKUP_DIR            = "backup-dir"
+	COMPRESSION_LEVEL     = "compression-level"
+	DATA_ONLY             = "data-only"
+	DBNAME                = "dbname"
+	DEBUG                 = "debug"
+	EXCLUDE_RELATION      = "exclude-table"
+	EXCLUDE_RELATION_FILE = "exclude-table-file"
+	EXCLUDE_SCHEMA        = "exclude-schema"
+	FROM_TIMESTAMP        = "from-timestamp"
+	INCLUDE_RELATION      = "include-table"
+	INCLUDE_RELATION_FILE = "include-table-file"
+	INCLUDE_SCHEMA        = "include-schema"
+	INCREMENTAL           = "incremental"
+	JOBS                  = "jobs"
+	LEAF_PARTITION_DATA   = "leaf-partition-data"
+	METADATA_ONLY         = "metadata-only"
+	NO_COMPRESSION        = "no-compression"
+	PLUGIN_CONFIG         = "plugin-config"
+	QUIET                 = "quiet"
+	SINGLE_DATA_FILE      = "single-data-file"
+	VERBOSE               = "verbose"
+	WITH_STATS            = "with-stats"
+	CREATE_DB             = "create-db"
+	ON_ERROR_CONTINUE     = "on-error-continue"
+	REDIRECT_DB           = "redirect-db"
+	TIMESTAMP             = "timestamp"
+	WITH_GLOBALS          = "with-globals"
+)
+
 /*
  * Functions for validating whether flags are set and in what combination
  */

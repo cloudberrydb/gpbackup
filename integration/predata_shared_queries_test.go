@@ -5,6 +5,7 @@ import (
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
+	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -28,7 +29,7 @@ var _ = Describe("backup integration tests", func() {
 		It("returns schema information for single specific schema", func() {
 			testhelper.AssertQueryRuns(connection, "CREATE SCHEMA bar")
 			defer testhelper.AssertQueryRuns(connection, "DROP SCHEMA bar")
-			cmdFlags.Set(backup.INCLUDE_SCHEMA, "bar")
+			cmdFlags.Set(utils.INCLUDE_SCHEMA, "bar")
 
 			schemas := backup.GetAllUserSchemas(connection)
 
@@ -42,7 +43,7 @@ var _ = Describe("backup integration tests", func() {
 		It("returns schema information for multiple specific schemas", func() {
 			testhelper.AssertQueryRuns(connection, "CREATE SCHEMA bar")
 			defer testhelper.AssertQueryRuns(connection, "DROP SCHEMA bar")
-			cmdFlags.Set(backup.INCLUDE_SCHEMA, "bar,public")
+			cmdFlags.Set(utils.INCLUDE_SCHEMA, "bar,public")
 			schemas := backup.GetAllUserSchemas(connection)
 
 			schemaBar := backup.Schema{Oid: 0, Name: "bar"}
@@ -181,7 +182,7 @@ PARTITION BY RANGE (date)
 				testhelper.AssertQueryRuns(connection, "CREATE TABLE testschema.constraints_table(a int, b text, c float)")
 				defer testhelper.AssertQueryRuns(connection, "DROP TABLE testschema.constraints_table")
 				testhelper.AssertQueryRuns(connection, "ALTER TABLE ONLY testschema.constraints_table ADD CONSTRAINT uniq2 UNIQUE (a, b)")
-				cmdFlags.Set(backup.INCLUDE_SCHEMA, "testschema")
+				cmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 				constraintInSchema := backup.Constraint{Oid: 0, Schema: "testschema", Name: "uniq2", ConType: "u", ConDef: "UNIQUE (a, b)", OwningObject: "testschema.constraints_table", IsDomainConstraint: false, IsPartitionParent: false}
 
 				constraints := backup.GetConstraints(connection)
@@ -216,13 +217,13 @@ PARTITION BY RANGE (date)
 				testhelper.AssertQueryRuns(connection, "CREATE TABLE public.other_table(d bool, e float)")
 				defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.other_table")
 
-				cmdFlags.Set(backup.EXCLUDE_RELATION, "public.other_table")
-				defer cmdFlags.Set(backup.EXCLUDE_RELATION, "")
+				cmdFlags.Set(utils.EXCLUDE_RELATION, "public.other_table")
+				defer cmdFlags.Set(utils.EXCLUDE_RELATION, "")
 				constraints := backup.GetConstraints(connection)
 				Expect(len(constraints)).To(Equal(1))
 				structmatcher.ExpectStructsToMatchExcluding(&constraints[0], &uniqueConstraint, "Oid")
 
-				cmdFlags.Set(backup.EXCLUDE_RELATION, "public.constraints_table")
+				cmdFlags.Set(utils.EXCLUDE_RELATION, "public.constraints_table")
 				constraints = backup.GetConstraints(connection)
 				Expect(len(constraints)).To(Equal(0))
 			})
@@ -586,7 +587,7 @@ LANGUAGE SQL`)
 				defer testhelper.AssertQueryRuns(connection, "DROP TABLE testschema.testtable")
 				testhelper.AssertQueryRuns(connection, "GRANT ALL ON TABLE testschema.testtable TO testrole")
 				testhelper.AssertQueryRuns(connection, "COMMENT ON TABLE testschema.testtable IS 'This is a table comment.'")
-				cmdFlags.Set(backup.INCLUDE_SCHEMA, "testschema")
+				cmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 
 				resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_RELATION)
 
@@ -605,7 +606,7 @@ LANGUAGE SQL`)
 				defer testhelper.AssertQueryRuns(connection, "DROP TABLE testschema.testtable")
 				testhelper.AssertQueryRuns(connection, "GRANT ALL ON TABLE testschema.testtable TO testrole")
 				testhelper.AssertQueryRuns(connection, "COMMENT ON TABLE testschema.testtable IS 'This is a table comment.'")
-				cmdFlags.Set(backup.EXCLUDE_SCHEMA, "public")
+				cmdFlags.Set(utils.EXCLUDE_SCHEMA, "public")
 
 				resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_RELATION)
 
@@ -630,7 +631,7 @@ LANGUAGE SQL`)
 				testhelper.AssertQueryRuns(connection, "REVOKE ALL ON FUNCTION testschema.add(integer, integer) FROM PUBLIC")
 				testhelper.AssertQueryRuns(connection, "COMMENT ON FUNCTION testschema.add(integer, integer) IS 'This is a function comment.'")
 
-				cmdFlags.Set(backup.INCLUDE_SCHEMA, "testschema")
+				cmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 				resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_FUNCTION)
 
 				oid := testutils.OidFromObjectName(connection, "testschema", "add", backup.TYPE_FUNCTION)
@@ -649,7 +650,7 @@ LANGUAGE SQL`)
 				testhelper.AssertQueryRuns(connection, "GRANT ALL ON testschema.testview TO testrole")
 				testhelper.AssertQueryRuns(connection, "COMMENT ON VIEW testschema.testview IS 'This is a view comment.'")
 
-				cmdFlags.Set(backup.INCLUDE_SCHEMA, "testschema")
+				cmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 				resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_RELATION)
 
 				oid := testutils.OidFromObjectName(connection, "testschema", "testview", backup.TYPE_RELATION)
@@ -696,7 +697,7 @@ LANGUAGE SQL`)
 				defer testhelper.AssertQueryRuns(connection, "DROP AGGREGATE testschema.agg_prefunc(numeric, numeric)")
 				testhelper.AssertQueryRuns(connection, "COMMENT ON AGGREGATE testschema.agg_prefunc(numeric, numeric) IS 'This is an aggregate comment.'")
 
-				cmdFlags.Set(backup.INCLUDE_SCHEMA, "testschema")
+				cmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 				resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_AGGREGATE)
 
 				oid := testutils.OidFromObjectName(connection, "testschema", "agg_prefunc", backup.TYPE_AGGREGATE)
@@ -714,7 +715,7 @@ LANGUAGE SQL`)
 				defer testhelper.AssertQueryRuns(connection, "DROP TYPE testschema.testtype")
 				testhelper.AssertQueryRuns(connection, "COMMENT ON TYPE testschema.testtype IS 'This is a type comment.'")
 
-				cmdFlags.Set(backup.INCLUDE_SCHEMA, "testschema")
+				cmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 				resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_TYPE)
 
 				oid := testutils.OidFromObjectName(connection, "testschema", "testtype", backup.TYPE_TYPE)
@@ -738,7 +739,7 @@ LANGUAGE SQL`)
 				defer testhelper.AssertQueryRuns(connection, "DROP OPERATOR testschema.#### (bigint, NONE)")
 				testhelper.AssertQueryRuns(connection, "COMMENT ON OPERATOR testschema.#### (bigint, NONE) IS 'This is an operator comment.'")
 
-				cmdFlags.Set(backup.INCLUDE_SCHEMA, "testschema")
+				cmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 				resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_OPERATOR)
 
 				Expect(len(resultMetadataMap)).To(Equal(1))
@@ -757,7 +758,7 @@ LANGUAGE SQL`)
 				defer testhelper.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testschema.testfam USING hash")
 				testhelper.AssertQueryRuns(connection, "COMMENT ON OPERATOR FAMILY testschema.testfam USING hash IS 'This is an operator family comment.'")
 
-				cmdFlags.Set(backup.INCLUDE_SCHEMA, "testschema")
+				cmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 				resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_OPERATORFAMILY)
 
 				Expect(len(resultMetadataMap)).To(Equal(1))
@@ -783,7 +784,7 @@ LANGUAGE SQL`)
 				}
 				testhelper.AssertQueryRuns(connection, "COMMENT ON OPERATOR CLASS testschema.testclass USING hash IS 'This is an operator class comment.'")
 
-				cmdFlags.Set(backup.INCLUDE_SCHEMA, "testschema")
+				cmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 				resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_OPERATORCLASS)
 
 				Expect(len(resultMetadataMap)).To(Equal(1))
@@ -802,7 +803,7 @@ LANGUAGE SQL`)
 				defer testhelper.AssertQueryRuns(connection, "DROP TEXT SEARCH DICTIONARY testschema.testdictionary")
 				testhelper.AssertQueryRuns(connection, "COMMENT ON TEXT SEARCH DICTIONARY testschema.testdictionary IS 'This is a text search dictionary comment.'")
 
-				cmdFlags.Set(backup.INCLUDE_SCHEMA, "testschema")
+				cmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 				resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_TSDICTIONARY)
 
 				Expect(len(resultMetadataMap)).To(Equal(1))
@@ -826,7 +827,7 @@ LANGUAGE SQL`)
 				defer testhelper.AssertQueryRuns(connection, "DROP TEXT SEARCH CONFIGURATION testschema.testconfiguration")
 				testhelper.AssertQueryRuns(connection, "COMMENT ON TEXT SEARCH CONFIGURATION testschema.testconfiguration IS 'This is a text search configuration comment.'")
 
-				cmdFlags.Set(backup.INCLUDE_SCHEMA, "testschema")
+				cmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 				resultMetadataMap = backup.GetMetadataForObjectType(connection, backup.TYPE_TSCONFIGURATION)
 
 				Expect(len(resultMetadataMap)).To(Equal(1))
@@ -844,7 +845,7 @@ LANGUAGE SQL`)
 				defer testhelper.AssertQueryRuns(connection, "DROP COLLATION testschema.some_coll")
 				testhelper.AssertQueryRuns(connection, "COMMENT ON COLLATION testschema.some_coll IS 'This is a collation comment.'")
 
-				cmdFlags.Set(backup.INCLUDE_SCHEMA, "testschema")
+				cmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 				resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_COLLATION)
 
 				Expect(len(resultMetadataMap)).To(Equal(1))
@@ -1061,7 +1062,7 @@ LANGUAGE SQL`)
 				defer testhelper.AssertQueryRuns(connection, "DROP TABLE testschema.testtable")
 				testhelper.AssertQueryRuns(connection, "COMMENT ON INDEX testschema.testindex1 IS 'This is an index comment.'")
 
-				cmdFlags.Set(backup.INCLUDE_SCHEMA, "testschema")
+				cmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 				resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_INDEX)
 
 				oid := testutils.OidFromObjectName(connection, "", "testindex1", backup.TYPE_INDEX)
@@ -1081,7 +1082,7 @@ LANGUAGE SQL`)
 				testhelper.AssertQueryRuns(connection, `CREATE TABLE testschema.testtable(i int UNIQUE)`)
 				defer testhelper.AssertQueryRuns(connection, "DROP TABLE testschema.testtable")
 				testhelper.AssertQueryRuns(connection, "COMMENT ON CONSTRAINT testtable_i_key ON testschema.testtable IS 'This is a constraint comment.'")
-				cmdFlags.Set(backup.INCLUDE_SCHEMA, "testschema")
+				cmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 
 				resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_CONSTRAINT)
 
@@ -1107,7 +1108,7 @@ LANGUAGE SQL`)
 				testhelper.AssertQueryRuns(connection, "COMMENT ON TEXT SEARCH PARSER testschema.testparser IS 'This is a text search parser comment.'")
 
 				oid := testutils.OidFromObjectName(connection, "testschema", "testparser", backup.TYPE_TSPARSER)
-				cmdFlags.Set(backup.INCLUDE_SCHEMA, "testschema")
+				cmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 				resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_TSPARSER)
 
 				Expect(len(resultMetadataMap)).To(Equal(1))
@@ -1128,7 +1129,7 @@ LANGUAGE SQL`)
 				testhelper.AssertQueryRuns(connection, "COMMENT ON TEXT SEARCH TEMPLATE testschema.testtemplate IS 'This is a text search template comment.'")
 
 				oid := testutils.OidFromObjectName(connection, "testschema", "testtemplate", backup.TYPE_TSTEMPLATE)
-				cmdFlags.Set(backup.INCLUDE_SCHEMA, "testschema")
+				cmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 				resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_TSTEMPLATE)
 
 				Expect(len(resultMetadataMap)).To(Equal(1))

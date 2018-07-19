@@ -1,15 +1,15 @@
 package utils_test
 
 import (
+	"os"
+
 	"github.com/greenplum-db/gp-common-go-libs/iohelper"
 	"github.com/greenplum-db/gp-common-go-libs/operating"
 	"github.com/greenplum-db/gp-common-go-libs/structmatcher"
-	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/utils"
 	. "github.com/onsi/ginkgo"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
-	"os"
 )
 
 var _ bool = Describe("backup/history tests", func() {
@@ -71,8 +71,8 @@ var _ bool = Describe("backup/history tests", func() {
 	})
 	Describe("HistoryEntryFromFlagSet", func() {
 		It("can convert a FlagSet to a HistoryEntry", func() {
-			backupCmdFlags.Set(backup.DBNAME, "testdb1")
-			backupCmdFlags.Set(backup.INCLUDE_RELATION, "testschema.testtable1,testschema.testtable2")
+			backupCmdFlags.Set(utils.DBNAME, "testdb1")
+			backupCmdFlags.Set(utils.INCLUDE_RELATION, "testschema.testtable1,testschema.testtable2")
 			resultHistoryEntry := utils.HistoryEntryFromFlagSet("timestamp1", backupCmdFlags)
 
 			structmatcher.ExpectStructsToMatch(&testEntry1, resultHistoryEntry)

@@ -11,6 +11,7 @@ import (
 
 	"math"
 
+	"github.com/greenplum-db/gpbackup/utils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"gopkg.in/DATA-DOG/go-sqlmock.v1"
@@ -862,7 +863,7 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 		Context("leafPartitionData and includeTables", func() {
 			It("gets only parent partitions of included tables for metadata and only child partitions for data", func() {
 				includeList = []string{"public.part_parent1", "public.part_parent2_child1", "public.part_parent2_child2", "public.test_table"}
-				cmdFlags.Set(backup.LEAF_PARTITION_DATA, "true")
+				cmdFlags.Set(utils.LEAF_PARTITION_DATA, "true")
 
 				metadataTables, dataTables := backup.SplitTablesByPartitionType(tables, tableDefs, includeList)
 
@@ -881,7 +882,7 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 		})
 		Context("leafPartitionData only", func() {
 			It("gets only parent partitions for metadata and only child partitions in data", func() {
-				cmdFlags.Set(backup.LEAF_PARTITION_DATA, "true")
+				cmdFlags.Set(utils.LEAF_PARTITION_DATA, "true")
 				includeList = []string{}
 				metadataTables, dataTables := backup.SplitTablesByPartitionType(tables, tableDefs, includeList)
 
@@ -900,7 +901,7 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 		})
 		Context("includeTables only", func() {
 			It("gets only parent partitions of included tables for metadata and only included tables for data", func() {
-				cmdFlags.Set(backup.LEAF_PARTITION_DATA, "false")
+				cmdFlags.Set(utils.LEAF_PARTITION_DATA, "false")
 				includeList = []string{"public.part_parent1", "public.part_parent2_child1", "public.part_parent2_child2", "public.test_table"}
 				metadataTables, dataTables := backup.SplitTablesByPartitionType(tables, tableDefs, includeList)
 
@@ -930,8 +931,8 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 					2: {PartitionType: "p"},
 					8: {PartitionType: "n"},
 				}
-				cmdFlags.Set(backup.LEAF_PARTITION_DATA, "false")
-				cmdFlags.Set(backup.INCLUDE_RELATION, "")
+				cmdFlags.Set(utils.LEAF_PARTITION_DATA, "false")
+				cmdFlags.Set(utils.INCLUDE_RELATION, "")
 				metadataTables, dataTables := backup.SplitTablesByPartitionType(tables, tableDefs, includeList)
 
 				Expect(metadataTables).To(Equal(expectedMetadataTables))
@@ -956,8 +957,8 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 					1: {PartitionType: "l", IsExternal: true},
 					2: {PartitionType: "l", IsExternal: true},
 				}
-				cmdFlags.Set(backup.LEAF_PARTITION_DATA, "false")
-				cmdFlags.Set(backup.INCLUDE_RELATION, "")
+				cmdFlags.Set(utils.LEAF_PARTITION_DATA, "false")
+				cmdFlags.Set(utils.INCLUDE_RELATION, "")
 				metadataTables, _ := backup.SplitTablesByPartitionType(tables, tableDefs, includeList)
 
 				expectedTables := []backup.Relation{
@@ -999,25 +1000,25 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 	Describe("ExpandIncludeRelations", func() {
 		testTables := []backup.Relation{{Schema: "testschema", Name: "foo1"}, {Schema: "testschema", Name: "foo2"}}
 		It("returns an empty slice if no includeRelations were specified", func() {
-			cmdFlags.Set(backup.INCLUDE_RELATION, "")
+			cmdFlags.Set(utils.INCLUDE_RELATION, "")
 			backup.ExpandIncludeRelations(testTables)
 
-			Expect(len(backup.MustGetFlagStringSlice(backup.INCLUDE_RELATION))).To(Equal(0))
+			Expect(len(backup.MustGetFlagStringSlice(utils.INCLUDE_RELATION))).To(Equal(0))
 		})
 		It("returns original include list if the new tables list is a subset of existing list", func() {
-			cmdFlags.Set(backup.INCLUDE_RELATION, "testschema.foo1,testschema.foo2,testschema.foo3")
+			cmdFlags.Set(utils.INCLUDE_RELATION, "testschema.foo1,testschema.foo2,testschema.foo3")
 			backup.ExpandIncludeRelations(testTables)
 
-			Expect(len(backup.MustGetFlagStringSlice(backup.INCLUDE_RELATION))).To(Equal(3))
-			Expect(backup.MustGetFlagStringSlice(backup.INCLUDE_RELATION)).
+			Expect(len(backup.MustGetFlagStringSlice(utils.INCLUDE_RELATION))).To(Equal(3))
+			Expect(backup.MustGetFlagStringSlice(utils.INCLUDE_RELATION)).
 				To(ConsistOf([]string{"testschema.foo1", "testschema.foo2", "testschema.foo3"}))
 		})
 		It("returns expanded include list if there are new tables to add", func() {
-			cmdFlags.Set(backup.INCLUDE_RELATION, "testschema.foo2,testschema.foo3")
+			cmdFlags.Set(utils.INCLUDE_RELATION, "testschema.foo2,testschema.foo3")
 			backup.ExpandIncludeRelations(testTables)
 
-			Expect(len(backup.MustGetFlagStringSlice(backup.INCLUDE_RELATION))).To(Equal(3))
-			Expect(backup.MustGetFlagStringSlice(backup.INCLUDE_RELATION)).
+			Expect(len(backup.MustGetFlagStringSlice(utils.INCLUDE_RELATION))).To(Equal(3))
+			Expect(backup.MustGetFlagStringSlice(utils.INCLUDE_RELATION)).
 				To(ConsistOf([]string{"testschema.foo1", "testschema.foo2", "testschema.foo3"}))
 		})
 	})

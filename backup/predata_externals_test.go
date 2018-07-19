@@ -445,7 +445,7 @@ ENCODING 'UTF-8'`)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE TRUSTED PROTOCOL s3 (readfunc = public.read_fn_s3, writefunc = public.write_fn_s3, validatorfunc = public.validator);`)
 		})
 		It("prints a protocol with privileges and an owner", func() {
-			protoMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{backup.ACL{Grantee: "testrole", Select: true, Insert: true}}, Owner: "testrole"}
+			protoMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "testrole", Select: true, Insert: true}}, Owner: "testrole"}
 
 			backup.PrintCreateExternalProtocolStatement(backupfile, toc, protocolUntrustedReadWrite, protoMetadata)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE PROTOCOL s3 (readfunc = public.read_fn_s3, writefunc = public.write_fn_s3);

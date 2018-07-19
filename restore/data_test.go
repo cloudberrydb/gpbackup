@@ -73,7 +73,7 @@ var _ = Describe("restore/data tests", func() {
 			restore.CheckRowsRestored(10, expectedRows, name)
 		})
 		It("panics if the numbers of rows do not match and there is an error with a segment agent", func() {
-			cmdFlags.Set(restore.ON_ERROR_CONTINUE, "false")
+			cmdFlags.Set(utils.ON_ERROR_CONTINUE, "false")
 			testExecutor.ClusterOutput = &cluster.RemoteOutput{
 				Stdouts: map[int]string{
 					1: "error",
@@ -88,7 +88,7 @@ var _ = Describe("restore/data tests", func() {
 			restore.CheckRowsRestored(5, expectedRows, name)
 		})
 		It("panics if the numbers of rows do not match and there is no error with a segment agent", func() {
-			cmdFlags.Set(restore.ON_ERROR_CONTINUE, "false")
+			cmdFlags.Set(utils.ON_ERROR_CONTINUE, "false")
 			testExecutor.ClusterOutput = &cluster.RemoteOutput{
 				Stdouts: map[int]string{
 					1: "",
@@ -100,7 +100,7 @@ var _ = Describe("restore/data tests", func() {
 			restore.CheckRowsRestored(5, expectedRows, name)
 		})
 		It("prints an error if the numbers of rows do not match and onErrorContinue is set", func() {
-			cmdFlags.Set(restore.ON_ERROR_CONTINUE, "true")
+			cmdFlags.Set(utils.ON_ERROR_CONTINUE, "true")
 			testExecutor.ClusterOutput = &cluster.RemoteOutput{
 				Stdouts: map[int]string{
 					1: "",

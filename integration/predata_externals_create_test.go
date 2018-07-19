@@ -119,7 +119,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		emptyMetadata := backup.ObjectMetadata{}
 
 		It("creates a trusted protocol with a read function, privileges, and an owner", func() {
-			protoMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{backup.ACL{Grantee: "testrole", Select: true, Insert: true}}, Owner: "testrole"}
+			protoMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "testrole", Select: true, Insert: true}}, Owner: "testrole"}
 
 			backup.PrintCreateExternalProtocolStatement(backupfile, toc, protocolReadOnly, protoMetadata)
 

@@ -66,7 +66,7 @@ func GetUniqueSchemas(schemas []Schema, tables []Relation) []Schema {
 func SplitTablesByPartitionType(tables []Relation, tableDefs map[uint32]TableDefinition, includeList []string) ([]Relation, []Relation) {
 	metadataTables := make([]Relation, 0)
 	dataTables := make([]Relation, 0)
-	if MustGetFlagBool(LEAF_PARTITION_DATA) || len(includeList) > 0 {
+	if MustGetFlagBool(utils.LEAF_PARTITION_DATA) || len(includeList) > 0 {
 		includeSet := utils.NewIncludeSet(includeList)
 		for _, table := range tables {
 			if tableDefs[table.Oid].IsExternal && tableDefs[table.Oid].PartitionType == "l" {
@@ -77,7 +77,7 @@ func SplitTablesByPartitionType(tables []Relation, tableDefs map[uint32]TableDef
 			if partType != "l" && partType != "i" {
 				metadataTables = append(metadataTables, table)
 			}
-			if MustGetFlagBool(LEAF_PARTITION_DATA) {
+			if MustGetFlagBool(utils.LEAF_PARTITION_DATA) {
 				if partType != "p" && partType != "i" {
 					dataTables = append(dataTables, table)
 				}
@@ -117,7 +117,7 @@ func AppendExtPartSuffix(name string) string {
 }
 
 func ExpandIncludeRelations(tables []Relation) {
-	includeRelations := MustGetFlagStringSlice(INCLUDE_RELATION)
+	includeRelations := MustGetFlagStringSlice(utils.INCLUDE_RELATION)
 
 	if len(includeRelations) == 0 {
 		return
@@ -130,7 +130,7 @@ func ExpandIncludeRelations(tables []Relation) {
 
 	for _, table := range tables {
 		if _, ok := includeMap[table.FQN()]; !ok {
-			err := cmdFlags.Set(INCLUDE_RELATION, table.FQN()) //This appends to the slice underlying the flag.
+			err := cmdFlags.Set(utils.INCLUDE_RELATION, table.FQN()) //This appends to the slice underlying the flag.
 			gplog.FatalOnError(err)
 		}
 	}

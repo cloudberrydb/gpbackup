@@ -3,6 +3,7 @@ package backup_test
 import (
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpbackup/backup"
+	"github.com/greenplum-db/gpbackup/utils"
 	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
 
 	. "github.com/onsi/ginkgo"
@@ -91,7 +92,7 @@ var _ = Describe("backup/validate tests", func() {
 				backup.ValidateFilterTables(connectionPool, filterList)
 			})
 			It("panics if given an intermediate partition table and --leaf-partition-data is set", func() {
-				cmdFlags.Set(backup.LEAF_PARTITION_DATA, "true")
+				cmdFlags.Set(utils.LEAF_PARTITION_DATA, "true")
 				tableRows.AddRow("1", "public.table1")
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(tableRows)
 				partitionTables.AddRow("1", "i")

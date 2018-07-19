@@ -25,7 +25,7 @@ func FilterTablesForIncremental(lastBackupTOC, currentTOC *utils.TOC, tables []R
 }
 
 func GetLatestMatchingBackupTimestamp() string {
-	if fromTimestamp := MustGetFlagString(FROM_TIMESTAMP); fromTimestamp != "" {
+	if fromTimestamp := MustGetFlagString(utils.FROM_TIMESTAMP); fromTimestamp != "" {
 		return fromTimestamp
 	}
 
@@ -41,16 +41,16 @@ func GetLatestMatchingBackupTimestamp() string {
 
 func GetLatestMatchingHistoryEntry(history *utils.History) *utils.HistoryEntry {
 	for _, historyEntry := range history.Entries {
-		if historyEntry.BackupDir == MustGetFlagString(BACKUP_DIR) &&
-			historyEntry.Dbname == MustGetFlagString(DBNAME) &&
-			historyEntry.LeafPartitionData == MustGetFlagBool(LEAF_PARTITION_DATA) &&
-			historyEntry.PluginConfigFile == MustGetFlagString(PLUGIN_CONFIG) &&
-			historyEntry.SingleDataFile == MustGetFlagBool(SINGLE_DATA_FILE) &&
-			historyEntry.NoCompression == MustGetFlagBool(NO_COMPRESSION) &&
-			utils.NewIncludeSet(historyEntry.IncludeRelations).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(INCLUDE_RELATION))) &&
-			utils.NewIncludeSet(historyEntry.IncludeSchemas).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(INCLUDE_SCHEMA))) &&
-			utils.NewIncludeSet(historyEntry.ExcludeRelations).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(EXCLUDE_RELATION))) &&
-			utils.NewIncludeSet(historyEntry.ExcludeSchemas).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(EXCLUDE_SCHEMA))) {
+		if historyEntry.BackupDir == MustGetFlagString(utils.BACKUP_DIR) &&
+			historyEntry.Dbname == MustGetFlagString(utils.DBNAME) &&
+			historyEntry.LeafPartitionData == MustGetFlagBool(utils.LEAF_PARTITION_DATA) &&
+			historyEntry.PluginConfigFile == MustGetFlagString(utils.PLUGIN_CONFIG) &&
+			historyEntry.SingleDataFile == MustGetFlagBool(utils.SINGLE_DATA_FILE) &&
+			historyEntry.NoCompression == MustGetFlagBool(utils.NO_COMPRESSION) &&
+			utils.NewIncludeSet(historyEntry.IncludeRelations).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(utils.INCLUDE_RELATION))) &&
+			utils.NewIncludeSet(historyEntry.IncludeSchemas).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(utils.INCLUDE_SCHEMA))) &&
+			utils.NewIncludeSet(historyEntry.ExcludeRelations).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(utils.EXCLUDE_RELATION))) &&
+			utils.NewIncludeSet(historyEntry.ExcludeSchemas).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(utils.EXCLUDE_SCHEMA))) {
 			return &historyEntry
 		}
 	}

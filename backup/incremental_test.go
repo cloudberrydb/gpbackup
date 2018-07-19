@@ -82,14 +82,14 @@ var _ = Describe("backup/incremental tests", func() {
 			{Dbname: "test1", Timestamp: "timestamp1"},
 		}}
 		It("Should return the latest backup's timestamp with matching Dbname", func() {
-			cmdFlags.Set(backup.DBNAME, "test1")
+			cmdFlags.Set(utils.DBNAME, "test1")
 
 			latestBackupHistoryEntry := backup.GetLatestMatchingHistoryEntry(&history)
 
 			structmatcher.ExpectStructsToMatch(history.Entries[1], latestBackupHistoryEntry)
 		})
 		It("should return nil with no matching Dbname", func() {
-			cmdFlags.Set(backup.DBNAME, "test3")
+			cmdFlags.Set(utils.DBNAME, "test3")
 
 			latestBackupHistoryEntry := backup.GetLatestMatchingHistoryEntry(&history)
 

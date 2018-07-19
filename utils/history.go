@@ -1,6 +1,9 @@
 package utils
 
 import (
+	"sort"
+	"time"
+
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gp-common-go-libs/iohelper"
 	"github.com/greenplum-db/gp-common-go-libs/operating"
@@ -8,8 +11,6 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
-	"sort"
-	"time"
 )
 
 type HistoryEntry struct {

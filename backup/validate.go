@@ -15,10 +15,10 @@ import (
  */
 
 func validateFilterLists() {
-	ValidateFilterSchemas(connectionPool, MustGetFlagStringSlice(EXCLUDE_SCHEMA))
-	ValidateFilterSchemas(connectionPool, MustGetFlagStringSlice(INCLUDE_SCHEMA))
-	ValidateFilterTables(connectionPool, MustGetFlagStringSlice(EXCLUDE_RELATION))
-	ValidateFilterTables(connectionPool, MustGetFlagStringSlice(INCLUDE_RELATION))
+	ValidateFilterSchemas(connectionPool, MustGetFlagStringSlice(utils.EXCLUDE_SCHEMA))
+	ValidateFilterSchemas(connectionPool, MustGetFlagStringSlice(utils.INCLUDE_SCHEMA))
+	ValidateFilterTables(connectionPool, MustGetFlagStringSlice(utils.EXCLUDE_RELATION))
+	ValidateFilterTables(connectionPool, MustGetFlagStringSlice(utils.INCLUDE_RELATION))
 }
 
 func ValidateFilterSchemas(connection *dbconn.DBConn, schemaList []string) {
@@ -73,33 +73,33 @@ WHERE quote_ident(n.nspname) || '.' || quote_ident(c.relname) IN (%s)`, quotedTa
 }
 
 func ValidateFlagCombinations(flags *pflag.FlagSet) {
-	utils.CheckExclusiveFlags(flags, DEBUG, QUIET, VERBOSE)
-	utils.CheckExclusiveFlags(flags, DATA_ONLY, METADATA_ONLY, INCREMENTAL)
-	utils.CheckExclusiveFlags(flags, INCLUDE_SCHEMA, INCLUDE_RELATION, INCLUDE_RELATION_FILE)
-	utils.CheckExclusiveFlags(flags, EXCLUDE_SCHEMA, INCLUDE_SCHEMA)
-	utils.CheckExclusiveFlags(flags, EXCLUDE_SCHEMA, EXCLUDE_RELATION, INCLUDE_RELATION, EXCLUDE_RELATION_FILE, INCLUDE_RELATION_FILE)
-	utils.CheckExclusiveFlags(flags, EXCLUDE_RELATION, EXCLUDE_RELATION_FILE, LEAF_PARTITION_DATA)
-	utils.CheckExclusiveFlags(flags, JOBS, METADATA_ONLY, SINGLE_DATA_FILE)
-	utils.CheckExclusiveFlags(flags, METADATA_ONLY, LEAF_PARTITION_DATA)
-	utils.CheckExclusiveFlags(flags, NO_COMPRESSION, COMPRESSION_LEVEL)
-	if MustGetFlagString(PLUGIN_CONFIG) != "" && !(MustGetFlagBool(SINGLE_DATA_FILE) || MustGetFlagBool(METADATA_ONLY)) {
+	utils.CheckExclusiveFlags(flags, utils.DEBUG, utils.QUIET, utils.VERBOSE)
+	utils.CheckExclusiveFlags(flags, utils.DATA_ONLY, utils.METADATA_ONLY, utils.INCREMENTAL)
+	utils.CheckExclusiveFlags(flags, utils.INCLUDE_SCHEMA, utils.INCLUDE_RELATION, utils.INCLUDE_RELATION_FILE)
+	utils.CheckExclusiveFlags(flags, utils.EXCLUDE_SCHEMA, utils.INCLUDE_SCHEMA)
+	utils.CheckExclusiveFlags(flags, utils.EXCLUDE_SCHEMA, utils.EXCLUDE_RELATION, utils.INCLUDE_RELATION, utils.EXCLUDE_RELATION_FILE, utils.INCLUDE_RELATION_FILE)
+	utils.CheckExclusiveFlags(flags, utils.EXCLUDE_RELATION, utils.EXCLUDE_RELATION_FILE, utils.LEAF_PARTITION_DATA)
+	utils.CheckExclusiveFlags(flags, utils.JOBS, utils.METADATA_ONLY, utils.SINGLE_DATA_FILE)
+	utils.CheckExclusiveFlags(flags, utils.METADATA_ONLY, utils.LEAF_PARTITION_DATA)
+	utils.CheckExclusiveFlags(flags, utils.NO_COMPRESSION, utils.COMPRESSION_LEVEL)
+	if MustGetFlagString(utils.PLUGIN_CONFIG) != "" && !(MustGetFlagBool(utils.SINGLE_DATA_FILE) || MustGetFlagBool(utils.METADATA_ONLY)) {
 		gplog.Fatal(errors.Errorf("--plugin-config must be specified with either --single-data-file or --metadata-only"), "")
 	}
-	if MustGetFlagString(FROM_TIMESTAMP) != "" && !MustGetFlagBool(INCREMENTAL) {
+	if MustGetFlagString(utils.FROM_TIMESTAMP) != "" && !MustGetFlagBool(utils.INCREMENTAL) {
 		gplog.Fatal(errors.Errorf("--from-timestamp must be specified with --incremental"), "")
 	}
-	if MustGetFlagBool(INCREMENTAL) && !MustGetFlagBool(LEAF_PARTITION_DATA) {
+	if MustGetFlagBool(utils.INCREMENTAL) && !MustGetFlagBool(utils.LEAF_PARTITION_DATA) {
 		gplog.Fatal(errors.Errorf("--leaf-partition-data must be specified with --incremental"), "")
 	}
 }
 
 func ValidateFlagValues() {
-	utils.ValidateFullPath(MustGetFlagString(BACKUP_DIR))
-	utils.ValidateFullPath(MustGetFlagString(PLUGIN_CONFIG))
-	ValidateCompressionLevel(MustGetFlagInt(COMPRESSION_LEVEL))
-	if MustGetFlagString(FROM_TIMESTAMP) != "" && !utils.IsValidTimestamp(MustGetFlagString(FROM_TIMESTAMP)) {
+	utils.ValidateFullPath(MustGetFlagString(utils.BACKUP_DIR))
+	utils.ValidateFullPath(MustGetFlagString(utils.PLUGIN_CONFIG))
+	ValidateCompressionLevel(MustGetFlagInt(utils.COMPRESSION_LEVEL))
+	if MustGetFlagString(utils.FROM_TIMESTAMP) != "" && !utils.IsValidTimestamp(MustGetFlagString(utils.FROM_TIMESTAMP)) {
 		gplog.Fatal(errors.Errorf("Timestamp %s is invalid.  Timestamps must be in the format YYYYMMDDHHMMSS.",
-			MustGetFlagString(FROM_TIMESTAMP)), "")
+			MustGetFlagString(utils.FROM_TIMESTAMP)), "")
 	}
 }
 

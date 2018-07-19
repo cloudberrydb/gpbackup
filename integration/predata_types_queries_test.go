@@ -7,6 +7,7 @@ import (
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
+	"github.com/greenplum-db/gpbackup/utils"
 	"github.com/lib/pq"
 
 	. "github.com/onsi/ginkgo"
@@ -174,7 +175,7 @@ var _ = Describe("backup integration tests", func() {
 			defer testhelper.AssertQueryRuns(connection, "DROP SCHEMA testschema")
 			testhelper.AssertQueryRuns(connection, "CREATE TYPE testschema.shell_type")
 			defer testhelper.AssertQueryRuns(connection, "DROP TYPE testschema.shell_type")
-			cmdFlags.Set(backup.INCLUDE_SCHEMA, "testschema")
+			cmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 
 			results := backup.GetShellTypes(connection)
 			shellTypeOtherSchema := backup.Type{Type: "p", Schema: "testschema", Name: "shell_type"}
@@ -351,7 +352,7 @@ var _ = Describe("backup integration tests", func() {
 			defer testhelper.AssertQueryRuns(connection, "DROP SCHEMA testschema")
 			testhelper.AssertQueryRuns(connection, `CREATE COLLATION testschema.some_coll (lc_collate = 'POSIX', lc_ctype = 'POSIX');`)
 			defer testhelper.AssertQueryRuns(connection, "DROP COLLATION testschema.some_coll")
-			cmdFlags.Set(backup.INCLUDE_SCHEMA, "testschema")
+			cmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 
 			results := backup.GetCollations(connection)
 

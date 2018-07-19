@@ -2,14 +2,15 @@ package backup
 
 import (
 	"fmt"
+	"os"
+	"sync"
+	"time"
+
 	"github.com/greenplum-db/gp-common-go-libs/cluster"
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpbackup/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"os"
-	"sync"
-	"time"
 )
 
 /*
@@ -20,36 +21,36 @@ import (
 func initializeFlags(cmd *cobra.Command) {
 	SetFlagDefaults(cmd.Flags())
 
-	_ = cmd.MarkFlagRequired(DBNAME)
+	_ = cmd.MarkFlagRequired(utils.DBNAME)
 
 	cmdFlags = cmd.Flags()
 }
 
 func SetFlagDefaults(flagSet *pflag.FlagSet) {
-	flagSet.String(BACKUP_DIR, "", "The absolute path of the directory to which all backup files will be written")
-	flagSet.Int(COMPRESSION_LEVEL, 0, "Level of compression to use during data backup. Valid values are between 1 and 9.")
-	flagSet.Bool(DATA_ONLY, false, "Only back up data, do not back up metadata")
-	flagSet.String(DBNAME, "", "The database to be backed up")
-	flagSet.Bool(DEBUG, false, "Print verbose and debug log messages")
-	flagSet.StringSlice(EXCLUDE_SCHEMA, []string{}, "Back up all metadata except objects in the specified schema(s). --exclude-schema can be specified multiple times.")
-	flagSet.StringSlice(EXCLUDE_RELATION, []string{}, "Back up all metadata except the specified table(s). --exclude-table can be specified multiple times.")
-	flagSet.String(EXCLUDE_RELATION_FILE, "", "A file containing a list of fully-qualified tables to be excluded from the backup")
-	flagSet.String(FROM_TIMESTAMP, "", "A timestamp to use to base the current incremental backup off")
+	flagSet.String(utils.BACKUP_DIR, "", "The absolute path of the directory to which all backup files will be written")
+	flagSet.Int(utils.COMPRESSION_LEVEL, 0, "Level of compression to use during data backup. Valid values are between 1 and 9.")
+	flagSet.Bool(utils.DATA_ONLY, false, "Only back up data, do not back up metadata")
+	flagSet.String(utils.DBNAME, "", "The database to be backed up")
+	flagSet.Bool(utils.DEBUG, false, "Print verbose and debug log messages")
+	flagSet.StringSlice(utils.EXCLUDE_SCHEMA, []string{}, "Back up all metadata except objects in the specified schema(s). --exclude-schema can be specified multiple times.")
+	flagSet.StringSlice(utils.EXCLUDE_RELATION, []string{}, "Back up all metadata except the specified table(s). --exclude-table can be specified multiple times.")
+	flagSet.String(utils.EXCLUDE_RELATION_FILE, "", "A file containing a list of fully-qualified tables to be excluded from the backup")
+	flagSet.String(utils.FROM_TIMESTAMP, "", "A timestamp to use to base the current incremental backup off")
 	flagSet.Bool("help", false, "Help for gpbackup")
-	flagSet.StringSlice(INCLUDE_SCHEMA, []string{}, "Back up only the specified schema(s). --include-schema can be specified multiple times.")
-	flagSet.StringSlice(INCLUDE_RELATION, []string{}, "Back up only the specified table(s). --include-table can be specified multiple times.")
-	flagSet.String(INCLUDE_RELATION_FILE, "", "A file containing a list of fully-qualified tables to be included in the backup")
-	flagSet.Bool(INCREMENTAL, false, "Only back up data for AO tables that have been modified since the last backup")
-	flagSet.Int(JOBS, 1, "The number of parallel connections to use when backing up data")
-	flagSet.Bool(LEAF_PARTITION_DATA, false, "For partition tables, create one data file per leaf partition instead of one data file for the whole table")
-	flagSet.Bool(METADATA_ONLY, false, "Only back up metadata, do not back up data")
-	flagSet.Bool(NO_COMPRESSION, false, "Disable compression of data files")
-	flagSet.String(PLUGIN_CONFIG, "", "The configuration file to use for a plugin")
+	flagSet.StringSlice(utils.INCLUDE_SCHEMA, []string{}, "Back up only the specified schema(s). --include-schema can be specified multiple times.")
+	flagSet.StringSlice(utils.INCLUDE_RELATION, []string{}, "Back up only the specified table(s). --include-table can be specified multiple times.")
+	flagSet.String(utils.INCLUDE_RELATION_FILE, "", "A file containing a list of fully-qualified tables to be included in the backup")
+	flagSet.Bool(utils.INCREMENTAL, false, "Only back up data for AO tables that have been modified since the last backup")
+	flagSet.Int(utils.JOBS, 1, "The number of parallel connections to use when backing up data")
+	flagSet.Bool(utils.LEAF_PARTITION_DATA, false, "For partition tables, create one data file per leaf partition instead of one data file for the whole table")
+	flagSet.Bool(utils.METADATA_ONLY, false, "Only back up metadata, do not back up data")
+	flagSet.Bool(utils.NO_COMPRESSION, false, "Disable compression of data files")
+	flagSet.String(utils.PLUGIN_CONFIG, "", "The configuration file to use for a plugin")
 	flagSet.Bool("version", false, "Print version number and exit")
-	flagSet.Bool(QUIET, false, "Suppress non-warning, non-error log messages")
-	flagSet.Bool(SINGLE_DATA_FILE, false, "Back up all data to a single file instead of one per table")
-	flagSet.Bool(VERBOSE, false, "Print verbose log messages")
-	flagSet.Bool(WITH_STATS, false, "Back up query plan statistics")
+	flagSet.Bool(utils.QUIET, false, "Suppress non-warning, non-error log messages")
+	flagSet.Bool(utils.SINGLE_DATA_FILE, false, "Back up all data to a single file instead of one per table")
+	flagSet.Bool(utils.VERBOSE, false, "Print verbose log messages")
+	flagSet.Bool(utils.WITH_STATS, false, "Back up query plan statistics")
 }
 
 // This function handles setup that can be done before parsing flags.
@@ -72,7 +73,7 @@ func DoSetup() {
 	timestamp := utils.CurrentTimestamp()
 	CreateBackupLockFile(timestamp)
 
-	gplog.Info("Starting backup of database %s", MustGetFlagString(DBNAME))
+	gplog.Info("Starting backup of database %s", MustGetFlagString(utils.DBNAME))
 	InitializeConnectionPool()
 
 	InitializeFilterLists()
@@ -82,11 +83,11 @@ func DoSetup() {
 	segConfig := cluster.MustGetSegmentConfiguration(connectionPool)
 	globalCluster = cluster.NewCluster(segConfig)
 	segPrefix := utils.GetSegPrefix(connectionPool)
-	globalFPInfo = utils.NewFilePathInfo(globalCluster, MustGetFlagString(BACKUP_DIR), timestamp, segPrefix)
+	globalFPInfo = utils.NewFilePathInfo(globalCluster, MustGetFlagString(utils.BACKUP_DIR), timestamp, segPrefix)
 	CreateBackupDirectoriesOnAllHosts()
 	globalTOC = &utils.TOC{}
 	globalTOC.InitializeMetadataEntryMap()
-	pluginConfigFlag := MustGetFlagString(PLUGIN_CONFIG)
+	pluginConfigFlag := MustGetFlagString(utils.PLUGIN_CONFIG)
 	if pluginConfigFlag != "" {
 		pluginConfig = utils.ReadPluginConfig(pluginConfigFlag)
 		pluginConfig.CheckPluginExistsOnAllHosts(globalCluster)
@@ -101,7 +102,7 @@ func DoBackup() {
 	LogBackupInfo()
 
 	var latestBackupTimestamp string
-	if MustGetFlagBool(INCREMENTAL) {
+	if MustGetFlagBool(utils.INCREMENTAL) {
 		latestBackupTimestamp = GetLatestMatchingBackupTimestamp()
 	}
 
@@ -114,8 +115,8 @@ func DoBackup() {
 	metadataFile := utils.NewFileWithByteCountFromFile(metadataFilename)
 
 	BackupSessionGUCs(metadataFile)
-	if !MustGetFlagBool(DATA_ONLY) {
-		if len(MustGetFlagStringSlice(INCLUDE_RELATION)) > 0 {
+	if !MustGetFlagBool(utils.DATA_ONLY) {
+		if len(MustGetFlagStringSlice(utils.INCLUDE_RELATION)) > 0 {
 			backupRelationPredata(metadataFile, metadataTables, tableDefs)
 		} else {
 			backupGlobal(metadataFile)
@@ -151,7 +152,7 @@ func DoBackup() {
 		backupData(backupSetTables, tableDefs)
 	}
 
-	if MustGetFlagBool(WITH_STATS) {
+	if MustGetFlagBool(utils.WITH_STATS) {
 		backupStatistics(metadataTables)
 	}
 
@@ -160,10 +161,10 @@ func DoBackup() {
 		connectionPool.MustCommit(connNum)
 	}
 	metadataFile.Close()
-	if MustGetFlagString(PLUGIN_CONFIG) != "" {
+	if MustGetFlagString(utils.PLUGIN_CONFIG) != "" {
 		pluginConfig.BackupFile(metadataFilename)
 		pluginConfig.BackupFile(globalFPInfo.GetTOCFilePath())
-		if MustGetFlagBool(WITH_STATS) {
+		if MustGetFlagBool(utils.WITH_STATS) {
 			pluginConfig.BackupFile(globalFPInfo.GetStatisticsFilePath())
 		}
 	}
@@ -179,7 +180,7 @@ func backupGlobal(metadataFile *utils.FileWithByteCount) {
 	BackupCreateDatabase(metadataFile)
 	BackupDatabaseGUCs(metadataFile)
 
-	if len(MustGetFlagStringSlice(INCLUDE_SCHEMA)) == 0 {
+	if len(MustGetFlagStringSlice(utils.INCLUDE_SCHEMA)) == 0 {
 		BackupResourceQueues(metadataFile)
 		if connectionPool.Version.AtLeast("5") {
 			BackupResourceGroups(metadataFile)
@@ -201,7 +202,7 @@ func backupPredata(metadataFile *utils.FileWithByteCount, tables []Relation, tab
 	gplog.Info("Writing pre-data metadata")
 
 	BackupSchemas(metadataFile)
-	if len(MustGetFlagStringSlice(INCLUDE_SCHEMA)) == 0 && connectionPool.Version.AtLeast("5") {
+	if len(MustGetFlagStringSlice(utils.INCLUDE_SCHEMA)) == 0 && connectionPool.Version.AtLeast("5") {
 		BackupExtensions(metadataFile)
 	}
 
@@ -212,7 +213,7 @@ func backupPredata(metadataFile *utils.FileWithByteCount, tables []Relation, tab
 	langFuncs, otherFuncs, functionMetadata := RetrieveFunctions(procLangs)
 	types, typeMetadata, funcInfoMap := RetrieveTypes()
 
-	if len(MustGetFlagStringSlice(INCLUDE_SCHEMA)) == 0 {
+	if len(MustGetFlagStringSlice(utils.INCLUDE_SCHEMA)) == 0 {
 		BackupProceduralLanguages(metadataFile, procLangs, langFuncs, functionMetadata, funcInfoMap)
 	}
 
@@ -231,7 +232,7 @@ func backupPredata(metadataFile *utils.FileWithByteCount, tables []Relation, tab
 	BackupDependentObjects(metadataFile, otherFuncs, types, tables, protocols, functionMetadata, typeMetadata, relationMetadata, protoMetadata, tableDefs, constraints)
 	PrintAlterSequenceStatements(metadataFile, globalTOC, sequences, sequenceOwnerColumns)
 
-	if len(MustGetFlagStringSlice(INCLUDE_SCHEMA)) == 0 {
+	if len(MustGetFlagStringSlice(utils.INCLUDE_SCHEMA)) == 0 {
 		if connectionPool.Version.AtLeast("6") {
 			BackupForeignDataWrappers(metadataFile, funcInfoMap)
 			BackupForeignServers(metadataFile)
@@ -287,7 +288,7 @@ func backupRelationPredata(metadataFile *utils.FileWithByteCount, tables []Relat
 }
 
 func backupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
-	if MustGetFlagBool(SINGLE_DATA_FILE) {
+	if MustGetFlagBool(utils.SINGLE_DATA_FILE) {
 		gplog.Verbose("Initializing pipes and gpbackup_helper on segments for single data file backup")
 		utils.VerifyHelperVersionOnSegments(version, globalCluster)
 		oidList := make([]string, 0, len(tables))
@@ -298,17 +299,17 @@ func backupData(tables []Relation, tableDefs map[uint32]TableDefinition) {
 		}
 		utils.WriteOidListToSegments(oidList, globalCluster, globalFPInfo)
 		utils.CreateFirstSegmentPipeOnAllHosts(oidList[0], globalCluster, globalFPInfo)
-		compressStr := fmt.Sprintf(" --compression-level %d", MustGetFlagInt(COMPRESSION_LEVEL))
-		if !MustGetFlagBool(NO_COMPRESSION) && MustGetFlagInt(COMPRESSION_LEVEL) == 0 {
+		compressStr := fmt.Sprintf(" --compression-level %d", MustGetFlagInt(utils.COMPRESSION_LEVEL))
+		if !MustGetFlagBool(utils.NO_COMPRESSION) && MustGetFlagInt(utils.COMPRESSION_LEVEL) == 0 {
 			compressStr = " --compression-level 1"
 		}
 		utils.StartAgent(globalCluster, globalFPInfo, "--backup-agent",
-			MustGetFlagString(PLUGIN_CONFIG), compressStr)
+			MustGetFlagString(utils.PLUGIN_CONFIG), compressStr)
 	}
 	gplog.Info("Writing data to file")
 	rowsCopiedMaps := BackupDataForAllTables(tables, tableDefs)
 	AddTableDataEntriesToTOC(tables, tableDefs, rowsCopiedMaps)
-	if MustGetFlagBool(SINGLE_DATA_FILE) && MustGetFlagString(PLUGIN_CONFIG) != "" {
+	if MustGetFlagBool(utils.SINGLE_DATA_FILE) && MustGetFlagString(utils.PLUGIN_CONFIG) != "" {
 		pluginConfig.BackupSegmentTOCs(globalCluster, globalFPInfo)
 	}
 	if wasTerminated {
@@ -418,7 +419,7 @@ func DoCleanup() {
 	}()
 	gplog.Verbose("Beginning cleanup")
 	if globalFPInfo.Timestamp != "" {
-		if MustGetFlagBool(SINGLE_DATA_FILE) {
+		if MustGetFlagBool(utils.SINGLE_DATA_FILE) {
 			utils.CleanUpHelperFilesOnAllHosts(globalCluster, globalFPInfo)
 			if wasTerminated {
 				utils.CleanUpSegmentHelperProcesses(globalCluster, globalFPInfo, "backup")

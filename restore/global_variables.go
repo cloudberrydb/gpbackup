@@ -42,30 +42,6 @@ var (
  */
 var cmdFlags *pflag.FlagSet
 
-const (
-	BACKUP_DIR            = "backup-dir"
-	CREATE_DB             = "create-db"
-	DATA_ONLY             = "data-only"
-	DEBUG                 = "debug"
-	EXCLUDE_RELATION      = "exclude-table"
-	EXCLUDE_RELATION_FILE = "exclude-table-file"
-	EXCLUDE_SCHEMA        = "exclude-schema"
-	INCLUDE_RELATION      = "include-table"
-	INCLUDE_RELATION_FILE = "include-table-file"
-	INCLUDE_SCHEMA        = "include-schema"
-	JOBS                  = "jobs"
-	LEAF_PARTITION_DATA   = "leaf-partition-data"
-	METADATA_ONLY         = "metadata-only"
-	ON_ERROR_CONTINUE     = "on-error-continue"
-	PLUGIN_CONFIG         = "plugin-config"
-	QUIET                 = "quiet"
-	REDIRECT_DB           = "redirect-db"
-	TIMESTAMP             = "timestamp"
-	VERBOSE               = "verbose"
-	WITH_GLOBALS          = "with-globals"
-	WITH_STATS            = "with-stats"
-)
-
 /*
  * Setter functions
  */

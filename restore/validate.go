@@ -17,8 +17,8 @@ import (
  */
 
 func validateFilterListsInBackupSet() {
-	ValidateFilterSchemasInBackupSet(MustGetFlagStringSlice(INCLUDE_SCHEMA))
-	ValidateFilterRelationsInBackupSet(MustGetFlagStringSlice(INCLUDE_RELATION))
+	ValidateFilterSchemasInBackupSet(MustGetFlagStringSlice(utils.INCLUDE_SCHEMA))
+	ValidateFilterRelationsInBackupSet(MustGetFlagStringSlice(utils.INCLUDE_RELATION))
 }
 
 func ValidateFilterSchemasInBackupSet(schemaList []string) {
@@ -138,36 +138,35 @@ END AS string;`, dbname)))
 }
 
 func ValidateBackupFlagCombinations() {
-	if backupConfig.SingleDataFile && MustGetFlagInt(JOBS) != 1 {
+	if backupConfig.SingleDataFile && MustGetFlagInt(utils.JOBS) != 1 {
 		gplog.Fatal(errors.Errorf("Cannot use jobs flag when restoring backups with a single data file per segment."), "")
 	}
-	if (backupConfig.IncludeTableFiltered || backupConfig.DataOnly) && MustGetFlagBool(WITH_GLOBALS) {
+	if (backupConfig.IncludeTableFiltered || backupConfig.DataOnly) && MustGetFlagBool(utils.WITH_GLOBALS) {
 		gplog.Fatal(errors.Errorf("Global metadata is not backed up in table-filtered or data-only backups."), "")
 	}
-	if backupConfig.MetadataOnly && MustGetFlagBool(DATA_ONLY) {
+	if backupConfig.MetadataOnly && MustGetFlagBool(utils.DATA_ONLY) {
 		gplog.Fatal(errors.Errorf("Cannot use data-only flag when restoring metadata-only backup"), "")
 	}
-	if backupConfig.DataOnly && MustGetFlagBool(METADATA_ONLY) {
+	if backupConfig.DataOnly && MustGetFlagBool(utils.METADATA_ONLY) {
 		gplog.Fatal(errors.Errorf("Cannot use metadata-only flag when restoring data-only backup"), "")
 	}
 	validateBackupFlagPluginCombinations()
 }
 
 func validateBackupFlagPluginCombinations() {
-	if backupConfig.Plugin != "" && MustGetFlagString(PLUGIN_CONFIG) == "" {
+	if backupConfig.Plugin != "" && MustGetFlagString(utils.PLUGIN_CONFIG) == "" {
 		gplog.Fatal(errors.Errorf("Backup was taken with plugin %s. The --plugin-config flag must be used to restore.", backupConfig.Plugin), "")
-	} else if backupConfig.Plugin == "" && MustGetFlagString(PLUGIN_CONFIG) != "" {
+	} else if backupConfig.Plugin == "" && MustGetFlagString(utils.PLUGIN_CONFIG) != "" {
 		gplog.Fatal(errors.Errorf("The --plugin-config flag cannot be used to restore a backup taken without a plugin."), "")
 	}
 }
 
 func ValidateFlagCombinations(flags *pflag.FlagSet) {
-	utils.CheckExclusiveFlags(flags, DATA_ONLY, WITH_GLOBALS)
-	utils.CheckExclusiveFlags(flags, DATA_ONLY, CREATE_DB)
-	utils.CheckExclusiveFlags(flags, DEBUG, QUIET, VERBOSE)
-	utils.CheckExclusiveFlags(flags, INCLUDE_SCHEMA, INCLUDE_RELATION, INCLUDE_RELATION_FILE)
-	utils.CheckExclusiveFlags(flags, EXCLUDE_SCHEMA, INCLUDE_SCHEMA)
-	utils.CheckExclusiveFlags(flags, EXCLUDE_SCHEMA, EXCLUDE_RELATION, INCLUDE_RELATION, EXCLUDE_RELATION_FILE, INCLUDE_RELATION_FILE)
-	utils.CheckExclusiveFlags(flags, EXCLUDE_RELATION, EXCLUDE_RELATION_FILE, LEAF_PARTITION_DATA)
-	utils.CheckExclusiveFlags(flags, METADATA_ONLY, DATA_ONLY)
+	utils.CheckExclusiveFlags(flags, utils.DATA_ONLY, utils.WITH_GLOBALS)
+	utils.CheckExclusiveFlags(flags, utils.DATA_ONLY, utils.CREATE_DB)
+	utils.CheckExclusiveFlags(flags, utils.DEBUG, utils.QUIET, utils.VERBOSE)
+	utils.CheckExclusiveFlags(flags, utils.INCLUDE_SCHEMA, utils.INCLUDE_RELATION, utils.INCLUDE_RELATION_FILE)
+	utils.CheckExclusiveFlags(flags, utils.EXCLUDE_SCHEMA, utils.INCLUDE_SCHEMA)
+	utils.CheckExclusiveFlags(flags, utils.EXCLUDE_SCHEMA, utils.EXCLUDE_RELATION, utils.INCLUDE_RELATION, utils.EXCLUDE_RELATION_FILE, utils.INCLUDE_RELATION_FILE)
+	utils.CheckExclusiveFlags(flags, utils.METADATA_ONLY, utils.DATA_ONLY)
 }

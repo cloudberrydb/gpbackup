@@ -22,18 +22,18 @@ import (
  */
 
 func SetLoggerVerbosity() {
-	if MustGetFlagBool(QUIET) {
+	if MustGetFlagBool(utils.QUIET) {
 		gplog.SetVerbosity(gplog.LOGERROR)
-	} else if MustGetFlagBool(DEBUG) {
+	} else if MustGetFlagBool(utils.DEBUG) {
 		gplog.SetVerbosity(gplog.LOGDEBUG)
-	} else if MustGetFlagBool(VERBOSE) {
+	} else if MustGetFlagBool(utils.VERBOSE) {
 		gplog.SetVerbosity(gplog.LOGVERBOSE)
 	}
 }
 
 func InitializeConnection(dbname string) {
 	connectionPool = dbconn.NewDBConnFromEnvironment(dbname)
-	connectionPool.MustConnect(MustGetFlagInt(JOBS))
+	connectionPool.MustConnect(MustGetFlagInt(utils.JOBS))
 	utils.SetDatabaseVersion(connectionPool)
 	setupQuery := `
 SET application_name TO 'gprestore';
@@ -69,14 +69,14 @@ func InitializeBackupConfig() {
 }
 
 func InitializeFilterLists() {
-	if MustGetFlagString(INCLUDE_RELATION_FILE) != "" {
-		includeRelations := strings.Join(iohelper.MustReadLinesFromFile(MustGetFlagString(INCLUDE_RELATION_FILE)), ",")
-		err := cmdFlags.Set(INCLUDE_RELATION, includeRelations)
+	if MustGetFlagString(utils.INCLUDE_RELATION_FILE) != "" {
+		includeRelations := strings.Join(iohelper.MustReadLinesFromFile(MustGetFlagString(utils.INCLUDE_RELATION_FILE)), ",")
+		err := cmdFlags.Set(utils.INCLUDE_RELATION, includeRelations)
 		gplog.FatalOnError(err)
 	}
-	if MustGetFlagString(EXCLUDE_RELATION_FILE) != "" {
-		excludeRelations := strings.Join(iohelper.MustReadLinesFromFile(MustGetFlagString(EXCLUDE_RELATION_FILE)), ",")
-		err := cmdFlags.Set(EXCLUDE_RELATION, excludeRelations)
+	if MustGetFlagString(utils.EXCLUDE_RELATION_FILE) != "" {
+		excludeRelations := strings.Join(iohelper.MustReadLinesFromFile(MustGetFlagString(utils.EXCLUDE_RELATION_FILE)), ",")
+		err := cmdFlags.Set(utils.EXCLUDE_RELATION, excludeRelations)
 		gplog.FatalOnError(err)
 	}
 }
@@ -87,7 +87,7 @@ func BackupConfigurationValidation() {
 	gplog.Verbose("Gathering information on backup directories")
 	VerifyBackupDirectoriesExistOnAllHosts()
 
-	VerifyMetadataFilePaths(MustGetFlagBool(WITH_STATS))
+	VerifyMetadataFilePaths(MustGetFlagBool(utils.WITH_STATS))
 
 	tocFilename := globalFPInfo.GetTOCFilePath()
 	globalTOC = utils.NewTOC(tocFilename)
@@ -98,17 +98,17 @@ func BackupConfigurationValidation() {
 }
 
 func RecoverMetadataFilesUsingPlugin() {
-	pluginConfig = utils.ReadPluginConfig(MustGetFlagString(PLUGIN_CONFIG))
+	pluginConfig = utils.ReadPluginConfig(MustGetFlagString(utils.PLUGIN_CONFIG))
 	pluginConfig.CheckPluginExistsOnAllHosts(globalCluster)
 
-	pluginConfig.CopyPluginConfigToAllHosts(globalCluster, MustGetFlagString(PLUGIN_CONFIG))
+	pluginConfig.CopyPluginConfigToAllHosts(globalCluster, MustGetFlagString(utils.PLUGIN_CONFIG))
 	pluginConfig.SetupPluginForRestore(globalCluster, globalFPInfo)
 	pluginConfig.RestoreFile(globalFPInfo.GetConfigFilePath())
 
 	InitializeBackupConfig()
 
 	metadataFiles := []string{globalFPInfo.GetMetadataFilePath(), globalFPInfo.GetTOCFilePath(), globalFPInfo.GetBackupReportFilePath()}
-	if MustGetFlagBool(WITH_STATS) {
+	if MustGetFlagBool(utils.WITH_STATS) {
 		metadataFiles = append(metadataFiles, globalFPInfo.GetStatisticsFilePath())
 	}
 	for _, filename := range metadataFiles {
@@ -129,12 +129,12 @@ func GetRestoreMetadataStatements(section string, filename string, includeObject
 	if len(includeObjectTypes) > 0 || len(excludeObjectTypes) > 0 || filterSchemas || filterRelations {
 		var inSchemas, exSchemas, inRelations, exRelations []string
 		if filterSchemas {
-			inSchemas = MustGetFlagStringSlice(INCLUDE_SCHEMA)
-			exSchemas = MustGetFlagStringSlice(EXCLUDE_SCHEMA)
+			inSchemas = MustGetFlagStringSlice(utils.INCLUDE_SCHEMA)
+			exSchemas = MustGetFlagStringSlice(utils.EXCLUDE_SCHEMA)
 		}
 		if filterRelations {
-			inRelations = MustGetFlagStringSlice(INCLUDE_RELATION)
-			exRelations = MustGetFlagStringSlice(EXCLUDE_RELATION)
+			inRelations = MustGetFlagStringSlice(utils.INCLUDE_RELATION)
+			exRelations = MustGetFlagStringSlice(utils.EXCLUDE_RELATION)
 		}
 		statements = globalTOC.GetSQLStatementForObjectTypes(section, metadataFile, includeObjectTypes, excludeObjectTypes, inSchemas, exSchemas, inRelations, exRelations)
 	} else {
