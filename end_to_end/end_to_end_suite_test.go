@@ -466,26 +466,51 @@ var _ = Describe("backup end to end integration tests", func() {
 				schema2TupleCounts["schema2.ao1"] = 1002
 				assertDataRestored(restoreConn, schema2TupleCounts)
 			})
+			Context("Without a timestamp", func() {
+				It("restores from a filtered incremental backup specified with a backup directory", func() {
+					backupdir := "/tmp/test_incremental"
+					_ = gpbackup(gpbackupPath, backupHelperPath, "--leaf-partition-data", "--backup-dir", backupdir)
 
-			It("restores from an incremental backup specified without a timestamp", func() {
-				_ = gpbackup(gpbackupPath, backupHelperPath, "--leaf-partition-data")
+					testhelper.AssertQueryRuns(backupConn, "INSERT into schema2.ao1 values(1001)")
+					defer testhelper.AssertQueryRuns(backupConn, "DELETE from schema2.ao1 where i=1001")
+					_ = gpbackup(gpbackupPath, backupHelperPath,
+						"--incremental", "--leaf-partition-data", "--backup-dir", backupdir)
 
-				testhelper.AssertQueryRuns(backupConn, "INSERT into schema2.ao1 values(1001)")
-				defer testhelper.AssertQueryRuns(backupConn, "DELETE from schema2.ao1 where i=1001")
-				_ = gpbackup(gpbackupPath, backupHelperPath,
-					"--incremental", "--leaf-partition-data")
+					testhelper.AssertQueryRuns(backupConn, "INSERT into schema2.ao1 values(1002)")
+					defer testhelper.AssertQueryRuns(backupConn, "DELETE from schema2.ao1 where i=1002")
+					incremental2Timestamp := gpbackup(gpbackupPath, backupHelperPath,
+						"--incremental", "--leaf-partition-data", "--backup-dir", backupdir)
 
-				testhelper.AssertQueryRuns(backupConn, "INSERT into schema2.ao1 values(1002)")
-				defer testhelper.AssertQueryRuns(backupConn, "DELETE from schema2.ao1 where i=1002")
-				incremental2Timestamp := gpbackup(gpbackupPath, backupHelperPath,
-					"--incremental", "--leaf-partition-data")
+					gprestore(gprestorePath, restoreHelperPath, incremental2Timestamp, "--redirect-db", "restoredb", "--backup-dir", backupdir)
 
-				gprestore(gprestorePath, restoreHelperPath, incremental2Timestamp, "--redirect-db", "restoredb")
+					assertRelationsCreated(restoreConn, 36)
+					assertDataRestored(restoreConn, publicSchemaTupleCounts)
+					schema2TupleCounts["schema2.ao1"] = 1002
+					assertDataRestored(restoreConn, schema2TupleCounts)
 
-				assertRelationsCreated(restoreConn, 36)
-				assertDataRestored(restoreConn, publicSchemaTupleCounts)
-				schema2TupleCounts["schema2.ao1"] = 1002
-				assertDataRestored(restoreConn, schema2TupleCounts)
+					os.Remove(backupdir)
+				})
+				It("restores from a filtered incremental backup with partition tables", func() {
+					_ = gpbackup(gpbackupPath, backupHelperPath, "--leaf-partition-data", "--include-table", "public.sales")
+
+					testhelper.AssertQueryRuns(backupConn, "INSERT into sales VALUES(19, '2017-02-15'::date, 100)")
+					defer testhelper.AssertQueryRuns(backupConn, "DELETE from sales where id=19")
+					_ = gpbackup(gpbackupPath, backupHelperPath,
+						"--incremental", "--leaf-partition-data", "--include-table", "public.sales")
+
+					testhelper.AssertQueryRuns(backupConn, "INSERT into sales VALUES(20, '2017-03-15'::date, 100)")
+					defer testhelper.AssertQueryRuns(backupConn, "DELETE from sales where id=20")
+					incremental2Timestamp := gpbackup(gpbackupPath, backupHelperPath,
+						"--incremental", "--leaf-partition-data", "--include-table", "public.sales")
+
+					gprestore(gprestorePath, restoreHelperPath, incremental2Timestamp, "--redirect-db", "restoredb")
+
+					assertDataRestored(restoreConn, map[string]int{
+						"public.sales":             15,
+						"public.sales_1_prt_feb17": 2,
+						"public.sales_1_prt_mar17": 2,
+					})
+				})
 			})
 		})
 		It("runs gpbackup and gprestore without redirecting restore to another db", func() {
