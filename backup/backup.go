@@ -103,7 +103,7 @@ func DoSetup() {
 func DoBackup() {
 	LogBackupInfo()
 
-	var latestBackupTimestamp string
+	latestBackupTimestamp := ""
 	if MustGetFlagBool(utils.INCREMENTAL) {
 		latestBackupTimestamp = GetLatestMatchingBackupTimestamp()
 	}

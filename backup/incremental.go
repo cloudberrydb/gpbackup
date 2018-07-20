@@ -26,6 +26,7 @@ func FilterTablesForIncremental(lastBackupTOC, currentTOC *utils.TOC, tables []R
 
 func GetLatestMatchingBackupTimestamp() string {
 	if fromTimestamp := MustGetFlagString(utils.FROM_TIMESTAMP); fromTimestamp != "" {
+		ValidateFromTimestamp(fromTimestamp, &backupReport.BackupConfig)
 		return fromTimestamp
 	}
 
@@ -41,22 +42,25 @@ func GetLatestMatchingBackupTimestamp() string {
 
 func GetLatestMatchingBackupConfig(history *utils.History, currentBackupConfig *utils.BackupConfig) *utils.BackupConfig {
 	for _, backupConfig := range history.BackupConfigs {
-		if backupConfig.BackupDir == MustGetFlagString(utils.BACKUP_DIR) &&
-			backupConfig.DatabaseName == currentBackupConfig.DatabaseName &&
-			backupConfig.LeafPartitionData == MustGetFlagBool(utils.LEAF_PARTITION_DATA) &&
-			backupConfig.Plugin == currentBackupConfig.Plugin &&
-			backupConfig.SingleDataFile == MustGetFlagBool(utils.SINGLE_DATA_FILE) &&
-			backupConfig.Compressed == currentBackupConfig.Compressed &&
-			utils.NewIncludeSet(backupConfig.IncludeRelations).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(utils.INCLUDE_RELATION))) &&
-			utils.NewIncludeSet(backupConfig.IncludeSchemas).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(utils.INCLUDE_SCHEMA))) &&
-			utils.NewIncludeSet(backupConfig.ExcludeRelations).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(utils.EXCLUDE_RELATION))) &&
-			utils.NewIncludeSet(backupConfig.ExcludeSchemas).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(utils.EXCLUDE_SCHEMA))) {
-
+		if MatchesIncrementalFlags(&backupConfig, currentBackupConfig) {
 			return &backupConfig
 		}
 	}
 
 	return nil
+}
+
+func MatchesIncrementalFlags(backupConfig *utils.BackupConfig, currentBackupConfig *utils.BackupConfig) bool {
+	return backupConfig.BackupDir == MustGetFlagString(utils.BACKUP_DIR) &&
+		backupConfig.DatabaseName == currentBackupConfig.DatabaseName &&
+		backupConfig.LeafPartitionData == MustGetFlagBool(utils.LEAF_PARTITION_DATA) &&
+		backupConfig.Plugin == currentBackupConfig.Plugin &&
+		backupConfig.SingleDataFile == MustGetFlagBool(utils.SINGLE_DATA_FILE) &&
+		backupConfig.Compressed == currentBackupConfig.Compressed &&
+		utils.NewIncludeSet(backupConfig.IncludeRelations).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(utils.INCLUDE_RELATION))) &&
+		utils.NewIncludeSet(backupConfig.IncludeSchemas).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(utils.INCLUDE_SCHEMA))) &&
+		utils.NewIncludeSet(backupConfig.ExcludeRelations).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(utils.EXCLUDE_RELATION))) &&
+		utils.NewIncludeSet(backupConfig.ExcludeSchemas).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(utils.EXCLUDE_SCHEMA)))
 }
 
 func PopulateRestorePlan(changedTables []Relation,
