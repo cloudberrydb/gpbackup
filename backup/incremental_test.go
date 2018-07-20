@@ -10,9 +10,6 @@ import (
 )
 
 var _ = Describe("backup/incremental tests", func() {
-	BeforeEach(func() {
-
-	})
 	Describe("FilterTablesForIncremental", func() {
 		defaultEntry := utils.AOEntry{
 			Modcount:         0,
@@ -74,29 +71,32 @@ var _ = Describe("backup/incremental tests", func() {
 		})
 	})
 
-	Describe("GetLatestMatchingHistoryEntry", func() {
-		history := utils.History{Entries: []utils.HistoryEntry{
-			{Dbname: "test2", Timestamp: "timestamp4"},
-			{Dbname: "test1", Timestamp: "timestamp3"},
-			{Dbname: "test2", Timestamp: "timestamp2"},
-			{Dbname: "test1", Timestamp: "timestamp1"},
+	Describe("GetLatestMatchingBackupConfig", func() {
+		history := utils.History{BackupConfigs: []utils.BackupConfig{
+			{DatabaseName: "test2", Timestamp: "timestamp4"},
+			{DatabaseName: "test1", Timestamp: "timestamp3"},
+			{DatabaseName: "test2", Timestamp: "timestamp2"},
+			{DatabaseName: "test1", Timestamp: "timestamp1"},
 		}}
 		It("Should return the latest backup's timestamp with matching Dbname", func() {
-			cmdFlags.Set(utils.DBNAME, "test1")
+			currentBackupConfig := utils.BackupConfig{DatabaseName: "test1"}
 
-			latestBackupHistoryEntry := backup.GetLatestMatchingHistoryEntry(&history)
+			latestBackupHistoryEntry := backup.GetLatestMatchingBackupConfig(&history, &currentBackupConfig)
 
-			structmatcher.ExpectStructsToMatch(history.Entries[1], latestBackupHistoryEntry)
+			structmatcher.ExpectStructsToMatch(history.BackupConfigs[1], latestBackupHistoryEntry)
 		})
 		It("should return nil with no matching Dbname", func() {
-			cmdFlags.Set(utils.DBNAME, "test3")
+			currentBackupConfig := utils.BackupConfig{DatabaseName: "test3"}
 
-			latestBackupHistoryEntry := backup.GetLatestMatchingHistoryEntry(&history)
+			latestBackupHistoryEntry := backup.GetLatestMatchingBackupConfig(&history, &currentBackupConfig)
 
 			Expect(latestBackupHistoryEntry).To(BeNil())
 		})
 		It("should return nil with an empty history", func() {
-			latestBackupHistoryEntry := backup.GetLatestMatchingHistoryEntry(&utils.History{Entries: []utils.HistoryEntry{}})
+			currentBackupConfig := utils.BackupConfig{}
+
+			latestBackupHistoryEntry := backup.
+				GetLatestMatchingBackupConfig(&utils.History{BackupConfigs: []utils.BackupConfig{}}, &currentBackupConfig)
 
 			Expect(latestBackupHistoryEntry).To(BeNil())
 		})

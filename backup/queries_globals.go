@@ -371,6 +371,7 @@ ORDER BY gp_segment_id;`, Oid, Oid)
 	return dbconn.MustSelectStringSlice(connection, query)
 }
 
+//Potentially expensive query
 func GetDBSize(connection *dbconn.DBConn) string {
 	size := struct{ DBSize string }{}
 	sizeQuery := fmt.Sprintf("SELECT pg_size_pretty(pg_database_size(E'%s')) as dbsize", dbconn.EscapeConnectionParam(connection.DBName))

@@ -77,7 +77,6 @@ func DoSetup() {
 	InitializeConnectionPool()
 
 	InitializeFilterLists()
-	InitializeBackupReport()
 	validateFilterLists()
 
 	segConfig := cluster.MustGetSegmentConfiguration(connectionPool)
@@ -87,6 +86,8 @@ func DoSetup() {
 	CreateBackupDirectoriesOnAllHosts()
 	globalTOC = &utils.TOC{}
 	globalTOC.InitializeMetadataEntryMap()
+	utils.InitializeCompressionParameters(!MustGetFlagBool(utils.NO_COMPRESSION), MustGetFlagInt(utils.COMPRESSION_LEVEL))
+
 	pluginConfigFlag := MustGetFlagString(utils.PLUGIN_CONFIG)
 	if pluginConfigFlag != "" {
 		pluginConfig = utils.ReadPluginConfig(pluginConfigFlag)
@@ -94,8 +95,9 @@ func DoSetup() {
 
 		pluginConfig.CopyPluginConfigToAllHosts(globalCluster, pluginConfigFlag)
 		pluginConfig.SetupPluginForBackup(globalCluster, globalFPInfo)
-		backupReport.Plugin = pluginConfig.ExecutablePath
 	}
+
+	InitializeBackupReport()
 }
 
 func DoBackup() {
@@ -169,8 +171,7 @@ func DoBackup() {
 		}
 	}
 
-	newHistoryEntry := utils.HistoryEntryFromFlagSet(globalFPInfo.Timestamp, cmdFlags)
-	utils.WriteBackupHistory(globalFPInfo.GetBackupHistoryFilePath(), newHistoryEntry)
+	utils.WriteBackupHistory(globalFPInfo.GetBackupHistoryFilePath(), &backupReport.BackupConfig)
 }
 
 func backupGlobal(metadataFile *utils.FileWithByteCount) {

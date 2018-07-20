@@ -13,32 +13,35 @@ import (
 )
 
 var _ bool = Describe("backup/history tests", func() {
-	var testEntry1, testEntry2, testEntry3 utils.HistoryEntry
+	var testConfig1, testConfig2, testConfig3 utils.BackupConfig
 	var historyFilePath = "/tmp/history_file.yaml"
 
 	BeforeEach(func() {
-		testEntry1 = utils.HistoryEntry{
-			Dbname:           "testdb1",
+		testConfig1 = utils.BackupConfig{
+			DatabaseName:     "testdb1",
 			ExcludeRelations: []string{},
 			ExcludeSchemas:   []string{},
 			IncludeRelations: []string{"testschema.testtable1", "testschema.testtable2"},
 			IncludeSchemas:   []string{},
+			RestorePlan:      []utils.RestorePlanEntry{},
 			Timestamp:        "timestamp1",
 		}
-		testEntry2 = utils.HistoryEntry{
-			Dbname:           "testdb2",
+		testConfig2 = utils.BackupConfig{
+			DatabaseName:     "testdb2",
 			ExcludeRelations: []string{},
 			ExcludeSchemas:   []string{"public"},
 			IncludeRelations: []string{},
 			IncludeSchemas:   []string{},
+			RestorePlan:      []utils.RestorePlanEntry{},
 			Timestamp:        "timestamp2",
 		}
-		testEntry3 = utils.HistoryEntry{
-			Dbname:           "testdb3",
+		testConfig3 = utils.BackupConfig{
+			DatabaseName:     "testdb3",
 			ExcludeRelations: []string{},
 			ExcludeSchemas:   []string{"public"},
 			IncludeRelations: []string{},
 			IncludeSchemas:   []string{},
+			RestorePlan:      []utils.RestorePlanEntry{},
 			Timestamp:        "timestamp3",
 		}
 	})
@@ -49,14 +52,15 @@ var _ bool = Describe("backup/history tests", func() {
 
 				resultHistory := utils.NewHistory(historyFilePath)
 
-				structmatcher.ExpectStructsToMatch(&utils.History{Entries: []utils.HistoryEntry{}}, resultHistory)
+				structmatcher.ExpectStructsToMatch(&utils.History{BackupConfigs: []utils.BackupConfig{}}, resultHistory)
 
 				operating.System.Stat = os.Stat
 			})
 		})
 		Context("history file exists", func() {
 			It("creates a history object with entries from the file", func() {
-				historyWithEntries := utils.History{Entries: []utils.HistoryEntry{testEntry1, testEntry2}}
+				historyWithEntries := utils.History{
+					BackupConfigs: []utils.BackupConfig{testConfig1, testConfig2}}
 				historyFileContents, _ := yaml.Marshal(historyWithEntries)
 				fileHandle := iohelper.MustOpenFileForWriting(historyFilePath)
 				fileHandle.Write(historyFileContents)
@@ -69,22 +73,13 @@ var _ bool = Describe("backup/history tests", func() {
 			})
 		})
 	})
-	Describe("HistoryEntryFromFlagSet", func() {
-		It("can convert a FlagSet to a HistoryEntry", func() {
-			backupCmdFlags.Set(utils.DBNAME, "testdb1")
-			backupCmdFlags.Set(utils.INCLUDE_RELATION, "testschema.testtable1,testschema.testtable2")
-			resultHistoryEntry := utils.HistoryEntryFromFlagSet("timestamp1", backupCmdFlags)
-
-			structmatcher.ExpectStructsToMatch(&testEntry1, resultHistoryEntry)
-		})
-	})
-	Describe("AddHistoryEntry", func() {
+	Describe("AddBackupConfig", func() {
 		It("adds the most recent history entry and keeps the list sorted", func() {
-			testHistory := utils.History{Entries: []utils.HistoryEntry{testEntry3, testEntry1}}
+			testHistory := utils.History{BackupConfigs: []utils.BackupConfig{testConfig3, testConfig1}}
 
-			testHistory.AddHistoryEntry(&testEntry2)
+			testHistory.AddBackupConfig(&testConfig2)
 
-			expectedHistory := utils.History{Entries: []utils.HistoryEntry{testEntry3, testEntry2, testEntry1}}
+			expectedHistory := utils.History{BackupConfigs: []utils.BackupConfig{testConfig3, testConfig2, testConfig1}}
 			structmatcher.ExpectStructsToMatch(&expectedHistory, &testHistory)
 		})
 	})

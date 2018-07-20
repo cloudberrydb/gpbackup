@@ -18,23 +18,31 @@ import (
 	"github.com/greenplum-db/gp-common-go-libs/iohelper"
 	"github.com/greenplum-db/gp-common-go-libs/operating"
 	"github.com/pkg/errors"
+	"github.com/spf13/pflag"
 )
 
 type BackupConfig struct {
+	BackupDir             string
 	BackupVersion         string
+	Compressed            bool
 	DatabaseName          string
 	DatabaseVersion       string
-	Compressed            bool
 	DataOnly              bool
-	IncludeSchemaFiltered bool
-	IncludeTableFiltered  bool
+	ExcludeRelations      []string
 	ExcludeSchemaFiltered bool
+	ExcludeSchemas        []string
 	ExcludeTableFiltered  bool
+	IncludeRelations      []string
+	IncludeSchemaFiltered bool
+	IncludeSchemas        []string
+	IncludeTableFiltered  bool
+	LeafPartitionData     bool
 	MetadataOnly          bool
 	Plugin                string
-	SingleDataFile        bool
-	WithStatistics        bool
 	RestorePlan           []RestorePlanEntry
+	SingleDataFile        bool
+	Timestamp             string
+	WithStatistics        bool
 }
 
 type RestorePlanEntry struct {
@@ -75,18 +83,32 @@ func ParseErrorMessage(errStr string) string {
 	return errMsg
 }
 
-func (report *Report) SetBackupParamsFromFlags(dataOnly bool, ddlOnly bool, plugin string, isIncludeSchemaFiltered bool, isIncludeTableFiltered bool, isExcludeSchemaFiltered bool, isExcludeTableFiltered bool, singleDataFile bool, withStats bool) {
-	compressed, _ := GetCompressionParameters()
-	report.Compressed = compressed
-	report.IncludeSchemaFiltered = isIncludeSchemaFiltered
-	report.IncludeTableFiltered = isIncludeTableFiltered
-	report.ExcludeSchemaFiltered = isExcludeSchemaFiltered
-	report.ExcludeTableFiltered = isExcludeTableFiltered
-	report.DataOnly = dataOnly
-	report.MetadataOnly = ddlOnly
-	report.Plugin = plugin
-	report.SingleDataFile = singleDataFile
-	report.WithStatistics = withStats
+func NewBackupConfig(dbName string, dbVersion string, backupVersion string, plugin string, timestamp string,
+	cmdFlags *pflag.FlagSet) *BackupConfig {
+	backupConfig := BackupConfig{
+		BackupDir:             MustGetFlagString(cmdFlags, BACKUP_DIR),
+		BackupVersion:         backupVersion,
+		Compressed:            !MustGetFlagBool(cmdFlags, NO_COMPRESSION),
+		DatabaseName:          dbName,
+		DatabaseVersion:       dbVersion,
+		DataOnly:              MustGetFlagBool(cmdFlags, DATA_ONLY),
+		ExcludeRelations:      MustGetFlagStringSlice(cmdFlags, EXCLUDE_RELATION),
+		ExcludeSchemaFiltered: len(MustGetFlagStringSlice(cmdFlags, EXCLUDE_SCHEMA)) > 0,
+		ExcludeSchemas:        MustGetFlagStringSlice(cmdFlags, EXCLUDE_SCHEMA),
+		ExcludeTableFiltered:  len(MustGetFlagStringSlice(cmdFlags, EXCLUDE_RELATION)) > 0,
+		IncludeRelations:      MustGetFlagStringSlice(cmdFlags, INCLUDE_RELATION),
+		IncludeSchemaFiltered: len(MustGetFlagStringSlice(cmdFlags, INCLUDE_SCHEMA)) > 0,
+		IncludeSchemas:        MustGetFlagStringSlice(cmdFlags, INCLUDE_SCHEMA),
+		IncludeTableFiltered:  len(MustGetFlagStringSlice(cmdFlags, INCLUDE_RELATION)) > 0,
+		LeafPartitionData:     MustGetFlagBool(cmdFlags, LEAF_PARTITION_DATA),
+		MetadataOnly:          MustGetFlagBool(cmdFlags, METADATA_ONLY),
+		Plugin:                plugin,
+		SingleDataFile:        MustGetFlagBool(cmdFlags, SINGLE_DATA_FILE),
+		Timestamp:             timestamp,
+		WithStatistics:        MustGetFlagBool(cmdFlags, WITH_STATS),
+	}
+
+	return &backupConfig
 }
 
 func (report *Report) ConstructBackupParamsString() {

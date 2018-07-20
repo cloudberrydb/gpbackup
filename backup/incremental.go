@@ -30,7 +30,7 @@ func GetLatestMatchingBackupTimestamp() string {
 	}
 
 	history := utils.NewHistory(globalFPInfo.GetBackupHistoryFilePath())
-	latestMatchingBackupHistoryEntry := GetLatestMatchingHistoryEntry(history)
+	latestMatchingBackupHistoryEntry := GetLatestMatchingBackupConfig(history, &backupReport.BackupConfig)
 	if latestMatchingBackupHistoryEntry == nil {
 		gplog.FatalOnError(errors.Errorf("There was no matching previous backup found with the flags provided. " +
 			"Please take a full backup."))
@@ -39,19 +39,20 @@ func GetLatestMatchingBackupTimestamp() string {
 	return latestMatchingBackupHistoryEntry.Timestamp
 }
 
-func GetLatestMatchingHistoryEntry(history *utils.History) *utils.HistoryEntry {
-	for _, historyEntry := range history.Entries {
-		if historyEntry.BackupDir == MustGetFlagString(utils.BACKUP_DIR) &&
-			historyEntry.Dbname == MustGetFlagString(utils.DBNAME) &&
-			historyEntry.LeafPartitionData == MustGetFlagBool(utils.LEAF_PARTITION_DATA) &&
-			historyEntry.PluginConfigFile == MustGetFlagString(utils.PLUGIN_CONFIG) &&
-			historyEntry.SingleDataFile == MustGetFlagBool(utils.SINGLE_DATA_FILE) &&
-			historyEntry.NoCompression == MustGetFlagBool(utils.NO_COMPRESSION) &&
-			utils.NewIncludeSet(historyEntry.IncludeRelations).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(utils.INCLUDE_RELATION))) &&
-			utils.NewIncludeSet(historyEntry.IncludeSchemas).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(utils.INCLUDE_SCHEMA))) &&
-			utils.NewIncludeSet(historyEntry.ExcludeRelations).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(utils.EXCLUDE_RELATION))) &&
-			utils.NewIncludeSet(historyEntry.ExcludeSchemas).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(utils.EXCLUDE_SCHEMA))) {
-			return &historyEntry
+func GetLatestMatchingBackupConfig(history *utils.History, currentBackupConfig *utils.BackupConfig) *utils.BackupConfig {
+	for _, backupConfig := range history.BackupConfigs {
+		if backupConfig.BackupDir == MustGetFlagString(utils.BACKUP_DIR) &&
+			backupConfig.DatabaseName == currentBackupConfig.DatabaseName &&
+			backupConfig.LeafPartitionData == MustGetFlagBool(utils.LEAF_PARTITION_DATA) &&
+			backupConfig.Plugin == currentBackupConfig.Plugin &&
+			backupConfig.SingleDataFile == MustGetFlagBool(utils.SINGLE_DATA_FILE) &&
+			backupConfig.Compressed == currentBackupConfig.Compressed &&
+			utils.NewIncludeSet(backupConfig.IncludeRelations).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(utils.INCLUDE_RELATION))) &&
+			utils.NewIncludeSet(backupConfig.IncludeSchemas).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(utils.INCLUDE_SCHEMA))) &&
+			utils.NewIncludeSet(backupConfig.ExcludeRelations).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(utils.EXCLUDE_RELATION))) &&
+			utils.NewIncludeSet(backupConfig.ExcludeSchemas).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(utils.EXCLUDE_SCHEMA))) {
+
+			return &backupConfig
 		}
 	}
 

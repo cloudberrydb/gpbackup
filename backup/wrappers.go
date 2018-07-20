@@ -60,30 +60,27 @@ func SetSessionGUCs(connNum int) {
 }
 
 func InitializeBackupReport() {
-	dbname := dbconn.MustSelectString(connectionPool, fmt.Sprintf("select quote_ident(datname) AS string FROM pg_database where datname='%s'", connectionPool.DBName))
-	config := utils.BackupConfig{
-		DatabaseName:    dbname,
-		DatabaseVersion: connectionPool.Version.VersionString,
-		BackupVersion:   version,
+	escapedDBName := dbconn.MustSelectString(connectionPool, fmt.Sprintf("select quote_ident(datname) AS string FROM pg_database where datname='%s'", connectionPool.DBName))
+	plugin := ""
+	if pluginConfig != nil {
+		plugin = pluginConfig.ExecutablePath
 	}
-	isIncludeSchemaFiltered := len(MustGetFlagStringSlice(utils.INCLUDE_SCHEMA)) > 0
-	isIncludeTableFiltered := len(MustGetFlagStringSlice(utils.INCLUDE_RELATION)) > 0
-	isExcludeSchemaFiltered := len(MustGetFlagStringSlice(utils.EXCLUDE_SCHEMA)) > 0
-	isExcludeTableFiltered := len(MustGetFlagStringSlice(utils.EXCLUDE_RELATION)) > 0
+	config := utils.NewBackupConfig(escapedDBName, connectionPool.Version.VersionString, version,
+		plugin, globalFPInfo.Timestamp, cmdFlags)
+
+	isFilteredBackup := config.IncludeTableFiltered || config.IncludeSchemaFiltered ||
+		config.ExcludeTableFiltered || config.ExcludeSchemaFiltered
 	dbSize := ""
-	if !MustGetFlagBool(utils.METADATA_ONLY) && !isIncludeSchemaFiltered && !isIncludeTableFiltered && !isExcludeSchemaFiltered && !isExcludeTableFiltered {
+	if !MustGetFlagBool(utils.METADATA_ONLY) && !isFilteredBackup {
 		gplog.Verbose("Getting database size")
+		//Potentially expensive query
 		dbSize = GetDBSize(connectionPool)
 	}
 
 	backupReport = &utils.Report{
 		DatabaseSize: dbSize,
-		BackupConfig: config,
+		BackupConfig: *config,
 	}
-	utils.InitializeCompressionParameters(!MustGetFlagBool(utils.NO_COMPRESSION), MustGetFlagInt(utils.COMPRESSION_LEVEL))
-	backupReport.SetBackupParamsFromFlags(MustGetFlagBool(utils.DATA_ONLY), MustGetFlagBool(utils.METADATA_ONLY), "",
-		isIncludeSchemaFiltered, isIncludeTableFiltered, isExcludeSchemaFiltered, isExcludeTableFiltered,
-		MustGetFlagBool(utils.SINGLE_DATA_FILE), MustGetFlagBool(utils.WITH_STATS))
 	backupReport.ConstructBackupParamsString()
 }
 
