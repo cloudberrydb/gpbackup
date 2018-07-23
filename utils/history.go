@@ -49,7 +49,7 @@ func WriteBackupHistory(historyFilePath string, currentBackupConfig *BackupConfi
 }
 
 func lockHistoryFile() lockfile.Lockfile {
-	lock, err := lockfile.New("/tmp/backup_history.yaml.lck")
+	lock, err := lockfile.New("/tmp/gpbackup_history.yaml.lck")
 	gplog.FatalOnError(err)
 	err = lock.TryLock()
 	for err != nil {
