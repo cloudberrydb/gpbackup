@@ -103,9 +103,18 @@ func DoSetup() {
 func DoBackup() {
 	LogBackupInfo()
 
-	latestBackupTimestamp := ""
+	latestMatchingBackupTimestamp := ""
+	var latestMatchingBackupFPInfo utils.FilePathInfo
 	if MustGetFlagBool(utils.INCREMENTAL) {
-		latestBackupTimestamp = GetLatestMatchingBackupTimestamp()
+		latestMatchingBackupTimestamp = GetLatestMatchingBackupTimestamp()
+		latestMatchingBackupFPInfo = utils.NewFilePathInfo(globalCluster, globalFPInfo.UserSpecifiedBackupDir,
+			latestMatchingBackupTimestamp, globalFPInfo.UserSpecifiedSegPrefix)
+
+		if MustGetFlagString(utils.PLUGIN_CONFIG) != "" {
+			// These files need to be downloaded from the remote system into the local filesystem
+			pluginConfig.RestoreFile(latestMatchingBackupFPInfo.GetConfigFilePath())
+			pluginConfig.RestoreFile(latestMatchingBackupFPInfo.GetTOCFilePath())
+		}
 	}
 
 	objectCounts = make(map[string]int, 0)
@@ -137,15 +146,11 @@ func DoBackup() {
 		backupSetTables := dataTables
 
 		latestMatchingBackupRestorePlan := make([]utils.RestorePlanEntry, 0)
-		if latestBackupTimestamp != "" {
-			gplog.Info("Basing incremental backup off of backup with timestamp = %s", latestBackupTimestamp)
+		if latestMatchingBackupTimestamp != "" {
+			gplog.Info("Basing incremental backup off of backup with timestamp = %s", latestMatchingBackupTimestamp)
 
-			fpInfo := utils.NewFilePathInfo(globalCluster, globalFPInfo.UserSpecifiedBackupDir,
-				latestBackupTimestamp, globalFPInfo.UserSpecifiedSegPrefix)
-
-			latestMatchingBackupTOC := utils.NewTOC(fpInfo.GetTOCFilePath())
-			latestMatchingBackupRestorePlan = utils.ReadConfigFile(fpInfo.GetConfigFilePath()).RestorePlan
-
+			latestMatchingBackupTOC := utils.NewTOC(latestMatchingBackupFPInfo.GetTOCFilePath())
+			latestMatchingBackupRestorePlan = utils.ReadConfigFile(latestMatchingBackupFPInfo.GetConfigFilePath()).RestorePlan
 			backupSetTables = FilterTablesForIncremental(latestMatchingBackupTOC, globalTOC, dataTables)
 		}
 
