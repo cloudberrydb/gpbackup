@@ -210,6 +210,11 @@ func restoreDataFromTimestamp(fpInfo utils.FilePathInfo, restorePlanTableFQNs []
 	filteredMasterDataEntries := toc.GetDataEntriesMatching(MustGetFlagStringSlice(utils.INCLUDE_SCHEMA), MustGetFlagStringSlice(utils.EXCLUDE_SCHEMA),
 		MustGetFlagStringSlice(utils.INCLUDE_RELATION), MustGetFlagStringSlice(utils.EXCLUDE_RELATION), restorePlanTableFQNs)
 
+	if len(filteredMasterDataEntries) == 0 {
+		gplog.Info("No data to restore for timestamp = %s", fpInfo.Timestamp)
+		return
+	}
+
 	if backupConfig.SingleDataFile {
 		gplog.Verbose("Initializing pipes and gpbackup_helper on segments for single data file restore")
 		utils.VerifyHelperVersionOnSegments(version, globalCluster)

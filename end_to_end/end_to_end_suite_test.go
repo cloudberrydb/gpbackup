@@ -22,10 +22,13 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 
+	"github.com/greenplum-db/gp-common-go-libs/cluster"
 	"testing"
 )
 
 var useOldBackupVersion bool
+
+var backupCluster *cluster.Cluster
 
 /* This function is a helper function to execute gpbackup and return a session
  * to allow checking its output.
@@ -133,6 +136,17 @@ func copyPluginToAllHosts(conn *dbconn.DBConn, pluginPath string) {
 	}
 }
 
+func forceMetadataFileDownloadFromPlugin(conn *dbconn.DBConn, timestamp string) {
+	fpInfo := utils.NewFilePathInfo(backupCluster, "", timestamp, utils.GetSegPrefix(conn))
+	remoteOutput := backupCluster.GenerateAndExecuteCommand(fmt.Sprintf("Removing backups on all segments for "+
+		"timestamp %s", timestamp), func(contentID int) string {
+		return fmt.Sprintf("rm -rf %s", fpInfo.GetDirForContent(contentID))
+	}, cluster.ON_SEGMENTS_AND_MASTER)
+	if remoteOutput.NumErrors != 0 {
+		Fail(fmt.Sprintf("Failed to remove backup directory for timestamp %s", timestamp))
+	}
+}
+
 func TestEndToEnd(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "EndToEnd Suite")
@@ -141,10 +155,14 @@ func TestEndToEnd(t *testing.T) {
 var _ = Describe("backup end to end integration tests", func() {
 
 	var backupConn, restoreConn *dbconn.DBConn
-	var gpbackupPath, backupHelperPath, restoreHelperPath, gprestorePath string
+	var gpbackupPath, backupHelperPath, restoreHelperPath, gprestorePath, pluginConfigPath string
+
 	BeforeSuite(func() {
 		// This is used to run tests from gpbackup 1.0.0 to gprestore latest
 		useOldBackupVersion = os.Getenv("USE_OLD_BACKUP_VERSION") == "true"
+		pluginConfigPath =
+			fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/plugins/example_plugin_config.yaml",
+				os.Getenv("HOME"))
 		var err error
 		testhelper.SetupTestLogger()
 		exec.Command("dropdb", "testdb").Run()
@@ -171,6 +189,8 @@ var _ = Describe("backup end to end integration tests", func() {
 			gpbackupPath, backupHelperPath, gprestorePath = buildAndInstallBinaries()
 			restoreHelperPath = backupHelperPath
 		}
+		segConfig := cluster.MustGetSegmentConfiguration(backupConn)
+		backupCluster = cluster.NewCluster(segConfig)
 	})
 	AfterSuite(func() {
 		if backupConn != nil {
@@ -377,9 +397,10 @@ var _ = Describe("backup end to end integration tests", func() {
 				pluginDir := "/tmp/plugin_dest"
 				pluginExecutablePath := fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/plugins/example_plugin.sh", os.Getenv("HOME"))
 				copyPluginToAllHosts(backupConn, pluginExecutablePath)
-				pluginConfigPath := fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/plugins/example_plugin_config.yaml", os.Getenv("HOME"))
 
 				timestamp := gpbackup(gpbackupPath, backupHelperPath, "--single-data-file", "--no-compression", "--plugin-config", pluginConfigPath)
+				forceMetadataFileDownloadFromPlugin(backupConn, timestamp)
+
 				gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--plugin-config", pluginConfigPath)
 
 				assertRelationsCreated(restoreConn, 36)
@@ -395,9 +416,10 @@ var _ = Describe("backup end to end integration tests", func() {
 				pluginDir := "/tmp/plugin_dest"
 				pluginExecutablePath := fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/plugins/example_plugin.sh", os.Getenv("HOME"))
 				copyPluginToAllHosts(backupConn, pluginExecutablePath)
-				pluginConfigPath := fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/plugins/example_plugin_config.yaml", os.Getenv("HOME"))
 
 				timestamp := gpbackup(gpbackupPath, backupHelperPath, "--single-data-file", "--plugin-config", pluginConfigPath)
+				forceMetadataFileDownloadFromPlugin(backupConn, timestamp)
+
 				gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--plugin-config", pluginConfigPath)
 
 				assertRelationsCreated(restoreConn, 36)
@@ -446,6 +468,11 @@ var _ = Describe("backup end to end integration tests", func() {
 			})
 		})
 		Describe("Incremental", func() {
+			BeforeEach(func() {
+				if useOldBackupVersion {
+					Skip("Feature not supported in gpbackup 1.0.0")
+				}
+			})
 			It("restores from an incremental backup specified with a timestamp", func() {
 				fullBackupTimestamp := gpbackup(gpbackupPath, backupHelperPath, "--leaf-partition-data")
 
@@ -510,6 +537,35 @@ var _ = Describe("backup end to end integration tests", func() {
 						"public.sales_1_prt_feb17": 2,
 						"public.sales_1_prt_mar17": 2,
 					})
+				})
+			})
+			Context("With a plugin", func() {
+				It("Restores from an incremental backup based on a from-timestamp incremental", func() {
+					fullBackupTimestamp := gpbackup(gpbackupPath, backupHelperPath,
+						"--leaf-partition-data", "--single-data-file", "--plugin-config", pluginConfigPath)
+					forceMetadataFileDownloadFromPlugin(backupConn, fullBackupTimestamp)
+					testhelper.AssertQueryRuns(backupConn, "INSERT into schema2.ao1 values(1001)")
+
+					defer testhelper.AssertQueryRuns(backupConn, "DELETE from schema2.ao1 where i=1001")
+					incremental1Timestamp := gpbackup(gpbackupPath, backupHelperPath,
+						"--incremental", "--leaf-partition-data", "--single-data-file", "--from-timestamp",
+						fullBackupTimestamp, "--plugin-config", pluginConfigPath)
+					forceMetadataFileDownloadFromPlugin(backupConn, incremental1Timestamp)
+
+					testhelper.AssertQueryRuns(backupConn, "INSERT into schema2.ao1 values(1002)")
+					defer testhelper.AssertQueryRuns(backupConn, "DELETE from schema2.ao1 where i=1002")
+					incremental2Timestamp := gpbackup(gpbackupPath, backupHelperPath,
+						"--incremental", "--leaf-partition-data", "--single-data-file", "--plugin-config",
+						pluginConfigPath)
+					forceMetadataFileDownloadFromPlugin(backupConn, incremental2Timestamp)
+
+					gprestore(gprestorePath, restoreHelperPath, incremental2Timestamp,
+						"--redirect-db", "restoredb", "--plugin-config", pluginConfigPath)
+
+					assertRelationsCreated(restoreConn, 36)
+					assertDataRestored(restoreConn, publicSchemaTupleCounts)
+					schema2TupleCounts["schema2.ao1"] = 1002
+					assertDataRestored(restoreConn, schema2TupleCounts)
 				})
 			})
 		})
