@@ -103,19 +103,24 @@ func RecoverMetadataFilesUsingPlugin() {
 
 	pluginConfig.CopyPluginConfigToAllHosts(globalCluster, MustGetFlagString(utils.PLUGIN_CONFIG))
 	pluginConfig.SetupPluginForRestore(globalCluster, globalFPInfo)
-	pluginConfig.RestoreFile(globalFPInfo.GetConfigFilePath())
 
-	InitializeBackupConfig()
-
-	metadataFiles := []string{globalFPInfo.GetMetadataFilePath(), globalFPInfo.GetTOCFilePath(), globalFPInfo.GetBackupReportFilePath()}
+	metadataFiles := []string{globalFPInfo.GetConfigFilePath(), globalFPInfo.GetMetadataFilePath(),
+		globalFPInfo.GetBackupReportFilePath()}
 	if MustGetFlagBool(utils.WITH_STATS) {
 		metadataFiles = append(metadataFiles, globalFPInfo.GetStatisticsFilePath())
 	}
 	for _, filename := range metadataFiles {
 		pluginConfig.RestoreFile(filename)
 	}
-	if !backupConfig.MetadataOnly {
-		pluginConfig.RestoreSegmentTOCs(globalCluster, globalFPInfo)
+
+	InitializeBackupConfig()
+
+	fpInfoList := GetBackupFPInfoList()
+	for _, fpInfo := range fpInfoList {
+		pluginConfig.RestoreFile(fpInfo.GetTOCFilePath())
+		if !backupConfig.MetadataOnly {
+			pluginConfig.RestoreSegmentTOCs(globalCluster, fpInfo)
+		}
 	}
 }
 
@@ -149,6 +154,18 @@ func ExecuteRestoreMetadataStatements(statements []utils.StatementWithType, obje
 	} else {
 		ExecuteStatements(statements, progressBar, showProgressBar, executeInParallel)
 	}
+}
+
+func GetBackupFPInfoList() []utils.FilePathInfo {
+	fpInfoList := make([]utils.FilePathInfo, 0)
+	for _, entry := range backupConfig.RestorePlan {
+		segPrefix := utils.ParseSegPrefix(MustGetFlagString(utils.BACKUP_DIR))
+
+		fpInfo := utils.NewFilePathInfo(globalCluster, MustGetFlagString(utils.BACKUP_DIR), entry.Timestamp, segPrefix)
+		fpInfoList = append(fpInfoList, fpInfo)
+	}
+
+	return fpInfoList
 }
 
 /*

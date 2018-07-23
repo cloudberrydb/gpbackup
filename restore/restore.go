@@ -138,14 +138,7 @@ func DoRestore() {
 			}
 			VerifyBackupFileCountOnSegments(backupFileCount)
 		}
-		fpInfoList := make([]utils.FilePathInfo, 0)
-		for _, entry := range backupConfig.RestorePlan {
-			segPrefix := utils.ParseSegPrefix(MustGetFlagString(utils.BACKUP_DIR))
-
-			fpInfo := utils.NewFilePathInfo(globalCluster, MustGetFlagString(utils.BACKUP_DIR), entry.Timestamp, segPrefix)
-			fpInfoList = append(fpInfoList, fpInfo)
-		}
-		restoreData(fpInfoList, gucStatements)
+		restoreData(GetBackupFPInfoList(), gucStatements)
 	}
 
 	if !isDataOnly {
