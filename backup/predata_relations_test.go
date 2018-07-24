@@ -13,6 +13,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
 
 var _ = Describe("backup/predata_relations tests", func() {
@@ -1030,6 +1031,11 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 		colEmpty := backup.ColumnPrivilegesQueryStruct{TableOid: 2, Name: "m", Privileges: sql.NullString{String: "", Valid: false}, Kind: "Empty"}
 		privileges := []backup.ColumnPrivilegesQueryStruct{}
 		BeforeEach(func() {
+			rolnames := sqlmock.NewRows([]string{"rolename", "quotedrolename"}).
+				AddRow("gpadmin", "gpadmin").
+				AddRow("testrole", "testrole")
+			mock.ExpectQuery("SELECT rolname (.*)").
+				WillReturnRows(rolnames)
 			privileges = []backup.ColumnPrivilegesQueryStruct{}
 		})
 		It("No columns", func() {

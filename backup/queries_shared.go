@@ -6,11 +6,11 @@ package backup
  */
 
 import (
-	"database/sql"
 	"fmt"
 	"sort"
 	"strings"
 
+	"database/sql"
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpbackup/utils"
@@ -245,6 +245,7 @@ func GetMetadataForObjectType(connection *dbconn.DBConn, params MetadataQueryPar
 	kindStr := "''"
 	schemaStr := ""
 	ownerStr := "''"
+
 	if params.ACLField != "" {
 		aclStr = fmt.Sprintf(`CASE
 		WHEN %[1]s IS NULL OR array_upper(%[1]s, 1) = 0 THEN %[1]s[0]
@@ -256,6 +257,7 @@ func GetMetadataForObjectType(connection *dbconn.DBConn, params MetadataQueryPar
 		ELSE ''
 	END`, params.ACLField)
 	}
+
 	if params.SchemaField != "" {
 		schemaStr = fmt.Sprintf(`JOIN pg_namespace n ON o.%s = n.oid
 WHERE %s`, params.SchemaField, SchemaFilterClause("n"))
@@ -269,6 +271,7 @@ WHERE %s`, params.SchemaField, SchemaFilterClause("n"))
 	if params.OwnerField != "" {
 		ownerStr = fmt.Sprintf("pg_get_userbyid(%s)", params.OwnerField)
 	}
+
 	query := fmt.Sprintf(`
 SELECT
 	o.oid,
@@ -286,6 +289,24 @@ ORDER BY o.oid;
 	err := connection.Select(&results, query)
 	gplog.FatalOnError(err)
 	return ConstructMetadataMap(results)
+}
+
+func GetQuotedRoleNames(connection *dbconn.DBConn) map[string]string {
+	quotedRoleNames := make(map[string]string)
+
+	quotedRoleNamesQuery := `
+SELECT rolname AS rolename, quote_ident(rolname) AS quotedrolename FROM pg_authid`
+	results := make([]struct {
+		RoleName       string
+		QuotedRoleName string
+	}, 0)
+	err := connection.Select(&results, quotedRoleNamesQuery)
+	gplog.FatalOnError(err)
+	for _, result := range results {
+		quotedRoleNames[result.RoleName] = result.QuotedRoleName
+	}
+
+	return quotedRoleNames
 }
 
 func sortACLs(privileges []ACL) []ACL {

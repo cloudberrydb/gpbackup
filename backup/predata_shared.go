@@ -8,12 +8,12 @@ package backup
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpbackup/utils"
 	"github.com/pkg/errors"
+	"regexp"
 )
 
 /*
@@ -145,6 +145,7 @@ func ConstructMetadataMap(results []MetadataQueryStruct) MetadataMap {
 	metadataMap := make(MetadataMap)
 	var metadata ObjectMetadata
 	if len(results) > 0 {
+		quotedRoleNames := GetQuotedRoleNames(connectionPool)
 		currentOid := uint32(0)
 		// Collect all entries for the same object into one ObjectMetadata
 		for _, result := range results {
@@ -165,7 +166,7 @@ func ConstructMetadataMap(results []MetadataQueryStruct) MetadataMap {
 				metadata.Owner = result.Owner
 				metadata.Comment = result.Comment
 			}
-			privileges := ParseACL(privilegesStr)
+			privileges := ParseACL(privilegesStr, quotedRoleNames)
 			if privileges != nil {
 				metadata.Privileges = append(metadata.Privileges, *privileges)
 			}
@@ -176,19 +177,17 @@ func ConstructMetadataMap(results []MetadataQueryStruct) MetadataMap {
 	return metadataMap
 }
 
-func ParseACL(aclStr string) *ACL {
-	aclRegex := regexp.MustCompile(`^(?:\"(.*)\"|(.*))=([a-zA-Z\*]*)/(?:\"(.*)\"|(.*))$`)
+func ParseACL(aclStr string, quotedRoleNames map[string]string) *ACL {
+	aclRegex := regexp.MustCompile(`^(.*)=([a-zA-Z\*]*)/(.*)$`)
 	grantee := ""
 	acl := ACL{}
 	if matches := aclRegex.FindStringSubmatch(aclStr); len(matches) != 0 {
 		if matches[1] != "" {
 			grantee = matches[1]
-		} else if matches[2] != "" {
-			grantee = matches[2]
 		} else {
 			grantee = "" // Empty string indicates privileges granted to PUBLIC
 		}
-		permStr := matches[3]
+		permStr := matches[2]
 		var lastChar rune
 		for _, char := range permStr {
 			switch char {
@@ -258,7 +257,12 @@ func ParseACL(aclStr string) *ACL {
 			}
 			lastChar = char
 		}
-		acl.Grantee = grantee
+		if quotedRoleName, ok := quotedRoleNames[grantee]; ok {
+			acl.Grantee = quotedRoleName
+		} else {
+			acl.Grantee = grantee
+		}
+
 		return &acl
 	}
 	return nil

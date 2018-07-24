@@ -86,6 +86,11 @@ ORDER BY o.oid;`)).WillReturnRows(emptyRows)
 			commentRow := []driver.Value{"2", "", "testrole", "This is a metadata comment."}
 			fakeRows := sqlmock.NewRows(header).AddRow(aclRowOne...).AddRow(aclRowTwo...).AddRow(commentRow...)
 			mock.ExpectQuery(`SELECT (.*)`).WillReturnRows(fakeRows)
+			rolnames := sqlmock.NewRows([]string{"rolename", "quotedrolename"}).
+				AddRow("gpadmin", "gpadmin").
+				AddRow("testrole", "testrole")
+			mock.ExpectQuery("SELECT rolname (.*)").
+				WillReturnRows(rolnames)
 			params.ACLField = "acl"
 			resultMetadataMap := backup.GetMetadataForObjectType(connectionPool, params)
 

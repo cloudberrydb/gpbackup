@@ -11,6 +11,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
 
 var _ = Describe("backup/predata_shared tests", func() {
@@ -389,6 +390,11 @@ ALTER VIEW public.viewname OWNER TO testrole;`)
 		objectEmptyKind := backup.MetadataQueryStruct{Oid: 4, Privileges: sql.NullString{String: "", Valid: false}, Kind: "Empty", Owner: "testrole", Comment: ""}
 		var metadataList []backup.MetadataQueryStruct
 		BeforeEach(func() {
+			rolnames := sqlmock.NewRows([]string{"rolename", "quotedrolename"}).
+				AddRow("gpadmin", "gpadmin").
+				AddRow("testrole", "testrole")
+			mock.ExpectQuery("SELECT rolname (.*)").
+				WillReturnRows(rolnames)
 			metadataList = []backup.MetadataQueryStruct{}
 		})
 		It("No objects", func() {
@@ -434,53 +440,60 @@ ALTER VIEW public.viewname OWNER TO testrole;`)
 		})
 	})
 	Describe("ParseACL", func() {
+		var quotedRoleNames map[string]string
+		BeforeEach(func() {
+			quotedRoleNames = map[string]string{
+				"testrole":  "testrole",
+				"Test|role": `"Test|role"`,
+			}
+		})
 		It("parses an ACL string representing default privileges", func() {
 			aclStr := ""
-			result := backup.ParseACL(aclStr)
+			result := backup.ParseACL(aclStr, quotedRoleNames)
 			Expect(result).To(BeNil())
 		})
 		It("parses an ACL string representing no privileges", func() {
 			aclStr := "GRANTEE=/GRANTOR"
 			expected := backup.ACL{Grantee: "GRANTEE"}
-			result := backup.ParseACL(aclStr)
+			result := backup.ParseACL(aclStr, quotedRoleNames)
 			structmatcher.ExpectStructsToMatch(&expected, result)
 		})
 		It("parses an ACL string containing a role with multiple privileges", func() {
 			aclStr := "testrole=arwdDxt/gpadmin"
 			expected := testutils.DefaultACLForType("testrole", "TABLE")
-			result := backup.ParseACL(aclStr)
+			result := backup.ParseACL(aclStr, quotedRoleNames)
 			structmatcher.ExpectStructsToMatch(&expected, result)
 		})
 		It("parses an ACL string containing a role with one privilege", func() {
 			aclStr := "testrole=a/gpadmin"
 			expected := backup.ACL{Grantee: "testrole", Insert: true}
-			result := backup.ParseACL(aclStr)
+			result := backup.ParseACL(aclStr, quotedRoleNames)
 			structmatcher.ExpectStructsToMatch(&expected, result)
 		})
 		It("parses an ACL string containing a role name with special characters", func() {
-			aclStr := `"test|role"=a/gpadmin`
-			expected := backup.ACL{Grantee: `test|role`, Insert: true}
-			result := backup.ParseACL(aclStr)
+			aclStr := `"Test|role"=a/gpadmin`
+			expected := backup.ACL{Grantee: `"Test|role"`, Insert: true}
+			result := backup.ParseACL(aclStr, quotedRoleNames)
 			structmatcher.ExpectStructsToMatch(&expected, result)
 		})
 		It("parses an ACL string containing a role with some privileges with GRANT and some without including GRANT", func() {
 			aclStr := "testrole=ar*w*d*tXUCTc/gpadmin"
 			expected := backup.ACL{Grantee: "testrole", Insert: true, SelectWithGrant: true, UpdateWithGrant: true,
 				DeleteWithGrant: true, Trigger: true, Execute: true, Usage: true, Create: true, Temporary: true, Connect: true}
-			result := backup.ParseACL(aclStr)
+			result := backup.ParseACL(aclStr, quotedRoleNames)
 			structmatcher.ExpectStructsToMatch(&expected, result)
 		})
 		It("parses an ACL string containing a role with all privileges including GRANT", func() {
 			aclStr := "testrole=a*D*x*t*X*U*C*T*c*/gpadmin"
 			expected := backup.ACL{Grantee: "testrole", InsertWithGrant: true, TruncateWithGrant: true, ReferencesWithGrant: true,
 				TriggerWithGrant: true, ExecuteWithGrant: true, UsageWithGrant: true, CreateWithGrant: true, TemporaryWithGrant: true, ConnectWithGrant: true}
-			result := backup.ParseACL(aclStr)
+			result := backup.ParseACL(aclStr, quotedRoleNames)
 			structmatcher.ExpectStructsToMatch(&expected, result)
 		})
 		It("parses an ACL string granting privileges to PUBLIC", func() {
 			aclStr := "=a/gpadmin"
 			expected := backup.ACL{Grantee: "", Insert: true}
-			result := backup.ParseACL(aclStr)
+			result := backup.ParseACL(aclStr, quotedRoleNames)
 			structmatcher.ExpectStructsToMatch(&expected, result)
 		})
 	})
