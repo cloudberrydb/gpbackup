@@ -36,6 +36,7 @@ type BackupConfig struct {
 	IncludeSchemaFiltered bool
 	IncludeSchemas        []string
 	IncludeTableFiltered  bool
+	Incremental           bool
 	LeafPartitionData     bool
 	MetadataOnly          bool
 	Plugin                string
@@ -100,6 +101,7 @@ func NewBackupConfig(dbName string, dbVersion string, backupVersion string, plug
 		IncludeSchemaFiltered: len(MustGetFlagStringSlice(cmdFlags, INCLUDE_SCHEMA)) > 0,
 		IncludeSchemas:        MustGetFlagStringSlice(cmdFlags, INCLUDE_SCHEMA),
 		IncludeTableFiltered:  len(MustGetFlagStringSlice(cmdFlags, INCLUDE_RELATION)) > 0,
+		Incremental:           MustGetFlagBool(cmdFlags, INCREMENTAL),
 		LeafPartitionData:     MustGetFlagBool(cmdFlags, LEAF_PARTITION_DATA),
 		MetadataOnly:          MustGetFlagBool(cmdFlags, METADATA_ONLY),
 		Plugin:                plugin,
@@ -159,8 +161,23 @@ Plugin Executable: %s
 Backup Section: %s
 Object Filtering: %s
 Includes Statistics: %s
-Data File Format: %s`
-	report.BackupParamsString = fmt.Sprintf(backupParamsTemplate, compressStr, pluginStr, sectionStr, filterStr, statsStr, filesStr)
+Data File Format: %s
+%s`
+	report.BackupParamsString = fmt.Sprintf(backupParamsTemplate, compressStr, pluginStr, sectionStr, filterStr,
+		statsStr, filesStr, report.constructIncrementalSection())
+}
+
+func (report *Report) constructIncrementalSection() string {
+	if !report.Incremental {
+		return "Incremental: False"
+	}
+	backupTimestamps := make([]string, 0)
+	for _, restorePlanEntry := range report.RestorePlan {
+		backupTimestamps = append(backupTimestamps, restorePlanEntry.Timestamp)
+	}
+	return fmt.Sprintf(`Incremental: True
+Incremental Backup Set:
+%s`, strings.Join(backupTimestamps, "\n"))
 }
 
 func ReadConfigFile(filename string) *BackupConfig {
