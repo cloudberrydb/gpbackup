@@ -342,13 +342,18 @@ func DoCleanup() {
 		CleanupGroup.Done()
 	}()
 	gplog.Verbose("Beginning cleanup")
+
 	if backupConfig != nil && backupConfig.SingleDataFile {
-		utils.CleanUpSegmentHelperProcesses(globalCluster, globalFPInfo, "restore")
-		utils.CleanUpHelperFilesOnAllHosts(globalCluster, globalFPInfo)
-		if wasTerminated { // These should all end on their own in a successful restore
-			utils.TerminateHangingCopySessions(connectionPool, globalFPInfo, "gprestore")
+		fpInfoList := GetBackupFPInfoList()
+		for _, fpInfo := range fpInfoList {
+			utils.CleanUpSegmentHelperProcesses(globalCluster, fpInfo, "restore")
+			utils.CleanUpHelperFilesOnAllHosts(globalCluster, fpInfo)
+			if wasTerminated { // These should all end on their own in a successful restore
+				utils.TerminateHangingCopySessions(connectionPool, fpInfo, "gprestore")
+			}
 		}
 	}
+
 	if connectionPool != nil {
 		connectionPool.Close()
 	}

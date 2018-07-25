@@ -82,8 +82,8 @@ func InitializeSignalHandler(cleanupFunc func(), procDesc string, termFlag *bool
 }
 
 // TODO: Uniquely identify COPY commands in the multiple data file case to allow terminating sessions
-func TerminateHangingCopySessions(connection *dbconn.DBConn, globalFPInfo FilePathInfo, appName string) {
-	copyFileName := globalFPInfo.GetSegmentPipePathForCopyCommand()
+func TerminateHangingCopySessions(connection *dbconn.DBConn, fpInfo FilePathInfo, appName string) {
+	copyFileName := fpInfo.GetSegmentPipePathForCopyCommand()
 	query := fmt.Sprintf(`SELECT
 	pg_terminate_backend(procpid)
 FROM pg_stat_activity

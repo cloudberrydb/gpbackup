@@ -6,10 +6,10 @@ package backup
  */
 
 import (
+	"database/sql"
 	"fmt"
 	"strings"
 
-	"database/sql"
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpbackup/utils"
