@@ -35,20 +35,13 @@ var backupCluster *cluster.Cluster
 func gpbackup(gpbackupPath string, backupHelperPath string, args ...string) string {
 	if useOldBackupVersion {
 		os.Chdir("..")
-		output, err := exec.Command("make", "install_helper", fmt.Sprintf("helper_path=%s", backupHelperPath)).CombinedOutput()
-		if err != nil {
-			fmt.Printf("%s", output)
-			Fail(fmt.Sprintf("%v", err))
-		}
+		command := exec.Command("make", "install_helper", fmt.Sprintf("helper_path=%s", backupHelperPath))
+		mustRunCommand(command)
 		os.Chdir("end_to_end")
 	}
 	args = append([]string{"--dbname", "testdb"}, args...)
 	command := exec.Command(gpbackupPath, args...)
-	output, err := command.CombinedOutput()
-	if err != nil {
-		fmt.Printf("%s", output)
-		Fail(fmt.Sprintf("%v", err))
-	}
+	output := mustRunCommand(command)
 	r := regexp.MustCompile(`Backup Timestamp = (\d{14})`)
 	return r.FindStringSubmatch(fmt.Sprintf("%s", output))[1]
 }
@@ -56,31 +49,20 @@ func gpbackup(gpbackupPath string, backupHelperPath string, args ...string) stri
 func gprestore(gprestorePath string, restoreHelperPath string, timestamp string, args ...string) []byte {
 	if useOldBackupVersion {
 		os.Chdir("..")
-		output, err := exec.Command("make", "install_helper", fmt.Sprintf("helper_path=%s", restoreHelperPath)).CombinedOutput()
-		if err != nil {
-			fmt.Printf("%s", output)
-			Fail(fmt.Sprintf("%v", err))
-		}
+		command := exec.Command("make", "install_helper", fmt.Sprintf("helper_path=%s", restoreHelperPath))
+		mustRunCommand(command)
 		os.Chdir("end_to_end")
 	}
 	args = append([]string{"--timestamp", timestamp}, args...)
 	command := exec.Command(gprestorePath, args...)
-	output, err := command.CombinedOutput()
-	if err != nil {
-		fmt.Printf("%s", output)
-		Fail(fmt.Sprintf("%v", err))
-	}
+	output := mustRunCommand(command)
 	return output
 }
 
 func buildAndInstallBinaries() (string, string, string) {
 	os.Chdir("..")
 	command := exec.Command("make", "build")
-	output, err := command.CombinedOutput()
-	if err != nil {
-		fmt.Printf("%s", output)
-		Fail(fmt.Sprintf("%v", err))
-	}
+	mustRunCommand(command)
 	os.Chdir("end_to_end")
 	binDir := fmt.Sprintf("%s/go/bin", operating.System.Getenv("HOME"))
 	return fmt.Sprintf("%s/gpbackup", binDir), fmt.Sprintf("%s/gpbackup_helper", binDir), fmt.Sprintf("%s/gprestore", binDir)
@@ -88,18 +70,18 @@ func buildAndInstallBinaries() (string, string, string) {
 
 func buildOldBinaries() (string, string) {
 	os.Chdir("..")
-	err := exec.Command("git", "checkout", "1.0.0").Run()
-	Expect(err).ShouldNot(HaveOccurred())
-	err = exec.Command("dep", "ensure").Run()
-	Expect(err).ShouldNot(HaveOccurred())
+	command := exec.Command("git", "checkout", "1.0.0", "-f")
+	mustRunCommand(command)
+	command = exec.Command("dep", "ensure")
+	mustRunCommand(command)
 	gpbackupOldPath, err := gexec.Build("github.com/greenplum-db/gpbackup", "-tags", "gpbackup", "-ldflags", "-X github.com/greenplum-db/gpbackup/backup.version=1.0.0")
 	Expect(err).ShouldNot(HaveOccurred())
 	gpbackupHelperOldPath, err := gexec.Build("github.com/greenplum-db/gpbackup", "-tags", "gpbackup_helper", "-ldflags", "-X github.com/greenplum-db/gpbackup/helper.version=1.0.0")
 	Expect(err).ShouldNot(HaveOccurred())
-	err = exec.Command("git", "checkout", "-").Run()
-	Expect(err).ShouldNot(HaveOccurred())
-	err = exec.Command("dep", "ensure").Run()
-	Expect(err).ShouldNot(HaveOccurred())
+	command = exec.Command("git", "checkout", "-", "-f")
+	mustRunCommand(command)
+	command = exec.Command("dep", "ensure")
+	mustRunCommand(command)
 	os.Chdir("end_to_end")
 	return gpbackupOldPath, gpbackupHelperOldPath
 }
@@ -117,21 +99,24 @@ func assertRelationsCreated(conn *dbconn.DBConn, numTables int) {
 	Expect(tableCount).To(Equal(strconv.Itoa(numTables)))
 }
 
+func mustRunCommand(cmd *exec.Cmd) []byte {
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Printf("%s", output)
+		Fail(fmt.Sprintf("%v", err))
+	}
+	return output
+}
+
 func copyPluginToAllHosts(conn *dbconn.DBConn, pluginPath string) {
 	hostnameQuery := `SELECT DISTINCT hostname AS string FROM gp_segment_configuration WHERE content != -1`
 	hostnames := dbconn.MustSelectStringSlice(conn, hostnameQuery)
 	for _, hostname := range hostnames {
 		pluginDir, _ := filepath.Split(pluginPath)
-		output, err := exec.Command("ssh", hostname, fmt.Sprintf("mkdir -p %s", pluginDir)).CombinedOutput()
-		if err != nil {
-			fmt.Printf("%s", output)
-			Fail(fmt.Sprintf("%v", err))
-		}
-		output, err = exec.Command("scp", pluginPath, fmt.Sprintf("%s:%s", hostname, pluginPath)).CombinedOutput()
-		if err != nil {
-			fmt.Printf("%s", output)
-			Fail(fmt.Sprintf("%v", err))
-		}
+		command := exec.Command("ssh", hostname, fmt.Sprintf("mkdir -p %s", pluginDir))
+		mustRunCommand(command)
+		command = exec.Command("scp", pluginPath, fmt.Sprintf("%s:%s", hostname, pluginPath))
+		mustRunCommand(command)
 	}
 }
 
@@ -729,11 +714,8 @@ var _ = Describe("backup end to end integration tests", func() {
 			}
 			pluginsDir := fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/plugins", os.Getenv("HOME"))
 			copyPluginToAllHosts(backupConn, fmt.Sprintf("%s/example_plugin.sh", pluginsDir))
-			output, err := exec.Command("bash", "-c", fmt.Sprintf("%s/plugin_test_bench.sh %s/example_plugin.sh %s/example_plugin_config.yaml", pluginsDir, pluginsDir, pluginsDir)).CombinedOutput()
-			if err != nil {
-				fmt.Printf("%s", output)
-				Fail(fmt.Sprintf("%v", err))
-			}
+			command := exec.Command("bash", "-c", fmt.Sprintf("%s/plugin_test_bench.sh %s/example_plugin.sh %s/example_plugin_config.yaml", pluginsDir, pluginsDir, pluginsDir))
+			mustRunCommand(command)
 
 			os.RemoveAll("/tmp/plugin_dest")
 		})
@@ -741,19 +723,13 @@ var _ = Describe("backup end to end integration tests", func() {
 			if useOldBackupVersion {
 				Skip("This test is not needed for gpbackup 1.0.0")
 			}
-			output, err := exec.Command(gpbackupPath, "--version").CombinedOutput()
-			if err != nil {
-				fmt.Printf("%s", output)
-				Fail(fmt.Sprintf("%v", err))
-			}
+			command := exec.Command(gpbackupPath, "--version")
+			output := mustRunCommand(command)
 			Expect(string(output)).To(MatchRegexp(`gpbackup version \w+`))
 		})
 		It("runs gprestore with --version flag", func() {
-			output, err := exec.Command(gprestorePath, "--version").CombinedOutput()
-			if err != nil {
-				fmt.Printf("%s", output)
-				Fail(fmt.Sprintf("%v", err))
-			}
+			command := exec.Command(gprestorePath, "--version")
+			output := mustRunCommand(command)
 			Expect(string(output)).To(MatchRegexp(`gprestore version \w+`))
 		})
 
