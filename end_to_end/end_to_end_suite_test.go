@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -610,7 +609,7 @@ var _ = Describe("backup end to end integration tests", func() {
 			backupdir := "/tmp/leaf_partition_data"
 			timestamp := gpbackup(gpbackupPath, backupHelperPath, "--leaf-partition-data", "--backup-dir", backupdir)
 			output := gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--backup-dir", backupdir)
-			Expect(strings.Contains(string(output), "Tables restored:  30 / 30")).To(BeTrue())
+			Expect(string(output)).To(ContainSubstring("Tables restored:  30 / 30"))
 
 			assertDataRestored(restoreConn, publicSchemaTupleCounts)
 			assertDataRestored(restoreConn, schema2TupleCounts)
@@ -624,7 +623,7 @@ var _ = Describe("backup end to end integration tests", func() {
 			configFile, _ := filepath.Glob(filepath.Join(backupdir, "*-1/backups/*", timestamp, "*config.yaml"))
 			contents, _ := ioutil.ReadFile(configFile[0])
 
-			Expect(strings.Contains(string(contents), "compressed: false")).To(BeTrue())
+			Expect(string(contents)).To(ContainSubstring("compressed: false"))
 			assertRelationsCreated(restoreConn, 36)
 			assertDataRestored(restoreConn, publicSchemaTupleCounts)
 			assertDataRestored(restoreConn, schema2TupleCounts)
@@ -639,7 +638,7 @@ var _ = Describe("backup end to end integration tests", func() {
 			Expect(len(files)).To(Equal(1))
 			output := gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--with-stats", "--backup-dir", backupdir)
 
-			Expect(strings.Contains(string(output), "Query planner statistics restore complete")).To(BeTrue())
+			Expect(string(output)).To(ContainSubstring("Query planner statistics restore complete"))
 			assertDataRestored(restoreConn, publicSchemaTupleCounts)
 			assertDataRestored(restoreConn, schema2TupleCounts)
 
