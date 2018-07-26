@@ -177,8 +177,10 @@ var _ = Describe("backup end to end integration tests", func() {
 		}
 		backupConn = dbconn.NewDBConnFromEnvironment("testdb")
 		backupConn.MustConnect(1)
+		utils.SetDatabaseVersion(backupConn)
 		restoreConn = dbconn.NewDBConnFromEnvironment("restoredb")
 		restoreConn.MustConnect(1)
+		utils.SetDatabaseVersion(restoreConn)
 		testutils.ExecuteSQLFile(backupConn, "test_tables_ddl.sql")
 		testutils.ExecuteSQLFile(backupConn, "test_tables_data.sql")
 		if useOldBackupVersion {
