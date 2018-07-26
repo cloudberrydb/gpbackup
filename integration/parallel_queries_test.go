@@ -16,6 +16,7 @@ var _ = Describe("backup, utils, and restore integration tests related to parall
 		BeforeEach(func() {
 			tempConn = dbconn.NewDBConnFromEnvironment("testdb")
 			tempConn.MustConnect(2)
+			utils.SetDatabaseVersion(tempConn)
 		})
 		AfterEach(func() {
 			tempConn.Close()

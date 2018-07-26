@@ -14,6 +14,7 @@ import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/utils"
 
+	"github.com/greenplum-db/gpbackup/testutils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
@@ -42,8 +43,7 @@ var _ = BeforeSuite(func() {
 	}
 	Expect(err).To(BeNil())
 	testhelper.SetupTestLogger()
-	connection = dbconn.NewDBConnFromEnvironment("testdb")
-	connection.MustConnect(1)
+	connection = testutils.SetupTestDbConn("testdb")
 	// We can't use AssertQueryRuns since if a role already exists it will error
 	connection.Exec("CREATE ROLE testrole SUPERUSER")
 	connection.Exec("CREATE ROLE anothertestrole SUPERUSER")
@@ -106,8 +106,7 @@ var _ = AfterSuite(func() {
 		err := exec.Command("dropdb", "testdb").Run()
 		Expect(err).To(BeNil())
 	}
-	connection1 := dbconn.NewDBConnFromEnvironment("template1")
-	connection1.MustConnect(1)
+	connection1 := testutils.SetupTestDbConn("template1")
 	testhelper.AssertQueryRuns(connection1, "DROP ROLE testrole")
 	testhelper.AssertQueryRuns(connection1, "DROP ROLE anothertestrole")
 	connection1.Close()

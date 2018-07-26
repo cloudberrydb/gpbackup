@@ -50,6 +50,13 @@ func SetupTestCluster() {
 	restore.SetFPInfo(testFPInfo)
 }
 
+func SetupTestDbConn(dbname string) *dbconn.DBConn {
+	conn := dbconn.NewDBConnFromEnvironment(dbname)
+	conn.MustConnect(1)
+	utils.SetDatabaseVersion(conn)
+	return conn
+}
+
 func SetDefaultSegmentConfiguration() *cluster.Cluster {
 	configMaster := cluster.SegConfig{ContentID: -1, Hostname: "localhost", DataDir: "gpseg-1"}
 	configSegOne := cluster.SegConfig{ContentID: 0, Hostname: "localhost", DataDir: "gpseg0"}

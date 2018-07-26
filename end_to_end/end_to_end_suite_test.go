@@ -175,12 +175,8 @@ var _ = Describe("backup end to end integration tests", func() {
 		if err != nil {
 			Fail(fmt.Sprintf("Could not create restoredb: %v", err))
 		}
-		backupConn = dbconn.NewDBConnFromEnvironment("testdb")
-		backupConn.MustConnect(1)
-		utils.SetDatabaseVersion(backupConn)
-		restoreConn = dbconn.NewDBConnFromEnvironment("restoredb")
-		restoreConn.MustConnect(1)
-		utils.SetDatabaseVersion(restoreConn)
+		backupConn = testutils.SetupTestDbConn("testdb")
+		restoreConn = testutils.SetupTestDbConn("restoredb")
 		testutils.ExecuteSQLFile(backupConn, "test_tables_ddl.sql")
 		testutils.ExecuteSQLFile(backupConn, "test_tables_data.sql")
 		if useOldBackupVersion {
@@ -456,16 +452,18 @@ var _ = Describe("backup end to end integration tests", func() {
 				defer testutils.ExecuteSQLFile(backupConn, "test_tables_data.sql")
 				defer testutils.ExecuteSQLFile(backupConn, "test_tables_ddl.sql")
 				defer testhelper.AssertQueryRuns(backupConn, "DROP SCHEMA IF EXISTS schema2 CASCADE; DROP SCHEMA public CASCADE; CREATE SCHEMA public; DROP PROCEDURAL LANGUAGE IF EXISTS plpythonu;")
+				defer testhelper.AssertQueryRuns(restoreConn, "DROP SCHEMA IF EXISTS schema2 CASCADE; DROP SCHEMA public CASCADE; CREATE SCHEMA public; DROP PROCEDURAL LANGUAGE IF EXISTS plpythonu;")
 				testutils.ExecuteSQLFile(backupConn, "gpdb4_objects.sql")
 				if backupConn.Version.AtLeast("5") {
 					testutils.ExecuteSQLFile(backupConn, "gpdb5_objects.sql")
 				}
 				if backupConn.Version.AtLeast("6") {
 					testutils.ExecuteSQLFile(backupConn, "gpdb6_objects.sql")
+					defer testhelper.AssertQueryRuns(backupConn, "DROP FOREIGN DATA WRAPPER fdw;")
+					defer testhelper.AssertQueryRuns(restoreConn, "DROP FOREIGN DATA WRAPPER fdw;")
 				}
 				timestamp := gpbackup(gpbackupPath, backupHelperPath, "--leaf-partition-data", "--single-data-file")
 				gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb")
-
 			})
 		})
 		Describe("Incremental", func() {
@@ -578,8 +576,7 @@ var _ = Describe("backup end to end integration tests", func() {
 				Fail(fmt.Sprintf("%v", err))
 			}
 			gprestore(gprestorePath, restoreHelperPath, timestamp, "--create-db")
-			backupConn = dbconn.NewDBConnFromEnvironment("testdb")
-			backupConn.MustConnect(1)
+			backupConn = testutils.SetupTestDbConn("testdb")
 		})
 		It("runs basic gpbackup and gprestore with metadata and data-only flags", func() {
 			timestamp := gpbackup(gpbackupPath, backupHelperPath, "--metadata-only")
