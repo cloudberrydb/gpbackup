@@ -523,8 +523,15 @@ var _ = Describe("backup end to end integration tests", func() {
 				})
 			})
 			Context("With a plugin", func() {
-				pluginsDir := fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/plugins", os.Getenv("HOME"))
-				copyPluginToAllHosts(backupConn, fmt.Sprintf("%s/example_plugin.sh", pluginsDir))
+				var pluginDir string
+				BeforeEach(func() {
+					pluginDir = "/tmp/plugin_dest"
+					pluginExecutablePath := fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/plugins/example_plugin.sh", os.Getenv("HOME"))
+					copyPluginToAllHosts(backupConn, pluginExecutablePath)
+				})
+				AfterEach(func() {
+					os.RemoveAll(pluginDir)
+				})
 				It("Restores from an incremental backup based on a from-timestamp incremental", func() {
 					fullBackupTimestamp := gpbackup(gpbackupPath, backupHelperPath,
 						"--leaf-partition-data", "--single-data-file", "--plugin-config", pluginConfigPath)
