@@ -299,6 +299,17 @@ func restoreStatistics() {
 }
 
 func DoTeardown() {
+	defer func() {
+		DoCleanup()
+
+		errorCode := gplog.GetErrorCode()
+		if errorCode == 0 {
+			gplog.Info("Restore completed successfully")
+		}
+		os.Exit(errorCode)
+
+	}()
+
 	errStr := ""
 	if err := recover(); err != nil {
 		errStr = fmt.Sprintf("%v", err)
@@ -317,9 +328,13 @@ func DoTeardown() {
 		fmt.Println(errStr)
 	}
 	errMsg := utils.ParseErrorMessage(errStr)
-	errorCode := gplog.GetErrorCode()
 
 	if globalFPInfo.Timestamp != "" {
+		_, statErr := os.Stat(globalFPInfo.GetDirForContent(-1))
+		if statErr != nil { // Even if this isn't os.IsNotExist, don't try to write a report file in case of further errors
+			return
+		}
+
 		reportFilename := globalFPInfo.GetRestoreReportFilePath(restoreStartTime)
 		utils.WriteRestoreReportFile(reportFilename, globalFPInfo.Timestamp, restoreStartTime, connectionPool, version, errMsg)
 		utils.EmailReport(globalCluster, globalFPInfo.Timestamp, reportFilename, "gprestore")
@@ -327,10 +342,6 @@ func DoTeardown() {
 			pluginConfig.CleanupPluginForRestore(globalCluster, globalFPInfo)
 		}
 	}
-
-	DoCleanup()
-
-	os.Exit(errorCode)
 }
 
 func DoCleanup() {
@@ -341,8 +352,8 @@ func DoCleanup() {
 		gplog.Verbose("Cleanup complete")
 		CleanupGroup.Done()
 	}()
-	gplog.Verbose("Beginning cleanup")
 
+	gplog.Verbose("Beginning cleanup")
 	if backupConfig != nil && backupConfig.SingleDataFile {
 		fpInfoList := GetBackupFPInfoList()
 		for _, fpInfo := range fpInfoList {

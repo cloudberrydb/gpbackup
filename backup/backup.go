@@ -173,10 +173,10 @@ func DoBackup() {
 	}
 	metadataFile.Close()
 	if MustGetFlagString(utils.PLUGIN_CONFIG) != "" {
-		pluginConfig.BackupFile(metadataFilename)
-		pluginConfig.BackupFile(globalFPInfo.GetTOCFilePath())
+		pluginConfig.MustBackupFile(metadataFilename)
+		pluginConfig.MustBackupFile(globalFPInfo.GetTOCFilePath())
 		if MustGetFlagBool(utils.WITH_STATS) {
-			pluginConfig.BackupFile(globalFPInfo.GetStatisticsFilePath())
+			pluginConfig.MustBackupFile(globalFPInfo.GetStatisticsFilePath())
 		}
 	}
 
@@ -362,6 +362,16 @@ func backupStatistics(tables []Relation) {
 }
 
 func DoTeardown() {
+	defer func() {
+		DoCleanup()
+
+		errorCode := gplog.GetErrorCode()
+		if errorCode == 0 {
+			gplog.Info("Backup completed successfully")
+		}
+		os.Exit(errorCode)
+	}()
+
 	errStr := ""
 	if err := recover(); err != nil {
 		errStr = fmt.Sprintf("%v", err)
@@ -388,7 +398,7 @@ func DoTeardown() {
 	if globalFPInfo.Timestamp != "" {
 		_, statErr := os.Stat(globalFPInfo.GetDirForContent(-1))
 		if statErr != nil { // Even if this isn't os.IsNotExist, don't try to write a report file in case of further errors
-			os.Exit(gplog.GetErrorCode())
+			return
 		}
 		reportFilename := globalFPInfo.GetBackupReportFilePath()
 		configFilename := globalFPInfo.GetConfigFilePath()
@@ -399,24 +409,28 @@ func DoTeardown() {
 			gplog.Warn("Failed to remove lock file %s.", backupLockFile)
 		}
 
-		backupReport.ConstructBackupParamsString()
-		backupReport.WriteConfigFile(configFilename)
-		backupReport.WriteBackupReportFile(reportFilename, globalFPInfo.Timestamp, objectCounts, errMsg)
-		utils.EmailReport(globalCluster, globalFPInfo.Timestamp, reportFilename, "gpbackup")
+		if backupReport != nil {
+			backupReport.ConstructBackupParamsString()
+			backupReport.WriteConfigFile(configFilename)
+			backupReport.WriteBackupReportFile(reportFilename, globalFPInfo.Timestamp, objectCounts, errMsg)
+			utils.EmailReport(globalCluster, globalFPInfo.Timestamp, reportFilename, "gpbackup")
+			if pluginConfig != nil {
+				err = pluginConfig.BackupFile(configFilename)
+				if err != nil {
+					gplog.Error(fmt.Sprintf("%v", err))
+					return
+				}
+				err = pluginConfig.BackupFile(reportFilename)
+				if err != nil {
+					gplog.Error(fmt.Sprintf("%v", err))
+					return
+				}
+			}
+		}
 		if pluginConfig != nil {
-			pluginConfig.BackupFile(configFilename, true)
-			pluginConfig.BackupFile(reportFilename, true)
 			pluginConfig.CleanupPluginForBackup(globalCluster, globalFPInfo)
 		}
 	}
-
-	DoCleanup()
-
-	errorCode := gplog.GetErrorCode()
-	if errorCode == 0 {
-		gplog.Info("Backup completed successfully")
-	}
-	os.Exit(errorCode)
 }
 
 func DoCleanup() {
@@ -427,6 +441,7 @@ func DoCleanup() {
 		gplog.Verbose("Cleanup complete")
 		CleanupGroup.Done()
 	}()
+
 	gplog.Verbose("Beginning cleanup")
 	if globalFPInfo.Timestamp != "" {
 		if MustGetFlagBool(utils.SINGLE_DATA_FILE) {

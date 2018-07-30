@@ -43,17 +43,18 @@ func ReadPluginConfig(configFile string) *PluginConfig {
 	return config
 }
 
-func (plugin *PluginConfig) BackupFile(filenamePath string, noFatal ...bool) {
+func (plugin *PluginConfig) BackupFile(filenamePath string) error {
 	command := fmt.Sprintf("%s backup_file %s %s", plugin.ExecutablePath, plugin.ConfigPath, filenamePath)
 	output, err := exec.Command("bash", "-c", command).CombinedOutput()
 	if err != nil {
-		if len(noFatal) == 1 && noFatal[0] == true {
-			gplog.Error(fmt.Sprintf("Plugin failed to process %s. %s", filenamePath, string(output)))
-		} else {
-			gplog.Fatal(err, string(output))
-		}
+		return fmt.Errorf("Plugin failed to process %s. %s", filenamePath, string(output))
 	}
 	err = operating.System.Chmod(filenamePath, 0755)
+	return err
+}
+
+func (plugin *PluginConfig) MustBackupFile(filenamePath string) {
+	err := plugin.BackupFile(filenamePath)
 	gplog.FatalOnError(err)
 }
 
@@ -82,7 +83,7 @@ func (plugin *PluginConfig) CheckPluginExistsOnAllHosts(c *cluster.Cluster) {
 			gplog.Fatal(fmt.Errorf("Unable to parse plugin API version: %s", err.Error()), "")
 		}
 		if !version.Equals(supportedVersion) {
-			gplog.Verbose("Plugin %s API version %s is not compatibile with supported API version %s", plugin.ExecutablePath, version, supportedVersion)
+			gplog.Verbose("Plugin %s API version %s is not compatible with supported API version %s", plugin.ExecutablePath, version, supportedVersion)
 			numIncorrect++
 		}
 	}
@@ -126,7 +127,13 @@ func (plugin *PluginConfig) executeHook(c *cluster.Cluster, verboseCommandMsg st
 	masterContentID := -1
 	masterOutput, masterErr := c.ExecuteLocalCommand(plugin.buildHookString(command,
 		fpInfo, scope, masterContentID))
-	gplog.FatalOnError(masterErr, masterOutput)
+	if masterErr != nil {
+		if noFatal {
+			gplog.Error(masterOutput)
+			return
+		}
+		gplog.Fatal(masterErr, masterOutput)
+	}
 
 	// Execute command once on each segment host
 	scope = SEGMENT_HOST

@@ -199,7 +199,11 @@ func (report *Report) WriteConfigFile(configFilename string) {
 }
 
 func (report *Report) WriteBackupReportFile(reportFilename string, timestamp string, objectCounts map[string]int, errMsg string) {
-	reportFile := iohelper.MustOpenFileForWriting(reportFilename)
+	reportFile, err := iohelper.OpenFileForWriting(reportFilename)
+	if err != nil {
+		gplog.Error("Unable to open backup report file %s", reportFilename)
+		return
+	}
 	reportFileTemplate := `Greenplum Database Backup Report
 
 Timestamp Key: %s
@@ -228,19 +232,26 @@ Backup Status: %s
 		dbSizeStr = fmt.Sprintf("\nDatabase Size: %s", report.DatabaseSize)
 	}
 
-	MustPrintf(reportFile, reportFileTemplate,
+	_, err = fmt.Fprintf(reportFile, reportFileTemplate,
 		timestamp, report.DatabaseVersion, report.BackupVersion,
 		report.DatabaseName, gpbackupCommandLine, report.BackupParamsString,
 		start, end, duration,
 		backupStatus, dbSizeStr)
+	if err != nil {
+		gplog.Error("Unable to write backup report file %s", reportFilename)
+		return
+	}
 
 	PrintObjectCounts(reportFile, objectCounts)
-	err := operating.System.Chmod(reportFilename, 0444)
-	gplog.FatalOnError(err)
+	_ = operating.System.Chmod(reportFilename, 0444)
 }
 
 func WriteRestoreReportFile(reportFilename string, backupTimestamp string, startTimestamp string, connection *dbconn.DBConn, restoreVersion string, errMsg string) {
-	reportFile := iohelper.MustOpenFileForWriting(reportFilename)
+	reportFile, err := iohelper.OpenFileForWriting(reportFilename)
+	if err != nil {
+		gplog.Error("Unable to open restore report file %s", reportFilename)
+		return
+	}
 	reportFileTemplate := `Greenplum Database Restore Report
 
 Timestamp Key: %s
@@ -266,12 +277,16 @@ Restore Status: %s`
 		restoreStatus = fmt.Sprintf("Failure\nRestore Error: %s", errMsg)
 	}
 
-	MustPrintf(reportFile, reportFileTemplate,
+	_, err = fmt.Fprintf(reportFile, reportFileTemplate,
 		backupTimestamp, connection.Version.VersionString, restoreVersion,
 		connection.DBName, gprestoreCommandLine,
 		start, end, duration, restoreStatus)
-	err := operating.System.Chmod(reportFilename, 0444)
-	gplog.FatalOnError(err)
+	if err != nil {
+		gplog.Error("Unable to write restore report file %s", reportFilename)
+		return
+	}
+
+	_ = operating.System.Chmod(reportFilename, 0444)
 }
 
 func GetDurationInfo(timestamp string, endTime time.Time) (string, string, string) {
