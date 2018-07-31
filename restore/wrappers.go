@@ -111,14 +111,14 @@ func RecoverMetadataFilesUsingPlugin() {
 		metadataFiles = append(metadataFiles, globalFPInfo.GetStatisticsFilePath())
 	}
 	for _, filename := range metadataFiles {
-		pluginConfig.RestoreFile(filename)
+		pluginConfig.MustRestoreFile(filename)
 	}
 
 	InitializeBackupConfig()
 
 	fpInfoList := GetBackupFPInfoList()
 	for _, fpInfo := range fpInfoList {
-		pluginConfig.RestoreFile(fpInfo.GetTOCFilePath())
+		pluginConfig.MustRestoreFile(fpInfo.GetTOCFilePath())
 		if !backupConfig.MetadataOnly {
 			pluginConfig.RestoreSegmentTOCs(globalCluster, fpInfo)
 		}

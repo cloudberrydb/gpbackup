@@ -58,7 +58,7 @@ func (plugin *PluginConfig) MustBackupFile(filenamePath string) {
 	gplog.FatalOnError(err)
 }
 
-func (plugin *PluginConfig) RestoreFile(filenamePath string) {
+func (plugin *PluginConfig) MustRestoreFile(filenamePath string) {
 	directory, _ := filepath.Split(filenamePath)
 	err := operating.System.MkdirAll(directory, 0755)
 	gplog.FatalOnError(err)

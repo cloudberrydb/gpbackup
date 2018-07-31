@@ -116,8 +116,8 @@ func DoBackup() {
 
 		if MustGetFlagString(utils.PLUGIN_CONFIG) != "" {
 			// These files need to be downloaded from the remote system into the local filesystem
-			pluginConfig.RestoreFile(targetBackupFPInfo.GetConfigFilePath())
-			pluginConfig.RestoreFile(targetBackupFPInfo.GetTOCFilePath())
+			pluginConfig.MustRestoreFile(targetBackupFPInfo.GetConfigFilePath())
+			pluginConfig.MustRestoreFile(targetBackupFPInfo.GetTOCFilePath())
 		}
 	}
 

@@ -115,7 +115,7 @@ func ValidateFromTimestamp(fromTimestamp string) {
 		fromTimestamp, globalFPInfo.UserSpecifiedSegPrefix)
 	if MustGetFlagString(utils.PLUGIN_CONFIG) != "" {
 		// The config file needs to be downloaded from the remote system into the local filesystem
-		pluginConfig.RestoreFile(fromTimestampFPInfo.GetConfigFilePath())
+		pluginConfig.MustRestoreFile(fromTimestampFPInfo.GetConfigFilePath())
 	}
 	fromBackupConfig := utils.ReadConfigFile(fromTimestampFPInfo.GetConfigFilePath())
 
