@@ -24,18 +24,18 @@ func FilterTablesForIncremental(lastBackupTOC, currentTOC *utils.TOC, tables []R
 	return filteredTables
 }
 
-func GetLatestMatchingBackupTimestamp() string {
+func GetTargetBackupTimestamp() string {
+	targetTimestamp := ""
 	if fromTimestamp := MustGetFlagString(utils.FROM_TIMESTAMP); fromTimestamp != "" {
-		fromTimestampFPInfo := utils.NewFilePathInfo(globalCluster, globalFPInfo.UserSpecifiedBackupDir,
-			fromTimestamp, globalFPInfo.UserSpecifiedSegPrefix)
-		if MustGetFlagString(utils.PLUGIN_CONFIG) != "" {
-			// The config file needs to be downloaded from the remote system into the local filesystem
-			pluginConfig.RestoreFile(fromTimestampFPInfo.GetConfigFilePath())
-		}
-		ValidateFromTimestamp(fromTimestampFPInfo, &backupReport.BackupConfig)
-		return fromTimestamp
+		ValidateFromTimestamp(fromTimestamp)
+		targetTimestamp = fromTimestamp
+	} else {
+		targetTimestamp = GetLatestMatchingBackupTimestamp()
 	}
+	return targetTimestamp
+}
 
+func GetLatestMatchingBackupTimestamp() string {
 	history := utils.NewHistory(globalFPInfo.GetBackupHistoryFilePath())
 	latestMatchingBackupHistoryEntry := GetLatestMatchingBackupConfig(history, &backupReport.BackupConfig)
 	if latestMatchingBackupHistoryEntry == nil {

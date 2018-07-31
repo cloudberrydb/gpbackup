@@ -518,7 +518,7 @@ func BackupStatistics(statisticsFile *utils.FileWithByteCount, tables []Relation
 }
 
 func BackupIncrementalMetadata() {
-	gplog.Verbose("Writing incremental metadata to the TOC")
+	gplog.Info("Collecting metadata for future incremental backups")
 	aoTableEntries := GetAOIncrementalMetadata(connectionPool)
 	globalTOC.IncrementalMetadata.AO = aoTableEntries
 }

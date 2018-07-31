@@ -110,12 +110,18 @@ func ValidateCompressionLevel(compressionLevel int) {
 	}
 }
 
-func ValidateFromTimestamp(fromBackupFPInfo utils.FilePathInfo, currentBackupConfig *utils.BackupConfig) {
-	fromBackupConfig := utils.ReadConfigFile(fromBackupFPInfo.GetConfigFilePath())
+func ValidateFromTimestamp(fromTimestamp string) {
+	fromTimestampFPInfo := utils.NewFilePathInfo(globalCluster, globalFPInfo.UserSpecifiedBackupDir,
+		fromTimestamp, globalFPInfo.UserSpecifiedSegPrefix)
+	if MustGetFlagString(utils.PLUGIN_CONFIG) != "" {
+		// The config file needs to be downloaded from the remote system into the local filesystem
+		pluginConfig.RestoreFile(fromTimestampFPInfo.GetConfigFilePath())
+	}
+	fromBackupConfig := utils.ReadConfigFile(fromTimestampFPInfo.GetConfigFilePath())
 
-	if !MatchesIncrementalFlags(fromBackupConfig, currentBackupConfig) {
+	if !MatchesIncrementalFlags(fromBackupConfig, &backupReport.BackupConfig) {
 		gplog.Fatal(errors.Errorf("The flags of the backup with timestamp = %s does not match "+
 			"that of the current one. Please refer to the report to view the flags supplied for the"+
-			"previous backup.", fromBackupFPInfo.Timestamp), "")
+			"previous backup.", fromTimestampFPInfo.Timestamp), "")
 	}
 }

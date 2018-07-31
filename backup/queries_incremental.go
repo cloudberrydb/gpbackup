@@ -9,7 +9,9 @@ import (
 )
 
 func GetAOIncrementalMetadata(connection *dbconn.DBConn) map[string]utils.AOEntry {
+	gplog.Verbose("Querying table row mod counts")
 	var modCounts = getAllModCounts(connection)
+	gplog.Verbose("Querying last DDL modification timestamp for tables")
 	var lastDDLTimestamps = getLastDDLTimestamps(connection)
 	aoTableEntries := make(map[string]utils.AOEntry)
 	for aoTableFQN := range modCounts {

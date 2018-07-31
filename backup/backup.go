@@ -107,17 +107,17 @@ func DoSetup() {
 func DoBackup() {
 	LogBackupInfo()
 
-	latestMatchingBackupTimestamp := ""
-	var latestMatchingBackupFPInfo utils.FilePathInfo
+	targetBackupTimestamp := ""
+	var targetBackupFPInfo utils.FilePathInfo
 	if MustGetFlagBool(utils.INCREMENTAL) {
-		latestMatchingBackupTimestamp = GetLatestMatchingBackupTimestamp()
-		latestMatchingBackupFPInfo = utils.NewFilePathInfo(globalCluster, globalFPInfo.UserSpecifiedBackupDir,
-			latestMatchingBackupTimestamp, globalFPInfo.UserSpecifiedSegPrefix)
+		targetBackupTimestamp = GetTargetBackupTimestamp()
+		targetBackupFPInfo = utils.NewFilePathInfo(globalCluster, globalFPInfo.UserSpecifiedBackupDir,
+			targetBackupTimestamp, globalFPInfo.UserSpecifiedSegPrefix)
 
 		if MustGetFlagString(utils.PLUGIN_CONFIG) != "" {
 			// These files need to be downloaded from the remote system into the local filesystem
-			pluginConfig.RestoreFile(latestMatchingBackupFPInfo.GetConfigFilePath())
-			pluginConfig.RestoreFile(latestMatchingBackupFPInfo.GetTOCFilePath())
+			pluginConfig.RestoreFile(targetBackupFPInfo.GetConfigFilePath())
+			pluginConfig.RestoreFile(targetBackupFPInfo.GetTOCFilePath())
 		}
 	}
 
@@ -138,6 +138,9 @@ func DoBackup() {
 			backupPredata(metadataFile, metadataTables, tableDefs)
 		}
 		backupPostdata(metadataFile)
+	}
+
+	if !(MustGetFlagBool(utils.METADATA_ONLY) || MustGetFlagBool(utils.DATA_ONLY)) {
 		BackupIncrementalMetadata()
 	}
 
@@ -149,16 +152,16 @@ func DoBackup() {
 	if !backupReport.MetadataOnly {
 		backupSetTables := dataTables
 
-		latestMatchingBackupRestorePlan := make([]utils.RestorePlanEntry, 0)
-		if latestMatchingBackupTimestamp != "" {
-			gplog.Info("Basing incremental backup off of backup with timestamp = %s", latestMatchingBackupTimestamp)
+		targetBackupRestorePlan := make([]utils.RestorePlanEntry, 0)
+		if targetBackupTimestamp != "" {
+			gplog.Info("Basing incremental backup off of backup with timestamp = %s", targetBackupTimestamp)
 
-			latestMatchingBackupTOC := utils.NewTOC(latestMatchingBackupFPInfo.GetTOCFilePath())
-			latestMatchingBackupRestorePlan = utils.ReadConfigFile(latestMatchingBackupFPInfo.GetConfigFilePath()).RestorePlan
-			backupSetTables = FilterTablesForIncremental(latestMatchingBackupTOC, globalTOC, dataTables)
+			targetBackupTOC := utils.NewTOC(targetBackupFPInfo.GetTOCFilePath())
+			targetBackupRestorePlan = utils.ReadConfigFile(targetBackupFPInfo.GetConfigFilePath()).RestorePlan
+			backupSetTables = FilterTablesForIncremental(targetBackupTOC, globalTOC, dataTables)
 		}
 
-		backupReport.RestorePlan = PopulateRestorePlan(backupSetTables, latestMatchingBackupRestorePlan, dataTables)
+		backupReport.RestorePlan = PopulateRestorePlan(backupSetTables, targetBackupRestorePlan, dataTables)
 
 		backupData(backupSetTables, tableDefs)
 	}
