@@ -122,7 +122,6 @@ func CreateBackupDirectoriesOnAllHosts() {
  */
 
 func RetrieveAndProcessTables() ([]Relation, []Relation, map[uint32]TableDefinition) {
-	gplog.Info("Gathering list of tables for backup")
 	tables := GetAllUserTables(connectionPool)
 	LockTables(connectionPool, tables)
 
@@ -518,7 +517,6 @@ func BackupStatistics(statisticsFile *utils.FileWithByteCount, tables []Relation
 }
 
 func BackupIncrementalMetadata() {
-	gplog.Info("Collecting metadata for future incremental backups")
 	aoTableEntries := GetAOIncrementalMetadata(connectionPool)
 	globalTOC.IncrementalMetadata.AO = aoTableEntries
 }

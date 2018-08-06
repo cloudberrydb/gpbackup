@@ -123,7 +123,11 @@ func DoBackup() {
 
 	objectCounts = make(map[string]int, 0)
 
+	gplog.Info("Gathering table state information")
 	metadataTables, dataTables, tableDefs := RetrieveAndProcessTables()
+	if !(MustGetFlagBool(utils.METADATA_ONLY) || MustGetFlagBool(utils.DATA_ONLY)) {
+		BackupIncrementalMetadata()
+	}
 	CheckTablesContainData(dataTables, tableDefs)
 	metadataFilename := globalFPInfo.GetMetadataFilePath()
 	gplog.Info("Metadata will be written to %s", metadataFilename)
@@ -138,10 +142,6 @@ func DoBackup() {
 			backupPredata(metadataFile, metadataTables, tableDefs)
 		}
 		backupPostdata(metadataFile)
-	}
-
-	if !(MustGetFlagBool(utils.METADATA_ONLY) || MustGetFlagBool(utils.DATA_ONLY)) {
-		BackupIncrementalMetadata()
 	}
 
 	/*
