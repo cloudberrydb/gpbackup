@@ -137,6 +137,11 @@ $_$`)
 					testhelper.ExpectRegexp(buffer, "IMMUTABLE")
 				})
 			})
+			It("prints 'LEAKPROOF' if IsLeakProof is set", func() {
+				funcDef.IsLeakProof = true
+				backup.PrintFunctionModifiers(backupfile, funcDef)
+				testhelper.ExpectRegexp(buffer, "LEAKPROOF")
+			})
 			It("prints 'STRICT' if IsStrict is set", func() {
 				funcDef.IsStrict = true
 				backup.PrintFunctionModifiers(backupfile, funcDef)

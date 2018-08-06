@@ -26,6 +26,7 @@ type Function struct {
 	ResultType        string
 	Volatility        string  `db:"provolatile"`
 	IsStrict          bool    `db:"proisstrict"`
+	IsLeakProof       bool    `db:"proleakproof"`
 	IsSecurityDefiner bool    `db:"prosecdef"`
 	Config            string  `db:"proconfig"`
 	Cost              float32 `db:"procost"`
@@ -68,7 +69,7 @@ func GetFunctionsAllVersions(connection *dbconn.DBConn) []Function {
 func GetFunctionsMaster(connection *dbconn.DBConn) []Function {
 	masterAtts := ""
 	if connection.Version.AtLeast("6") {
-		masterAtts = "proiswindow,proexeclocation,"
+		masterAtts = "proiswindow,proexeclocation,proleakproof,"
 	} else {
 		masterAtts = "'a' AS proexeclocation,"
 	}

@@ -76,6 +76,9 @@ func PrintFunctionModifiers(metadataFile *utils.FileWithByteCount, funcDef Funct
 	if funcDef.IsStrict {
 		metadataFile.MustPrintf(" STRICT")
 	}
+	if funcDef.IsLeakProof {
+		metadataFile.MustPrintf(" LEAKPROOF")
+	}
 	if funcDef.IsSecurityDefiner {
 		metadataFile.MustPrintf(" SECURITY DEFINER")
 	}

@@ -175,6 +175,24 @@ var _ = Describe("backup integration create statement tests", func() {
 				Expect(len(resultFunctions)).To(Equal(1))
 				structmatcher.ExpectStructsToMatchExcluding(&segmentFunction, &resultFunctions[0], "Oid")
 			})
+			It("creates a function with LEAKPROOF", func() {
+				leakProofFunction := backup.Function{
+					Schema: "public", Name: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
+					BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "integer",
+					Volatility: "v", IsStrict: false, IsLeakProof: true, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 0, DataAccess: "c",
+					Language: "sql", IsWindow: false, ExecLocation: "a",
+				}
+
+				backup.PrintCreateFunctionStatement(backupfile, toc, leakProofFunction, funcMetadata)
+
+				testhelper.AssertQueryRuns(connection, buffer.String())
+				defer testhelper.AssertQueryRuns(connection, "DROP FUNCTION public.add(integer, integer)")
+
+				resultFunctions := backup.GetFunctionsAllVersions(connection)
+
+				Expect(len(resultFunctions)).To(Equal(1))
+				structmatcher.ExpectStructsToMatchExcluding(&leakProofFunction, &resultFunctions[0], "Oid")
+			})
 		})
 	})
 	Describe("PrintCreateAggregateStatements", func() {

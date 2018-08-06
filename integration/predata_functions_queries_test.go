@@ -11,7 +11,7 @@ import (
 )
 
 var _ = Describe("backup integration tests", func() {
-	Describe("GetFunctions5", func() {
+	Describe("GetFunctionsMaster", func() {
 		BeforeEach(func() {
 			testutils.SkipIfBefore5(connection)
 		})
@@ -122,6 +122,35 @@ EXECUTE ON ALL SEGMENTS;`)
 			Expect(len(results)).To(Equal(2))
 			structmatcher.ExpectStructsToMatchExcluding(&results[0], &srfOnAllSegmentsFunction, "Oid")
 			structmatcher.ExpectStructsToMatchExcluding(&results[1], &srfOnMasterFunction, "Oid")
+		})
+		It("returns a function with LEAKPROOF", func() {
+			// other tests that are specific to >=6 can be added to this
+			testutils.SkipIfBefore6(connection)
+			testhelper.AssertQueryRuns(connection, `
+CREATE FUNCTION public.append(integer, integer) RETURNS SETOF record
+AS 'SELECT ($1, $2)'
+LANGUAGE SQL
+SECURITY DEFINER
+STRICT
+LEAKPROOF
+STABLE
+COST 200
+ROWS 200
+SET search_path = pg_temp
+MODIFIES SQL DATA
+`)
+			defer testhelper.AssertQueryRuns(connection, "DROP FUNCTION public.append(integer, integer)")
+
+			results := backup.GetFunctionsMaster(connection)
+
+			appendFunction := backup.Function{
+				Schema: "public", Name: "append", ReturnsSet: true, FunctionBody: "SELECT ($1, $2)",
+				BinaryPath: "", Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "SETOF record",
+				Volatility: "s", IsStrict: true, IsLeakProof: true, IsSecurityDefiner: true, Config: "SET search_path TO pg_temp", Cost: 200,
+				NumRows: 200, DataAccess: "m", Language: "sql", ExecLocation: "a"}
+
+			Expect(len(results)).To(Equal(1))
+			structmatcher.ExpectStructsToMatchExcluding(&results[0], &appendFunction, "Oid")
 		})
 	})
 	Describe("GetFunctions4", func() {
