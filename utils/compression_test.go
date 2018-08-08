@@ -10,7 +10,6 @@ import (
 	"github.com/greenplum-db/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("utils/compression tests", func() {
@@ -32,22 +31,21 @@ var _ = Describe("utils/compression tests", func() {
 
 	Describe("InitializeCompressionParameters", func() {
 		It("initializes properly when passed no compression", func() {
-			useCompress, compression := utils.GetCompressionParameters()
-			defer utils.SetCompressionParameters(useCompress, compression)
+			compression := utils.GetCompressionProgram()
+			defer utils.SetCompressionProgram(compression)
 			expectedCompress := utils.Compression{
-				Name:              "gzip",
-				CompressCommand:   "gzip -c -3",
-				DecompressCommand: "gzip -d -c",
-				Extension:         ".gz",
+				Name:              "cat",
+				CompressCommand:   "cat -",
+				DecompressCommand: "cat -",
+				Extension:         "",
 			}
 			utils.InitializeCompressionParameters(false, 3)
-			resultUseCompress, resultCompression := utils.GetCompressionParameters()
-			Expect(resultUseCompress).To(BeFalse())
+			resultCompression := utils.GetCompressionProgram()
 			structmatcher.ExpectStructsToMatch(&expectedCompress, &resultCompression)
 		})
 		It("initializes properly when passed compression", func() {
-			useCompress, compression := utils.GetCompressionParameters()
-			defer utils.SetCompressionParameters(useCompress, compression)
+			compression := utils.GetCompressionProgram()
+			defer utils.SetCompressionProgram(compression)
 			expectedCompress := utils.Compression{
 				Name:              "gzip",
 				CompressCommand:   "gzip -c -7",
@@ -55,22 +53,7 @@ var _ = Describe("utils/compression tests", func() {
 				Extension:         ".gz",
 			}
 			utils.InitializeCompressionParameters(true, 7)
-			resultUseCompress, resultCompression := utils.GetCompressionParameters()
-			Expect(resultUseCompress).To(BeTrue())
-			structmatcher.ExpectStructsToMatch(&expectedCompress, &resultCompression)
-		})
-		It("uses default gzip command when passed compression level 0", func() {
-			useCompress, compression := utils.GetCompressionParameters()
-			defer utils.SetCompressionParameters(useCompress, compression)
-			expectedCompress := utils.Compression{
-				Name:              "gzip",
-				CompressCommand:   "gzip -c -1",
-				DecompressCommand: "gzip -d -c",
-				Extension:         ".gz",
-			}
-			utils.InitializeCompressionParameters(true, 0)
-			resultUseCompress, resultCompression := utils.GetCompressionParameters()
-			Expect(resultUseCompress).To(BeTrue())
+			resultCompression := utils.GetCompressionProgram()
 			structmatcher.ExpectStructsToMatch(&expectedCompress, &resultCompression)
 		})
 	})

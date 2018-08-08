@@ -55,8 +55,10 @@ type BackupProgressCounters struct {
 }
 
 func CopyTableOut(connectionPool *dbconn.DBConn, table Relation, backupFile string, connNum int) (int64, error) {
-	usingCompression, compressionProgram := utils.GetCompressionParameters()
-	copyCommand := ""
+	compressionProgram := utils.GetCompressionProgram()
+	checkPipeExistsCommand := ""
+	pluginCommand := ">"
+	compressCommand := compressionProgram.CompressCommand
 	if MustGetFlagBool(utils.SINGLE_DATA_FILE) {
 		/*
 		 * The segment TOC files are always written to the segment data directory for
@@ -64,13 +66,14 @@ func CopyTableOut(connectionPool *dbconn.DBConn, table Relation, backupFile stri
 		 * drive.  It will be copied to a user-specified directory, if any, once all
 		 * of the data is backed up.
 		 */
-		checkPipeExistsCommand := fmt.Sprintf("(test -p \"%s\" || (echo \"Pipe not found %s\">&2; exit 1))", backupFile, backupFile)
-		copyCommand = fmt.Sprintf("PROGRAM '%s && cat - > %s'", checkPipeExistsCommand, backupFile)
-	} else if usingCompression {
-		copyCommand = fmt.Sprintf("PROGRAM '%s > %s'", compressionProgram.CompressCommand, backupFile)
-	} else {
-		copyCommand = fmt.Sprintf("'%s'", backupFile)
+		checkPipeExistsCommand = fmt.Sprintf("(test -p \"%s\" || (echo \"Pipe not found %s\">&2; exit 1)) && ", backupFile, backupFile)
+		compressCommand = "cat -"
+	} else if MustGetFlagString(utils.PLUGIN_CONFIG) != "" {
+		pluginCommand = fmt.Sprintf("| %s backup_data %s", pluginConfig.ExecutablePath, pluginConfig.ConfigPath)
 	}
+
+	copyCommand := fmt.Sprintf("PROGRAM '%s%s %s %s'", checkPipeExistsCommand, compressCommand, pluginCommand, backupFile)
+
 	query := fmt.Sprintf("COPY %s TO %s WITH CSV DELIMITER '%s' ON SEGMENT IGNORE EXTERNAL PARTITIONS;", table.ToString(), copyCommand, tableDelim)
 	result, err := connectionPool.Exec(query, connNum)
 	if err != nil {

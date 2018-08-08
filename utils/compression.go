@@ -3,7 +3,6 @@ package utils
 import "fmt"
 
 var (
-	usingCompression   = true
 	compressionProgram Compression
 )
 
@@ -15,21 +14,17 @@ type Compression struct {
 }
 
 func InitializeCompressionParameters(compress bool, compressionLevel int) {
-	usingCompression = compress
-	compressCommand := ""
-	if compressionLevel == 0 {
-		compressCommand = "gzip -c -1"
+	if compress {
+		compressionProgram = Compression{Name: "gzip", CompressCommand: fmt.Sprintf("gzip -c -%d", compressionLevel), DecompressCommand: "gzip -d -c", Extension: ".gz"}
 	} else {
-		compressCommand = fmt.Sprintf("gzip -c -%d", compressionLevel)
+		compressionProgram = Compression{Name: "cat", CompressCommand: "cat -", DecompressCommand: "cat -", Extension: ""}
 	}
-	compressionProgram = Compression{Name: "gzip", CompressCommand: compressCommand, DecompressCommand: "gzip -d -c", Extension: ".gz"}
 }
 
-func GetCompressionParameters() (bool, Compression) {
-	return usingCompression, compressionProgram
+func GetCompressionProgram() Compression {
+	return compressionProgram
 }
 
-func SetCompressionParameters(compress bool, compression Compression) {
-	usingCompression = compress
+func SetCompressionProgram(compression Compression) {
 	compressionProgram = compression
 }

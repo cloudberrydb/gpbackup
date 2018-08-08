@@ -122,7 +122,7 @@ func RecoverMetadataFilesUsingPlugin() {
 	fpInfoList := GetBackupFPInfoList()
 	for _, fpInfo := range fpInfoList {
 		pluginConfig.MustRestoreFile(fpInfo.GetTOCFilePath())
-		if !backupConfig.MetadataOnly {
+		if backupConfig.SingleDataFile {
 			pluginConfig.RestoreSegmentTOCs(globalCluster, fpInfo)
 		}
 	}

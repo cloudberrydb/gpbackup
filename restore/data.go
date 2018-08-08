@@ -19,15 +19,20 @@ var (
 
 func CopyTableIn(connection *dbconn.DBConn, tableName string, tableAttributes string, backupFile string, singleDataFile bool, whichConn int) (int64, error) {
 	whichConn = connection.ValidateConnNum(whichConn)
-	usingCompression, compressionProgram := utils.GetCompressionParameters()
+	compressionProgram := utils.GetCompressionProgram()
 	copyCommand := ""
+	pluginCommand := "cat"
+	decompressCommand := compressionProgram.DecompressCommand
+
 	if singleDataFile {
-		copyCommand = fmt.Sprintf("PROGRAM 'cat %s'", backupFile)
-	} else if usingCompression && !singleDataFile {
-		copyCommand = fmt.Sprintf("PROGRAM '%s < %s'", compressionProgram.DecompressCommand, backupFile)
-	} else {
-		copyCommand = fmt.Sprintf("'%s'", backupFile)
+		//helper.go handles compression, so we don't want to set it here
+		decompressCommand = "cat -"
+	} else if MustGetFlagString(utils.PLUGIN_CONFIG) != "" {
+		pluginCommand = fmt.Sprintf("%s restore_data %s", pluginConfig.ExecutablePath, pluginConfig.ConfigPath)
 	}
+
+	copyCommand = fmt.Sprintf("PROGRAM '%s %s | %s'", pluginCommand, backupFile, decompressCommand)
+
 	query := fmt.Sprintf("COPY %s%s FROM %s WITH CSV DELIMITER '%s' ON SEGMENT;", tableName, tableAttributes, copyCommand, tableDelim)
 	result, err := connection.Exec(query, whichConn)
 	if err != nil {

@@ -131,7 +131,7 @@ func (report *Report) ConstructBackupParamsString() {
 		filterStr = "None"
 	}
 	compressStr := "None"
-	_, program := GetCompressionParameters()
+	program := GetCompressionProgram()
 	if report.Compressed {
 		compressStr = program.Name
 	}
