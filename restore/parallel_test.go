@@ -8,7 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("restore/validate tests", func() {
+var _ = Describe("restore/parallel tests", func() {
 	Describe("BatchPostdataStatements", func() {
 		index1 := utils.StatementWithType{ObjectType: "INDEX", ReferenceObject: "public.table1", Statement: `CREATE INDEX testindex ON public.testtable USING btree(i);`}
 		index2 := utils.StatementWithType{ObjectType: "INDEX", ReferenceObject: "public.table2", Statement: `CREATE INDEX testindex ON public.testtable USING btree(i);`}

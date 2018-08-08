@@ -54,7 +54,7 @@ type BackupProgressCounters struct {
 	ProgressBar    utils.ProgressBar
 }
 
-func CopyTableOut(connectionPool *dbconn.DBConn, table Relation, backupFile string, connNum int) int64 {
+func CopyTableOut(connectionPool *dbconn.DBConn, table Relation, backupFile string, connNum int) (int64, error) {
 	usingCompression, compressionProgram := utils.GetCompressionParameters()
 	copyCommand := ""
 	if MustGetFlagBool(utils.SINGLE_DATA_FILE) {
@@ -64,7 +64,7 @@ func CopyTableOut(connectionPool *dbconn.DBConn, table Relation, backupFile stri
 		 * drive.  It will be copied to a user-specified directory, if any, once all
 		 * of the data is backed up.
 		 */
-		checkPipeExistsCommand := fmt.Sprintf("(test -p \"%s\" || (echo \"Pipe not found\">&2; exit 1))", backupFile)
+		checkPipeExistsCommand := fmt.Sprintf("(test -p \"%s\" || (echo \"Pipe not found %s\">&2; exit 1))", backupFile, backupFile)
 		copyCommand = fmt.Sprintf("PROGRAM '%s && cat - > %s'", checkPipeExistsCommand, backupFile)
 	} else if usingCompression {
 		copyCommand = fmt.Sprintf("PROGRAM '%s > %s'", compressionProgram.CompressCommand, backupFile)
@@ -74,18 +74,13 @@ func CopyTableOut(connectionPool *dbconn.DBConn, table Relation, backupFile stri
 	query := fmt.Sprintf("COPY %s TO %s WITH CSV DELIMITER '%s' ON SEGMENT IGNORE EXTERNAL PARTITIONS;", table.ToString(), copyCommand, tableDelim)
 	result, err := connectionPool.Exec(query, connNum)
 	if err != nil {
-		errStr := ""
-		if MustGetFlagBool(utils.SINGLE_DATA_FILE) {
-			helperLogName := globalFPInfo.GetHelperLogPath()
-			errStr = fmt.Sprintf("Check %s on the affected segment host for more info.", helperLogName)
-		}
-		gplog.Fatal(err, errStr)
+		return 0, err
 	}
 	numRows, _ := result.RowsAffected()
-	return numRows
+	return numRows, nil
 }
 
-func BackupSingleTableData(tableDef TableDefinition, table Relation, rowsCopiedMap map[uint32]int64, counters *BackupProgressCounters, whichConn int) {
+func BackupSingleTableData(tableDef TableDefinition, table Relation, rowsCopiedMap map[uint32]int64, counters *BackupProgressCounters, whichConn int) error {
 	if !tableDef.IsExternal {
 		counters.mutex.Lock()
 		counters.NumRegTables++
@@ -104,12 +99,16 @@ func BackupSingleTableData(tableDef TableDefinition, table Relation, rowsCopiedM
 		} else {
 			backupFile = globalFPInfo.GetTableBackupFilePathForCopyCommand(table.Oid, false)
 		}
-		rowsCopied := CopyTableOut(connectionPool, table, backupFile, whichConn)
+		rowsCopied, err := CopyTableOut(connectionPool, table, backupFile, whichConn)
+		if err != nil {
+			return err
+		}
 		rowsCopiedMap[table.Oid] = rowsCopied
 		counters.ProgressBar.Increment()
 	} else {
 		gplog.Verbose("Skipping data backup of table %s because it is an external table.", table.ToString())
 	}
+	return nil
 }
 
 func BackupDataForAllTables(tables []Relation, tableDefs map[uint32]TableDefinition) []map[uint32]int64 {
@@ -130,17 +129,21 @@ func BackupDataForAllTables(tables []Relation, tableDefs map[uint32]TableDefinit
 	 */
 	tasks := make(chan Relation, len(tables))
 	var workerPool sync.WaitGroup
+	var copyErr error
 	for connNum := 0; connNum < connectionPool.NumConns; connNum++ {
 		rowsCopiedMaps[connNum] = make(map[uint32]int64, 0)
 		workerPool.Add(1)
 		go func(whichConn int) {
 			defer workerPool.Done()
 			for table := range tasks {
-				if wasTerminated {
+				if wasTerminated || copyErr != nil {
 					counters.ProgressBar.(*pb.ProgressBar).NotPrint = true
-					break
+					return
 				}
-				BackupSingleTableData(tableDefs[table.Oid], table, rowsCopiedMaps[whichConn], &counters, whichConn)
+				err := BackupSingleTableData(tableDefs[table.Oid], table, rowsCopiedMaps[whichConn], &counters, whichConn)
+				if err != nil {
+					copyErr = err
+				}
 			}
 		}(connNum)
 	}
@@ -149,6 +152,14 @@ func BackupDataForAllTables(tables []Relation, tableDefs map[uint32]TableDefinit
 	}
 	close(tasks)
 	workerPool.Wait()
+	if copyErr != nil {
+		errStr := ""
+		if MustGetFlagBool(utils.SINGLE_DATA_FILE) {
+			helperLogName := globalFPInfo.GetHelperLogPath()
+			errStr = fmt.Sprintf("Check %s on the affected segment host for more info.", helperLogName)
+		}
+		gplog.Fatal(copyErr, errStr)
+	}
 	counters.ProgressBar.Finish()
 
 	printDataBackupWarnings(totalExtTables)

@@ -153,7 +153,7 @@ func ExecuteRestoreMetadataStatements(statements []utils.StatementWithType, obje
 	if progressBar == nil {
 		ExecuteStatementsAndCreateProgressBar(statements, objectsTitle, showProgressBar, executeInParallel)
 	} else {
-		ExecuteStatements(statements, progressBar, showProgressBar, executeInParallel)
+		ExecuteStatements(statements, progressBar, executeInParallel)
 	}
 }
 

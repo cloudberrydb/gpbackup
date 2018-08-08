@@ -12,64 +12,57 @@ import (
 
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpbackup/utils"
-	"github.com/pkg/errors"
 )
 
-/*
- * The return value for this function is the number of errors encountered, not
- * an error code.
- */
-func executeStatement(statement utils.StatementWithType, showProgressBar int, whichConn int) uint32 {
-	whichConn = connectionPool.ValidateConnNum(whichConn)
-	_, err := connectionPool.Exec(statement.Statement, whichConn)
-	if err != nil {
-		gplog.Verbose("Error encountered when executing statement: %s Error was: %s", strings.TrimSpace(statement.Statement), err.Error())
-		if MustGetFlagBool(utils.ON_ERROR_CONTINUE) {
-			return 1
+func executeStatementsForConn(statements chan utils.StatementWithType, fatalErr *error, numErrors *int32, progressBar utils.ProgressBar, whichConn int) {
+	for statement := range statements {
+		if wasTerminated || *fatalErr != nil {
+			return
 		}
-		if showProgressBar >= utils.PB_INFO && gplog.GetVerbosity() == gplog.LOGINFO {
-			fmt.Println() // Move error message to its own line, since the cursor is currently at the end of the progress bar
+		_, err := connectionPool.Exec(statement.Statement, whichConn)
+		if err != nil {
+			gplog.Verbose("Error encountered when executing statement: %s Error was: %s", strings.TrimSpace(statement.Statement), err.Error())
+			if MustGetFlagBool(utils.ON_ERROR_CONTINUE) {
+				atomic.AddInt32(numErrors, 1)
+			} else {
+				*fatalErr = err
+			}
 		}
-		gplog.Fatal(errors.Errorf("%s; see log file %s for details.", err.Error(), gplog.GetLogFilePath()), "Failed to execute statement")
+		progressBar.Increment()
 	}
-	return 0
 }
 
 /*
  * This function creates a worker pool of N goroutines to be able to execute up
  * to N statements in parallel.
  */
-func ExecuteStatements(statements []utils.StatementWithType, progressBar utils.ProgressBar, showProgressBar int, executeInParallel bool, whichConn ...int) {
-	var numErrors uint32
+func ExecuteStatements(statements []utils.StatementWithType, progressBar utils.ProgressBar, executeInParallel bool, whichConn ...int) {
+	var workerPool sync.WaitGroup
+	var fatalErr error
+	var numErrors int32
+	tasks := make(chan utils.StatementWithType, len(statements))
+	for _, statement := range statements {
+		tasks <- statement
+	}
+	close(tasks)
+
 	if !executeInParallel {
 		connNum := connectionPool.ValidateConnNum(whichConn...)
-		for _, statement := range statements {
-			if wasTerminated {
-				return
-			}
-			numErrors += executeStatement(statement, showProgressBar, connNum)
-			progressBar.Increment()
-		}
+		executeStatementsForConn(tasks, &fatalErr, &numErrors, progressBar, connNum)
 	} else {
-		tasks := make(chan utils.StatementWithType, len(statements))
-		var workerPool sync.WaitGroup
 		for i := 0; i < connectionPool.NumConns; i++ {
 			workerPool.Add(1)
-			go func(whichConn int) {
-				for statement := range tasks {
-					atomic.AddUint32(&numErrors, executeStatement(statement, showProgressBar, whichConn))
-					progressBar.Increment()
-				}
-				workerPool.Done()
+			go func(connNum int) {
+				defer workerPool.Done()
+				connNum = connectionPool.ValidateConnNum(connNum)
+				executeStatementsForConn(tasks, &fatalErr, &numErrors, progressBar, connNum)
 			}(i)
 		}
-		for _, statement := range statements {
-			tasks <- statement
-		}
-		close(tasks)
 		workerPool.Wait()
 	}
-	if numErrors > 0 {
+	if fatalErr != nil {
+		gplog.Fatal(fatalErr, "")
+	} else if numErrors > 0 {
 		gplog.Error("Encountered %d errors during metadata restore; see log file %s for a list of failed statements.", numErrors, gplog.GetLogFilePath())
 	}
 }
@@ -77,7 +70,7 @@ func ExecuteStatements(statements []utils.StatementWithType, progressBar utils.P
 func ExecuteStatementsAndCreateProgressBar(statements []utils.StatementWithType, objectsTitle string, showProgressBar int, executeInParallel bool, whichConn ...int) {
 	progressBar := utils.NewProgressBar(len(statements), fmt.Sprintf("%s restored: ", objectsTitle), showProgressBar)
 	progressBar.Start()
-	ExecuteStatements(statements, progressBar, showProgressBar, executeInParallel, whichConn...)
+	ExecuteStatements(statements, progressBar, executeInParallel, whichConn...)
 	progressBar.Finish()
 }
 

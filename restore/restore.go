@@ -250,17 +250,27 @@ func restoreDataFromTimestamp(fpInfo utils.FilePathInfo, dataEntries []utils.Mas
 	var tableNum uint32 = 1
 	tasks := make(chan utils.MasterDataEntry, len(dataEntries))
 	var workerPool sync.WaitGroup
+	var fatalErr error
+	var numErrors int32
 	for i := 0; i < connectionPool.NumConns; i++ {
 		workerPool.Add(1)
 		go func(whichConn int) {
 			defer workerPool.Done()
 			setGUCsForConnection(gucStatements, whichConn)
 			for entry := range tasks {
-				if wasTerminated {
+				if wasTerminated || fatalErr != nil {
 					dataProgressBar.(*pb.ProgressBar).NotPrint = true
-					break
+					return
 				}
-				restoreSingleTableData(&fpInfo, entry, tableNum, len(dataEntries), whichConn)
+				err := restoreSingleTableData(&fpInfo, entry, tableNum, len(dataEntries), whichConn)
+				if err != nil {
+					if MustGetFlagBool(utils.ON_ERROR_CONTINUE) {
+						gplog.Verbose(err.Error())
+						atomic.AddInt32(&numErrors, 1)
+					} else {
+						fatalErr = err
+					}
+				}
 				atomic.AddUint32(&tableNum, 1)
 				dataProgressBar.Increment()
 			}
@@ -271,6 +281,11 @@ func restoreDataFromTimestamp(fpInfo utils.FilePathInfo, dataEntries []utils.Mas
 	}
 	close(tasks)
 	workerPool.Wait()
+	if fatalErr != nil {
+		gplog.Fatal(fatalErr, "")
+	} else if numErrors > 0 {
+		gplog.Error("Encountered %d errors during table data restore; see log file %s for a list of table errors.", numErrors, gplog.GetLogFilePath())
+	}
 	err := CheckAgentErrorsOnSegments()
 	if err != nil {
 		errMsg := "Error restoring data for one or more tables"

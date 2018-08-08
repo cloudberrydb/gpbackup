@@ -17,7 +17,7 @@ var (
 	tableDelim = ","
 )
 
-func CopyTableIn(connection *dbconn.DBConn, tableName string, tableAttributes string, backupFile string, singleDataFile bool, whichConn int) int64 {
+func CopyTableIn(connection *dbconn.DBConn, tableName string, tableAttributes string, backupFile string, singleDataFile bool, whichConn int) (int64, error) {
 	whichConn = connection.ValidateConnNum(whichConn)
 	usingCompression, compressionProgram := utils.GetCompressionParameters()
 	copyCommand := ""
@@ -31,14 +31,13 @@ func CopyTableIn(connection *dbconn.DBConn, tableName string, tableAttributes st
 	query := fmt.Sprintf("COPY %s%s FROM %s WITH CSV DELIMITER '%s' ON SEGMENT;", tableName, tableAttributes, copyCommand, tableDelim)
 	result, err := connection.Exec(query, whichConn)
 	if err != nil {
-		gplog.Fatal(err, "Error loading data into table %s", tableName)
+		return 0, errors.Wrap(err, fmt.Sprintf("Error loading data into table %s", tableName))
 	}
-	numRows, err := result.RowsAffected()
-	gplog.FatalOnError(err)
-	return numRows
+	numRows, _ := result.RowsAffected()
+	return numRows, err
 }
 
-func restoreSingleTableData(fpInfo *utils.FilePathInfo, entry utils.MasterDataEntry, tableNum uint32, totalTables int, whichConn int) {
+func restoreSingleTableData(fpInfo *utils.FilePathInfo, entry utils.MasterDataEntry, tableNum uint32, totalTables int, whichConn int) error {
 	name := utils.MakeFQN(entry.Schema, entry.Name)
 	if gplog.GetVerbosity() > gplog.LOGINFO {
 		// No progress bar at this log level, so we note table count here
@@ -52,9 +51,13 @@ func restoreSingleTableData(fpInfo *utils.FilePathInfo, entry utils.MasterDataEn
 	} else {
 		backupFile = fpInfo.GetTableBackupFilePathForCopyCommand(entry.Oid, backupConfig.SingleDataFile)
 	}
-	numRowsRestored := CopyTableIn(connectionPool, name, entry.AttributeString, backupFile, backupConfig.SingleDataFile, whichConn)
+	numRowsRestored, err := CopyTableIn(connectionPool, name, entry.AttributeString, backupFile, backupConfig.SingleDataFile, whichConn)
+	if err != nil {
+		return err
+	}
 	numRowsBackedUp := entry.RowsCopied
 	CheckRowsRestored(numRowsRestored, numRowsBackedUp, name)
+	return nil
 }
 
 func CheckRowsRestored(rowsRestored int64, rowsBackedUp int64, tableName string) {
