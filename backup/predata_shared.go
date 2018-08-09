@@ -16,6 +16,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+var ACLRegex = regexp.MustCompile(`^(.*)=([a-zA-Z\*]*)/(.*)$`)
+
 /*
  * Generic functions and structs relating to schemas
  */
@@ -166,6 +168,7 @@ func ConstructMetadataMap(results []MetadataQueryStruct) MetadataMap {
 				metadata.Owner = result.Owner
 				metadata.Comment = result.Comment
 			}
+
 			privileges := ParseACL(privilegesStr, quotedRoleNames)
 			if privileges != nil {
 				metadata.Privileges = append(metadata.Privileges, *privileges)
@@ -178,10 +181,9 @@ func ConstructMetadataMap(results []MetadataQueryStruct) MetadataMap {
 }
 
 func ParseACL(aclStr string, quotedRoleNames map[string]string) *ACL {
-	aclRegex := regexp.MustCompile(`^(.*)=([a-zA-Z\*]*)/(.*)$`)
 	grantee := ""
 	acl := ACL{}
-	if matches := aclRegex.FindStringSubmatch(aclStr); len(matches) != 0 {
+	if matches := ACLRegex.FindStringSubmatch(aclStr); len(matches) != 0 {
 		if matches[1] != "" {
 			grantee = matches[1]
 		} else {
