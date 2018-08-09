@@ -452,6 +452,23 @@ var _ = Describe("backup end to end integration tests", func() {
 
 					os.RemoveAll(pluginDir)
 				})
+				It("runs gpbackup and gprestore with plugin and metadata-only", func() {
+					if useOldBackupVersion {
+						Skip("Feature not supported in gpbackup 1.0.0")
+					}
+					pluginDir := "/tmp/plugin_dest"
+					pluginExecutablePath := fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/plugins/example_plugin.sh", os.Getenv("HOME"))
+					copyPluginToAllHosts(backupConn, pluginExecutablePath)
+
+					timestamp := gpbackup(gpbackupPath, backupHelperPath, "--metadata-only", "--plugin-config", pluginConfigPath)
+					forceMetadataFileDownloadFromPlugin(backupConn, timestamp)
+
+					gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--plugin-config", pluginConfigPath)
+
+					assertRelationsCreated(restoreConn, 36)
+
+					os.RemoveAll(pluginDir)
+				})
 			})
 		})
 		Describe("Multi-file Plugin", func() {

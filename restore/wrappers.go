@@ -119,7 +119,13 @@ func RecoverMetadataFilesUsingPlugin() {
 
 	InitializeBackupConfig()
 
-	fpInfoList := GetBackupFPInfoList()
+	var fpInfoList []utils.FilePathInfo
+	if backupConfig.MetadataOnly {
+		fpInfoList = []utils.FilePathInfo{globalFPInfo}
+	} else {
+		fpInfoList = GetBackupFPInfoListFromRestorePlan()
+	}
+
 	for _, fpInfo := range fpInfoList {
 		pluginConfig.MustRestoreFile(fpInfo.GetTOCFilePath())
 		if backupConfig.SingleDataFile {
@@ -160,7 +166,7 @@ func ExecuteRestoreMetadataStatements(statements []utils.StatementWithType, obje
 	}
 }
 
-func GetBackupFPInfoList() []utils.FilePathInfo {
+func GetBackupFPInfoListFromRestorePlan() []utils.FilePathInfo {
 	fpInfoList := make([]utils.FilePathInfo, 0)
 	for _, entry := range backupConfig.RestorePlan {
 		segPrefix := utils.ParseSegPrefix(MustGetFlagString(utils.BACKUP_DIR), entry.Timestamp)
