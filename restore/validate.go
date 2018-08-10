@@ -61,6 +61,9 @@ func ValidateFilterSchemasInBackupSet(schemaList []string) {
 
 func ValidateRelationsInRestoreDatabase(connection *dbconn.DBConn, relationList []string) {
 	if len(relationList) == 0 {
+		if len(globalTOC.DataEntries) == 0 {
+			return
+		}
 		for _, entry := range globalTOC.DataEntries {
 			fqn := utils.MakeFQN(entry.Schema, entry.Name)
 			relationList = append(relationList, fqn)
@@ -84,7 +87,7 @@ WHERE quote_ident(n.nspname) || '.' || quote_ident(c.relname) IN (%s)`, quotedTa
 	 * are not already in the database so we don't get duplicate data.
 	 */
 	errMsg := ""
-	if MustGetFlagBool(utils.DATA_ONLY) {
+	if backupConfig.DataOnly || MustGetFlagBool(utils.DATA_ONLY) {
 		if len(relationsInDB) < len(relationList) {
 			dbRelationsSet := utils.NewIncludeSet(relationsInDB)
 			//The default behavior is to match when the set is empty, but we don't want this

@@ -61,11 +61,13 @@ var _ = Describe("restore/validate tests", func() {
 	})
 	Describe("ValidateRelationsInRestoreDatabase", func() {
 		BeforeEach(func() {
+			restore.SetBackupConfig(&utils.BackupConfig{DataOnly: false})
 			cmdFlags.Set(utils.DATA_ONLY, "false")
 			toc, _ = testutils.InitializeTestTOC(buffer, "metadata")
 			toc.AddMasterDataEntry("public", "table1", 1, "(j)", 0)
 			toc.AddMasterDataEntry("public", "table2", 2, "(j)", 0)
 			restore.SetTOC(toc)
+
 		})
 		Context("data-only restore", func() {
 			BeforeEach(func() {
@@ -146,6 +148,12 @@ var _ = Describe("restore/validate tests", func() {
 				It("passes if table is not present in database", func() {
 					no_table_rows := sqlmock.NewRows([]string{"string"})
 					mock.ExpectQuery("SELECT (.*)").WillReturnRows(no_table_rows)
+					restore.ValidateRelationsInRestoreDatabase(connection, filterList)
+				})
+				It("passes if there are no data entries in the backup", func() {
+					toc, _ = testutils.InitializeTestTOC(buffer, "metadata")
+					restore.SetTOC(toc)
+
 					restore.ValidateRelationsInRestoreDatabase(connection, filterList)
 				})
 				It("panics if single table is present in database", func() {
