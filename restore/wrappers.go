@@ -45,11 +45,14 @@ SET client_min_messages = error;
 SET standard_conforming_strings = on;
 SET default_with_oids = off;
 `
-	if connectionPool.Version.Before("5") {
+	if connectionPool.Version.Is("4") {
 		setupQuery += "SET gp_strict_xml_parse = off;\n"
 	}
 	if connectionPool.Version.AtLeast("5") {
 		setupQuery += "SET gp_ignore_error_table = on;\n"
+	}
+	if connectionPool.Version.Before("6") {
+		setupQuery += "SET gp_max_csv_line_length = 4194304;\n"
 	}
 	for i := 0; i < connectionPool.NumConns; i++ {
 		connectionPool.MustExec(setupQuery, i)
