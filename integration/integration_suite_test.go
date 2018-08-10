@@ -14,20 +14,23 @@ import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/utils"
 
+	"github.com/greenplum-db/gpbackup/restore"
 	"github.com/greenplum-db/gpbackup/testutils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/spf13/pflag"
 )
 
 var (
-	buffer             *bytes.Buffer
-	connection         *dbconn.DBConn
-	toc                *utils.TOC
-	backupfile         *utils.FileWithByteCount
-	testCluster        *cluster.Cluster
-	gpbackupHelperPath string
+	buffer                  *bytes.Buffer
+	connection              *dbconn.DBConn
+	toc                     *utils.TOC
+	backupfile              *utils.FileWithByteCount
+	testCluster             *cluster.Cluster
+	gpbackupHelperPath      string
+	stdout, stderr, logFile *gbytes.Buffer
 )
 
 func TestQueries(t *testing.T) {
@@ -42,7 +45,7 @@ var _ = BeforeSuite(func() {
 		Fail("Cannot create database testdb; is GPDB running?")
 	}
 	Expect(err).To(BeNil())
-	testhelper.SetupTestLogger()
+	stdout, stderr, logFile = testhelper.SetupTestLogger()
 	connection = testutils.SetupTestDbConn("testdb")
 	// We can't use AssertQueryRuns since if a role already exists it will error
 	connection.Exec("CREATE ROLE testrole SUPERUSER")

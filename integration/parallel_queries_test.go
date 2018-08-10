@@ -6,8 +6,14 @@ import (
 	"github.com/greenplum-db/gpbackup/restore"
 	"github.com/greenplum-db/gpbackup/utils"
 
+	"fmt"
+	"strings"
+
+	"regexp"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("backup, utils, and restore integration tests related to parallelism", func() {
@@ -20,6 +26,7 @@ var _ = Describe("backup, utils, and restore integration tests related to parall
 		})
 		AfterEach(func() {
 			tempConn.Close()
+			tempConn = nil
 		})
 		It("exhibits session-like behavior when successive queries are executed on the same connection", func() {
 			tempConn.Exec("SET client_min_messages TO error;", 1)
@@ -49,38 +56,40 @@ var _ = Describe("backup, utils, and restore integration tests related to parall
 		 * runs slightly, but this is necessary to overcome query execution time
 		 * fluctuations.
 		 */
-		first := "SELECT pg_sleep(0.5); INSERT INTO public.timestamps VALUES (1, now() + '0.5 seconds'::interval);"
-		second := "SELECT pg_sleep(1.5); INSERT INTO public.timestamps VALUES (2, now() + '1.5 seconds'::interval);"
-		third := "INSERT INTO public.timestamps VALUES (3, now());"
-		fourth := "SELECT pg_sleep(1); INSERT INTO public.timestamps VALUES (4, now() + '1 second'::interval);"
-		statements := []utils.StatementWithType{
-			{ObjectType: "TABLE", Statement: first},
-			{ObjectType: "DATABASE", Statement: second},
-			{ObjectType: "SEQUENCE", Statement: third},
-			{ObjectType: "DATABASE", Statement: fourth},
-		}
 		/*
 		 * We use a separate connection even for serial runs to avoid losing the
 		 * configuration of the main connection variable.
 		 */
 		var tempConn *dbconn.DBConn
-		createQuery := "CREATE TABLE public.timestamps(exec_index int, exec_time timestamp);"
 		orderQuery := "SELECT exec_index AS string FROM public.timestamps ORDER BY exec_time;"
 		BeforeEach(func() {
 			tempConn = dbconn.NewDBConnFromEnvironment("testdb")
 			restore.SetConnection(tempConn)
+			tempConn.MustConnect(3)
+			testhelper.AssertQueryRuns(tempConn, "SET ROLE testrole")
+
 		})
 		AfterEach(func() {
-			testhelper.AssertQueryRuns(tempConn, "DROP TABLE public.timestamps;")
 			tempConn.Close()
 			tempConn = nil
 			restore.SetConnection(connection)
 		})
-		Context("Serial execution", func() {
+		Context("no errors", func() {
+			first := "SELECT pg_sleep(0.5); INSERT INTO public.timestamps VALUES (1, now() + '0.5 seconds'::interval);"
+			second := "SELECT pg_sleep(1.5); INSERT INTO public.timestamps VALUES (2, now() + '1.5 seconds'::interval);"
+			third := "INSERT INTO public.timestamps VALUES (3, now());"
+			fourth := "SELECT pg_sleep(1); INSERT INTO public.timestamps VALUES (4, now() + '1 second'::interval);"
+			statements := []utils.StatementWithType{
+				{ObjectType: "TABLE", Statement: first},
+				{ObjectType: "DATABASE", Statement: second},
+				{ObjectType: "SEQUENCE", Statement: third},
+				{ObjectType: "DATABASE", Statement: fourth},
+			}
 			BeforeEach(func() {
-				tempConn.MustConnect(1)
-				testhelper.AssertQueryRuns(tempConn, "SET ROLE testrole")
-				testhelper.AssertQueryRuns(tempConn, createQuery)
+				testhelper.AssertQueryRuns(tempConn, "CREATE TABLE public.timestamps(exec_index int, exec_time timestamp);")
+			})
+			AfterEach(func() {
+				testhelper.AssertQueryRuns(tempConn, "DROP TABLE public.timestamps;")
 			})
 			It("can execute all statements in the list serially", func() {
 				expectedOrderArray := []string{"1", "2", "3", "4"}
@@ -88,19 +97,66 @@ var _ = Describe("backup, utils, and restore integration tests related to parall
 				resultOrderArray := dbconn.MustSelectStringSlice(tempConn, orderQuery)
 				Expect(resultOrderArray).To(Equal(expectedOrderArray))
 			})
-		})
-		Context("Parallel execution", func() {
-			BeforeEach(func() {
-				tempConn.MustConnect(3)
-				testhelper.AssertQueryRuns(tempConn, "SET ROLE testrole")
-				testhelper.AssertQueryRuns(tempConn, createQuery)
-			})
+
 			It("can execute all statements in the list in parallel", func() {
 				expectedOrderArray := []string{"3", "1", "4", "2"}
 				restore.ExecuteStatementsAndCreateProgressBar(statements, "", utils.PB_NONE, true)
 				resultOrderArray := dbconn.MustSelectStringSlice(tempConn, orderQuery)
 				Expect(resultOrderArray).To(Equal(expectedOrderArray))
 			})
+
+		})
+		Context("error conditions", func() {
+			goodStmt := "SELECT * FROM pg_class LIMIT 1;"
+			syntaxError := "BAD SYNTAX;"
+			statements := []utils.StatementWithType{
+				{ObjectType: "TABLE", Statement: goodStmt},
+				{ObjectType: "INDEX", Statement: syntaxError},
+			}
+			Context("on-error-continue is not set", func() {
+				It("panics after exiting goroutines when running serially", func() {
+					errorMessage := ""
+					defer func() {
+						if r := recover(); r != nil {
+							errorMessage = strings.TrimSpace(fmt.Sprintf("%v", r))
+							Expect(logFile).To(gbytes.Say(regexp.QuoteMeta(`[DEBUG]:-Error encountered when executing statement: BAD SYNTAX; Error was: ERROR: syntax error at or near "BAD"`)))
+							Expect(errorMessage).To(ContainSubstring(`[CRITICAL]:-ERROR: syntax error at or near "BAD"`))
+							Expect(errorMessage).To(Not(ContainSubstring("goroutine")))
+						}
+					}()
+					restore.ExecuteStatementsAndCreateProgressBar(statements, "", utils.PB_NONE, false)
+				})
+				It("panics after exiting goroutines when running in parallel", func() {
+					errorMessage := ""
+					defer func() {
+						if r := recover(); r != nil {
+							errorMessage = strings.TrimSpace(fmt.Sprintf("%v", r))
+							Expect(logFile).To(gbytes.Say(regexp.QuoteMeta(`[DEBUG]:-Error encountered when executing statement: BAD SYNTAX; Error was: ERROR: syntax error at or near "BAD"`)))
+							Expect(errorMessage).To(ContainSubstring(`[CRITICAL]:-ERROR: syntax error at or near "BAD"`))
+							Expect(errorMessage).To(Not(ContainSubstring("goroutine")))
+						}
+					}()
+					restore.ExecuteStatementsAndCreateProgressBar(statements, "", utils.PB_NONE, true)
+				})
+			})
+			Context("on-error-continue is set", func() {
+				BeforeEach(func() {
+					restoreCmdFlags.Set(utils.ON_ERROR_CONTINUE, "true")
+				})
+				It("does not panic, but logs errors when running serially", func() {
+					restore.ExecuteStatementsAndCreateProgressBar(statements, "", utils.PB_NONE, false)
+					Expect(logFile).To(gbytes.Say(regexp.QuoteMeta(`[DEBUG]:-Error encountered when executing statement: BAD SYNTAX; Error was: ERROR: syntax error at or near "BAD"`)))
+					Expect(stderr).To(gbytes.Say(regexp.QuoteMeta("[ERROR]:-Encountered 1 errors during metadata restore; see log file gbytes.Buffer for a list of failed statements.")))
+					Expect(stderr).To(Not(gbytes.Say(regexp.QuoteMeta("goroutine"))))
+				})
+				It("does not panic, but logs errors when running in parallel", func() {
+					restore.ExecuteStatementsAndCreateProgressBar(statements, "", utils.PB_NONE, true)
+					Expect(logFile).To(gbytes.Say(regexp.QuoteMeta(`[DEBUG]:-Error encountered when executing statement: BAD SYNTAX; Error was: ERROR: syntax error at or near "BAD"`)))
+					Expect(stderr).To(gbytes.Say(regexp.QuoteMeta("[ERROR]:-Encountered 1 errors during metadata restore; see log file gbytes.Buffer for a list of failed statements.")))
+					Expect(stderr).To(Not(gbytes.Say(regexp.QuoteMeta("goroutine"))))
+				})
+			})
+
 		})
 	})
 })
