@@ -59,20 +59,48 @@ func ValidateFilterSchemasInBackupSet(schemaList []string) {
 	gplog.Fatal(errors.Errorf("Could not find the following schema(s) in the backup set: %s", strings.Join(keys, ", ")), "")
 }
 
-func ValidateFilterRelationsInRestoreDatabase(connection *dbconn.DBConn, relationList []string) {
-	if len(relationList) > 0 {
-		utils.ValidateFQNs(relationList)
-		quotedTablesStr := utils.SliceToQuotedString(relationList)
-		query := fmt.Sprintf(`
+func ValidateRelationsInRestoreDatabase(connection *dbconn.DBConn, relationList []string) {
+	if len(relationList) == 0 {
+		for _, entry := range globalTOC.DataEntries {
+			fqn := utils.MakeFQN(entry.Schema, entry.Name)
+			relationList = append(relationList, fqn)
+		}
+	}
+	utils.ValidateFQNs(relationList)
+	quotedTablesStr := utils.SliceToQuotedString(relationList)
+	query := fmt.Sprintf(`
 SELECT
 	n.nspname || '.' || c.relname AS string
 FROM pg_namespace n
 JOIN pg_class c ON n.oid = c.relnamespace
 WHERE quote_ident(n.nspname) || '.' || quote_ident(c.relname) IN (%s)`, quotedTablesStr)
-		resultRelations := dbconn.MustSelectStringSlice(connection, query)
-		if len(resultRelations) > 0 {
-			gplog.Fatal(nil, "Relation %s already exists", resultRelations[0])
+	relationsInDB := dbconn.MustSelectStringSlice(connection, query)
+
+	/*
+	 * For data-only we check that the relations we are planning to restore
+	 * are already defined in the database so we have somewhere to put the data.
+	 *
+	 * For non-data-only we check that the relations we are planning to restore
+	 * are not already in the database so we don't get duplicate data.
+	 */
+	errMsg := ""
+	if MustGetFlagBool(utils.DATA_ONLY) {
+		if len(relationsInDB) < len(relationList) {
+			dbRelationsSet := utils.NewIncludeSet(relationsInDB)
+			//The default behavior is to match when the set is empty, but we don't want this
+			dbRelationsSet.AlwaysMatchesFilter = false
+			for _, restoreRelation := range relationList {
+				matches := dbRelationsSet.MatchesFilter(restoreRelation)
+				if !matches {
+					errMsg = fmt.Sprintf("Relation %s must exist for data-only restore", restoreRelation)
+				}
+			}
 		}
+	} else if len(relationsInDB) > 0 {
+		errMsg = fmt.Sprintf("Relation %s already exists", relationsInDB[0])
+	}
+	if errMsg != "" {
+		gplog.Fatal(nil, errMsg)
 	}
 }
 
