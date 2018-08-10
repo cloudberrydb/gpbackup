@@ -205,7 +205,7 @@ var _ = Describe("backup integration tests", func() {
 			defer testhelper.AssertQueryRuns(connection, "DROP SCHEMA testschema")
 			testhelper.AssertQueryRuns(connection, "CREATE TYPE testschema.shell_type")
 			defer testhelper.AssertQueryRuns(connection, "DROP TYPE testschema.shell_type")
-			cmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
+			backupCmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 
 			results := backup.GetShellTypes(connection)
 			shellTypeOtherSchema := backup.Type{Type: "p", Schema: "testschema", Name: "shell_type"}
@@ -382,7 +382,7 @@ var _ = Describe("backup integration tests", func() {
 			defer testhelper.AssertQueryRuns(connection, "DROP SCHEMA testschema")
 			testhelper.AssertQueryRuns(connection, `CREATE COLLATION testschema.some_coll (lc_collate = 'POSIX', lc_ctype = 'POSIX');`)
 			defer testhelper.AssertQueryRuns(connection, "DROP COLLATION testschema.some_coll")
-			cmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
+			backupCmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 
 			results := backup.GetCollations(connection)
 

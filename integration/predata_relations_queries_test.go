@@ -36,8 +36,8 @@ var _ = Describe("backup integration tests", func() {
 		})
 		Context("Retrieving external partitions", func() {
 			It("returns parent and external leaf partition table if the filter includes a leaf table and leaf-partition-data is set", func() {
-				cmdFlags.Set(utils.LEAF_PARTITION_DATA, "true")
-				cmdFlags.Set(utils.INCLUDE_RELATION, "public.partition_table_1_prt_boys")
+				backupCmdFlags.Set(utils.LEAF_PARTITION_DATA, "true")
+				backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.partition_table_1_prt_boys")
 				testhelper.AssertQueryRuns(connection, `CREATE TABLE public.partition_table (id int, gender char(1))
 DISTRIBUTED BY (id)
 PARTITION BY LIST (gender)
@@ -64,7 +64,7 @@ FORMAT 'csv';`)
 				Expect(tableNames).To(Equal(expectedTableNames))
 			})
 			It("returns external partition tables for an included parent table if the filter includes a parent partition table", func() {
-				cmdFlags.Set(utils.INCLUDE_RELATION, "public.partition_table1,public.partition_table2_1_prt_other")
+				backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.partition_table1,public.partition_table2_1_prt_other")
 				testhelper.AssertQueryRuns(connection, `CREATE TABLE public.partition_table1 (id int, gender char(1))
 DISTRIBUTED BY (id)
 PARTITION BY LIST (gender)
@@ -135,7 +135,7 @@ PARTITION BY LIST (gender)
 				structmatcher.ExpectStructsToMatchExcluding(&tableRank, &tables[0], "SchemaOid", "Oid")
 			})
 			It("returns both parent and leaf partition tables if the leaf-partition-data flag is set and there are no include tables", func() {
-				cmdFlags.Set(utils.LEAF_PARTITION_DATA, "true")
+				backupCmdFlags.Set(utils.LEAF_PARTITION_DATA, "true")
 				createStmt := `CREATE TABLE public.rank (id int, rank int, year int, gender
 char(1), count int )
 DISTRIBUTED BY (id)
@@ -159,7 +159,7 @@ PARTITION BY LIST (gender)
 				Expect(tableNames).To(Equal(expectedTableNames))
 			})
 			It("returns parent and included child partition table if the filter includes a leaf table; with and without leaf-partition-data", func() {
-				cmdFlags.Set(utils.INCLUDE_RELATION, "public.rank_1_prt_girls")
+				backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.rank_1_prt_girls")
 				createStmt := `CREATE TABLE public.rank (id int, rank int, year int, gender
 char(1), count int )
 DISTRIBUTED BY (id)
@@ -182,7 +182,7 @@ PARTITION BY LIST (gender)
 				Expect(len(tables)).To(Equal(2))
 				Expect(tableNames).To(Equal(expectedTableNames))
 
-				cmdFlags.Set(utils.LEAF_PARTITION_DATA, "true")
+				backupCmdFlags.Set(utils.LEAF_PARTITION_DATA, "true")
 				tables = backup.GetAllUserTables(connection)
 				tableNames = make([]string, 0)
 				for _, table := range tables {
@@ -194,8 +194,8 @@ PARTITION BY LIST (gender)
 				Expect(tableNames).To(Equal(expectedTableNames))
 			})
 			It("returns child partition tables for an included parent table if the leaf-partition-data flag is set and the filter includes a parent partition table", func() {
-				cmdFlags.Set(utils.LEAF_PARTITION_DATA, "true")
-				cmdFlags.Set(utils.INCLUDE_RELATION, "public.rank")
+				backupCmdFlags.Set(utils.LEAF_PARTITION_DATA, "true")
+				backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.rank")
 				createStmt := `CREATE TABLE public.rank (id int, rank int, year int, gender
 char(1), count int )
 DISTRIBUTED BY (id)
@@ -229,7 +229,7 @@ PARTITION BY LIST (gender)
 			testhelper.AssertQueryRuns(connection, "CREATE TABLE testschema.foo(i int)")
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE testschema.foo")
 
-			cmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
+			backupCmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 			tables := backup.GetAllUserTables(connection)
 
 			tableFoo := backup.Relation{Schema: "testschema", Name: "foo"}
@@ -245,7 +245,7 @@ PARTITION BY LIST (gender)
 			testhelper.AssertQueryRuns(connection, "CREATE TABLE testschema.foo(i int)")
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE testschema.foo")
 
-			cmdFlags.Set(utils.INCLUDE_RELATION, "testschema.foo")
+			backupCmdFlags.Set(utils.INCLUDE_RELATION, "testschema.foo")
 			tables := backup.GetAllUserTables(connection)
 
 			tableFoo := backup.Relation{Schema: "testschema", Name: "foo"}
@@ -261,7 +261,7 @@ PARTITION BY LIST (gender)
 			testhelper.AssertQueryRuns(connection, "CREATE TABLE testschema.foo(i int)")
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE testschema.foo")
 
-			cmdFlags.Set(utils.EXCLUDE_RELATION, "testschema.foo")
+			backupCmdFlags.Set(utils.EXCLUDE_RELATION, "testschema.foo")
 			tables := backup.GetAllUserTables(connection)
 
 			tableFoo := backup.Relation{Schema: "public", Name: "foo"}
@@ -279,8 +279,8 @@ PARTITION BY LIST (gender)
 			testhelper.AssertQueryRuns(connection, "CREATE TABLE testschema.bar(i int)")
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE testschema.bar")
 
-			cmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
-			cmdFlags.Set(utils.EXCLUDE_RELATION, "testschema.foo")
+			backupCmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
+			backupCmdFlags.Set(utils.EXCLUDE_RELATION, "testschema.foo")
 			tables := backup.GetAllUserTables(connection)
 
 			tableFoo := backup.Relation{Schema: "testschema", Name: "bar"}
@@ -541,7 +541,7 @@ PARTITION BY LIST (gender)
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.part_table2")
 			oid := testutils.OidFromObjectName(connection, "public", "part_table", backup.TYPE_RELATION)
 
-			cmdFlags.Set(utils.INCLUDE_RELATION, "public.part_table")
+			backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.part_table")
 
 			results := backup.GetPartitionDefinitions(connection)
 			Expect(len(results)).To(Equal(1))
@@ -578,7 +578,7 @@ PARTITION BY LIST (gender)
 			`)
 			oid := testutils.OidFromObjectName(connection, "testschema", "part_table", backup.TYPE_RELATION)
 
-			cmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
+			backupCmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 
 			results := backup.GetPartitionDefinitions(connection)
 			Expect(len(results)).To(Equal(1))
@@ -664,7 +664,7 @@ SET SUBPARTITION TEMPLATE
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.part_table2")
 			oid := testutils.OidFromObjectName(connection, "public", "part_table", backup.TYPE_RELATION)
 
-			cmdFlags.Set(utils.INCLUDE_RELATION, "public.part_table")
+			backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.part_table")
 
 			results := backup.GetPartitionTemplates(connection)
 			Expect(len(results)).To(Equal(1))
@@ -713,7 +713,7 @@ SET SUBPARTITION TEMPLATE
     EVERY (INTERVAL '1 month') ) `)
 			oid := testutils.OidFromObjectName(connection, "testschema", "part_table", backup.TYPE_RELATION)
 
-			cmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
+			backupCmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 
 			results := backup.GetPartitionTemplates(connection)
 			Expect(len(results)).To(Equal(1))
@@ -825,7 +825,7 @@ SET SUBPARTITION TEMPLATE
 			testhelper.AssertQueryRuns(connection, "CREATE SEQUENCE testschema.my_sequence")
 			mySequence := backup.Relation{Schema: "testschema", Name: "my_sequence"}
 
-			cmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
+			backupCmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 			sequences := backup.GetAllSequenceRelations(connection)
 
 			Expect(len(sequences)).To(Equal(1))
@@ -837,7 +837,7 @@ SET SUBPARTITION TEMPLATE
 			testhelper.AssertQueryRuns(connection, "CREATE TABLE public.seq_table(i int)")
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.seq_table")
 			testhelper.AssertQueryRuns(connection, "ALTER SEQUENCE public.my_sequence OWNED BY public.seq_table.i")
-			cmdFlags.Set(utils.INCLUDE_RELATION, "public.seq_table")
+			backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.seq_table")
 
 			sequences := backup.GetAllSequenceRelations(connection)
 
@@ -851,7 +851,7 @@ SET SUBPARTITION TEMPLATE
 			testhelper.AssertQueryRuns(connection, "ALTER SEQUENCE public.my_sequence OWNED BY public.seq_table.i")
 			mySequence := backup.Relation{Schema: "public", Name: "my_sequence"}
 
-			cmdFlags.Set(utils.EXCLUDE_RELATION, "public.seq_table")
+			backupCmdFlags.Set(utils.EXCLUDE_RELATION, "public.seq_table")
 			sequences := backup.GetAllSequenceRelations(connection)
 
 			Expect(len(sequences)).To(Equal(1))
@@ -865,7 +865,7 @@ SET SUBPARTITION TEMPLATE
 
 			sequence2 := backup.Relation{Schema: "public", Name: "sequence2"}
 
-			cmdFlags.Set(utils.EXCLUDE_RELATION, "public.sequence1")
+			backupCmdFlags.Set(utils.EXCLUDE_RELATION, "public.sequence1")
 			sequences := backup.GetAllSequenceRelations(connection)
 
 			Expect(len(sequences)).To(Equal(1))
@@ -878,7 +878,7 @@ SET SUBPARTITION TEMPLATE
 			defer testhelper.AssertQueryRuns(connection, "DROP SEQUENCE public.sequence2")
 
 			sequence1 := backup.Relation{Schema: "public", Name: "sequence1"}
-			cmdFlags.Set(utils.INCLUDE_RELATION, "public.sequence1")
+			backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.sequence1")
 
 			sequences := backup.GetAllSequenceRelations(connection)
 
@@ -949,7 +949,7 @@ SET SUBPARTITION TEMPLATE
 			testhelper.AssertQueryRuns(connection, "CREATE SEQUENCE public.my_sequence OWNED BY public.my_table.a;")
 			defer testhelper.AssertQueryRuns(connection, "DROP SEQUENCE public.my_sequence")
 
-			cmdFlags.Set(utils.EXCLUDE_RELATION, "public.my_table")
+			backupCmdFlags.Set(utils.EXCLUDE_RELATION, "public.my_table")
 			sequenceOwnerTables, sequenceOwnerColumns := backup.GetSequenceColumnOwnerMap(connection)
 
 			Expect(len(sequenceOwnerTables)).To(Equal(0))
@@ -962,7 +962,7 @@ SET SUBPARTITION TEMPLATE
 			testhelper.AssertQueryRuns(connection, "CREATE SEQUENCE public.my_sequence OWNED BY public.my_table.a;")
 			defer testhelper.AssertQueryRuns(connection, "DROP SEQUENCE public.my_sequence")
 
-			cmdFlags.Set(utils.INCLUDE_RELATION, "public.my_sequence,public.my_table")
+			backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.my_sequence,public.my_table")
 			sequenceOwnerTables, sequenceOwnerColumns := backup.GetSequenceColumnOwnerMap(connection)
 			Expect(len(sequenceOwnerTables)).To(Equal(1))
 			Expect(len(sequenceOwnerColumns)).To(Equal(1))
@@ -973,7 +973,7 @@ SET SUBPARTITION TEMPLATE
 			testhelper.AssertQueryRuns(connection, "CREATE SEQUENCE public.my_sequence OWNED BY public.my_table.a;")
 			defer testhelper.AssertQueryRuns(connection, "DROP SEQUENCE public.my_sequence")
 
-			cmdFlags.Set(utils.INCLUDE_RELATION, "public.my_table")
+			backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.my_table")
 			sequenceOwnerTables, sequenceOwnerColumns := backup.GetSequenceColumnOwnerMap(connection)
 			Expect(len(sequenceOwnerTables)).To(Equal(1))
 			Expect(len(sequenceOwnerColumns)).To(Equal(1))
@@ -1031,7 +1031,7 @@ SET SUBPARTITION TEMPLATE
 			defer testhelper.AssertQueryRuns(connection, "DROP SCHEMA testschema")
 			testhelper.AssertQueryRuns(connection, "CREATE VIEW testschema.simpleview AS SELECT rolname FROM pg_roles")
 			defer testhelper.AssertQueryRuns(connection, "DROP VIEW testschema.simpleview")
-			cmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
+			backupCmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 
 			results := backup.GetViews(connection)
 

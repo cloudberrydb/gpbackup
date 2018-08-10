@@ -77,16 +77,21 @@ var _ = BeforeSuite(func() {
 	gpbackupHelperPath = buildAndInstallBinaries()
 })
 
-var cmdFlags *pflag.FlagSet
+var backupCmdFlags *pflag.FlagSet
+var restoreCmdFlags *pflag.FlagSet
 
 var _ = BeforeEach(func() {
 	buffer = bytes.NewBuffer([]byte(""))
 
-	cmdFlags = pflag.NewFlagSet("gpbackup", pflag.ExitOnError)
+	backupCmdFlags = pflag.NewFlagSet("gpbackup", pflag.ExitOnError)
 
-	backup.SetFlagDefaults(cmdFlags)
+	backup.SetFlagDefaults(backupCmdFlags)
+	backup.SetCmdFlags(backupCmdFlags)
 
-	backup.SetCmdFlags(cmdFlags)
+	restoreCmdFlags = pflag.NewFlagSet("gprestore", pflag.ExitOnError)
+
+	restore.SetFlagDefaults(restoreCmdFlags)
+	restore.SetCmdFlags(restoreCmdFlags)
 })
 
 var _ = AfterSuite(func() {
