@@ -269,7 +269,7 @@ WHERE %s`, params.SchemaField, SchemaFilterClause("n"))
 		subidStr = ""
 	}
 	if params.OwnerField != "" {
-		ownerStr = fmt.Sprintf("pg_get_userbyid(%s)", params.OwnerField)
+		ownerStr = fmt.Sprintf("quote_ident(pg_get_userbyid(%s))", params.OwnerField)
 	}
 
 	query := fmt.Sprintf(`

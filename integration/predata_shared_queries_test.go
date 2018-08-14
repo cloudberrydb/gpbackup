@@ -295,6 +295,21 @@ PARTITION BY RANGE (date)
 				resultMetadata := resultMetadataMap[oid]
 				structmatcher.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 			})
+			It("returns a slice of metadata with the owner in quotes", func() {
+				testhelper.AssertQueryRuns(connection, `CREATE ROLE "Role1"`)
+				defer testhelper.AssertQueryRuns(connection, `DROP ROLE "Role1"`)
+				testhelper.AssertQueryRuns(connection, "CREATE TABLE public.testtable(i int)")
+				defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.testtable")
+				testhelper.AssertQueryRuns(connection, `ALTER TABLE public.testtable OWNER TO "Role1"`)
+
+				resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_RELATION)
+
+				oid := testutils.OidFromObjectName(connection, "public", "testtable", backup.TYPE_RELATION)
+				expectedMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{}, Owner: `"Role1"`}
+				Expect(len(resultMetadataMap)).To(Equal(1))
+				resultMetadata := resultMetadataMap[oid]
+				structmatcher.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
+			})
 			It("returns a slice of default metadata for a table", func() {
 				testhelper.AssertQueryRuns(connection, "CREATE TABLE public.testtable(i int)")
 				defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.testtable")

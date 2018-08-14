@@ -26,7 +26,7 @@ var _ = Describe("backup/queries_shared tests", func() {
 	o.oid,
 	'' AS privileges,
 	'' AS kind,
-	pg_get_userbyid(owner) AS owner,
+	quote_ident(pg_get_userbyid(owner)) AS owner,
 	coalesce(description,'') AS comment
 FROM table o LEFT JOIN pg_description d ON (d.objoid = o.oid AND d.classoid = 'table'::regclass AND d.objsubid = 0)
 AND o.oid NOT IN (SELECT objid FROM pg_depend WHERE deptype='e')
@@ -38,7 +38,7 @@ ORDER BY o.oid;`)).WillReturnRows(emptyRows)
 	o.oid,
 	'' AS privileges,
 	'' AS kind,
-	pg_get_userbyid(owner) AS owner,
+	quote_ident(pg_get_userbyid(owner)) AS owner,
 	coalesce(description,'') AS comment
 FROM table o LEFT JOIN pg_description d ON (d.objoid = o.oid AND d.classoid = 'table'::regclass AND d.objsubid = 0)
 JOIN pg_namespace n ON o.schema = n.oid
@@ -59,7 +59,7 @@ ORDER BY o.oid;`)).WillReturnRows(emptyRows)
 		WHEN acl IS NULL THEN 'Default'
 		WHEN array_upper(acl, 1) = 0 THEN 'Empty'
 		ELSE '' END AS kind,
-	pg_get_userbyid(owner) AS owner,
+	quote_ident(pg_get_userbyid(owner)) AS owner,
 	coalesce(description,'') AS comment
 FROM table o LEFT JOIN pg_description d ON (d.objoid = o.oid AND d.classoid = 'table'::regclass AND d.objsubid = 0)
 AND o.oid NOT IN (SELECT objid FROM pg_depend WHERE deptype='e')
@@ -72,7 +72,7 @@ ORDER BY o.oid;`)).WillReturnRows(emptyRows)
 	o.oid,
 	'' AS privileges,
 	'' AS kind,
-	pg_get_userbyid(owner) AS owner,
+	quote_ident(pg_get_userbyid(owner)) AS owner,
 	coalesce(description,'') AS comment
 FROM table o LEFT JOIN pg_shdescription d ON (d.objoid = o.oid AND d.classoid = 'table'::regclass)
 AND o.oid NOT IN (SELECT objid FROM pg_depend WHERE deptype='e')
