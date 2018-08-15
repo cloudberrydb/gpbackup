@@ -43,7 +43,7 @@ resources:
   source:
     branch: master
     uri: https://github.com/greenplum-db/gpbackup-s3-plugin
-    tag_filter: 0.*
+    tag_filter: 1.*
 
 - name: gpbackup_ddboost_plugin_tagged_src
   type: git
@@ -51,7 +51,7 @@ resources:
     branch: master
     private_key: {{gpbackup-ddboost-plugin-remote-key}}
     uri: {{gpbackup-ddboost-plugin-git-remote}}
-    tag_filter: 0.*
+    tag_filter: 1.*
 
 - name: gpdb_src
   type: git
