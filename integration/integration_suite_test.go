@@ -65,8 +65,10 @@ var _ = BeforeSuite(func() {
 		// Drop plpgsql extension to not interfere in extension tests
 		testhelper.AssertQueryRuns(connection, "DROP EXTENSION plpgsql CASCADE")
 		testhelper.AssertQueryRuns(connection, "CREATE LANGUAGE plpgsql")
+		testhelper.AssertQueryRuns(connection, "SET allow_system_table_mods = true")
 	}
 	if connection.Version.Before("6") {
+		testhelper.AssertQueryRuns(connection, "SET allow_system_table_mods = 'DML'")
 		setupTestFilespace(testCluster)
 	} else {
 		remoteOutput := testCluster.GenerateAndExecuteCommand("Creating filespace test directories on all hosts", func(contentID int) string {
