@@ -1,4 +1,6 @@
 #!/bin/bash
+set -e
+set -o pipefail
 
 plugin=$1
 plugin_config=$2
@@ -16,8 +18,10 @@ if [ $# -lt 2 ] || [ $# -gt 3 ]
     exit 1
 fi
 
-testfile="/tmp/testseg/backups/2018010101/2018010101010101/testfile.txt"
-testdata="/tmp/testseg/backups/2018010101/2018010101010101/testdata.txt"
+time_second=$(date +"%s")
+testfile="/tmp/testseg/backups/2018010101/20180101010101/testfile_$time_second.txt"
+testdata="/tmp/testseg/backups/2018010101/20180101010101/testdata_$time_second.txt"
+test_no_data="/tmp/testseg/backups/2018010101/20180101010101/test_no_data_$time_second.txt"
 testdir=`dirname $testfile`
 
 text="this is some text"
@@ -113,6 +117,29 @@ fi
 echo "[PASSED] backup_data"
 echo "[PASSED] restore_data"
 
+
+echo "[RUNNING] backup_data with no data"
+echo -n "" | $plugin backup_data $plugin_config $test_no_data
+echo "[RUNNING] restore_data with no data"
+output=`$plugin restore_data $plugin_config $test_no_data`
+
+if [ "$output" != "" ]; then
+  echo "Failed to backup and restore data using plugin"
+  exit 1
+fi
+
+if [ -n "$secondary_plugin_config" ]; then
+  echo "[RUNNING] restore_data with no data (from secondary destination)"
+  output=`$plugin restore_data $secondary_plugin_config $test_no_data`
+
+  if [ "$output" != "" ]; then
+    echo "Failed to backup and restore data using plugin"
+    exit 1
+  fi
+fi
+echo "[PASSED] backup_data with no data"
+echo "[PASSED] restore_data with no data"
+
 # ----------------------------------------------
 # Cleanup functions
 # ----------------------------------------------
@@ -145,9 +172,11 @@ test_backup_and_restore_with_plugin() {
     flags=$1
     test_db=plugin_test_db
     log_file=/tmp/plugin_test_log_file
+
     psql -d postgres -qc "DROP DATABASE IF EXISTS $test_db" 2>/dev/null
     createdb $test_db
     psql -d $test_db -qc "CREATE TABLE test_table(i int) DISTRIBUTED RANDOMLY; INSERT INTO test_table select generate_series(1,50000)"
+
     echo "[RUNNING] gpbackup with test database (using ${flags})"
     gpbackup --dbname $test_db --plugin-config $plugin_config $flags > $log_file
     if [ ! $? -eq 0 ]; then
@@ -156,6 +185,7 @@ test_backup_and_restore_with_plugin() {
     fi
     timestamp=`head -4 $log_file | grep "Backup Timestamp " | grep -Eo "[[:digit:]]{14}"`
     dropdb $test_db
+
     echo "[RUNNING] gprestore with test database"
     gprestore --timestamp $timestamp --plugin-config $plugin_config --create-db --quiet
     if [ ! $? -eq 0 ]; then
