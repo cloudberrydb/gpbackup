@@ -50,11 +50,11 @@ echo "[PASSED] plugin_api_version"
 # ----------------------------------------------
 
 echo "[RUNNING] setup_plugin_for_backup on master"
-$plugin setup_plugin_for_backup $plugin_config $testdir master -1
+$plugin setup_plugin_for_backup $plugin_config $testdir master \"-1\"
 echo "[RUNNING] setup_plugin_for_backup on segment_host"
 $plugin setup_plugin_for_backup $plugin_config $testdir segment_host
 echo "[RUNNING] setup_plugin_for_backup on segment 0"
-$plugin setup_plugin_for_backup $plugin_config $testdir segment 0
+$plugin setup_plugin_for_backup $plugin_config $testdir segment \"0\"
 
 echo "[RUNNING] backup_file"
 $plugin backup_file $plugin_config $testfile
@@ -62,11 +62,11 @@ $plugin backup_file $plugin_config $testfile
 test -f $testfile
 
 echo "[RUNNING] setup_plugin_for_restore on master"
-$plugin setup_plugin_for_restore $plugin_config $testdir master -1
+$plugin setup_plugin_for_restore $plugin_config $testdir master \"-1\"
 echo "[RUNNING] setup_plugin_for_restore on segment_host"
 $plugin setup_plugin_for_restore $plugin_config $testdir segment_host
 echo "[RUNNING] setup_plugin_for_restore on segment 0"
-$plugin setup_plugin_for_restore $plugin_config $testdir segment 0
+$plugin setup_plugin_for_restore $plugin_config $testdir segment \"0\"
 
 echo "[RUNNING] restore_file"
 rm $testfile
@@ -145,19 +145,19 @@ echo "[PASSED] restore_data with no data"
 # ----------------------------------------------
 
 echo "[RUNNING] cleanup_plugin_for_backup on master"
-$plugin cleanup_plugin_for_backup $plugin_config $testdir master -1
+$plugin cleanup_plugin_for_backup $plugin_config $testdir master \"-1\"
 echo "[RUNNING] cleanup_plugin_for_backup on segment_host"
 $plugin cleanup_plugin_for_backup $plugin_config $testdir segment_host
 echo "[RUNNING] cleanup_plugin_for_backup on segment 0"
-$plugin cleanup_plugin_for_backup $plugin_config $testdir segment 0
+$plugin cleanup_plugin_for_backup $plugin_config $testdir segment \"0\"
 echo "[PASSED] cleanup_plugin_for_backup"
 
 echo "[RUNNING] cleanup_plugin_for_restore on master"
-$plugin cleanup_plugin_for_restore $plugin_config $testdir master -1
+$plugin cleanup_plugin_for_restore $plugin_config $testdir master \"-1\"
 echo "[RUNNING] cleanup_plugin_for_restore on segment_host"
 $plugin cleanup_plugin_for_restore $plugin_config $testdir segment_host
 echo "[RUNNING] cleanup_plugin_for_restore on segment 0"
-$plugin cleanup_plugin_for_restore $plugin_config $testdir segment 0
+$plugin cleanup_plugin_for_restore $plugin_config $testdir segment \"0\"
 echo "[PASSED] cleanup_plugin_for_restore"
 
 
