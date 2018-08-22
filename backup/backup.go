@@ -444,12 +444,12 @@ func DoCleanup() {
 	gplog.Verbose("Beginning cleanup")
 	if globalFPInfo.Timestamp != "" {
 		if MustGetFlagBool(utils.SINGLE_DATA_FILE) {
-			utils.CleanUpHelperFilesOnAllHosts(globalCluster, globalFPInfo)
+			utils.CleanUpSegmentHelperProcesses(globalCluster, globalFPInfo, "backup")
 			if wasTerminated {
-				utils.CleanUpSegmentHelperProcesses(globalCluster, globalFPInfo, "backup")
 				// It is possible for the COPY command to become orphaned if an agent process is killed
 				utils.TerminateHangingCopySessions(connectionPool, globalFPInfo, "gpbackup")
 			}
+			utils.CleanUpHelperFilesOnAllHosts(globalCluster, globalFPInfo)
 		}
 	}
 	err := backupLockFile.Unlock()
