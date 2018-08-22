@@ -453,7 +453,7 @@ func DoCleanup() {
 		}
 	}
 	err := backupLockFile.Unlock()
-	if err != nil {
+	if err != nil && backupLockFile != "" {
 		gplog.Warn("Failed to remove lock file %s.", backupLockFile)
 	}
 	if connectionPool != nil {
