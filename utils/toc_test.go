@@ -220,9 +220,9 @@ var _ = Describe("utils/toc tests", func() {
 	})
 	Describe("GetDataEntriesMatching", func() {
 		BeforeEach(func() {
-			toc.AddMasterDataEntry("schema1", "table1", 1, "(i)", 0)
-			toc.AddMasterDataEntry("schema2", "table2", 1, "(i)", 0)
-			toc.AddMasterDataEntry("schema3", "table3", 1, "(i)", 0)
+			toc.AddMasterDataEntry("schema1", "table1", 1, "(i)", 0, "")
+			toc.AddMasterDataEntry("schema2", "table2", 1, "(i)", 0, "")
+			toc.AddMasterDataEntry("schema3", "table3", 1, "(i)", 0, "")
 		})
 
 		Context("Non-empty restore plan", func() {

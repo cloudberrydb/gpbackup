@@ -65,7 +65,7 @@ WHERE quote_ident(n.nspname) || '.' || quote_ident(c.relname) IN (%s)`, quotedTa
 			if tableOid == 0 {
 				gplog.Fatal(nil, "Table %s does not exist", table)
 			}
-			if partTableMap[tableOid] == "i" {
+			if partTableMap[tableOid].Level == "i" {
 				gplog.Fatal(nil, "Cannot filter on %s, as it is an intermediate partition table.  Only parent partition tables and leaf partition tables may be specified.", table)
 			}
 		}

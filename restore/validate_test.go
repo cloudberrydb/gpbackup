@@ -28,10 +28,10 @@ var _ = Describe("restore/validate tests", func() {
 			toc, backupfile = testutils.InitializeTestTOC(buffer, "predata")
 			backupfile.ByteCount = table1Len
 			toc.AddPredataEntry("schema1", "table1", "", "TABLE", 0, backupfile)
-			toc.AddMasterDataEntry("schema1", "table1", 1, "(i)", 0)
+			toc.AddMasterDataEntry("schema1", "table1", 1, "(i)", 0, "")
 			backupfile.ByteCount += table2Len
 			toc.AddPredataEntry("schema2", "table2", "TABLE", "", table1Len, backupfile)
-			toc.AddMasterDataEntry("schema2", "table2", 2, "(j)", 0)
+			toc.AddMasterDataEntry("schema2", "table2", 2, "(j)", 0, "")
 			backupfile.ByteCount += sequenceLen
 			toc.AddPredataEntry("schema", "somesequence", "SEQUENCE", "", table1Len+table2Len, backupfile)
 			restore.SetTOC(toc)
@@ -64,8 +64,8 @@ var _ = Describe("restore/validate tests", func() {
 			restore.SetBackupConfig(&utils.BackupConfig{DataOnly: false})
 			cmdFlags.Set(utils.DATA_ONLY, "false")
 			toc, _ = testutils.InitializeTestTOC(buffer, "metadata")
-			toc.AddMasterDataEntry("public", "table1", 1, "(j)", 0)
-			toc.AddMasterDataEntry("public", "table2", 2, "(j)", 0)
+			toc.AddMasterDataEntry("public", "table1", 1, "(j)", 0, "")
+			toc.AddMasterDataEntry("public", "table2", 2, "(j)", 0, "")
 			restore.SetTOC(toc)
 
 		})
@@ -179,10 +179,10 @@ var _ = Describe("restore/validate tests", func() {
 		BeforeEach(func() {
 			toc, backupfile = testutils.InitializeTestTOC(buffer, "predata")
 			toc.AddPredataEntry("schema1", "table1", "TABLE", "", 0, backupfile)
-			toc.AddMasterDataEntry("schema1", "table1", 1, "(i)", 0)
+			toc.AddMasterDataEntry("schema1", "table1", 1, "(i)", 0, "")
 
 			toc.AddPredataEntry("schema2", "table2", "TABLE", "", 0, backupfile)
-			toc.AddMasterDataEntry("schema2", "table2", 2, "(j)", 0)
+			toc.AddMasterDataEntry("schema2", "table2", 2, "(j)", 0, "")
 
 			toc.AddPredataEntry("schema1", "somesequence", "SEQUENCE", "", 0, backupfile)
 			toc.AddPredataEntry("schema1", "someview", "VIEW", "", 0, backupfile)

@@ -165,23 +165,32 @@ ORDER BY c.oid;`, SchemaFilterClause("n"), oidStr, oidStr, oidStr, childPartitio
  * "p" indicates a parent table, "l" indicates a leaf table, and "i" indicates
  * an intermediate table.
  */
-func GetPartitionTableMap(connection *dbconn.DBConn) map[uint32]string {
+
+type PartitionLevelInfo struct {
+	Oid      uint32
+	Level    string
+	RootName string
+}
+
+func GetPartitionTableMap(connection *dbconn.DBConn) map[uint32]PartitionLevelInfo {
 	query := `
 SELECT
 	pc.oid AS oid,
-	'p' AS value
+	'p' AS level,
+	'' AS rootname
 FROM pg_partition p
 JOIN pg_class pc
 	ON p.parrelid = pc.oid
 UNION
 SELECT
-	cc.oid AS oid,
-	CASE WHEN p.parlevel = levels.pl THEN 'l' ELSE 'i' END AS value
+	r.parchildrelid AS oid,
+	CASE WHEN p.parlevel = levels.pl THEN 'l' ELSE 'i' END AS level,
+	quote_ident(cparent.relname) AS rootname
 FROM pg_partition p
 JOIN pg_partition_rule r
 	ON p.oid = r.paroid
-JOIN pg_class cc
-	ON r.parchildrelid = cc.oid
+JOIN pg_class cparent
+	ON cparent.oid = p.parrelid
 JOIN (
 	SELECT
 		parrelid AS relid,
@@ -189,9 +198,19 @@ JOIN (
 	FROM pg_partition
 	GROUP BY parrelid
 ) AS levels
-	ON p.parrelid = levels.relid;
+	ON p.parrelid = levels.relid
+WHERE r.parchildrelid != 0;
 `
-	return SelectAsOidToStringMap(connection, query)
+	results := make([]PartitionLevelInfo, 0)
+	err := connection.Select(&results, query)
+	gplog.FatalOnError(err)
+
+	resultMap := make(map[uint32]PartitionLevelInfo, 0)
+	for _, result := range results {
+		resultMap[result.Oid] = result
+	}
+
+	return resultMap
 }
 
 type ColumnDefinition struct {
@@ -528,7 +547,7 @@ AND %s`, ExtensionFilterClause("p"))
 	err := connection.Select(&results, query)
 	gplog.FatalOnError(err)
 	for _, dependency := range results {
-		if tableDefs[dependency.Oid].IsExternal && tableDefs[dependency.Oid].PartitionType == "l" {
+		if tableDefs[dependency.Oid].IsExternal && tableDefs[dependency.Oid].PartitionLevelInfo.Level == "l" {
 			continue
 		}
 		if dependency.IsTable {

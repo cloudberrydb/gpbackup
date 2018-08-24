@@ -45,7 +45,7 @@ var _ = Describe("backup/validate tests", func() {
 		var tableRows, partitionTables *sqlmock.Rows
 		BeforeEach(func() {
 			tableRows = sqlmock.NewRows([]string{"oid", "name"})
-			partitionTables = sqlmock.NewRows([]string{"oid", "value"})
+			partitionTables = sqlmock.NewRows([]string{"oid", "level", "rootname"})
 		})
 		Context("Non-partition tables", func() {
 			It("passes if there are no filter tables", func() {
@@ -78,7 +78,7 @@ var _ = Describe("backup/validate tests", func() {
 			It("passes if given a parent partition table", func() {
 				tableRows.AddRow("1", "public.table1")
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(tableRows)
-				partitionTables.AddRow("1", "p")
+				partitionTables.AddRow("1", "p", "")
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(partitionTables)
 				filterList = []string{"public.table1"}
 				backup.ValidateFilterTables(connectionPool, filterList)
@@ -86,7 +86,7 @@ var _ = Describe("backup/validate tests", func() {
 			It("passes if given a leaf partition table", func() {
 				tableRows.AddRow("1", "public.table1")
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(tableRows)
-				partitionTables.AddRow("1", "l")
+				partitionTables.AddRow("1", "l", "root")
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(partitionTables)
 				filterList = []string{"public.table1"}
 				backup.ValidateFilterTables(connectionPool, filterList)
@@ -95,7 +95,7 @@ var _ = Describe("backup/validate tests", func() {
 				cmdFlags.Set(utils.LEAF_PARTITION_DATA, "true")
 				tableRows.AddRow("1", "public.table1")
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(tableRows)
-				partitionTables.AddRow("1", "i")
+				partitionTables.AddRow("1", "i", "root")
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(partitionTables)
 				filterList = []string{"public.table1"}
 				defer testhelper.ShouldPanicWithMessage("Cannot filter on public.table1, as it is an intermediate partition table.  Only parent partition tables and leaf partition tables may be specified.")
@@ -104,7 +104,7 @@ var _ = Describe("backup/validate tests", func() {
 			It("panics if given an intermediate partition table and --leaf-partition-data is not set", func() {
 				tableRows.AddRow("1", "public.table1")
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(tableRows)
-				partitionTables.AddRow("1", "i")
+				partitionTables.AddRow("1", "i", "root")
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(partitionTables)
 				filterList = []string{"public.table1"}
 				defer testhelper.ShouldPanicWithMessage("Cannot filter on public.table1, as it is an intermediate partition table.  Only parent partition tables and leaf partition tables may be specified.")

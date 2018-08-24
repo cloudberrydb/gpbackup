@@ -42,7 +42,7 @@ func AddTableDataEntriesToTOC(tables []Relation, tableDefs map[uint32]TableDefin
 				}
 			}
 			attributes := ConstructTableAttributesList(tableDefs[table.Oid].ColumnDefs)
-			globalTOC.AddMasterDataEntry(table.Schema, table.Name, table.Oid, attributes, rowsCopied)
+			globalTOC.AddMasterDataEntry(table.Schema, table.Name, table.Oid, attributes, rowsCopied, tableDefs[table.Oid].PartitionLevelInfo.RootName)
 		}
 	}
 }

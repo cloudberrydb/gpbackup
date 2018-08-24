@@ -319,19 +319,19 @@ PARTITION BY RANGE (year)
 			partTableMap := backup.GetPartitionTableMap(connection)
 
 			Expect(len(partTableMap)).To(Equal(13))
-			Expect(partTableMap[parent]).To(Equal("p"))
-			Expect(partTableMap[intermediate1]).To(Equal("i"))
-			Expect(partTableMap[intermediate2]).To(Equal("i"))
-			Expect(partTableMap[intermediate3]).To(Equal("i"))
-			Expect(partTableMap[leaf11]).To(Equal("l"))
-			Expect(partTableMap[leaf12]).To(Equal("l"))
-			Expect(partTableMap[leaf13]).To(Equal("l"))
-			Expect(partTableMap[leaf21]).To(Equal("l"))
-			Expect(partTableMap[leaf22]).To(Equal("l"))
-			Expect(partTableMap[leaf23]).To(Equal("l"))
-			Expect(partTableMap[leaf31]).To(Equal("l"))
-			Expect(partTableMap[leaf32]).To(Equal("l"))
-			Expect(partTableMap[leaf33]).To(Equal("l"))
+			structmatcher.ExpectStructsToMatch(partTableMap[parent], &backup.PartitionLevelInfo{Oid: parent, Level: "p", RootName: ""})
+			structmatcher.ExpectStructsToMatch(partTableMap[intermediate1], &backup.PartitionLevelInfo{Oid: intermediate1, Level: "i", RootName: "summer_sales"})
+			structmatcher.ExpectStructsToMatch(partTableMap[intermediate2], &backup.PartitionLevelInfo{Oid: intermediate2, Level: "i", RootName: "summer_sales"})
+			structmatcher.ExpectStructsToMatch(partTableMap[intermediate3], &backup.PartitionLevelInfo{Oid: intermediate3, Level: "i", RootName: "summer_sales"})
+			structmatcher.ExpectStructsToMatch(partTableMap[leaf11], &backup.PartitionLevelInfo{Oid: leaf11, Level: "l", RootName: "summer_sales"})
+			structmatcher.ExpectStructsToMatch(partTableMap[leaf12], &backup.PartitionLevelInfo{Oid: leaf12, Level: "l", RootName: "summer_sales"})
+			structmatcher.ExpectStructsToMatch(partTableMap[leaf13], &backup.PartitionLevelInfo{Oid: leaf13, Level: "l", RootName: "summer_sales"})
+			structmatcher.ExpectStructsToMatch(partTableMap[leaf21], &backup.PartitionLevelInfo{Oid: leaf21, Level: "l", RootName: "summer_sales"})
+			structmatcher.ExpectStructsToMatch(partTableMap[leaf22], &backup.PartitionLevelInfo{Oid: leaf22, Level: "l", RootName: "summer_sales"})
+			structmatcher.ExpectStructsToMatch(partTableMap[leaf23], &backup.PartitionLevelInfo{Oid: leaf23, Level: "l", RootName: "summer_sales"})
+			structmatcher.ExpectStructsToMatch(partTableMap[leaf31], &backup.PartitionLevelInfo{Oid: leaf31, Level: "l", RootName: "summer_sales"})
+			structmatcher.ExpectStructsToMatch(partTableMap[leaf32], &backup.PartitionLevelInfo{Oid: leaf32, Level: "l", RootName: "summer_sales"})
+			structmatcher.ExpectStructsToMatch(partTableMap[leaf33], &backup.PartitionLevelInfo{Oid: leaf33, Level: "l", RootName: "summer_sales"})
 		})
 	})
 	Describe("GetColumnDefinitions", func() {
@@ -1157,7 +1157,7 @@ FORMAT 'csv';`)
 
 			partition.Oid = testutils.OidFromObjectName(connection, "public", "partition_table_ext_part_", backup.TYPE_RELATION)
 			tables := []backup.Relation{partition}
-			partTableDefs := map[uint32]backup.TableDefinition{partition.Oid: {IsExternal: true, PartitionType: "l"}}
+			partTableDefs := map[uint32]backup.TableDefinition{partition.Oid: {IsExternal: true, PartitionLevelInfo: backup.PartitionLevelInfo{Level: "l"}}}
 
 			tables = backup.ConstructTableDependencies(connection, tables, partTableDefs, []backup.ExternalProtocol{}, false)
 

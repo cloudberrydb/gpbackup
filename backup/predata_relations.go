@@ -69,11 +69,11 @@ func SplitTablesByPartitionType(tables []Relation, tableDefs map[uint32]TableDef
 	if MustGetFlagBool(utils.LEAF_PARTITION_DATA) || len(includeList) > 0 {
 		includeSet := utils.NewIncludeSet(includeList)
 		for _, table := range tables {
-			if tableDefs[table.Oid].IsExternal && tableDefs[table.Oid].PartitionType == "l" {
+			if tableDefs[table.Oid].IsExternal && tableDefs[table.Oid].PartitionLevelInfo.Level == "l" {
 				table.Name = AppendExtPartSuffix(table.Name)
 				metadataTables = append(metadataTables, table)
 			}
-			partType := tableDefs[table.Oid].PartitionType
+			partType := tableDefs[table.Oid].PartitionLevelInfo.Level
 			if partType != "l" && partType != "i" {
 				metadataTables = append(metadataTables, table)
 			}
@@ -89,7 +89,7 @@ func SplitTablesByPartitionType(tables []Relation, tableDefs map[uint32]TableDef
 		}
 	} else {
 		for _, table := range tables {
-			if tableDefs[table.Oid].IsExternal && tableDefs[table.Oid].PartitionType == "l" {
+			if tableDefs[table.Oid].IsExternal && tableDefs[table.Oid].PartitionLevelInfo.Level == "l" {
 				table.Name = AppendExtPartSuffix(table.Name)
 			}
 			metadataTables = append(metadataTables, table)
@@ -137,17 +137,17 @@ func ExpandIncludeRelations(tables []Relation) {
 }
 
 type TableDefinition struct {
-	DistPolicy      string
-	PartDef         string
-	PartTemplateDef string
-	StorageOpts     string
-	TablespaceName  string
-	ColumnDefs      []ColumnDefinition
-	IsExternal      bool
-	ExtTableDef     ExternalTableDefinition
-	PartitionType   string
-	TableType       string
-	IsUnlogged      bool
+	DistPolicy         string
+	PartDef            string
+	PartTemplateDef    string
+	StorageOpts        string
+	TablespaceName     string
+	ColumnDefs         []ColumnDefinition
+	IsExternal         bool
+	ExtTableDef        ExternalTableDefinition
+	PartitionLevelInfo PartitionLevelInfo
+	TableType          string
+	IsUnlogged         bool
 }
 
 /*
@@ -249,7 +249,7 @@ func ConstructColumnPrivilegesMap(results []ColumnPrivilegesQueryStruct) map[uin
 func PrintCreateTableStatement(metadataFile *utils.FileWithByteCount, toc *utils.TOC, table Relation, tableDef TableDefinition, tableMetadata ObjectMetadata) {
 	start := metadataFile.ByteCount
 	// We use an empty TOC below to keep count of the bytes for testing purposes.
-	if tableDef.IsExternal && tableDef.PartitionType != "p" {
+	if tableDef.IsExternal && tableDef.PartitionLevelInfo.Level != "p" {
 		PrintExternalTableCreateStatement(metadataFile, nil, table, tableDef)
 	} else {
 		PrintRegularTableCreateStatement(metadataFile, nil, table, tableDef)

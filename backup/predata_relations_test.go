@@ -860,14 +860,14 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 				{Oid: 8, Schema: "public", Name: "test_table"},
 			}
 			tableDefs = map[uint32]backup.TableDefinition{
-				1: {PartitionType: "p"},
-				2: {PartitionType: "p"},
-				3: {PartitionType: "i"},
-				4: {PartitionType: "l"},
-				5: {PartitionType: "l"},
-				6: {PartitionType: "l"},
-				7: {PartitionType: "l"},
-				8: {PartitionType: "n"},
+				1: {PartitionLevelInfo: backup.PartitionLevelInfo{Level: "p"}},
+				2: {PartitionLevelInfo: backup.PartitionLevelInfo{Level: "p"}},
+				3: {PartitionLevelInfo: backup.PartitionLevelInfo{Level: "i"}},
+				4: {PartitionLevelInfo: backup.PartitionLevelInfo{Level: "l"}},
+				5: {PartitionLevelInfo: backup.PartitionLevelInfo{Level: "l"}},
+				6: {PartitionLevelInfo: backup.PartitionLevelInfo{Level: "l"}},
+				7: {PartitionLevelInfo: backup.PartitionLevelInfo{Level: "l"}},
+				8: {PartitionLevelInfo: backup.PartitionLevelInfo{Level: "n"}},
 			}
 		})
 		Context("leafPartitionData and includeTables", func() {
@@ -937,9 +937,9 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 					{Oid: 8, Schema: "public", Name: "test_table"},
 				}
 				tableDefs = map[uint32]backup.TableDefinition{
-					1: {PartitionType: "p"},
-					2: {PartitionType: "p"},
-					8: {PartitionType: "n"},
+					1: {PartitionLevelInfo: backup.PartitionLevelInfo{Level: "p"}},
+					2: {PartitionLevelInfo: backup.PartitionLevelInfo{Level: "p"}},
+					8: {PartitionLevelInfo: backup.PartitionLevelInfo{Level: "n"}},
 				}
 				cmdFlags.Set(utils.LEAF_PARTITION_DATA, "false")
 				cmdFlags.Set(utils.INCLUDE_RELATION, "")
@@ -964,8 +964,8 @@ GRANT ALL ON shamwow.shazam TO testrole;`)
 					{Oid: 2, Schema: "public", Name: "long_naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaame"},
 				}
 				tableDefs = map[uint32]backup.TableDefinition{
-					1: {PartitionType: "l", IsExternal: true},
-					2: {PartitionType: "l", IsExternal: true},
+					1: {PartitionLevelInfo: backup.PartitionLevelInfo{Level: "l"}, IsExternal: true},
+					2: {PartitionLevelInfo: backup.PartitionLevelInfo{Level: "l"}, IsExternal: true},
 				}
 				cmdFlags.Set(utils.LEAF_PARTITION_DATA, "false")
 				cmdFlags.Set(utils.INCLUDE_RELATION, "")
