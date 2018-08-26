@@ -22,6 +22,18 @@
   revision = "6ae0bc3408913019c4d3520f761858a4ef6c6979"
 
 [[projects]]
+  name = "github.com/hpcloud/tail"
+  packages = [
+    ".",
+    "ratelimiter",
+    "util",
+    "watch",
+    "winfile"
+  ]
+  revision = "a30252cb686a21eb2d0b98132633053ec2f7f1e5"
+  version = "v1.0.0"
+
+[[projects]]
   name = "github.com/inconshreveable/mousetrap"
   packages = ["."]
   revision = "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
@@ -38,8 +50,8 @@
     "pgtype",
     "stdlib"
   ]
-  revision = "da3231b0b66e2e74cdb779f1d46c5e958ba8be27"
-  version = "v3.1.0"
+  revision = "89f1e6ac7276b61d885db5e5aed6fcbedd1c7e31"
+  version = "v3.2.0"
 
 [[projects]]
   branch = "master"
@@ -51,19 +63,19 @@
   revision = "0dae4fefe7c0e190f7b5a78dac28a1c82cc8d849"
 
 [[projects]]
-  branch = "master"
   name = "github.com/lib/pq"
   packages = [
     ".",
     "oid"
   ]
-  revision = "90697d60dd844d5ef6ff15135d0203f65d2f53b8"
+  revision = "4ded0e9383f75c197b3a2aaa6d590ac52df6fd79"
+  version = "v1.0.0"
 
 [[projects]]
   name = "github.com/mattn/go-runewidth"
   packages = ["."]
-  revision = "9e777a8366cce605130a531d2cd6363d07ad7317"
-  version = "v0.0.2"
+  revision = "ce7b0b5c7b45a81508558cd1dba6bb1e4ddb51bb"
+  version = "v0.0.3"
 
 [[projects]]
   branch = "master"
@@ -101,8 +113,8 @@
     "reporters/stenographer/support/go-isatty",
     "types"
   ]
-  revision = "fa5fabab2a1bfbd924faf4c067d07ae414e2aedf"
-  version = "v1.5.0"
+  revision = "3774a09d95489ccaa16032e0770d08ea77ba6184"
+  version = "v1.6.0"
 
 [[projects]]
   name = "github.com/onsi/gomega"
@@ -122,8 +134,8 @@
     "matchers/support/goraph/util",
     "types"
   ]
-  revision = "62bff4df71bdbc266561a0caee19f0594b17c240"
-  version = "v1.4.0"
+  revision = "b6ea1ea48f981d0f615a154a45eabb9dd466556d"
+  version = "v1.4.1"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -140,8 +152,8 @@
 [[projects]]
   name = "github.com/spf13/pflag"
   packages = ["."]
-  revision = "583c0c0531f06d5278b7d917446061adc344b5cd"
-  version = "v1.0.1"
+  revision = "9a97c102cda95a86cec2345a6f09f55a939babf5"
+  version = "v1.0.2"
 
 [[projects]]
   branch = "master"
@@ -151,13 +163,13 @@
     "html/atom",
     "html/charset"
   ]
-  revision = "d0887baf81f4598189d4e12a37c6da86f0bba4d0"
+  revision = "8a410e7b638dca158bf9e766925842f6651ff828"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "ac767d655b305d4e9612f5f6e33120b9176c4ad4"
+  revision = "4910a1d54f876d7b22162a85f4d066d3ee649450"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -192,7 +204,7 @@
     "imports",
     "internal/fastwalk"
   ]
-  revision = "fd2d2c45eb2dff7b87eab4303a1016b4dbf95e81"
+  revision = "f6ba5742950514ddd66494151ed5498ed77969ca"
 
 [[projects]]
   name = "gopkg.in/DATA-DOG/go-sqlmock.v1"
@@ -207,6 +219,19 @@
   version = "v1.0.25"
 
 [[projects]]
+  name = "gopkg.in/fsnotify.v1"
+  packages = ["."]
+  revision = "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9"
+  source = "https://github.com/fsnotify/fsnotify/archive/v1.4.7.tar.gz"
+  version = "v1.4.7"
+
+[[projects]]
+  branch = "v1"
+  name = "gopkg.in/tomb.v1"
+  packages = ["."]
+  revision = "dd632973f1e7218eb1089048e0798ec9ae7dceb8"
+
+[[projects]]
   name = "gopkg.in/yaml.v2"
   packages = ["."]
   revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
@@ -215,6 +240,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "857bb91ce2d82936cf87f5f3793317eb5e71450c5b2c0a1128f3b44beeaac82b"
+  inputs-digest = "c642cdaa3dc5826721aabd7ae09124f050d33b8fec2d7d533646b03ff2799b9a"
   solver-name = "gps-cdcl"
   solver-version = 1

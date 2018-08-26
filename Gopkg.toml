@@ -27,6 +27,10 @@ required = ["golang.org/x/tools/cmd/goimports", "github.com/onsi/ginkgo/ginkgo"]
   go-tests = true
   non-go = true
 
+[[override]]
+  source = "https://github.com/fsnotify/fsnotify/archive/v1.4.7.tar.gz"
+  name = "gopkg.in/fsnotify.v1"
+
 [[constraint]]
   name = "github.com/blang/semver"
   version = "3.5.1"
