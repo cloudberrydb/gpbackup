@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/blang/semver"
 	"github.com/greenplum-db/gp-common-go-libs/cluster"
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 	"github.com/greenplum-db/gp-common-go-libs/iohelper"
@@ -28,6 +29,7 @@ import (
 var custom_backup_dir string
 
 var useOldBackupVersion bool
+var oldBackupSemVer semver.Version
 
 var backupCluster *cluster.Cluster
 
@@ -75,15 +77,15 @@ func buildAndInstallBinaries() (string, string, string) {
 	return fmt.Sprintf("%s/gpbackup", binDir), fmt.Sprintf("%s/gpbackup_helper", binDir), fmt.Sprintf("%s/gprestore", binDir)
 }
 
-func buildOldBinaries() (string, string) {
+func buildOldBinaries(version string) (string, string) {
 	os.Chdir("..")
-	command := exec.Command("git", "checkout", "1.0.0", "-f")
+	command := exec.Command("git", "checkout", version, "-f")
 	mustRunCommand(command)
 	command = exec.Command("dep", "ensure")
 	mustRunCommand(command)
-	gpbackupOldPath, err := gexec.Build("github.com/greenplum-db/gpbackup", "-tags", "gpbackup", "-ldflags", "-X github.com/greenplum-db/gpbackup/backup.version=1.0.0")
+	gpbackupOldPath, err := gexec.Build("github.com/greenplum-db/gpbackup", "-tags", "gpbackup", "-ldflags", fmt.Sprintf("-X github.com/greenplum-db/gpbackup/backup.version=%s", version))
 	Expect(err).ShouldNot(HaveOccurred())
-	gpbackupHelperOldPath, err := gexec.Build("github.com/greenplum-db/gpbackup", "-tags", "gpbackup_helper", "-ldflags", "-X github.com/greenplum-db/gpbackup/helper.version=1.0.0")
+	gpbackupHelperOldPath, err := gexec.Build("github.com/greenplum-db/gpbackup", "-tags", "gpbackup_helper", "-ldflags", fmt.Sprintf("-X github.com/greenplum-db/gpbackup/helper.version=%s", version))
 	Expect(err).ShouldNot(HaveOccurred())
 	command = exec.Command("git", "checkout", "-", "-f")
 	mustRunCommand(command)
@@ -138,6 +140,12 @@ func forceMetadataFileDownloadFromPlugin(conn *dbconn.DBConn, timestamp string) 
 	}
 }
 
+func skipIfOldBackupVersionBefore(version string) {
+	if useOldBackupVersion && oldBackupSemVer.LT(semver.MustParse(version)) {
+		Skip(fmt.Sprintf("Feature not supported in gpbackup %s", oldBackupSemVer))
+	}
+}
+
 func TestEndToEnd(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "EndToEnd Suite")
@@ -150,8 +158,8 @@ var _ = Describe("backup end to end integration tests", func() {
 
 	BeforeSuite(func() {
 
-		// This is used to run tests from gpbackup 1.0.0 to gprestore latest
-		useOldBackupVersion = os.Getenv("USE_OLD_BACKUP_VERSION") == "true"
+		// This is used to run tests from an older gpbackup version to gprestore latest
+		useOldBackupVersion = os.Getenv("OLD_BACKUP_VERSION") != ""
 		pluginConfigPath =
 			fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/plugins/example_plugin_config.yaml",
 				os.Getenv("HOME"))
@@ -173,8 +181,9 @@ var _ = Describe("backup end to end integration tests", func() {
 		testutils.ExecuteSQLFile(backupConn, "test_tables_ddl.sql")
 		testutils.ExecuteSQLFile(backupConn, "test_tables_data.sql")
 		if useOldBackupVersion {
+			oldBackupSemVer = semver.MustParse(os.Getenv("OLD_BACKUP_VERSION"))
 			_, restoreHelperPath, gprestorePath = buildAndInstallBinaries()
-			gpbackupPath, backupHelperPath = buildOldBinaries()
+			gpbackupPath, backupHelperPath = buildOldBinaries(os.Getenv("OLD_BACKUP_VERSION"))
 		} else {
 			gpbackupPath, backupHelperPath, gprestorePath = buildAndInstallBinaries()
 			restoreHelperPath = backupHelperPath
@@ -227,9 +236,7 @@ var _ = Describe("backup end to end integration tests", func() {
 				assertDataRestored(restoreConn, publicSchemaTupleCounts)
 			})
 			It("runs gpbackup and gprestore with include-table backup flag", func() {
-				if useOldBackupVersion {
-					Skip("Feature not supported in gpbackup 1.0.0")
-				}
+				skipIfOldBackupVersionBefore("1.4.0")
 				timestamp := gpbackup(gpbackupPath, backupHelperPath, "--include-table", "public.foo", "--include-table", "public.sales", "--include-table", "public.myseq1", "--include-table", "public.myview1")
 				gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb")
 
@@ -239,9 +246,7 @@ var _ = Describe("backup end to end integration tests", func() {
 				os.Remove("/tmp/include-tables.txt")
 			})
 			It("runs gpbackup and gprestore with include-table-file backup flag", func() {
-				if useOldBackupVersion {
-					Skip("Feature not supported in gpbackup 1.0.0")
-				}
+				skipIfOldBackupVersionBefore("1.4.0")
 				includeFile := iohelper.MustOpenFileForWriting("/tmp/include-tables.txt")
 				utils.MustPrintln(includeFile, "public.sales\npublic.foo\npublic.myseq1\npublic.myview1")
 				timestamp := gpbackup(gpbackupPath, backupHelperPath, "--include-table-file", "/tmp/include-tables.txt")
@@ -305,9 +310,7 @@ var _ = Describe("backup end to end integration tests", func() {
 				assertDataRestored(restoreConn, schema2TupleCounts)
 			})
 			It("runs gpbackup and gprestore with exclude-table backup flag", func() {
-				if useOldBackupVersion {
-					Skip("Feature not supported in gpbackup 1.0.0")
-				}
+				skipIfOldBackupVersionBefore("1.4.0")
 				timestamp := gpbackup(gpbackupPath, backupHelperPath, "--exclude-table", "schema2.foo2", "--exclude-table", "schema2.returns", "--exclude-table", "public.myseq1", "--exclude-table", "public.myview1")
 				gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb")
 
@@ -317,9 +320,7 @@ var _ = Describe("backup end to end integration tests", func() {
 				os.Remove("/tmp/exclude-tables.txt")
 			})
 			It("runs gpbackup and gprestore with exclude-table-file backup flag", func() {
-				if useOldBackupVersion {
-					Skip("Feature not supported in gpbackup 1.0.0")
-				}
+				skipIfOldBackupVersionBefore("1.4.0")
 				excludeFile := iohelper.MustOpenFileForWriting("/tmp/exclude-tables.txt")
 				utils.MustPrintln(excludeFile, "schema2.foo2\nschema2.returns\npublic.sales\npublic.myseq1\npublic.myview1")
 				timestamp := gpbackup(gpbackupPath, backupHelperPath, "--exclude-table-file", "/tmp/exclude-tables.txt")
@@ -430,11 +431,10 @@ var _ = Describe("backup end to end integration tests", func() {
 			})
 
 			Context("with plugin", func() {
+				BeforeEach(func() {
+					skipIfOldBackupVersionBefore("1.7.0")
+				})
 				It("runs gpbackup and gprestore with plugin, single-data-file, and no-compression", func() {
-					if useOldBackupVersion {
-						Skip("Feature not supported in gpbackup 1.0.0")
-					}
-
 					pluginDir := "/tmp/plugin_dest"
 					pluginExecutablePath := fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/plugins/example_plugin.sh", os.Getenv("HOME"))
 					copyPluginToAllHosts(backupConn, pluginExecutablePath)
@@ -451,9 +451,6 @@ var _ = Describe("backup end to end integration tests", func() {
 					os.RemoveAll(pluginDir)
 				})
 				It("runs gpbackup and gprestore with plugin and single-data-file", func() {
-					if useOldBackupVersion {
-						Skip("Feature not supported in gpbackup 1.0.0")
-					}
 					pluginDir := "/tmp/plugin_dest"
 					pluginExecutablePath := fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/plugins/example_plugin.sh", os.Getenv("HOME"))
 					copyPluginToAllHosts(backupConn, pluginExecutablePath)
@@ -470,9 +467,6 @@ var _ = Describe("backup end to end integration tests", func() {
 					os.RemoveAll(pluginDir)
 				})
 				It("runs gpbackup and gprestore with plugin and metadata-only", func() {
-					if useOldBackupVersion {
-						Skip("Feature not supported in gpbackup 1.0.0")
-					}
 					pluginDir := "/tmp/plugin_dest"
 					pluginExecutablePath := fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/plugins/example_plugin.sh", os.Getenv("HOME"))
 					copyPluginToAllHosts(backupConn, pluginExecutablePath)
@@ -490,10 +484,7 @@ var _ = Describe("backup end to end integration tests", func() {
 		})
 		Describe("Multi-file Plugin", func() {
 			It("runs gpbackup and gprestore with plugin and no-compression", func() {
-				if useOldBackupVersion {
-					Skip("Feature not supported in gpbackup 1.0.0")
-				}
-
+				skipIfOldBackupVersionBefore("1.7.0")
 				pluginDir := "/tmp/plugin_dest"
 				pluginExecutablePath := fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/plugins/example_plugin.sh", os.Getenv("HOME"))
 				copyPluginToAllHosts(backupConn, pluginExecutablePath)
@@ -510,10 +501,7 @@ var _ = Describe("backup end to end integration tests", func() {
 				os.RemoveAll(pluginDir)
 			})
 			It("runs gpbackup and gprestore with plugin and compression", func() {
-				if useOldBackupVersion {
-					Skip("Feature not supported in gpbackup 1.0.0")
-				}
-
+				skipIfOldBackupVersionBefore("1.7.0")
 				pluginDir := "/tmp/plugin_dest"
 				pluginExecutablePath := fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/plugins/example_plugin.sh", os.Getenv("HOME"))
 				copyPluginToAllHosts(backupConn, pluginExecutablePath)
@@ -532,9 +520,7 @@ var _ = Describe("backup end to end integration tests", func() {
 		})
 		Describe("Incremental", func() {
 			BeforeEach(func() {
-				if useOldBackupVersion {
-					Skip("Feature not supported in gpbackup 1.0.0")
-				}
+				skipIfOldBackupVersionBefore("1.7.0")
 			})
 			It("restores from an incremental backup specified with a timestamp", func() {
 				fullBackupTimestamp := gpbackup(gpbackupPath, backupHelperPath, "--leaf-partition-data")
@@ -734,9 +720,7 @@ var _ = Describe("backup end to end integration tests", func() {
 			os.RemoveAll(backupdir)
 		})
 		It("runs gpbackup and gprestore with jobs flag", func() {
-			if useOldBackupVersion {
-				Skip("Feature not supported in gpbackup 1.0.0")
-			}
+			skipIfOldBackupVersionBefore("1.3.0")
 			backupdir := filepath.Join(custom_backup_dir, "parallel")
 			timestamp := gpbackup(gpbackupPath, backupHelperPath, "--backup-dir", backupdir, "--jobs", "4")
 			gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--backup-dir", backupdir, "--jobs", "4")
@@ -797,9 +781,7 @@ var _ = Describe("backup end to end integration tests", func() {
 			os.RemoveAll(backupdir)
 		})
 		It("runs example_plugin.sh with plugin_test_bench", func() {
-			if useOldBackupVersion {
-				Skip("Feature not supported in gpbackup 1.0.0")
-			}
+			skipIfOldBackupVersionBefore("1.7.0")
 			pluginsDir := fmt.Sprintf("%s/go/src/github.com/greenplum-db/gpbackup/plugins", os.Getenv("HOME"))
 			copyPluginToAllHosts(backupConn, fmt.Sprintf("%s/example_plugin.sh", pluginsDir))
 			command := exec.Command("bash", "-c", fmt.Sprintf("%s/plugin_test_bench.sh %s/example_plugin.sh %s/example_plugin_config.yaml", pluginsDir, pluginsDir, pluginsDir))
@@ -809,7 +791,7 @@ var _ = Describe("backup end to end integration tests", func() {
 		})
 		It("runs gpbackup with --version flag", func() {
 			if useOldBackupVersion {
-				Skip("This test is not needed for gpbackup 1.0.0")
+				Skip("This test is not needed for old backup versions")
 			}
 			command := exec.Command(gpbackupPath, "--version")
 			output := mustRunCommand(command)

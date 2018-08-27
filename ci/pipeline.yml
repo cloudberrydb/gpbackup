@@ -644,7 +644,7 @@ jobs:
           source env.sh
 
           cd \$GOPATH/src/github.com/greenplum-db/gpbackup
-          export USE_OLD_BACKUP_VERSION=true
+          export OLD_BACKUP_VERSION="1.0.0"
           make end_to_end
           SCRIPT
 
