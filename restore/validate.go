@@ -108,37 +108,33 @@ WHERE quote_ident(n.nspname) || '.' || quote_ident(c.relname) IN (%s)`, quotedTa
 }
 
 func ValidateFilterRelationsInBackupSet(relationList []string) {
+	if len(relationList) == 0 {
+		return
+	}
 	relationMap := make(map[string]bool, len(relationList))
 	for _, relation := range relationList {
 		relationMap[relation] = true
 	}
-	if len(relationList) > 0 {
-		if !backupConfig.DataOnly {
-			for _, entry := range globalTOC.PredataEntries {
-				if entry.ObjectType != "TABLE" && entry.ObjectType != "SEQUENCE" && entry.ObjectType != "VIEW" {
-					continue
-				}
-				fqn := utils.MakeFQN(entry.Schema, entry.Name)
-				if _, ok := relationMap[fqn]; ok {
-					delete(relationMap, fqn)
-				}
-				if len(relationMap) == 0 {
-					return
-				}
-			}
-		} else {
-			for _, entry := range globalTOC.DataEntries {
-				fqn := utils.MakeFQN(entry.Schema, entry.Name)
-				if _, ok := relationMap[fqn]; ok {
-					delete(relationMap, fqn)
-				}
-				if len(relationMap) == 0 {
-					return
-				}
-			}
+	for _, entry := range globalTOC.PredataEntries {
+		if entry.ObjectType != "TABLE" && entry.ObjectType != "SEQUENCE" && entry.ObjectType != "VIEW" {
+			continue
 		}
-	} else {
-		return
+		fqn := utils.MakeFQN(entry.Schema, entry.Name)
+		if _, ok := relationMap[fqn]; ok {
+			delete(relationMap, fqn)
+		}
+		if len(relationMap) == 0 {
+			return
+		}
+	}
+	for _, entry := range globalTOC.DataEntries {
+		fqn := utils.MakeFQN(entry.Schema, entry.Name)
+		if _, ok := relationMap[fqn]; ok {
+			delete(relationMap, fqn)
+		}
+		if len(relationMap) == 0 {
+			return
+		}
 	}
 
 	keys := make([]string, len(relationMap))

@@ -271,8 +271,6 @@ var _ = Describe("backup end to end integration tests", func() {
 
 				assertRelationsCreated(restoreConn, 16)
 				assertDataRestored(restoreConn, map[string]int{"public.sales": 13, "public.foo": 40000})
-
-				os.Remove("/tmp/include-tables.txt")
 			})
 			It("runs gpbackup and gprestore with include-table-file restore flag", func() {
 				includeFile := iohelper.MustOpenFileForWriting("/tmp/include-tables.txt")
@@ -286,6 +284,16 @@ var _ = Describe("backup end to end integration tests", func() {
 
 				os.RemoveAll(backupdir)
 				os.Remove("/tmp/include-tables.txt")
+			})
+			It("runs gpbackup and gprestore with include-table restore flag against a leaf partition", func() {
+				if useOldBackupVersion {
+					Skip("Feature not supported in gpbackup 1.0.0")
+				}
+				timestamp := gpbackup(gpbackupPath, backupHelperPath, "--leaf-partition-data")
+				gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--include-table", "public.sales_1_prt_jan17")
+
+				assertRelationsCreated(restoreConn, 13)
+				assertDataRestored(restoreConn, map[string]int{"public.sales": 1, "public.sales_1_prt_jan17": 1})
 			})
 		})
 		Describe("Backup exclude filtering", func() {

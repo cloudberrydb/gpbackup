@@ -101,8 +101,30 @@ type StatementWithType struct {
 	Statement       string
 }
 
+func GetPartitionRootData(tocDataEntries []MasterDataEntry, includeRelations []string) []string {
+	rootPartitions := make([]string, 0)
+
+	FQNToPartitionRoot := make(map[string]string, 0)
+	for _, entry := range tocDataEntries {
+		if entry.PartitionRoot != "" {
+			FQNToPartitionRoot[MakeFQN(entry.Schema, entry.Name)] = MakeFQN(entry.Schema, entry.PartitionRoot)
+		}
+	}
+
+	for _, relation := range includeRelations {
+		if rootPartition, ok := FQNToPartitionRoot[relation]; ok {
+			rootPartitions = append(rootPartitions, rootPartition)
+		}
+	}
+
+	return rootPartitions
+}
+
 func (toc *TOC) GetSQLStatementForObjectTypes(section string, metadataFile io.ReaderAt, includeObjectTypes []string, excludeObjectTypes []string, includeSchemas []string, excludeSchemas []string, includeRelations []string, excludeRelations []string) []StatementWithType {
 	entries := *toc.metadataEntryMap[section]
+
+	includeRelations = append(includeRelations, GetPartitionRootData(toc.DataEntries, includeRelations)...)
+
 	objectSet, schemaSet, relationSet := constructFilterSets(includeObjectTypes, excludeObjectTypes, includeSchemas, excludeSchemas, includeRelations, excludeRelations)
 	statements := make([]StatementWithType, 0)
 	for _, entry := range entries {
