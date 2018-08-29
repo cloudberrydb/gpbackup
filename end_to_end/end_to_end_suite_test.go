@@ -543,7 +543,7 @@ var _ = Describe("backup end to end integration tests", func() {
 				assertDataRestored(restoreConn, schema2TupleCounts)
 			})
 			Context("Without a timestamp", func() {
-				It("restores from a filtered incremental backup specified with a backup directory", func() {
+				It("restores from a incremental backup specified with a backup directory", func() {
 					backupdir := filepath.Join(custom_backup_dir, "test_incremental")
 					_ = gpbackup(gpbackupPath, backupHelperPath, "--leaf-partition-data", "--backup-dir", backupdir)
 
@@ -586,6 +586,34 @@ var _ = Describe("backup end to end integration tests", func() {
 						"public.sales_1_prt_feb17": 2,
 						"public.sales_1_prt_mar17": 2,
 					})
+				})
+				It("restores from a new incremental backup", func() {
+					if !useOldBackupVersion {
+						Skip("This test is only needed for old backup versions")
+					}
+					_ = gpbackup(gpbackupPath, backupHelperPath, "--leaf-partition-data")
+
+					testhelper.AssertQueryRuns(backupConn, "INSERT into schema2.ao1 values(1001)")
+					defer testhelper.AssertQueryRuns(backupConn, "DELETE from schema2.ao1 where i=1001")
+					_ = gpbackup(gpbackupPath, backupHelperPath,
+						"--incremental", "--leaf-partition-data")
+
+					gpbackupPath, backupHelperPath, _ = buildAndInstallBinaries()
+
+					testhelper.AssertQueryRuns(backupConn, "INSERT into schema2.ao1 values(1002)")
+					defer testhelper.AssertQueryRuns(backupConn, "DELETE from schema2.ao1 where i=1002")
+					incremental2Timestamp := gpbackup(gpbackupPath, backupHelperPath,
+						"--incremental", "--leaf-partition-data")
+
+					gpbackupPath, backupHelperPath = buildOldBinaries(os.Getenv("OLD_BACKUP_VERSION"))
+
+					gprestore(gprestorePath, restoreHelperPath, incremental2Timestamp, "--redirect-db", "restoredb")
+
+					assertRelationsCreated(restoreConn, 36)
+					assertDataRestored(restoreConn, publicSchemaTupleCounts)
+					schema2TupleCounts["schema2.ao1"] = 1002
+					assertDataRestored(restoreConn, schema2TupleCounts)
+
 				})
 			})
 			Context("With a plugin", func() {
