@@ -16,7 +16,7 @@ resources:
   type: git
   source:
     uri: https://github.com/greenplum-db/gpbackup
-    branch: master
+    branch: {{gpbackup-git-branch}}
 
 - name: gpbackup_s3_plugin
   type: git
