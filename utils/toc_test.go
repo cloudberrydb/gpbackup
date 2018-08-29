@@ -223,10 +223,12 @@ var _ = Describe("utils/toc tests", func() {
 			toc.AddMasterDataEntry("schema1", "table1", 1, "(i)", 0, "")
 			toc.AddMasterDataEntry("schema2", "table2", 1, "(i)", 0, "")
 			toc.AddMasterDataEntry("schema3", "table3", 1, "(i)", 0, "")
+			toc.AddMasterDataEntry("schema3", "table3_partition1", 1, "(i)", 0, "table3")
+			toc.AddMasterDataEntry("schema3", "table3_partition2", 1, "(i)", 0, "table3")
 		})
 
 		Context("Non-empty restore plan", func() {
-			restorePlanTableFQNs := []string{"schema1.table1", "schema2.table2"}
+			restorePlanTableFQNs := []string{"schema1.table1", "schema2.table2", "schema3.table3", "schema3.table3_partition1", "schema3.table3_partition2"}
 
 			It("returns matching entry on include schema", func() {
 				includeSchemas := []string{"schema1"}
@@ -234,9 +236,11 @@ var _ = Describe("utils/toc tests", func() {
 				matchingEntries := toc.GetDataEntriesMatching(includeSchemas, []string{},
 					[]string{}, []string{}, restorePlanTableFQNs)
 
-				Expect(matchingEntries).
-					To(Equal([]utils.MasterDataEntry{{Schema: "schema1", Name: "table1",
-						Oid: 1, AttributeString: "(i)"}}))
+				Expect(matchingEntries).To(Equal(
+					[]utils.MasterDataEntry{
+						{Schema: "schema1", Name: "table1", Oid: 1, AttributeString: "(i)"},
+					},
+				))
 			})
 			It("returns matching entry on exclude schema", func() {
 				excludeSchemas := []string{"schema2"}
@@ -244,9 +248,14 @@ var _ = Describe("utils/toc tests", func() {
 				matchingEntries := toc.GetDataEntriesMatching([]string{}, excludeSchemas,
 					[]string{}, []string{}, restorePlanTableFQNs)
 
-				Expect(matchingEntries).
-					To(Equal([]utils.MasterDataEntry{{Schema: "schema1", Name: "table1",
-						Oid: 1, AttributeString: "(i)"}}))
+				Expect(matchingEntries).To(ConsistOf(
+					[]utils.MasterDataEntry{
+						{Schema: "schema1", Name: "table1", Oid: 1, AttributeString: "(i)", PartitionRoot: ""},
+						{Schema: "schema3", Name: "table3", Oid: 1, AttributeString: "(i)", PartitionRoot: ""},
+						{Schema: "schema3", Name: "table3_partition1", Oid: 1, AttributeString: "(i)", PartitionRoot: "table3"},
+						{Schema: "schema3", Name: "table3_partition2", Oid: 1, AttributeString: "(i)", PartitionRoot: "table3"},
+					},
+				))
 			})
 			It("returns matching entry on include table", func() {
 				includeTables := []string{"schema1.table1"}
@@ -254,9 +263,11 @@ var _ = Describe("utils/toc tests", func() {
 				matchingEntries := toc.GetDataEntriesMatching([]string{}, []string{},
 					includeTables, []string{}, restorePlanTableFQNs)
 
-				Expect(matchingEntries).
-					To(Equal([]utils.MasterDataEntry{{Schema: "schema1", Name: "table1",
-						Oid: 1, AttributeString: "(i)"}}))
+				Expect(matchingEntries).To(Equal(
+					[]utils.MasterDataEntry{
+						{Schema: "schema1", Name: "table1", Oid: 1, AttributeString: "(i)"},
+					},
+				))
 			})
 			It("returns matching entry on exclude table", func() {
 				excludeTables := []string{"schema2.table2"}
@@ -264,18 +275,84 @@ var _ = Describe("utils/toc tests", func() {
 				matchingEntries := toc.GetDataEntriesMatching([]string{}, []string{},
 					[]string{}, excludeTables, restorePlanTableFQNs)
 
-				Expect(matchingEntries).
-					To(Equal([]utils.MasterDataEntry{{Schema: "schema1", Name: "table1",
-						Oid: 1, AttributeString: "(i)"}}))
+				Expect(matchingEntries).To(ConsistOf(
+					[]utils.MasterDataEntry{
+						{Schema: "schema1", Name: "table1", Oid: 1, AttributeString: "(i)", PartitionRoot: ""},
+						{Schema: "schema3", Name: "table3", Oid: 1, AttributeString: "(i)", PartitionRoot: ""},
+						{Schema: "schema3", Name: "table3_partition1", Oid: 1, AttributeString: "(i)", PartitionRoot: "table3"},
+						{Schema: "schema3", Name: "table3_partition2", Oid: 1, AttributeString: "(i)", PartitionRoot: "table3"},
+					},
+				))
 			})
 			It("returns all entries when not schema-filtered or table-filtered", func() {
 				matchingEntries := toc.GetDataEntriesMatching([]string{}, []string{},
 					[]string{}, []string{}, restorePlanTableFQNs)
 
-				Expect(matchingEntries).
-					To(Equal([]utils.MasterDataEntry{{Schema: "schema1", Name: "table1",
-						Oid: 1, AttributeString: "(i)"},
-						{Schema: "schema2", Name: "table2", Oid: 1, AttributeString: "(i)"}}))
+				Expect(matchingEntries).To(ConsistOf(
+					[]utils.MasterDataEntry{
+						{Schema: "schema1", Name: "table1", Oid: 1, AttributeString: "(i)", PartitionRoot: ""},
+						{Schema: "schema2", Name: "table2", Oid: 1, AttributeString: "(i)", PartitionRoot: ""},
+						{Schema: "schema3", Name: "table3", Oid: 1, AttributeString: "(i)", PartitionRoot: ""},
+						{Schema: "schema3", Name: "table3_partition1", Oid: 1, AttributeString: "(i)", PartitionRoot: "table3"},
+						{Schema: "schema3", Name: "table3_partition2", Oid: 1, AttributeString: "(i)", PartitionRoot: "table3"},
+					},
+				))
+			})
+			It("returns matching entry and its leaf partitions on include table", func() {
+				includeTables := []string{"schema3.table3"}
+
+				matchingEntries := toc.GetDataEntriesMatching([]string{}, []string{},
+					includeTables, []string{}, restorePlanTableFQNs)
+
+				Expect(matchingEntries).To(ConsistOf(
+					[]utils.MasterDataEntry{
+						{Schema: "schema3", Name: "table3", Oid: 1, AttributeString: "(i)", PartitionRoot: ""},
+						{Schema: "schema3", Name: "table3_partition1", Oid: 1, AttributeString: "(i)", PartitionRoot: "table3"},
+						{Schema: "schema3", Name: "table3_partition2", Oid: 1, AttributeString: "(i)", PartitionRoot: "table3"},
+					},
+				))
+			})
+			It("does not return leaf partitions in include tables but not in the restore plan", func() {
+				includeTables := []string{"schema3.table3"}
+				customRestorePlanTableFQNs := []string{"schema1.table1", "schema2.table2", "schema3.table3", "schema3.table3_partition1"}
+
+				matchingEntries := toc.GetDataEntriesMatching([]string{}, []string{},
+					includeTables, []string{}, customRestorePlanTableFQNs)
+
+				Expect(matchingEntries).To(ConsistOf(
+					[]utils.MasterDataEntry{
+						{Schema: "schema3", Name: "table3", Oid: 1, AttributeString: "(i)", PartitionRoot: ""},
+						{Schema: "schema3", Name: "table3_partition1", Oid: 1, AttributeString: "(i)", PartitionRoot: "table3"},
+					},
+				))
+			})
+			It("returns matching entry on exclude root partition table", func() {
+				excludeTables := []string{"schema3.table3"}
+
+				matchingEntries := toc.GetDataEntriesMatching([]string{}, []string{},
+					[]string{}, excludeTables, restorePlanTableFQNs)
+
+				Expect(matchingEntries).To(Equal(
+					[]utils.MasterDataEntry{
+						{Schema: "schema1", Name: "table1", Oid: 1, AttributeString: "(i)", PartitionRoot: ""},
+						{Schema: "schema2", Name: "table2", Oid: 1, AttributeString: "(i)", PartitionRoot: ""},
+					},
+				))
+			})
+			It("returns matching entry on exclude leaf partition table", func() {
+				excludeTables := []string{"schema3.table3_partition2"}
+
+				matchingEntries := toc.GetDataEntriesMatching([]string{}, []string{},
+					[]string{}, excludeTables, restorePlanTableFQNs)
+
+				Expect(matchingEntries).To(Equal(
+					[]utils.MasterDataEntry{
+						{Schema: "schema1", Name: "table1", Oid: 1, AttributeString: "(i)", PartitionRoot: ""},
+						{Schema: "schema2", Name: "table2", Oid: 1, AttributeString: "(i)", PartitionRoot: ""},
+						{Schema: "schema3", Name: "table3", Oid: 1, AttributeString: "(i)", PartitionRoot: ""},
+						{Schema: "schema3", Name: "table3_partition1", Oid: 1, AttributeString: "(i)", PartitionRoot: "table3"},
+					},
+				))
 			})
 		})
 

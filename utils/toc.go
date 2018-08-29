@@ -181,6 +181,24 @@ func (toc *TOC) GetAllSQLStatements(section string, metadataFile io.ReaderAt) []
 	return statements
 }
 
+func getLeafPartitions(tableFQNs []string, tocDataEntries []MasterDataEntry) (leafPartitions []string) {
+	tableSet := NewIncludeSet(tableFQNs)
+	tableSet.AlwaysMatchesFilter = false
+
+	for _, entry := range tocDataEntries {
+		if entry.PartitionRoot == "" {
+			continue
+		}
+
+		parentFQN := MakeFQN(entry.Schema, entry.PartitionRoot)
+		if tableSet.MatchesFilter(parentFQN) {
+			leafPartitions = append(leafPartitions, MakeFQN(entry.Schema, entry.Name))
+		}
+	}
+
+	return leafPartitions
+}
+
 func (toc *TOC) GetDataEntriesMatching(includeSchemas []string, excludeSchemas []string,
 	includeTableFQNs []string, excludeTableFQNs []string, restorePlanTableFQNs []string) []MasterDataEntry {
 
@@ -193,8 +211,10 @@ func (toc *TOC) GetDataEntriesMatching(includeSchemas []string, excludeSchemas [
 
 	tableSet := NewIncludeSet([]string{})
 	if len(includeTableFQNs) > 0 {
+		includeTableFQNs = append(includeTableFQNs, getLeafPartitions(includeTableFQNs, toc.DataEntries)...)
 		tableSet = NewIncludeSet(includeTableFQNs)
 	} else if len(excludeTableFQNs) > 0 {
+		excludeTableFQNs = append(excludeTableFQNs, getLeafPartitions(excludeTableFQNs, toc.DataEntries)...)
 		tableSet = NewExcludeSet(excludeTableFQNs)
 	}
 
@@ -206,8 +226,9 @@ func (toc *TOC) GetDataEntriesMatching(includeSchemas []string, excludeSchemas [
 		tableFQN := MakeFQN(entry.Schema, entry.Name)
 
 		validSchema := schemaSet.MatchesFilter(entry.Schema)
-		validTable := restorePlanTableSet.MatchesFilter(tableFQN) && tableSet.MatchesFilter(tableFQN)
-		if validSchema && validTable {
+		validRestorePlan := restorePlanTableSet.MatchesFilter(tableFQN)
+		validTable := tableSet.MatchesFilter(tableFQN)
+		if validRestorePlan && validSchema && validTable {
 			matchingEntries = append(matchingEntries, entry)
 		}
 	}
