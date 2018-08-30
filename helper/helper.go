@@ -157,6 +157,7 @@ func doBackupAgent() {
 		 * finished. We then wait on the gpbackup side until one of those files is
 		 * written to verify the agent completed.
 		 */
+		log("Uploading remaining data to plugin destination")
 		if err := writeCmd.Wait(); err != nil {
 			handle := iohelper.MustOpenFileForWriting(fmt.Sprintf("%s_error", *pipeFile))
 			_ = handle.Close()

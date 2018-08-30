@@ -193,7 +193,7 @@ func (plugin *PluginConfig) CopyPluginConfigToAllHosts(c *cluster.Cluster, confi
 }
 
 func (plugin *PluginConfig) BackupSegmentTOCs(c *cluster.Cluster, fpInfo FilePathInfo) {
-	remoteOutput := c.GenerateAndExecuteCommand("Checking that TOC file exists", func(contentID int) string {
+	remoteOutput := c.GenerateAndExecuteCommand("Waiting for remaining data to be uploaded to plugin destination", func(contentID int) string {
 		tocFile := fpInfo.GetSegmentTOCFilePath(contentID)
 		errorFile := fmt.Sprintf("%s_error", fpInfo.GetSegmentPipeFilePath(contentID))
 		return fmt.Sprintf(`while [[ ! -f "%s" && ! -f "%s" ]]; do sleep 1; done; ls "%s"`, tocFile, errorFile, tocFile)
