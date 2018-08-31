@@ -690,18 +690,17 @@ func GetUserMappings(connection *dbconn.DBConn) []UserMapping {
 	results := make([]UserMapping, 0)
 	query := fmt.Sprintf(`
 SELECT
-	um.oid,
-	CASE WHEN um.umuser = 0 THEN 'PUBLIC' ELSE pg_get_userbyid(um.umuser) END AS user,
-	fs.srvname AS server,
+	um.umid AS oid,
+	quote_ident(um.usename) AS user,
+	quote_ident(um.srvname) AS server,
 	(
 		array_to_string(ARRAY(SELECT pg_catalog.quote_ident(option_name) || ' ' || pg_catalog.quote_literal(option_value)
 		FROM pg_options_to_table(um.umoptions)
 		ORDER BY option_name), ', ')
 	) AS options
-FROM pg_user_mapping um
-JOIN pg_foreign_server fs
-ON um.umserver = fs.oid
-WHERE %s;`, ExtensionFilterClause("um"))
+FROM pg_user_mappings um
+WHERE um.umid NOT IN (select objid from pg_depend where deptype = 'e')
+ORDER by um.usename;`)
 
 	err := connection.Select(&results, query)
 	gplog.FatalOnError(err)

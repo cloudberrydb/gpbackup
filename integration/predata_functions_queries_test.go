@@ -687,14 +687,34 @@ LANGUAGE SQL`)
 			testhelper.AssertQueryRuns(connection, "CREATE FOREIGN DATA WRAPPER foreigndatawrapper")
 			defer testhelper.AssertQueryRuns(connection, "DROP FOREIGN DATA WRAPPER foreigndatawrapper CASCADE")
 			testhelper.AssertQueryRuns(connection, "CREATE SERVER foreignserver FOREIGN DATA WRAPPER foreigndatawrapper")
-			testhelper.AssertQueryRuns(connection, "CREATE USER MAPPING FOR PUBLIC SERVER foreignserver OPTIONS (dbname 'testdb', host 'localhost')")
+			testhelper.AssertQueryRuns(connection, "CREATE USER MAPPING FOR public SERVER foreignserver OPTIONS (dbname 'testdb', host 'localhost')")
 
-			expectedMapping := backup.UserMapping{Oid: 1, User: "PUBLIC", Server: "foreignserver", Options: "dbname 'testdb', host 'localhost'"}
+			expectedMapping := backup.UserMapping{Oid: 1, User: "public", Server: "foreignserver", Options: "dbname 'testdb', host 'localhost'"}
 
 			resultMappings := backup.GetUserMappings(connection)
 
 			Expect(len(resultMappings)).To(Equal(1))
 			structmatcher.ExpectStructsToMatchExcluding(&expectedMapping, &resultMappings[0], "Oid")
+		})
+		It("returns a slice of user mappings in sorted order", func() {
+			testutils.SkipIfBefore6(connection)
+			testhelper.AssertQueryRuns(connection, "CREATE FOREIGN DATA WRAPPER foreigndatawrapper")
+			defer testhelper.AssertQueryRuns(connection, "DROP FOREIGN DATA WRAPPER foreigndatawrapper CASCADE")
+			testhelper.AssertQueryRuns(connection, "CREATE SERVER foreignserver FOREIGN DATA WRAPPER foreigndatawrapper")
+			testhelper.AssertQueryRuns(connection, "CREATE USER MAPPING FOR testrole SERVER foreignserver")
+			testhelper.AssertQueryRuns(connection, "CREATE USER MAPPING FOR anothertestrole SERVER foreignserver")
+
+			expectedMapping := []backup.UserMapping{
+				{Oid: 1, User: "anothertestrole", Server: "foreignserver"},
+				{Oid: 1, User: "testrole", Server: "foreignserver"},
+			}
+
+			resultMappings := backup.GetUserMappings(connection)
+
+			Expect(len(resultMappings)).To(Equal(2))
+			for idx := range expectedMapping {
+				structmatcher.ExpectStructsToMatchExcluding(&expectedMapping[idx], &resultMappings[idx], "Oid")
+			}
 		})
 	})
 })

@@ -488,12 +488,12 @@ var _ = Describe("backup integration create statement tests", func() {
 			Expect(len(resultMappings)).To(Equal(1))
 			structmatcher.ExpectStructsToMatchExcluding(&userMapping, &resultMappings[0], "Oid")
 		})
-		It("creates a user mapping for PUBLIC", func() {
+		It("creates a user mapping for public", func() {
 			testutils.SkipIfBefore6(connection)
 			testhelper.AssertQueryRuns(connection, "CREATE FOREIGN DATA WRAPPER foreigndatawrapper")
 			defer testhelper.AssertQueryRuns(connection, "DROP FOREIGN DATA WRAPPER foreigndatawrapper CASCADE")
 			testhelper.AssertQueryRuns(connection, "CREATE SERVER server FOREIGN DATA WRAPPER foreigndatawrapper")
-			userMapping := backup.UserMapping{User: "PUBLIC", Server: "server"}
+			userMapping := backup.UserMapping{User: "public", Server: "server"}
 
 			backup.PrintCreateUserMappingStatements(backupfile, toc, []backup.UserMapping{userMapping})
 
