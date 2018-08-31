@@ -66,3 +66,7 @@ required = ["golang.org/x/tools/cmd/goimports", "github.com/onsi/ginkgo/ginkgo"]
 [[constraint]]
   branch = "master"
   name = "github.com/greenplum-db/gp-common-go-libs"
+
+[[constraint]]
+  name = "github.com/sergi/go-diff"
+  version = "1.0.0"

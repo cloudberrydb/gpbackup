@@ -144,6 +144,12 @@
   version = "v0.8.0"
 
 [[projects]]
+  name = "github.com/sergi/go-diff"
+  packages = ["diffmatchpatch"]
+  revision = "1744e2970ca51c86172c8190fadad617561ed6e7"
+  version = "v1.0.0"
+
+[[projects]]
   name = "github.com/spf13/cobra"
   packages = ["."]
   revision = "ef82de70bb3f60c65fb8eebacbb2d122ef517385"
@@ -240,6 +246,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c642cdaa3dc5826721aabd7ae09124f050d33b8fec2d7d533646b03ff2799b9a"
+  inputs-digest = "4b0619e342379b13d6c63a24c35dc728a5a6ecbe7465e24cdd7d11256fc05f1c"
   solver-name = "gps-cdcl"
   solver-version = 1

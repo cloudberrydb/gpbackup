@@ -13,6 +13,7 @@ import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/restore"
 	"github.com/greenplum-db/gpbackup/utils"
+	"github.com/sergi/go-diff/diffmatchpatch"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -243,6 +244,15 @@ func formatContents(slice []string) string {
 	return formatted
 }
 
+func formatDiffs(actual []string, expected []string) string {
+	dmp := diffmatchpatch.New()
+	diffs := ""
+	for idx := range actual {
+		diffs += dmp.DiffPrettyText(dmp.DiffMain(expected[idx], actual[idx], false))
+	}
+	return diffs
+}
+
 func AssertBufferContents(entries []utils.MetadataEntry, buffer *gbytes.Buffer, expected ...string) {
 	if len(entries) == 0 {
 		Fail("TOC is empty")
@@ -253,7 +263,7 @@ func AssertBufferContents(entries []utils.MetadataEntry, buffer *gbytes.Buffer, 
 	}
 	ok := CompareSlicesIgnoringWhitespace(hunks, expected)
 	if !ok {
-		Fail(fmt.Sprintf("Actual TOC entries:\n\n%s\n\ndid not match expected contents (ignoring whitespace):\n\n%s", formatEntries(entries, hunks), formatContents(expected)))
+		Fail(fmt.Sprintf("Actual TOC entries:\n\n%s\n\ndid not match expected contents (ignoring whitespace):\n\n%s \n\nDiff:\n>>%s\x1b[31m<<", formatEntries(entries, hunks), formatContents(expected), formatDiffs(hunks, expected)))
 	}
 }
 
