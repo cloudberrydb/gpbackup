@@ -257,6 +257,11 @@ CREATE AGGREGATE public.agg_prefunc(numeric, numeric) (
 				IdentArgs: "numeric, numeric", TransitionFunction: transitionOid, PreliminaryFunction: prelimOid,
 				FinalFunction: 0, SortOperator: 0, TransitionDataType: "numeric", InitialValue: "0", IsOrdered: false,
 			}
+			if connection.Version.AtLeast("6") {
+				aggregateDef.PreliminaryFunction = 0
+				// FIXME: The below line should be "aggregateDef.CombineFunction = prelimOid" once GPDB6 accepts the prefunc syntax
+				aggregateDef.CombineFunction = 0
+			}
 
 			Expect(len(result)).To(Equal(1))
 			structmatcher.ExpectStructsToMatchExcluding(&result[0], &aggregateDef, "Oid")
@@ -306,6 +311,11 @@ CREATE AGGREGATE testschema.agg_prefunc(numeric, numeric) (
 				IdentArgs: "numeric, numeric", TransitionFunction: transitionOid, PreliminaryFunction: prelimOid,
 				FinalFunction: 0, SortOperator: 0, TransitionDataType: "numeric", InitialValue: "0", IsOrdered: false,
 			}
+			if connection.Version.AtLeast("6") {
+				aggregateDef.PreliminaryFunction = 0
+				// FIXME: The below line should be "aggregateDef.CombineFunction = prelimOid" once GPDB6 accepts the prefunc syntax
+				aggregateDef.CombineFunction = 0
+			}
 			backupCmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 
 			result := backup.GetAggregates(connection)
@@ -336,6 +346,49 @@ CREATE AGGREGATE public.agg_hypo_ord (VARIADIC "any" ORDER BY VARIADIC "any")
 				Schema: "public", Name: "agg_hypo_ord", Arguments: `VARIADIC "any" ORDER BY VARIADIC "any"`,
 				IdentArgs: `VARIADIC "any" ORDER BY VARIADIC "any"`, TransitionFunction: transitionOid, FinalFunction: finalOid,
 				TransitionDataType: "internal", InitValIsNull: true, FinalFuncExtra: true, Hypothetical: true,
+			}
+
+			Expect(len(result)).To(Equal(1))
+			structmatcher.ExpectStructsToMatchExcluding(&result[0], &aggregateDef, "Oid")
+		})
+		It("returns a slice of aggregates with features specific to GPDB6", func() {
+			testutils.SkipIfBefore6(connection)
+			testhelper.AssertQueryRuns(connection, `
+CREATE FUNCTION public.mysfunc_accum(numeric, numeric, numeric)
+   RETURNS numeric
+   AS 'select $1 + $2 + $3'
+   LANGUAGE SQL
+   IMMUTABLE
+   RETURNS NULL ON NULL INPUT;
+`)
+			defer testhelper.AssertQueryRuns(connection, "DROP FUNCTION public.mysfunc_accum(numeric, numeric, numeric)")
+			testhelper.AssertQueryRuns(connection, `
+CREATE FUNCTION public.mycombine_accum(numeric, numeric)
+   RETURNS numeric
+   AS 'select $1 + $2'
+   LANGUAGE SQL
+   IMMUTABLE
+   RETURNS NULL ON NULL INPUT;
+`)
+			defer testhelper.AssertQueryRuns(connection, "DROP FUNCTION public.mycombine_accum(numeric, numeric)")
+			testhelper.AssertQueryRuns(connection, `
+CREATE AGGREGATE public.agg_combinefunc(numeric, numeric) (
+	SFUNC = public.mysfunc_accum,
+	STYPE = numeric,
+	COMBINEFUNC = public.mycombine_accum,
+	INITCOND = 0 );
+`)
+			defer testhelper.AssertQueryRuns(connection, "DROP AGGREGATE public.agg_combinefunc(numeric, numeric)")
+
+			transitionOid := testutils.OidFromObjectName(connection, "public", "mysfunc_accum", backup.TYPE_FUNCTION)
+			combineOid := testutils.OidFromObjectName(connection, "public", "mycombine_accum", backup.TYPE_FUNCTION)
+
+			result := backup.GetAggregates(connection)
+
+			aggregateDef := backup.Aggregate{
+				Schema: "public", Name: "agg_combinefunc", Arguments: "numeric, numeric",
+				IdentArgs: "numeric, numeric", TransitionFunction: transitionOid, CombineFunction: combineOid,
+				FinalFunction: 0, SortOperator: 0, TransitionDataType: "numeric", InitialValue: "0", IsOrdered: false,
 			}
 
 			Expect(len(result)).To(Equal(1))

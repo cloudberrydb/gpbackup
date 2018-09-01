@@ -317,6 +317,15 @@ $_$`)
 	PREFUNC = public.mypfunc
 );`)
 		})
+		It("prints an aggregate with a combine function", func() {
+			aggDefs[0].CombineFunction = 2
+			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefs, funcInfoMap, aggMetadataMap)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
+	SFUNC = public.mysfunc,
+	STYPE = integer,
+	COMBINEFUNC = public.mypfunc
+);`)
+		})
 		It("prints an aggregate with a final function", func() {
 			aggDefs[0].FinalFunction = 3
 			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefs, funcInfoMap, aggMetadataMap)

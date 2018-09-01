@@ -115,6 +115,9 @@ func PrintCreateAggregateStatements(metadataFile *utils.FileWithByteCount, toc *
 		if aggDef.PreliminaryFunction != 0 {
 			metadataFile.MustPrintf(",\n\tPREFUNC = %s", funcInfoMap[aggDef.PreliminaryFunction].QualifiedName)
 		}
+		if aggDef.CombineFunction != 0 {
+			metadataFile.MustPrintf(",\n\tCOMBINEFUNC = %s", funcInfoMap[aggDef.CombineFunction].QualifiedName)
+		}
 		if aggDef.FinalFunction != 0 {
 			metadataFile.MustPrintf(",\n\tFINALFUNC = %s", funcInfoMap[aggDef.FinalFunction].QualifiedName)
 		}
