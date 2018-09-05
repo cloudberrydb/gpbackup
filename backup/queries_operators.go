@@ -184,6 +184,7 @@ type OperatorClassOperator struct {
 	StrategyNumber int
 	Operator       string
 	Recheck        bool
+	OrderByFamily  string
 }
 
 func GetOperatorClassOperators(connection *dbconn.DBConn) map[uint32][]OperatorClassOperator {
@@ -215,9 +216,12 @@ ORDER BY amopstrategy
 SELECT
 	refobjid AS classoid,
 	amopstrategy AS strategynumber,
-	amopopr::pg_catalog.regoperator AS operator
+	amopopr::pg_catalog.regoperator AS operator,
+	coalesce(ns.nspname || '.' || opf.opfname, '') AS orderbyfamily
 FROM pg_catalog.pg_amop ao
 JOIN pg_catalog.pg_depend d ON d.objid = ao.oid
+LEFT JOIN pg_opfamily opf ON opf.oid = ao.amopsortfamily
+LEFT JOIN pg_namespace ns ON ns.oid = opf.opfnamespace
 WHERE refclassid = 'pg_catalog.pg_opclass'::pg_catalog.regclass
 AND classid = 'pg_catalog.pg_amop'::pg_catalog.regclass
 ORDER BY amopstrategy

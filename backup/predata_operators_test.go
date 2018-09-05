@@ -157,6 +157,16 @@ ALTER OPERATOR FAMILY public.testfam USING hash OWNER TO testrole;`)
 	OPERATOR 1 =(uuid,uuid) RECHECK,
 	OPERATOR 2 >(uuid,uuid);`)
 		})
+		It("prints an operator class with an operator and a sort family", func() {
+			operatorClass := backup.OperatorClass{Oid: 0, Schema: "public", Name: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "hash", Type: "uuid", Default: false, StorageType: "-", Operators: nil, Functions: nil}
+			operatorClass.Operators = []backup.OperatorClassOperator{{ClassOid: 0, StrategyNumber: 1, Operator: "=(uuid,uuid)", Recheck: false, OrderByFamily: "schema.family_name"}}
+
+			backup.PrintCreateOperatorClassStatements(backupfile, toc, []backup.OperatorClass{operatorClass}, backup.MetadataMap{})
+
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE OPERATOR CLASS public.testclass
+	FOR TYPE uuid USING hash AS
+	OPERATOR 1 =(uuid,uuid) FOR ORDER BY schema.family_name;`)
+		})
 		It("prints an operator class with a function", func() {
 			operatorClass := backup.OperatorClass{Oid: 0, Schema: "public", Name: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "hash", Type: "uuid", Default: false, StorageType: "-", Operators: nil, Functions: nil}
 			operatorClass.Functions = []backup.OperatorClassFunction{{ClassOid: 0, SupportNumber: 1, FunctionName: "abs(integer)"}}

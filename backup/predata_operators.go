@@ -97,6 +97,9 @@ func PrintCreateOperatorClassStatements(metadataFile *utils.FileWithByteCount, t
 				if operator.Recheck {
 					opStr += " RECHECK"
 				}
+				if operator.OrderByFamily != "" {
+					opStr += fmt.Sprintf(" FOR ORDER BY %s", operator.OrderByFamily)
+				}
 				opClassClauses = append(opClassClauses, opStr)
 			}
 		}

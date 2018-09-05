@@ -225,5 +225,22 @@ var _ = Describe("backup integration tests", func() {
 				structmatcher.ExpectStructsToMatchExcluding(&expected, &results[0], "Oid")
 			}
 		})
+		It("returns a slice of operator classes with an operator with a sort family", func() {
+			testutils.SkipIfBefore6(connection)
+
+			testhelper.AssertQueryRuns(connection, "CREATE OPERATOR FAMILY public.sort_family USING btree")
+			defer testhelper.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.sort_family USING btree")
+			opClassQuery := "CREATE OPERATOR CLASS public.testclass FOR TYPE int USING gist AS OPERATOR 1 = FOR ORDER BY public.sort_family"
+			testhelper.AssertQueryRuns(connection, opClassQuery)
+			defer testhelper.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.testclass USING gist")
+
+			expectedOperators := []backup.OperatorClassOperator{{ClassOid: 0, StrategyNumber: 1, Operator: "=(integer,integer)", Recheck: false, OrderByFamily: "public.sort_family"}}
+			expected := backup.OperatorClass{Oid: 0, Schema: "public", Name: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "gist", Type: "integer", Default: false, StorageType: "-", Operators: expectedOperators, Functions: nil}
+
+			results := backup.GetOperatorClasses(connection)
+
+			Expect(results).To(HaveLen(1))
+			structmatcher.ExpectStructsToMatchExcluding(&expected, &results[0], "Oid", "Operators.ClassOid", "Functions.ClassOid")
+		})
 	})
 })

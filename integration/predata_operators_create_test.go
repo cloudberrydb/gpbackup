@@ -140,6 +140,23 @@ var _ = Describe("backup integration create statement tests", func() {
 			Expect(resultOperatorClasses).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchExcluding(&operatorClass, &resultOperatorClasses[0], "Oid", "Operators.ClassOid", "Functions.ClassOid")
 		})
+		It("creates an operator class with an operator that has a sort family", func() {
+			testutils.SkipIfBefore6(connection)
+			operatorClass := backup.OperatorClass{Oid: 0, Schema: "public", Name: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "gist", Type: "integer", Default: true, StorageType: "-", Operators: nil, Functions: nil}
+			operatorClass.Operators = []backup.OperatorClassOperator{{ClassOid: 0, StrategyNumber: 1, Operator: "=(integer,integer)", Recheck: false, OrderByFamily: "public.sort_family_name"}}
+
+			testhelper.AssertQueryRuns(connection, "CREATE OPERATOR FAMILY public.sort_family_name USING btree")
+			defer testhelper.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.sort_family_name USING btree")
+
+			backup.PrintCreateOperatorClassStatements(backupfile, toc, []backup.OperatorClass{operatorClass}, nil)
+
+			testhelper.AssertQueryRuns(connection, buffer.String())
+			defer testhelper.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.testclass USING gist CASCADE")
+
+			resultOperatorClasses := backup.GetOperatorClasses(connection)
+			Expect(resultOperatorClasses).To(HaveLen(1))
+			structmatcher.ExpectStructsToMatchExcluding(&operatorClass, &resultOperatorClasses[0], "Oid", "Operators.ClassOid", "Functions.ClassOid")
+		})
 		It("creates basic operator class with a comment and owner", func() {
 			operatorClassMetadataMap := testutils.DefaultMetadataMap("OPERATOR CLASS", false, true, true)
 			operatorClassMetadata := operatorClassMetadataMap[1]
