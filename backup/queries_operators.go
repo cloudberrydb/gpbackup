@@ -217,7 +217,7 @@ SELECT
 	refobjid AS classoid,
 	amopstrategy AS strategynumber,
 	amopopr::pg_catalog.regoperator AS operator,
-	coalesce(ns.nspname || '.' || opf.opfname, '') AS orderbyfamily
+	coalesce(quote_ident(ns.nspname) || '.' || quote_ident(opf.opfname), '') AS orderbyfamily
 FROM pg_catalog.pg_amop ao
 JOIN pg_catalog.pg_depend d ON d.objid = ao.oid
 LEFT JOIN pg_opfamily opf ON opf.oid = ao.amopsortfamily
