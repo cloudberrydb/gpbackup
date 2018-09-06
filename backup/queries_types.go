@@ -233,8 +233,10 @@ func getCompositeTypeAttributes(connection *dbconn.DBConn) map[uint32][]Attribut
 	t.oid AS compositetypeoid,
 	quote_ident(a.attname) AS name,
 	pg_catalog.format_type(a.atttypid, a.atttypmod) AS type,
+	coalesce(quote_literal(d.description),'') AS comment
 	FROM pg_type t
 	JOIN pg_attribute a ON t.typrelid = a.attrelid
+	LEFT JOIN pg_description d ON (d.objoid = a.attrelid AND d.classoid = 'pg_class'::regclass AND d.objsubid = a.attnum)
 	WHERE t.typtype = 'c'
 	ORDER BY t.oid, a.attnum;`
 
@@ -246,12 +248,14 @@ func getCompositeTypeAttributes(connection *dbconn.DBConn) map[uint32][]Attribut
 		WHEN at.typcollation <> a.attcollation
 		THEN quote_ident(cn.nspname) || '.' || quote_ident(coll.collname)
 		ELSE ''
-	END AS collation
+	END AS collation,
+	coalesce(quote_literal(d.description),'') AS comment
 	FROM pg_type t
 	JOIN pg_attribute a ON t.typrelid = a.attrelid
 	LEFT JOIN pg_type at ON at.oid = a.atttypid
 	LEFT JOIN pg_collation coll ON a.attcollation = coll.oid
 	LEFT JOIN pg_namespace cn on (coll.collnamespace = cn.oid)
+	LEFT JOIN pg_description d ON (d.objoid = a.attrelid AND d.classoid = 'pg_class'::regclass AND d.objsubid = a.attnum)
 	WHERE t.typtype = 'c'
 	ORDER BY t.oid, a.attnum;`
 

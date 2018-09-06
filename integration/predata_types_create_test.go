@@ -71,13 +71,13 @@ var _ = Describe("backup integration create statement tests", func() {
 			resultTypes := backup.GetCompositeTypes(connection)
 
 			Expect(resultTypes).To(HaveLen(1))
-			structmatcher.ExpectStructsToMatchIncluding(&compositeType, &resultTypes[0], "Type", "Schema", "Name", "Comment", "Owner", "Attributes")
+			structmatcher.ExpectStructsToMatchExcluding(&compositeType, &resultTypes[0], "Oid", "Attributes.CompositeTypeOid", "Category")
 		})
 		It("creates composite types with a collation", func() {
 			testutils.SkipIfBefore6(connection)
 			testhelper.AssertQueryRuns(connection, `CREATE COLLATION public.some_coll (lc_collate = 'POSIX', lc_ctype = 'POSIX');`)
 			defer testhelper.AssertQueryRuns(connection, "DROP COLLATION public.some_coll")
-			compositeType.Attributes = []backup.Attribute{{Name: "att1", Type: "text", Collation: "public.some_coll"}, {Name: "att2", Type: "integer"}}
+			compositeType.Attributes[0].Collation = "public.some_coll"
 			backup.PrintCreateCompositeTypeStatement(backupfile, toc, compositeType, typeMetadata)
 
 			testhelper.AssertQueryRuns(connection, buffer.String())
@@ -86,7 +86,19 @@ var _ = Describe("backup integration create statement tests", func() {
 			resultTypes := backup.GetCompositeTypes(connection)
 
 			Expect(resultTypes).To(HaveLen(1))
-			structmatcher.ExpectStructsToMatchIncluding(&compositeType, &resultTypes[0], "Type", "Schema", "Name", "Comment", "Owner", "Attributes")
+			structmatcher.ExpectStructsToMatchExcluding(&compositeType, &resultTypes[0], "Oid", "Attributes.CompositeTypeOid", "Category")
+		})
+		It("creates composite types with attribute comments", func() {
+			compositeType.Attributes[0].Comment = "'comment for att1'"
+			backup.PrintCreateCompositeTypeStatement(backupfile, toc, compositeType, typeMetadata)
+
+			testhelper.AssertQueryRuns(connection, buffer.String())
+			defer testhelper.AssertQueryRuns(connection, "DROP TYPE public.composite_type")
+
+			resultTypes := backup.GetCompositeTypes(connection)
+
+			Expect(resultTypes).To(HaveLen(1))
+			structmatcher.ExpectStructsToMatchExcluding(&compositeType, &resultTypes[0], "Oid", "Attributes.CompositeTypeOid", "Category")
 		})
 
 		It("creates enum types", func() {

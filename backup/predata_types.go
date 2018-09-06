@@ -140,12 +140,21 @@ func PrintCreateCompositeTypeStatement(metadataFile *utils.FileWithByteCount, to
 	}
 
 	start := metadataFile.ByteCount
-	typeFQN := utils.MakeFQN(composite.Schema, composite.Name)
-	metadataFile.MustPrintf("\n\nCREATE TYPE %s AS (\n", typeFQN)
+	metadataFile.MustPrintf("\n\nCREATE TYPE %s AS (\n", composite.FQN())
 	metadataFile.MustPrintln(strings.Join(attributeList, ",\n"))
 	metadataFile.MustPrintf(");")
-	PrintObjectMetadata(metadataFile, typeMetadata, typeFQN, "TYPE")
+	PrintPostCreateCompositeTypeStatement(metadataFile, composite, typeMetadata)
 	toc.AddPredataEntry(composite.Schema, composite.Name, "TYPE", "", start, metadataFile)
+}
+
+func PrintPostCreateCompositeTypeStatement(metadataFile *utils.FileWithByteCount, composite Type, typeMetadata ObjectMetadata) {
+	PrintObjectMetadata(metadataFile, typeMetadata, composite.FQN(), "TYPE")
+
+	for _, att := range composite.Attributes {
+		if att.Comment != "" {
+			metadataFile.MustPrintf("\n\nCOMMENT ON COLUMN %s.%s IS %s;\n", composite.FQN(), att.Name, att.Comment)
+		}
+	}
 }
 
 func PrintCreateEnumTypeStatements(metadataFile *utils.FileWithByteCount, toc *utils.TOC, enums []Type, typeMetadata MetadataMap) {

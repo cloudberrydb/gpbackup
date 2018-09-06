@@ -93,6 +93,16 @@ COMMENT ON TYPE public.composite_type IS 'This is a type comment.';
 
 ALTER TYPE public.composite_type OWNER TO testrole;`)
 		})
+		It("prints a composite type with attribute comment", func() {
+			attWithComment := []backup.Attribute{{Name: "foo", Type: "integer", Comment: "'attribute comment'"}}
+			compType.Attributes = attWithComment
+			backup.PrintCreateCompositeTypeStatement(backupfile, toc, compType, typeMetadata)
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE TYPE public.composite_type AS (
+	foo integer
+);
+
+COMMENT ON COLUMN public.composite_type.foo IS 'attribute comment';`)
+		})
 	})
 	Describe("PrintCreateBaseTypeStatement", func() {
 		baseSimple := backup.Type{Oid: 1, Schema: "public", Name: "base_type", Type: "b", Input: "input_fn", Output: "output_fn", Receive: "", Send: "", ModIn: "", ModOut: "", InternalLength: -1, IsPassedByValue: false, Alignment: "c", Storage: "p", DefaultVal: "", Element: "", Category: "U", Preferred: false, Delimiter: "", EnumLabels: "", BaseType: "", NotNull: false, Attributes: nil, DependsUpon: nil}

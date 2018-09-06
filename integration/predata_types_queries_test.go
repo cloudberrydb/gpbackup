@@ -68,6 +68,17 @@ var _ = Describe("backup integration tests", func() {
 			Expect(results).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchIncluding(&compositeType, &results[0], "Type", "Schema", "Name", "Attributes")
 		})
+		It("returns a slice of composite types with attribute comments", func() {
+			testhelper.AssertQueryRuns(connection, "CREATE TYPE public.composite_type AS (name int4, name2 numeric(8,2), name1 character(8));")
+			defer testhelper.AssertQueryRuns(connection, "DROP TYPE public.composite_type")
+			testhelper.AssertQueryRuns(connection, "COMMENT ON COLUMN public.composite_type.name IS 'name comment';")
+
+			results := backup.GetCompositeTypes(connection)
+
+			Expect(results).To(HaveLen(1))
+			compositeType.Attributes[0].Comment = "'name comment'"
+			structmatcher.ExpectStructsToMatchExcluding(&compositeType, &results[0], "Oid", "Attributes.CompositeTypeOid", "Category")
+		})
 		It("returns a slice of composite types with collations", func() {
 			testutils.SkipIfBefore6(connection)
 			testhelper.AssertQueryRuns(connection, `CREATE COLLATION public.some_coll (lc_collate = 'POSIX', lc_ctype = 'POSIX');`)
