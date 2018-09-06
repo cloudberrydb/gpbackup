@@ -11,7 +11,6 @@ import (
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpbackup/utils"
-	"github.com/lib/pq"
 )
 
 /*
@@ -112,7 +111,7 @@ type Type struct {
 	EnumLabels      string
 	BaseType        string
 	NotNull         bool `db:"typnotnull"`
-	Attributes      pq.StringArray
+	Attributes      []Attribute
 	DependsUpon     []string
 	StorageOptions  string
 	Collatable      bool
@@ -221,31 +220,42 @@ JOIN pg_namespace n ON t.typnamespace = n.oid`
 	return compTypes
 }
 
-type Attributes struct {
-	TypeOid    uint32
-	Attributes pq.StringArray
+type Attribute struct {
+	CompositeTypeOid uint32
+	Name             string
+	Type             string
+	Comment          string
+	Collation        string
 }
 
-func getCompositeTypeAttributes(connection *dbconn.DBConn) map[uint32]pq.StringArray {
-	results := make([]Attributes, 0)
+func getCompositeTypeAttributes(connection *dbconn.DBConn) map[uint32][]Attribute {
 	version4query := `SELECT
-	t.oid AS typeoid,
-	array_agg(E'\t' || quote_ident(a.attname) || ' ' || pg_catalog.format_type(a.atttypid, a.atttypmod) ORDER BY a.attnum) AS attributes
-FROM pg_type t
-JOIN pg_attribute a ON t.typrelid = a.attrelid
-WHERE t.typtype = 'c'
-GROUP BY t.oid`
-	masterQuery := `SELECT
-	t.oid AS typeoid,
-	array_agg(E'\t' || quote_ident(a.attname) || ' ' || pg_catalog.format_type(a.atttypid, a.atttypmod) || CASE WHEN at.typcollation <> a.attcollation THEN ' COLLATE ' || quote_ident(cn.nspname) || '.' || quote_ident(coll.collname) ELSE '' END ORDER BY a.attnum) AS attributes
-FROM pg_type t
-JOIN pg_attribute a ON t.typrelid = a.attrelid
-LEFT JOIN pg_type at ON at.oid = a.atttypid
-LEFT JOIN pg_collation coll ON a.attcollation = coll.oid
-LEFT JOIN pg_namespace cn on (coll.collnamespace = cn.oid)
-WHERE t.typtype = 'c'
-GROUP BY t.oid`
+	t.oid AS compositetypeoid,
+	quote_ident(a.attname) AS name,
+	pg_catalog.format_type(a.atttypid, a.atttypmod) AS type,
+	FROM pg_type t
+	JOIN pg_attribute a ON t.typrelid = a.attrelid
+	WHERE t.typtype = 'c'
+	ORDER BY t.oid, a.attnum;`
 
+	masterQuery := `SELECT
+	t.oid AS compositetypeoid,
+	quote_ident(a.attname) AS name,
+	pg_catalog.format_type(a.atttypid, a.atttypmod) AS type,
+	CASE
+		WHEN at.typcollation <> a.attcollation
+		THEN quote_ident(cn.nspname) || '.' || quote_ident(coll.collname)
+		ELSE ''
+	END AS collation
+	FROM pg_type t
+	JOIN pg_attribute a ON t.typrelid = a.attrelid
+	LEFT JOIN pg_type at ON at.oid = a.atttypid
+	LEFT JOIN pg_collation coll ON a.attcollation = coll.oid
+	LEFT JOIN pg_namespace cn on (coll.collnamespace = cn.oid)
+	WHERE t.typtype = 'c'
+	ORDER BY t.oid, a.attnum;`
+
+	results := make([]Attribute, 0)
 	var err error
 	if connection.Version.Before("6") {
 		err = connection.Select(&results, version4query)
@@ -254,9 +264,10 @@ GROUP BY t.oid`
 	}
 	gplog.FatalOnError(err)
 
-	attributeMap := make(map[uint32]pq.StringArray, 0)
+	attributeMap := make(map[uint32][]Attribute, 0)
+
 	for _, att := range results {
-		attributeMap[att.TypeOid] = att.Attributes
+		attributeMap[att.CompositeTypeOid] = append(attributeMap[att.CompositeTypeOid], att)
 	}
 	return attributeMap
 }

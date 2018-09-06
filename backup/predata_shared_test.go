@@ -7,7 +7,6 @@ import (
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/lib/pq"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -508,7 +507,7 @@ ALTER VIEW public.viewname OWNER TO testrole;`)
 				backup.Function{Oid: 1, Schema: "public", Name: "function", FunctionBody: "SELECT $1 + $2",
 					Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "integer", Language: "sql"},
 				backup.Type{Oid: 2, Schema: "public", Name: "base", Type: "b", Input: "typin", Output: "typout", Category: "U"},
-				backup.Type{Oid: 3, Schema: "public", Name: "composite", Type: "c", Attributes: pq.StringArray{"\tfoo integer"}, Category: "U"},
+				backup.Type{Oid: 3, Schema: "public", Name: "composite", Type: "c", Attributes: []backup.Attribute{{Name: "foo", Type: "integer"}}, Category: "U"},
 				backup.Type{Oid: 4, Schema: "public", Name: "domain", Type: "d", BaseType: "numeric", Category: "U"},
 				backup.Relation{Oid: 5, Schema: "public", Name: "relation"},
 				backup.ExternalProtocol{Oid: 6, Name: "ext_protocol", Trusted: true, ReadFunction: 2, WriteFunction: 1, Validator: 0,

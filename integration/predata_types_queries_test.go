@@ -8,7 +8,6 @@ import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
 	"github.com/greenplum-db/gpbackup/utils"
-	"github.com/lib/pq"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -38,7 +37,11 @@ var _ = Describe("backup integration tests", func() {
 			}
 			compositeType = backup.Type{
 				Oid: 1, Type: "c", Schema: "public", Name: "composite_type",
-				Attributes: pq.StringArray{"\tname integer", "\tname2 numeric(8,2)", "\tname1 character(8)"},
+				Attributes: []backup.Attribute{
+					{Name: "name", Type: "integer"},
+					{Name: "name2", Type: "numeric(8,2)"},
+					{Name: "name1", Type: "character(8)"},
+				},
 			}
 			enumType = backup.Type{
 				Oid: 1, Type: "e", Schema: "public", Name: "enum_type", EnumLabels: "'label1',\n\t'label2',\n\t'label3'",
@@ -75,7 +78,11 @@ var _ = Describe("backup integration tests", func() {
 			results := backup.GetCompositeTypes(connection)
 
 			Expect(results).To(HaveLen(1))
-			compositeType.Attributes = pq.StringArray{"\tname integer", "\tname2 numeric(8,2)", "\tname1 character(8) COLLATE public.some_coll"}
+			compositeType.Attributes = []backup.Attribute{
+				{Name: "name", Type: "integer"},
+				{Name: "name2", Type: "numeric(8,2)"},
+				{Name: "name1", Type: "character(8)", Collation: "public.some_coll"},
+			}
 			structmatcher.ExpectStructsToMatchIncluding(&compositeType, &results[0], "Type", "Schema", "Name", "Attributes")
 		})
 		It("returns a slice for a base type with default values", func() {

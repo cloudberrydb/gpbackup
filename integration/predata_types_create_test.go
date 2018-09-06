@@ -5,7 +5,6 @@ import (
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/lib/pq"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -33,7 +32,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				Send: "", ModIn: "", ModOut: "", InternalLength: 4, IsPassedByValue: true, Alignment: "i", Storage: "p",
 				DefaultVal: "default", Element: "text", Category: "U", Preferred: false, Delimiter: ";", StorageOptions: "compresstype=zlib, compresslevel=1, blocksize=32768",
 			}
-			atts := pq.StringArray{"\tatt1 text", "\tatt2 integer"}
+			atts := []backup.Attribute{{Name: "att1", Type: "text"}, {Name: "att2", Type: "integer"}}
 			compositeType = backup.Type{
 				Type: "c", Schema: "public", Name: "composite_type",
 				Attributes: atts, Category: "U",
@@ -78,7 +77,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.SkipIfBefore6(connection)
 			testhelper.AssertQueryRuns(connection, `CREATE COLLATION public.some_coll (lc_collate = 'POSIX', lc_ctype = 'POSIX');`)
 			defer testhelper.AssertQueryRuns(connection, "DROP COLLATION public.some_coll")
-			compositeType.Attributes = pq.StringArray{"\tatt1 text COLLATE public.some_coll", "\tatt2 integer"}
+			compositeType.Attributes = []backup.Attribute{{Name: "att1", Type: "text", Collation: "public.some_coll"}, {Name: "att2", Type: "integer"}}
 			backup.PrintCreateCompositeTypeStatement(backupfile, toc, compositeType, typeMetadata)
 
 			testhelper.AssertQueryRuns(connection, buffer.String())

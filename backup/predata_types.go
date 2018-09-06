@@ -6,6 +6,7 @@ package backup
  */
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/greenplum-db/gpbackup/utils"
@@ -129,10 +130,19 @@ func PrintCreateBaseTypeStatement(metadataFile *utils.FileWithByteCount, toc *ut
 }
 
 func PrintCreateCompositeTypeStatement(metadataFile *utils.FileWithByteCount, toc *utils.TOC, composite Type, typeMetadata ObjectMetadata) {
+	var attributeList []string
+	for _, att := range composite.Attributes {
+		collationStr := ""
+		if att.Collation != "" {
+			collationStr = fmt.Sprintf(" COLLATE %s", att.Collation)
+		}
+		attributeList = append(attributeList, fmt.Sprintf("\t%s %s%s", att.Name, att.Type, collationStr))
+	}
+
 	start := metadataFile.ByteCount
 	typeFQN := utils.MakeFQN(composite.Schema, composite.Name)
 	metadataFile.MustPrintf("\n\nCREATE TYPE %s AS (\n", typeFQN)
-	metadataFile.MustPrintln(strings.Join(composite.Attributes, ",\n"))
+	metadataFile.MustPrintln(strings.Join(attributeList, ",\n"))
 	metadataFile.MustPrintf(");")
 	PrintObjectMetadata(metadataFile, typeMetadata, typeFQN, "TYPE")
 	toc.AddPredataEntry(composite.Schema, composite.Name, "TYPE", "", start, metadataFile)

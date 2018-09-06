@@ -3,7 +3,6 @@ package backup_test
 import (
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/lib/pq"
 
 	. "github.com/onsi/ginkgo"
 )
@@ -48,12 +47,12 @@ ALTER TYPE public.enum_type OWNER TO testrole;`)
 	})
 	Describe("PrintCreateCompositeTypeStatement", func() {
 		var compType backup.Type
-		var oneAtt, oneAttWithCollation, twoAtts pq.StringArray
+		var oneAtt, oneAttWithCollation, twoAtts []backup.Attribute
 		BeforeEach(func() {
 			compType = backup.Type{Oid: 1, Schema: "public", Name: "composite_type", Type: "c", Category: "U"}
-			oneAtt = pq.StringArray{"\tfoo integer"}
-			oneAttWithCollation = pq.StringArray{"\tfoo integer COLLATE public.some_coll"}
-			twoAtts = pq.StringArray{"\tfoo integer", "\tbar text"}
+			oneAtt = []backup.Attribute{{Name: "foo", Type: "integer"}}
+			oneAttWithCollation = []backup.Attribute{{Name: "foo", Type: "integer", Collation: "public.some_coll"}}
+			twoAtts = []backup.Attribute{{Name: "foo", Type: "integer"}, {Name: "bar", Type: "text"}}
 		})
 
 		It("prints a composite type with one attribute", func() {
