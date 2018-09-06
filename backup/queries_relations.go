@@ -46,6 +46,19 @@ func GetAllUserTables(connection *dbconn.DBConn) []Relation {
 	return GetUserTables(connection)
 }
 
+type Relation struct {
+	SchemaOid   uint32
+	Oid         uint32
+	Schema      string
+	Name        string
+	DependsUpon []string // Used for dependency sorting
+	Inherits    []string // Only used for printing INHERITS statement
+}
+
+func (r Relation) FQN() string {
+	return utils.MakeFQN(r.Schema, r.Name)
+}
+
 /*
  * This function also handles exclude table filtering since the way we do
  * it is currently much simpler than the include case.
@@ -496,7 +509,7 @@ func ConstructTableDependencies(connection *dbconn.DBConn, tables []Relation, ta
 		tableNameSet = utils.NewIncludeSet([]string{})
 		tableOidList = make([]string, len(tables))
 		for i, table := range tables {
-			tableNameSet.Add(table.ToString())
+			tableNameSet.Add(table.FQN())
 			tableOidList[i] = fmt.Sprintf("%d", table.Oid)
 		}
 	}
@@ -659,7 +672,7 @@ type View struct {
 	DependsUpon []string
 }
 
-func (v View) ToString() string {
+func (v View) FQN() string {
 	return utils.MakeFQN(v.Schema, v.Name)
 }
 
@@ -721,7 +734,7 @@ func LockTables(connection *dbconn.DBConn, tables []Relation) {
 	progressBar := utils.NewProgressBar(len(tables), "Locks acquired: ", utils.PB_VERBOSE)
 	progressBar.Start()
 	for _, table := range tables {
-		connection.MustExec(fmt.Sprintf("LOCK TABLE %s IN ACCESS SHARE MODE", table.ToString()))
+		connection.MustExec(fmt.Sprintf("LOCK TABLE %s IN ACCESS SHARE MODE", table.FQN()))
 		progressBar.Increment()
 	}
 	progressBar.Finish()
