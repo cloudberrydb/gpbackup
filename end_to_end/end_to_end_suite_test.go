@@ -586,6 +586,7 @@ var _ = Describe("backup end to end integration tests", func() {
 					})
 				})
 				It("restores from full incremental backup with partition tables with restore table filtering", func() {
+					skipIfOldBackupVersionBefore("1.7.2")
 					testhelper.AssertQueryRuns(backupConn, "INSERT into sales VALUES(19, '2017-02-15'::date, 100)")
 					defer testhelper.AssertQueryRuns(backupConn, "DELETE from sales where id=19")
 					_ = gpbackup(gpbackupPath, backupHelperPath, "--leaf-partition-data")
