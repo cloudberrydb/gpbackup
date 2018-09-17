@@ -105,7 +105,11 @@ func PrintCreateOperatorClassStatements(metadataFile *utils.FileWithByteCount, t
 		}
 		if len(operatorClass.Functions) != 0 {
 			for _, function := range operatorClass.Functions {
-				opClassClauses = append(opClassClauses, fmt.Sprintf("FUNCTION %d %s", function.SupportNumber, function.FunctionName))
+				var typeClause string
+				if (function.LeftType != "") && (function.RightType != "") {
+					typeClause = fmt.Sprintf("(%s, %s) ", function.LeftType, function.RightType)
+				}
+				opClassClauses = append(opClassClauses, fmt.Sprintf("FUNCTION %d %s%s", function.SupportNumber, typeClause, function.FunctionName))
 			}
 		}
 		if operatorClass.StorageType != "-" || len(opClassClauses) == 0 {

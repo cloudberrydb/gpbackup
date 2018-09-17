@@ -183,8 +183,9 @@ var _ = Describe("backup integration tests", func() {
 			}
 
 			expectedOperators := []backup.OperatorClassOperator{{ClassOid: 0, StrategyNumber: 1, Operator: "=(integer,integer)", Recheck: expectedRecheck}, {ClassOid: 0, StrategyNumber: 2, Operator: "<(integer,integer)", Recheck: false}}
-			expectedFunctions := []backup.OperatorClassFunction{{ClassOid: 0, SupportNumber: 1, FunctionName: "abs(integer)"}, {ClassOid: 0, SupportNumber: 2, FunctionName: "int4out(integer)"}}
-			version4expected := backup.OperatorClass{Oid: 0, Schema: "public", Name: "testclass", FamilySchema: "", FamilyName: "", IndexMethod: "gist", Type: "integer", Default: false, StorageType: "-", Operators: expectedOperators, Functions: expectedFunctions}
+			expected4Functions := []backup.OperatorClassFunction{{ClassOid: 0, SupportNumber: 1, FunctionName: "abs(integer)"}, {ClassOid: 0, SupportNumber: 2, FunctionName: "int4out(integer)"}}
+			expectedFunctions := []backup.OperatorClassFunction{{ClassOid: 0, SupportNumber: 1, LeftType: "integer", RightType: "integer", FunctionName: "abs(integer)"}, {ClassOid: 0, SupportNumber: 2, LeftType: "integer", RightType: "integer", FunctionName: "int4out(integer)"}}
+			version4expected := backup.OperatorClass{Oid: 0, Schema: "public", Name: "testclass", FamilySchema: "", FamilyName: "", IndexMethod: "gist", Type: "integer", Default: false, StorageType: "-", Operators: expectedOperators, Functions: expected4Functions}
 			expected := backup.OperatorClass{Oid: 0, Schema: "public", Name: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "gist", Type: "integer", Default: false, StorageType: "-", Operators: expectedOperators, Functions: expectedFunctions}
 
 			results := backup.GetOperatorClasses(connection)

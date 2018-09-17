@@ -177,5 +177,15 @@ ALTER OPERATOR FAMILY public.testfam USING hash OWNER TO testrole;`)
 	FOR TYPE uuid USING hash AS
 	FUNCTION 1 abs(integer);`)
 		})
+		It("prints an operator class with a function that has left- and righttype", func() {
+			operatorClass := backup.OperatorClass{Oid: 0, Schema: "public", Name: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "hash", Type: "uuid", Default: false, StorageType: "-", Operators: nil, Functions: nil}
+			operatorClass.Functions = []backup.OperatorClassFunction{{ClassOid: 0, SupportNumber: 1, RightType: "text", LeftType: "text", FunctionName: "abs(integer)"}}
+
+			backup.PrintCreateOperatorClassStatements(backupfile, toc, []backup.OperatorClass{operatorClass}, backup.MetadataMap{})
+
+			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE OPERATOR CLASS public.testclass
+	FOR TYPE uuid USING hash AS
+	FUNCTION 1 (text, text) abs(integer);`)
+		})
 	})
 })

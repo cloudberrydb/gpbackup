@@ -118,9 +118,12 @@ var _ = Describe("backup integration create statement tests", func() {
 		It("creates complex operator class", func() {
 			testutils.SkipIfBefore5(connection)
 			operatorClass := backup.OperatorClass{Oid: 0, Schema: "public", Name: "testclass", FamilySchema: "public", FamilyName: "testfam", IndexMethod: "gist", Type: "integer", Default: true, StorageType: "-", Operators: nil, Functions: nil}
+
+			operatorClass.Functions = []backup.OperatorClassFunction{{ClassOid: 0, SupportNumber: 1, RightType: "integer", LeftType: "integer", FunctionName: "abs(integer)"}}
 			if connection.Version.Before("5") { // Operator families do not exist prior to GPDB5
 				operatorClass.FamilySchema = ""
 				operatorClass.FamilyName = ""
+				operatorClass.Functions = []backup.OperatorClassFunction{{ClassOid: 0, SupportNumber: 1, FunctionName: "abs(integer)"}}
 			}
 
 			expectedRecheck := false
@@ -128,7 +131,6 @@ var _ = Describe("backup integration create statement tests", func() {
 				expectedRecheck = true
 			}
 			operatorClass.Operators = []backup.OperatorClassOperator{{ClassOid: 0, StrategyNumber: 1, Operator: "=(integer,integer)", Recheck: expectedRecheck}}
-			operatorClass.Functions = []backup.OperatorClassFunction{{ClassOid: 0, SupportNumber: 1, FunctionName: "abs(integer)"}}
 
 			testhelper.AssertQueryRuns(connection, "CREATE OPERATOR FAMILY public.testfam USING gist")
 			defer testhelper.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.testfam USING gist CASCADE")

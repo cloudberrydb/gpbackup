@@ -247,6 +247,8 @@ type OperatorClassFunction struct {
 	ClassOid      uint32
 	SupportNumber int
 	FunctionName  string
+	LeftType      string `db:"amproclefttype"`
+	RightType     string `db:"amprocrighttype"`
 }
 
 func GetOperatorClassFunctions(connection *dbconn.DBConn) map[uint32][]OperatorClassFunction {
@@ -264,6 +266,8 @@ ORDER BY amprocnum
 SELECT
 	refobjid AS classoid,
 	amprocnum AS supportnumber,
+	amproclefttype::regtype,
+	amprocrighttype::regtype,
 	amproc::regprocedure::text AS functionname
 FROM pg_catalog.pg_amproc ap
 JOIN pg_catalog.pg_depend d ON d.objid = ap.oid
