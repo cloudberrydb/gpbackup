@@ -178,6 +178,7 @@ var _ = Describe("backup integration tests", func() {
 			Expect(results).To(BeEmpty())
 		})
 		It("does not return types for foreign tables", func() {
+			testutils.SkipIfBefore6(connection)
 			testhelper.AssertQueryRuns(connection, "CREATE FOREIGN DATA WRAPPER foreignwrapper")
 			defer testhelper.AssertQueryRuns(connection, "DROP FOREIGN DATA WRAPPER foreignwrapper")
 			testhelper.AssertQueryRuns(connection, "CREATE SERVER foreignserver FOREIGN DATA WRAPPER foreignwrapper")
