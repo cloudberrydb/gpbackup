@@ -342,8 +342,16 @@ SET SUBPARTITION TEMPLATE  ` + `
 		})
 	})
 	Describe("PrintCreateViewStatements", func() {
+		var viewDef string
+		BeforeEach(func() {
+			if connection.Version.Before("6") {
+				viewDef = "SELECT 1;"
+			} else {
+				viewDef = " SELECT 1;"
+			}
+		})
 		It("creates a view with privileges and a comment (can't specify owner in GPDB5)", func() {
-			viewDef := backup.View{Oid: 1, Schema: "public", Name: "simpleview", Definition: "SELECT pg_roles.rolname FROM pg_roles;", DependsUpon: nil}
+			viewDef := backup.View{Oid: 1, Schema: "public", Name: "simpleview", Definition: viewDef, DependsUpon: nil}
 			viewMetadataMap := testutils.DefaultMetadataMap("VIEW", true, true, true)
 			viewMetadata := viewMetadataMap[1]
 
@@ -363,7 +371,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 		})
 		It("creates a view with options", func() {
 			testutils.SkipIfBefore6(connection)
-			viewDef := backup.View{Oid: 1, Schema: "public", Name: "simpleview", Options: " WITH (security_barrier=true)", Definition: "SELECT pg_roles.rolname FROM pg_roles;", DependsUpon: nil}
+			viewDef := backup.View{Oid: 1, Schema: "public", Name: "simpleview", Options: " WITH (security_barrier=true)", Definition: viewDef, DependsUpon: nil}
 
 			backup.PrintCreateViewStatements(backupfile, toc, []backup.View{viewDef}, backup.MetadataMap{})
 

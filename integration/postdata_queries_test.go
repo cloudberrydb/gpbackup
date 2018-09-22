@@ -178,6 +178,19 @@ PARTITION BY RANGE (date)
 		})
 	})
 	Describe("GetRules", func() {
+		var (
+			ruleDef1 string
+			ruleDef2 string
+		)
+		BeforeEach(func() {
+			if connection.Version.Before("6") {
+				ruleDef1 = "CREATE RULE double_insert AS ON INSERT TO public.rule_table1 DO INSERT INTO public.rule_table1 (i) VALUES (1);"
+				ruleDef2 = "CREATE RULE update_notify AS ON UPDATE TO public.rule_table1 DO NOTIFY rule_table1;"
+			} else {
+				ruleDef1 = "CREATE RULE double_insert AS\n    ON INSERT TO public.rule_table1 DO  INSERT INTO public.rule_table1 (i) \n  VALUES (1);"
+				ruleDef2 = "CREATE RULE update_notify AS\n    ON UPDATE TO public.rule_table1 DO \n NOTIFY rule_table1;"
+			}
+		})
 		It("returns no slice when no rule exists", func() {
 			results := backup.GetRules(connection)
 
@@ -188,14 +201,14 @@ PARTITION BY RANGE (date)
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.rule_table1")
 			testhelper.AssertQueryRuns(connection, "CREATE TABLE public.rule_table2(i int)")
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.rule_table2")
-			testhelper.AssertQueryRuns(connection, "CREATE RULE double_insert AS ON INSERT TO public.rule_table1 DO INSERT INTO public.rule_table2 (i) VALUES (1)")
+			testhelper.AssertQueryRuns(connection, "CREATE RULE double_insert AS ON INSERT TO public.rule_table1 DO INSERT INTO public.rule_table1 (i) VALUES (1)")
 			defer testhelper.AssertQueryRuns(connection, "DROP RULE double_insert ON public.rule_table1")
 			testhelper.AssertQueryRuns(connection, "CREATE RULE update_notify AS ON UPDATE TO public.rule_table1 DO NOTIFY rule_table1")
 			defer testhelper.AssertQueryRuns(connection, "DROP RULE update_notify ON public.rule_table1")
 			testhelper.AssertQueryRuns(connection, "COMMENT ON RULE update_notify ON public.rule_table1 IS 'This is a rule comment.'")
 
-			rule1 := backup.QuerySimpleDefinition{Oid: 0, Name: "double_insert", OwningSchema: "public", OwningTable: "rule_table1", Def: "CREATE RULE double_insert AS ON INSERT TO public.rule_table1 DO INSERT INTO public.rule_table2 (i) VALUES (1);"}
-			rule2 := backup.QuerySimpleDefinition{Oid: 1, Name: "update_notify", OwningSchema: "public", OwningTable: "rule_table1", Def: "CREATE RULE update_notify AS ON UPDATE TO public.rule_table1 DO NOTIFY rule_table1;"}
+			rule1 := backup.QuerySimpleDefinition{Oid: 0, Name: "double_insert", OwningSchema: "public", OwningTable: "rule_table1", Def: ruleDef1}
+			rule2 := backup.QuerySimpleDefinition{Oid: 1, Name: "update_notify", OwningSchema: "public", OwningTable: "rule_table1", Def: ruleDef2}
 
 			results := backup.GetRules(connection)
 
@@ -214,9 +227,9 @@ PARTITION BY RANGE (date)
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE testschema.rule_table1")
 			testhelper.AssertQueryRuns(connection, "CREATE RULE double_insert AS ON INSERT TO testschema.rule_table1 DO INSERT INTO testschema.rule_table1 (i) VALUES (1)")
 			defer testhelper.AssertQueryRuns(connection, "DROP RULE double_insert ON testschema.rule_table1")
-			backupCmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
+			backupCmdFlags.Set(utils.INCLUDE_SCHEMA, "public")
 
-			rule1 := backup.QuerySimpleDefinition{Oid: 0, Name: "double_insert", OwningSchema: "testschema", OwningTable: "rule_table1", Def: "CREATE RULE double_insert AS ON INSERT TO testschema.rule_table1 DO INSERT INTO testschema.rule_table1 (i) VALUES (1);"}
+			rule1 := backup.QuerySimpleDefinition{Oid: 0, Name: "double_insert", OwningSchema: "public", OwningTable: "rule_table1", Def: ruleDef1}
 
 			results := backup.GetRules(connection)
 
@@ -234,9 +247,9 @@ PARTITION BY RANGE (date)
 			defer testhelper.AssertQueryRuns(connection, "DROP TABLE testschema.rule_table1")
 			testhelper.AssertQueryRuns(connection, "CREATE RULE double_insert AS ON INSERT TO testschema.rule_table1 DO INSERT INTO testschema.rule_table1 (i) VALUES (1)")
 			defer testhelper.AssertQueryRuns(connection, "DROP RULE double_insert ON testschema.rule_table1")
-			backupCmdFlags.Set(utils.INCLUDE_RELATION, "testschema.rule_table1")
+			backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.rule_table1")
 
-			rule1 := backup.QuerySimpleDefinition{Oid: 0, Name: "double_insert", OwningSchema: "testschema", OwningTable: "rule_table1", Def: "CREATE RULE double_insert AS ON INSERT TO testschema.rule_table1 DO INSERT INTO testschema.rule_table1 (i) VALUES (1);"}
+			rule1 := backup.QuerySimpleDefinition{Oid: 0, Name: "double_insert", OwningSchema: "public", OwningTable: "rule_table1", Def: ruleDef1}
 
 			results := backup.GetRules(connection)
 

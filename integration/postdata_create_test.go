@@ -93,12 +93,18 @@ var _ = Describe("backup integration create statement tests", func() {
 	Describe("PrintCreateRuleStatements", func() {
 		var (
 			ruleMetadataMap backup.MetadataMap
+			ruleDef         string
 		)
 		BeforeEach(func() {
 			ruleMetadataMap = backup.MetadataMap{}
+			if connection.Version.Before("6") {
+				ruleDef = "CREATE RULE update_notify AS ON UPDATE TO public.testtable DO NOTIFY testtable;"
+			} else {
+				ruleDef = "CREATE RULE update_notify AS\n    ON UPDATE TO public.testtable DO \n NOTIFY testtable;"
+			}
 		})
 		It("creates a basic rule", func() {
-			rules := []backup.QuerySimpleDefinition{{Oid: 0, Name: "update_notify", OwningSchema: "public", OwningTable: "testtable", Def: "CREATE RULE update_notify AS ON UPDATE TO public.testtable DO NOTIFY testtable;"}}
+			rules := []backup.QuerySimpleDefinition{{Oid: 0, Name: "update_notify", OwningSchema: "public", OwningTable: "testtable", Def: ruleDef}}
 			backup.PrintCreateRuleStatements(backupfile, toc, rules, ruleMetadataMap)
 
 			testhelper.AssertQueryRuns(connection, "CREATE TABLE public.testtable(i int)")
@@ -111,7 +117,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			structmatcher.ExpectStructsToMatchExcluding(&resultRules[0], &rules[0], "Oid")
 		})
 		It("creates a rule with a comment", func() {
-			rules := []backup.QuerySimpleDefinition{{Oid: 1, Name: "update_notify", OwningSchema: "public", OwningTable: "testtable", Def: "CREATE RULE update_notify AS ON UPDATE TO public.testtable DO NOTIFY testtable;"}}
+			rules := []backup.QuerySimpleDefinition{{Oid: 1, Name: "update_notify", OwningSchema: "public", OwningTable: "testtable", Def: ruleDef}}
 			ruleMetadataMap = testutils.DefaultMetadataMap("RULE", false, false, true)
 			ruleMetadata := ruleMetadataMap[1]
 			backup.PrintCreateRuleStatements(backupfile, toc, rules, ruleMetadataMap)

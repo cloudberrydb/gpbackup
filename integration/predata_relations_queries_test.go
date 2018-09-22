@@ -1084,41 +1084,49 @@ SET SUBPARTITION TEMPLATE
 		})
 	})
 	Describe("GetViews", func() {
+		var viewDef string
+		BeforeEach(func() {
+			if connection.Version.Before("6") {
+				viewDef = "SELECT 1;"
+			} else {
+				viewDef = " SELECT 1;"
+			}
+		})
 		It("returns a slice for a basic view", func() {
-			testhelper.AssertQueryRuns(connection, "CREATE VIEW public.simpleview AS SELECT rolname FROM pg_roles")
+			testhelper.AssertQueryRuns(connection, "CREATE VIEW public.simpleview AS SELECT 1")
 			defer testhelper.AssertQueryRuns(connection, "DROP VIEW public.simpleview")
 
 			results := backup.GetViews(connection)
 
-			viewDef := backup.View{Oid: 1, Schema: "public", Name: "simpleview", Definition: "SELECT pg_roles.rolname FROM pg_roles;", DependsUpon: nil}
+			viewDef := backup.View{Oid: 1, Schema: "public", Name: "simpleview", Definition: viewDef, DependsUpon: nil}
 
 			Expect(results).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchExcluding(&viewDef, &results[0], "Oid")
 		})
 		It("returns a slice for view in a specific schema", func() {
-			testhelper.AssertQueryRuns(connection, "CREATE VIEW public.simpleview AS SELECT rolname FROM pg_roles")
+			testhelper.AssertQueryRuns(connection, "CREATE VIEW public.simpleview AS SELECT 1")
 			defer testhelper.AssertQueryRuns(connection, "DROP VIEW public.simpleview")
 			testhelper.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
 			defer testhelper.AssertQueryRuns(connection, "DROP SCHEMA testschema")
-			testhelper.AssertQueryRuns(connection, "CREATE VIEW testschema.simpleview AS SELECT rolname FROM pg_roles")
+			testhelper.AssertQueryRuns(connection, "CREATE VIEW testschema.simpleview AS SELECT 1")
 			defer testhelper.AssertQueryRuns(connection, "DROP VIEW testschema.simpleview")
 			backupCmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 
 			results := backup.GetViews(connection)
 
-			viewDef := backup.View{Oid: 1, Schema: "testschema", Name: "simpleview", Definition: "SELECT pg_roles.rolname FROM pg_roles;", DependsUpon: nil}
+			viewDef := backup.View{Oid: 1, Schema: "testschema", Name: "simpleview", Definition: viewDef, DependsUpon: nil}
 
 			Expect(results).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchExcluding(&viewDef, &results[0], "Oid")
 		})
 		It("returns a slice for a view with options", func() {
 			testutils.SkipIfBefore6(connection)
-			testhelper.AssertQueryRuns(connection, "CREATE VIEW public.simpleview WITH (security_barrier=true) AS SELECT rolname FROM pg_roles")
+			testhelper.AssertQueryRuns(connection, "CREATE VIEW public.simpleview WITH (security_barrier=true) AS SELECT 1")
 			defer testhelper.AssertQueryRuns(connection, "DROP VIEW public.simpleview")
 
 			results := backup.GetViews(connection)
 
-			viewDef := backup.View{Oid: 1, Schema: "public", Name: "simpleview", Definition: "SELECT pg_roles.rolname FROM pg_roles;", DependsUpon: nil, Options: " WITH (security_barrier=true)"}
+			viewDef := backup.View{Oid: 1, Schema: "public", Name: "simpleview", Definition: viewDef, DependsUpon: nil, Options: " WITH (security_barrier=true)"}
 
 			Expect(results).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchExcluding(&viewDef, &results[0], "Oid")
