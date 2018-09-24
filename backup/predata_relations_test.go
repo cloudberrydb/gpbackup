@@ -559,7 +559,7 @@ ALTER TABLE public.tablename OWNER TO testrole;`)
 		It("prints owner, comment, and ACL statements for foreign table", func() {
 			col := []backup.ColumnDefinition{rowOne}
 			tableDef.ColumnDefs = col
-			tableDef.ForeignDef = backup.ForeignTableDefinition{23, "", "fs"}
+			tableDef.ForeignDef = backup.ForeignTableDefinition{Oid: 23, Options: "", Server: "fs"}
 			tableMetadata := backup.ObjectMetadata{Owner: "testrole", Comment: "This is a table comment.", Privileges: []backup.ACL{testutils.DefaultACLForType("testrole", "FOREIGN TABLE")}}
 			backup.PrintPostCreateTableStatements(backupfile, testTable, tableDef, tableMetadata)
 			testhelper.ExpectRegexp(buffer, `

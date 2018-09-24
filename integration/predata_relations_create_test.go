@@ -251,7 +251,7 @@ SET SUBPARTITION TEMPLATE  ` + `
 			tableDef = backup.TableDefinition{DistPolicy: "", ExtTableDef: extTableEmpty, Inherits: []string{}}
 			rowOne := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", NotNull: false, HasDefault: false, Type: "integer", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: emptyACL, FdwOptions: "option1 'value1', option2 'value2'"}
 			tableDef.ColumnDefs = []backup.ColumnDefinition{rowOne}
-			tableDef.ForeignDef = backup.ForeignTableDefinition{0, "", "sc"}
+			tableDef.ForeignDef = backup.ForeignTableDefinition{Oid: 0, Options: "", Server: "sc"}
 			backup.PrintRegularTableCreateStatement(backupfile, toc, testTable, tableDef)
 
 			testhelper.AssertQueryRuns(connection, buffer.String())
@@ -329,10 +329,10 @@ SET SUBPARTITION TEMPLATE  ` + `
 			}
 		})
 		It("creates a view with privileges and a comment and owner", func() {
-			viewDef := backup.View{Oid: 1, Schema: "public", Name: "simpleview", Definition: viewDef}
+			view := backup.View{Oid: 1, Schema: "public", Name: "simpleview", Definition: viewDef}
 			viewMetadata := testutils.DefaultMetadataMap("VIEW", true, true, true)[1]
 
-			backup.PrintCreateViewStatement(backupfile, toc, viewDef, viewMetadata)
+			backup.PrintCreateViewStatement(backupfile, toc, view, viewMetadata)
 
 			testhelper.AssertQueryRuns(connection, buffer.String())
 			defer testhelper.AssertQueryRuns(connection, "DROP VIEW public.simpleview")
@@ -340,26 +340,26 @@ SET SUBPARTITION TEMPLATE  ` + `
 			resultViews := backup.GetViews(connection)
 			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_RELATION)
 
-			viewDef.Oid = testutils.OidFromObjectName(connection, "public", "simpleview", backup.TYPE_RELATION)
+			view.Oid = testutils.OidFromObjectName(connection, "public", "simpleview", backup.TYPE_RELATION)
 			Expect(resultViews).To(HaveLen(1))
-			resultMetadata := resultMetadataMap[viewDef.Oid]
-			structmatcher.ExpectStructsToMatch(&viewDef, &resultViews[0])
+			resultMetadata := resultMetadataMap[view.Oid]
+			structmatcher.ExpectStructsToMatch(&view, &resultViews[0])
 			structmatcher.ExpectStructsToMatch(&viewMetadata, &resultMetadata)
 		})
 		It("creates a view with options", func() {
 			testutils.SkipIfBefore6(connection)
-			viewDef := backup.View{Oid: 1, Schema: "public", Name: "simpleview", Options: " WITH (security_barrier=true)", Definition: viewDef}
+			view := backup.View{Oid: 1, Schema: "public", Name: "simpleview", Options: " WITH (security_barrier=true)", Definition: viewDef}
 
-			backup.PrintCreateViewStatement(backupfile, toc, viewDef, backup.ObjectMetadata{})
+			backup.PrintCreateViewStatement(backupfile, toc, view, backup.ObjectMetadata{})
 
 			testhelper.AssertQueryRuns(connection, buffer.String())
 			defer testhelper.AssertQueryRuns(connection, "DROP VIEW public.simpleview")
 
 			resultViews := backup.GetViews(connection)
 
-			viewDef.Oid = testutils.OidFromObjectName(connection, "public", "simpleview", backup.TYPE_RELATION)
+			view.Oid = testutils.OidFromObjectName(connection, "public", "simpleview", backup.TYPE_RELATION)
 			Expect(resultViews).To(HaveLen(1))
-			structmatcher.ExpectStructsToMatch(&viewDef, &resultViews[0])
+			structmatcher.ExpectStructsToMatch(&view, &resultViews[0])
 		})
 	})
 	Describe("PrintCreateSequenceStatements", func() {

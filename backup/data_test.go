@@ -57,7 +57,8 @@ var _ bool = Describe("backup/data tests", func() {
 		})
 		It("does not add an entry for a foreign table to the TOC", func() {
 			columnDefs := []backup.ColumnDefinition{{Oid: 1, Name: "a"}}
-			tableDefs := map[uint32]backup.TableDefinition{1: {ColumnDefs: columnDefs, ForeignDef: backup.ForeignTableDefinition{23, "", "fs"}}}
+			foreignDef := backup.ForeignTableDefinition{Oid: 23, Options: "", Server: "fs"}
+			tableDefs := map[uint32]backup.TableDefinition{1: {ColumnDefs: columnDefs, ForeignDef: foreignDef}}
 			tables := []backup.Relation{{Oid: 1, Schema: "public", Name: "table"}}
 			backup.AddTableDataEntriesToTOC(tables, tableDefs, rowsCopiedMaps)
 			Expect(toc.DataEntries).To(BeNil())
@@ -166,7 +167,7 @@ var _ bool = Describe("backup/data tests", func() {
 		})
 		It("backs up a single foreign table", func() {
 			cmdFlags.Set(utils.LEAF_PARTITION_DATA, "false")
-			tableDef.ForeignDef = backup.ForeignTableDefinition{23, "", "fs"}
+			tableDef.ForeignDef = backup.ForeignTableDefinition{Oid: 23, Options: "", Server: "fs"}
 			backup.BackupSingleTableData(tableDef, testTable, rowsCopiedMap, &counters, 0)
 
 			Expect(rowsCopiedMap).To(BeEmpty())

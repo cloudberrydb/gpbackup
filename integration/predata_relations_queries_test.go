@@ -1098,10 +1098,10 @@ SET SUBPARTITION TEMPLATE
 
 			results := backup.GetViews(connection)
 
-			viewDef := backup.View{Oid: 1, Schema: "public", Name: "simpleview", Definition: viewDef}
+			view := backup.View{Oid: 1, Schema: "public", Name: "simpleview", Definition: viewDef}
 
 			Expect(results).To(HaveLen(1))
-			structmatcher.ExpectStructsToMatchExcluding(&viewDef, &results[0], "Oid")
+			structmatcher.ExpectStructsToMatchExcluding(&view, &results[0], "Oid")
 		})
 		It("returns a slice for view in a specific schema", func() {
 			testhelper.AssertQueryRuns(connection, "CREATE VIEW public.simpleview AS SELECT 1")
@@ -1114,10 +1114,10 @@ SET SUBPARTITION TEMPLATE
 
 			results := backup.GetViews(connection)
 
-			viewDef := backup.View{Oid: 1, Schema: "testschema", Name: "simpleview", Definition: viewDef}
+			view := backup.View{Oid: 1, Schema: "testschema", Name: "simpleview", Definition: viewDef}
 
 			Expect(results).To(HaveLen(1))
-			structmatcher.ExpectStructsToMatchExcluding(&viewDef, &results[0], "Oid")
+			structmatcher.ExpectStructsToMatchExcluding(&view, &results[0], "Oid")
 		})
 		It("returns a slice for a view with options", func() {
 			testutils.SkipIfBefore6(connection)
@@ -1126,10 +1126,10 @@ SET SUBPARTITION TEMPLATE
 
 			results := backup.GetViews(connection)
 
-			viewDef := backup.View{Oid: 1, Schema: "public", Name: "simpleview", Definition: viewDef, Options: " WITH (security_barrier=true)"}
+			view := backup.View{Oid: 1, Schema: "public", Name: "simpleview", Definition: viewDef, Options: " WITH (security_barrier=true)"}
 
 			Expect(results).To(HaveLen(1))
-			structmatcher.ExpectStructsToMatchExcluding(&viewDef, &results[0], "Oid")
+			structmatcher.ExpectStructsToMatchExcluding(&view, &results[0], "Oid")
 		})
 	})
 	Describe("GetTableInheritance", func() {
