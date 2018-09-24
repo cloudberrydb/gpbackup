@@ -150,27 +150,27 @@ func (td TableDefinition) SkipDataBackup() bool {
  * single table and assembles the metadata into ColumnDef and TableDef structs
  * for more convenient handling in the PrintCreateTableStatement() function.
  */
-func ConstructDefinitionsForTables(connection *dbconn.DBConn, tables []Relation) map[uint32]TableDefinition {
+func ConstructDefinitionsForTables(connectionPool *dbconn.DBConn, tables []Relation) map[uint32]TableDefinition {
 	tableDefinitionMap := make(map[uint32]TableDefinition, 0)
 
 	gplog.Info("Gathering additional table metadata")
 	gplog.Verbose("Retrieving column information")
-	columnMetadata := GetPrivilegesForColumns(connection)
-	columnDefs := GetColumnDefinitions(connection, columnMetadata)
-	distributionPolicies := GetDistributionPolicies(connection)
+	columnMetadata := GetPrivilegesForColumns(connectionPool)
+	columnDefs := GetColumnDefinitions(connectionPool, columnMetadata)
+	distributionPolicies := GetDistributionPolicies(connectionPool)
 	gplog.Verbose("Retrieving partition information")
-	partitionDefs := GetPartitionDefinitions(connection)
-	partTemplateDefs := GetPartitionTemplates(connection)
+	partitionDefs := GetPartitionDefinitions(connectionPool)
+	partTemplateDefs := GetPartitionTemplates(connectionPool)
 	gplog.Verbose("Retrieving storage information")
-	tableStorageOptions := GetTableStorageOptions(connection)
-	tablespaceNames := GetTablespaceNames(connection)
+	tableStorageOptions := GetTableStorageOptions(connectionPool)
+	tablespaceNames := GetTablespaceNames(connectionPool)
 	gplog.Verbose("Retrieving external table information")
-	extTableDefs := GetExternalTableDefinitions(connection)
-	partTableMap := GetPartitionTableMap(connection)
-	tableTypeMap := GetTableType(connection)
-	unloggedTableMap := GetUnloggedTables(connection)
-	foreignTableDefs := GetForeignTableDefinitions(connection)
-	inheritanceMap := GetTableInheritance(connection, tables)
+	extTableDefs := GetExternalTableDefinitions(connectionPool)
+	partTableMap := GetPartitionTableMap(connectionPool)
+	tableTypeMap := GetTableType(connectionPool)
+	unloggedTableMap := GetUnloggedTables(connectionPool)
+	foreignTableDefs := GetForeignTableDefinitions(connectionPool)
+	inheritanceMap := GetTableInheritance(connectionPool, tables)
 
 	gplog.Verbose("Constructing table definition map")
 	for _, table := range tables {
@@ -381,11 +381,11 @@ type Sequence struct {
 	SequenceDefinition
 }
 
-func GetAllSequences(connection *dbconn.DBConn, sequenceOwnerTables map[string]string) []Sequence {
-	sequenceRelations := GetAllSequenceRelations(connection)
+func GetAllSequences(connectionPool *dbconn.DBConn, sequenceOwnerTables map[string]string) []Sequence {
+	sequenceRelations := GetAllSequenceRelations(connectionPool)
 	sequences := make([]Sequence, 0)
 	for _, seqRelation := range sequenceRelations {
-		seqDef := GetSequenceDefinition(connection, seqRelation.FQN())
+		seqDef := GetSequenceDefinition(connectionPool, seqRelation.FQN())
 		seqDef.OwningTable = sequenceOwnerTables[seqRelation.FQN()]
 		sequence := Sequence{seqRelation, seqDef}
 		sequences = append(sequences, sequence)

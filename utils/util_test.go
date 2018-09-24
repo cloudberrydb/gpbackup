@@ -101,26 +101,26 @@ var _ = Describe("utils/util tests", func() {
 	})
 	Describe("ValidateGPDBVersionCompatibility", func() {
 		It("panics if GPDB version is less than 4.3.17", func() {
-			testhelper.SetDBVersion(connection, "4.3.14")
+			testhelper.SetDBVersion(connectionPool, "4.3.14")
 			defer testhelper.ShouldPanicWithMessage("GPDB version 4.3.14 is not supported. Please upgrade to GPDB 4.3.17.0 or later.")
-			utils.ValidateGPDBVersionCompatibility(connection)
+			utils.ValidateGPDBVersionCompatibility(connectionPool)
 		})
 		It("panics if GPDB 5 version is less than 5.1.0", func() {
-			testhelper.SetDBVersion(connection, "5.0.0")
+			testhelper.SetDBVersion(connectionPool, "5.0.0")
 			defer testhelper.ShouldPanicWithMessage("GPDB version 5.0.0 is not supported. Please upgrade to GPDB 5.1.0 or later.")
-			utils.ValidateGPDBVersionCompatibility(connection)
+			utils.ValidateGPDBVersionCompatibility(connectionPool)
 		})
 		It("does not panic if GPDB version is at least 4.3.17", func() {
-			testhelper.SetDBVersion(connection, "4.3.17")
-			utils.ValidateGPDBVersionCompatibility(connection)
+			testhelper.SetDBVersion(connectionPool, "4.3.17")
+			utils.ValidateGPDBVersionCompatibility(connectionPool)
 		})
 		It("does not panic if GPDB version is at least 5.1.0", func() {
-			testhelper.SetDBVersion(connection, "5.1.0")
-			utils.ValidateGPDBVersionCompatibility(connection)
+			testhelper.SetDBVersion(connectionPool, "5.1.0")
+			utils.ValidateGPDBVersionCompatibility(connectionPool)
 		})
 		It("does not panic if GPDB version is at least 6.0.0", func() {
-			testhelper.SetDBVersion(connection, "6.0.0")
-			utils.ValidateGPDBVersionCompatibility(connection)
+			testhelper.SetDBVersion(connectionPool, "6.0.0")
+			utils.ValidateGPDBVersionCompatibility(connectionPool)
 		})
 	})
 })

@@ -28,7 +28,7 @@ func relationAndSchemaFilterClause() string {
 	return filterClause
 }
 
-func GetOidsFromRelationList(connection *dbconn.DBConn, relationNames []string) []string {
+func GetOidsFromRelationList(connectionPool *dbconn.DBConn, relationNames []string) []string {
 	relList := utils.SliceToQuotedString(relationNames)
 	query := fmt.Sprintf(`
 SELECT
@@ -36,14 +36,14 @@ SELECT
 FROM pg_class c
 JOIN pg_namespace n ON c.relnamespace = n.oid
 WHERE quote_ident(n.nspname) || '.' || quote_ident(c.relname) IN (%s)`, relList)
-	return dbconn.MustSelectStringSlice(connection, query)
+	return dbconn.MustSelectStringSlice(connectionPool, query)
 }
 
-func GetAllUserTables(connection *dbconn.DBConn) []Relation {
+func GetAllUserTables(connectionPool *dbconn.DBConn) []Relation {
 	if len(MustGetFlagStringSlice(utils.INCLUDE_RELATION)) > 0 {
-		return GetUserTablesWithIncludeFiltering(connection)
+		return GetUserTablesWithIncludeFiltering(connectionPool)
 	}
-	return GetUserTables(connection)
+	return GetUserTables(connectionPool)
 }
 
 type Relation struct {
@@ -65,7 +65,7 @@ func (r Relation) GetDepEntry() DepEntry {
  * This function also handles exclude table filtering since the way we do
  * it is currently much simpler than the include case.
  */
-func GetUserTables(connection *dbconn.DBConn) []Relation {
+func GetUserTables(connectionPool *dbconn.DBConn) []Relation {
 	childPartitionFilter := ""
 	if !MustGetFlagBool(utils.LEAF_PARTITION_DATA) {
 		//Filter out non-external child partitions
@@ -95,14 +95,14 @@ AND %s
 ORDER BY c.oid;`, relationAndSchemaFilterClause(), childPartitionFilter, ExtensionFilterClause("c"))
 
 	results := make([]Relation, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 
 	return results
 }
 
-func GetUserTablesWithIncludeFiltering(connection *dbconn.DBConn) []Relation {
-	includeOids := GetOidsFromRelationList(connection, MustGetFlagStringSlice(utils.INCLUDE_RELATION))
+func GetUserTablesWithIncludeFiltering(connectionPool *dbconn.DBConn) []Relation {
+	includeOids := GetOidsFromRelationList(connectionPool, MustGetFlagStringSlice(utils.INCLUDE_RELATION))
 	oidStr := strings.Join(includeOids, ", ")
 	childPartitionFilter := ""
 	if MustGetFlagBool(utils.LEAF_PARTITION_DATA) {
@@ -171,12 +171,12 @@ AND %s
 ORDER BY c.oid;`, SchemaFilterClause("n"), oidStr, oidStr, oidStr, childPartitionFilter, ExtensionFilterClause("c"))
 
 	results := make([]Relation, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	return results
 }
 
-func GetForeignTableRelations(connection *dbconn.DBConn) []Relation {
+func GetForeignTableRelations(connectionPool *dbconn.DBConn) []Relation {
 	query := fmt.Sprintf(`
 SELECT
 	n.oid AS schemaoid,
@@ -192,7 +192,7 @@ AND %s
 ORDER BY c.oid;`, relationAndSchemaFilterClause(), ExtensionFilterClause("c"))
 
 	results := make([]Relation, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	return results
 }
@@ -209,7 +209,7 @@ type PartitionLevelInfo struct {
 	RootName string
 }
 
-func GetPartitionTableMap(connection *dbconn.DBConn) map[uint32]PartitionLevelInfo {
+func GetPartitionTableMap(connectionPool *dbconn.DBConn) map[uint32]PartitionLevelInfo {
 	query := `
 SELECT
 	pc.oid AS oid,
@@ -239,7 +239,7 @@ JOIN (
 WHERE r.parchildrelid != 0;
 `
 	results := make([]PartitionLevelInfo, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 
 	resultMap := make(map[uint32]PartitionLevelInfo, 0)
@@ -275,7 +275,7 @@ var storageTypeCodes = map[string]string{
 	"x": "EXTENDED",
 }
 
-func GetColumnDefinitions(connection *dbconn.DBConn, columnMetadata map[uint32]map[string][]ACL) map[uint32][]ColumnDefinition {
+func GetColumnDefinitions(connectionPool *dbconn.DBConn, columnMetadata map[uint32]map[string][]ACL) map[uint32][]ColumnDefinition {
 	// This query is adapted from the getTableAttrs() function in pg_dump.c.
 	results := make([]ColumnDefinition, 0)
 	version4query := fmt.Sprintf(`
@@ -334,17 +334,17 @@ AND a.attisdropped = 'f'
 ORDER BY a.attrelid, a.attnum;`, relationAndSchemaFilterClause())
 
 	var err error
-	if connection.Version.Before("6") {
-		err = connection.Select(&results, version4query)
+	if connectionPool.Version.Before("6") {
+		err = connectionPool.Select(&results, version4query)
 	} else {
-		err = connection.Select(&results, masterQuery)
+		err = connectionPool.Select(&results, masterQuery)
 	}
 
 	gplog.FatalOnError(err)
 	resultMap := make(map[uint32][]ColumnDefinition, 0)
 	for _, result := range results {
 		result.StorageType = storageTypeCodes[result.StorageType]
-		if connection.Version.Before("6") {
+		if connectionPool.Version.Before("6") {
 			result.ACL = []ACL{}
 		} else {
 			result.ACL = columnMetadata[result.Oid][result.Name]
@@ -361,9 +361,9 @@ type ColumnPrivilegesQueryStruct struct {
 	Kind       string
 }
 
-func GetPrivilegesForColumns(connection *dbconn.DBConn) map[uint32]map[string][]ACL {
+func GetPrivilegesForColumns(connectionPool *dbconn.DBConn) map[uint32]map[string][]ACL {
 	metadataMap := make(map[uint32]map[string][]ACL)
-	if connection.Version.Before("6") {
+	if connectionPool.Version.Before("6") {
 		return metadataMap
 	}
 	query := fmt.Sprintf(`
@@ -389,7 +389,7 @@ ORDER BY a.attrelid, a.attname;
 `, relationAndSchemaFilterClause())
 
 	results := make([]ColumnPrivilegesQueryStruct, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	metadataMap = ConstructColumnPrivilegesMap(results)
 
@@ -401,12 +401,12 @@ type DistributionPolicy struct {
 	Policy string
 }
 
-func SelectAsOidToStringMap(connection *dbconn.DBConn, query string) map[uint32]string {
+func SelectAsOidToStringMap(connectionPool *dbconn.DBConn, query string) map[uint32]string {
 	var results []struct {
 		Oid   uint32
 		Value string
 	}
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	resultMap := make(map[uint32]string, 0)
 	for _, result := range results {
@@ -415,11 +415,11 @@ func SelectAsOidToStringMap(connection *dbconn.DBConn, query string) map[uint32]
 	return resultMap
 }
 
-func SelectAsOidToBoolMap(connection *dbconn.DBConn, query string) map[uint32]bool {
+func SelectAsOidToBoolMap(connectionPool *dbconn.DBConn, query string) map[uint32]bool {
 	var results []struct {
 		Oid uint32
 	}
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	resultMap := make(map[uint32]bool, 0)
 	for _, result := range results {
@@ -428,10 +428,10 @@ func SelectAsOidToBoolMap(connection *dbconn.DBConn, query string) map[uint32]bo
 	return resultMap
 }
 
-func GetDistributionPolicies(connection *dbconn.DBConn) map[uint32]string {
+func GetDistributionPolicies(connectionPool *dbconn.DBConn) map[uint32]string {
 	// This query is adapted from the addDistributedBy() function in pg_dump.c.
 	var query string
-	if connection.Version.Before("6") {
+	if connectionPool.Version.Before("6") {
 		query = `
 		SELECT
 			p.localoid as oid,
@@ -476,55 +476,55 @@ func GetDistributionPolicies(connection *dbconn.DBConn) map[uint32]string {
 			GROUP BY localoid, policytype;`
 	}
 
-	resultMap := SelectAsOidToStringMap(connection, query)
+	resultMap := SelectAsOidToStringMap(connectionPool, query)
 
 	return resultMap
 }
 
-func GetTableType(connection *dbconn.DBConn) map[uint32]string {
-	if connection.Version.Before("6") {
+func GetTableType(connectionPool *dbconn.DBConn) map[uint32]string {
+	if connectionPool.Version.Before("6") {
 		return map[uint32]string{}
 	}
 	query := `select oid, reloftype::pg_catalog.regtype AS value from pg_class WHERE reloftype != 0`
-	return SelectAsOidToStringMap(connection, query)
+	return SelectAsOidToStringMap(connectionPool, query)
 }
 
-func GetPartitionDefinitions(connection *dbconn.DBConn) map[uint32]string {
+func GetPartitionDefinitions(connectionPool *dbconn.DBConn) map[uint32]string {
 	query := fmt.Sprintf(`SELECT p.parrelid AS oid, pg_get_partition_def(p.parrelid, true, true) AS value FROM pg_partition p
 	JOIN pg_class c ON p.parrelid = c.oid
 	JOIN pg_namespace n ON c.relnamespace = n.oid
 	WHERE %s`, relationAndSchemaFilterClause())
-	return SelectAsOidToStringMap(connection, query)
+	return SelectAsOidToStringMap(connectionPool, query)
 }
 
-func GetPartitionTemplates(connection *dbconn.DBConn) map[uint32]string {
+func GetPartitionTemplates(connectionPool *dbconn.DBConn) map[uint32]string {
 	query := fmt.Sprintf(`SELECT p.parrelid AS oid, pg_get_partition_template_def(p.parrelid, true, true) AS value FROM pg_partition p
 	JOIN pg_class c ON p.parrelid = c.oid
 	JOIN pg_namespace n ON c.relnamespace = n.oid
 	WHERE %s`, relationAndSchemaFilterClause())
-	return SelectAsOidToStringMap(connection, query)
+	return SelectAsOidToStringMap(connectionPool, query)
 }
 
-func GetTableStorageOptions(connection *dbconn.DBConn) map[uint32]string {
+func GetTableStorageOptions(connectionPool *dbconn.DBConn) map[uint32]string {
 	query := `SELECT oid, array_to_string(reloptions, ', ') AS value FROM pg_class WHERE reloptions IS NOT NULL;`
-	return SelectAsOidToStringMap(connection, query)
+	return SelectAsOidToStringMap(connectionPool, query)
 }
 
-func GetTablespaceNames(connection *dbconn.DBConn) map[uint32]string {
+func GetTablespaceNames(connectionPool *dbconn.DBConn) map[uint32]string {
 	query := `SELECT c.oid, quote_ident(t.spcname) AS value FROM pg_class c JOIN pg_tablespace t ON t.oid = c.reltablespace`
-	return SelectAsOidToStringMap(connection, query)
+	return SelectAsOidToStringMap(connectionPool, query)
 }
 
-func GetUnloggedTables(connection *dbconn.DBConn) map[uint32]bool {
-	if connection.Version.Before("6") {
+func GetUnloggedTables(connectionPool *dbconn.DBConn) map[uint32]bool {
+	if connectionPool.Version.Before("6") {
 		return map[uint32]bool{}
 	}
 	query := `SELECT oid FROM pg_class WHERE relpersistence = 'u'`
-	return SelectAsOidToBoolMap(connection, query)
+	return SelectAsOidToBoolMap(connectionPool, query)
 }
 
-func GetForeignTableDefinitions(connection *dbconn.DBConn) map[uint32]ForeignTableDefinition {
-	if connection.Version.Before("6") {
+func GetForeignTableDefinitions(connectionPool *dbconn.DBConn) map[uint32]ForeignTableDefinition {
+	if connectionPool.Version.Before("6") {
 		return map[uint32]ForeignTableDefinition{}
 	}
 	queryResults := make([]ForeignTableDefinition, 0)
@@ -538,7 +538,7 @@ func GetForeignTableDefinitions(connection *dbconn.DBConn) map[uint32]ForeignTab
               AS ftoptions
 FROM pg_foreign_table ft JOIN pg_foreign_server fs on ft.ftserver = fs.oid;
 `
-	err := connection.Select(&queryResults, query)
+	err := connectionPool.Select(&queryResults, query)
 	gplog.FatalOnError(err)
 
 	resultMap := make(map[uint32]ForeignTableDefinition, len(queryResults))
@@ -554,7 +554,7 @@ type Dependency struct {
 	ReferencedObject string
 }
 
-func GetTableInheritance(connection *dbconn.DBConn, tables []Relation) map[uint32][]string {
+func GetTableInheritance(connectionPool *dbconn.DBConn, tables []Relation) map[uint32][]string {
 	tableFilterStr := ""
 	if len(MustGetFlagStringSlice(utils.INCLUDE_RELATION)) > 0 {
 		tableOidList := make([]string, len(tables))
@@ -579,7 +579,7 @@ ORDER BY i.inhrelid, i.inhseqno`, ExtensionFilterClause("p"), tableFilterStr)
 
 	results := make([]Dependency, 0)
 	inheritanceMap := make(map[uint32][]string, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	for _, dependency := range results {
 		inheritanceMap[dependency.Oid] = append(inheritanceMap[dependency.Oid], dependency.ReferencedObject)
@@ -587,7 +587,7 @@ ORDER BY i.inhrelid, i.inhseqno`, ExtensionFilterClause("p"), tableFilterStr)
 	return inheritanceMap
 }
 
-func GetAllSequenceRelations(connection *dbconn.DBConn) []Relation {
+func GetAllSequenceRelations(connectionPool *dbconn.DBConn) []Relation {
 	query := fmt.Sprintf(`SELECT
 	n.oid AS schemaoid,
 	c.oid AS oid,
@@ -602,7 +602,7 @@ AND %s
 ORDER BY n.nspname, c.relname;`, relationAndSchemaFilterClause(), ExtensionFilterClause("c"))
 
 	results := make([]Relation, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 
 	return results
@@ -622,15 +622,15 @@ type SequenceDefinition struct {
 	OwningTable string
 }
 
-func GetSequenceDefinition(connection *dbconn.DBConn, seqName string) SequenceDefinition {
+func GetSequenceDefinition(connectionPool *dbconn.DBConn, seqName string) SequenceDefinition {
 	query := fmt.Sprintf("SELECT * FROM %s", seqName)
 	result := SequenceDefinition{}
-	err := connection.Get(&result, query)
+	err := connectionPool.Get(&result, query)
 	gplog.FatalOnError(err)
 	return result
 }
 
-func GetSequenceColumnOwnerMap(connection *dbconn.DBConn) (map[string]string, map[string]string) {
+func GetSequenceColumnOwnerMap(connectionPool *dbconn.DBConn) (map[string]string, map[string]string) {
 	query := fmt.Sprintf(`SELECT
 	quote_ident(n.nspname) AS schema,
 	quote_ident(s.relname) AS name,
@@ -656,7 +656,7 @@ AND %s;`, relationAndSchemaFilterClause())
 	}, 0)
 	sequenceOwnerTables := make(map[string]string, 0)
 	sequenceOwnerColumns := make(map[string]string, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	for _, seqOwner := range results {
 		seqFQN := utils.MakeFQN(seqOwner.Schema, seqOwner.Name)
@@ -684,10 +684,10 @@ func (v View) FQN() string {
 	return utils.MakeFQN(v.Schema, v.Name)
 }
 
-func GetViews(connection *dbconn.DBConn) []View {
+func GetViews(connectionPool *dbconn.DBConn) []View {
 	results := make([]View, 0)
 	optionsStr := ""
-	if connection.Version.AtLeast("6") {
+	if connectionPool.Version.AtLeast("6") {
 		optionsStr = "coalesce(' WITH (' || array_to_string(c.reloptions, ', ') || ')', '') AS options,"
 	}
 	query := fmt.Sprintf(`
@@ -702,17 +702,17 @@ LEFT JOIN pg_namespace n ON n.oid = c.relnamespace
 WHERE c.relkind = 'v'::"char"
 AND %s
 AND %s;`, optionsStr, relationAndSchemaFilterClause(), ExtensionFilterClause("c"))
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	return results
 }
 
-func LockTables(connection *dbconn.DBConn, tables []Relation) {
+func LockTables(connectionPool *dbconn.DBConn, tables []Relation) {
 	gplog.Info("Acquiring ACCESS SHARE locks on tables")
 	progressBar := utils.NewProgressBar(len(tables), "Locks acquired: ", utils.PB_VERBOSE)
 	progressBar.Start()
 	for _, table := range tables {
-		connection.MustExec(fmt.Sprintf("LOCK TABLE %s IN ACCESS SHARE MODE", table.FQN()))
+		connectionPool.MustExec(fmt.Sprintf("LOCK TABLE %s IN ACCESS SHARE MODE", table.FQN()))
 		progressBar.Increment()
 	}
 	progressBar.Finish()

@@ -48,10 +48,10 @@ type AttributeStatistic struct {
 	Values5      pq.StringArray `db:"stavalues5"`
 }
 
-func GetAttributeStatistics(connection *dbconn.DBConn, tables []Relation) map[uint32][]AttributeStatistic {
+func GetAttributeStatistics(connectionPool *dbconn.DBConn, tables []Relation) map[uint32][]AttributeStatistic {
 	inheritClause := ""
 	statSlotClause := ""
-	if connection.Version.AtLeast("6") {
+	if connectionPool.Version.AtLeast("6") {
 		inheritClause = "s.stainherit,"
 		statSlotClause = `s.stakind5,
 	s.staop5,
@@ -103,7 +103,7 @@ AND quote_ident(n.nspname) || '.' || quote_ident(c.relname) IN (%s)
 ORDER BY n.nspname, c.relname, a.attnum;`, inheritClause, statSlotClause, SchemaFilterClause("n"), utils.SliceToQuotedString(tablenames))
 
 	results := make([]AttributeStatistic, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	stats := make(map[uint32][]AttributeStatistic, 0)
 	for _, stat := range results {
@@ -120,7 +120,7 @@ type TupleStatistic struct {
 	RelTuples float64
 }
 
-func GetTupleStatistics(connection *dbconn.DBConn, tables []Relation) map[uint32]TupleStatistic {
+func GetTupleStatistics(connectionPool *dbconn.DBConn, tables []Relation) map[uint32]TupleStatistic {
 	tablenames := make([]string, 0)
 	for _, table := range tables {
 		tablenames = append(tablenames, table.FQN())
@@ -139,7 +139,7 @@ AND quote_ident(n.nspname) || '.' || quote_ident(c.relname) IN (%s)
 ORDER BY n.nspname, c.relname;`, SchemaFilterClause("n"), utils.SliceToQuotedString(tablenames))
 
 	results := make([]TupleStatistic, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	stats := make(map[uint32]TupleStatistic, 0)
 	for _, stat := range results {

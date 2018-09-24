@@ -71,7 +71,7 @@ var _ = Describe("backup, utils, and restore integration tests related to parall
 		AfterEach(func() {
 			tempConn.Close()
 			tempConn = nil
-			restore.SetConnection(connection)
+			restore.SetConnection(connectionPool)
 		})
 		Context("no errors", func() {
 			first := "SELECT pg_sleep(0.5); INSERT INTO public.timestamps VALUES (1, now() + '0.5 seconds'::interval);"

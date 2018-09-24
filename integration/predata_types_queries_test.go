@@ -49,42 +49,42 @@ var _ = Describe("backup integration tests", func() {
 			}
 		})
 		It("returns a slice for a shell type", func() {
-			testhelper.AssertQueryRuns(connection, "CREATE TYPE public.shell_type")
-			defer testhelper.AssertQueryRuns(connection, "DROP TYPE public.shell_type")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE TYPE public.shell_type")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TYPE public.shell_type")
 
-			results := backup.GetShellTypes(connection)
+			results := backup.GetShellTypes(connectionPool)
 
 			Expect(results).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchIncluding(&shellType, &results[0], "Schema", "Name", "Type")
 		})
 		It("returns a slice of composite types", func() {
-			testhelper.AssertQueryRuns(connection, "CREATE TYPE public.composite_type AS (name int4, name2 numeric(8,2), name1 character(8));")
-			defer testhelper.AssertQueryRuns(connection, "DROP TYPE public.composite_type")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE TYPE public.composite_type AS (name int4, name2 numeric(8,2), name1 character(8));")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TYPE public.composite_type")
 
-			results := backup.GetCompositeTypes(connection)
+			results := backup.GetCompositeTypes(connectionPool)
 
 			Expect(results).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchIncluding(&compositeType, &results[0], "Type", "Schema", "Name", "Attributes")
 		})
 		It("returns a slice of composite types with attribute comments", func() {
-			testhelper.AssertQueryRuns(connection, "CREATE TYPE public.composite_type AS (name int4, name2 numeric(8,2), name1 character(8));")
-			defer testhelper.AssertQueryRuns(connection, "DROP TYPE public.composite_type")
-			testhelper.AssertQueryRuns(connection, "COMMENT ON COLUMN public.composite_type.name IS 'name comment';")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE TYPE public.composite_type AS (name int4, name2 numeric(8,2), name1 character(8));")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TYPE public.composite_type")
+			testhelper.AssertQueryRuns(connectionPool, "COMMENT ON COLUMN public.composite_type.name IS 'name comment';")
 
-			results := backup.GetCompositeTypes(connection)
+			results := backup.GetCompositeTypes(connectionPool)
 
 			Expect(results).To(HaveLen(1))
 			compositeType.Attributes[0].Comment = "'name comment'"
 			structmatcher.ExpectStructsToMatchExcluding(&compositeType, &results[0], "Oid", "Attributes.CompositeTypeOid", "Category")
 		})
 		It("returns a slice of composite types with collations", func() {
-			testutils.SkipIfBefore6(connection)
-			testhelper.AssertQueryRuns(connection, `CREATE COLLATION public.some_coll (lc_collate = 'POSIX', lc_ctype = 'POSIX');`)
-			defer testhelper.AssertQueryRuns(connection, "DROP COLLATION public.some_coll")
-			testhelper.AssertQueryRuns(connection, "CREATE TYPE public.composite_type AS (name int4, name2 numeric(8,2), name1 character(8) COLLATE public.some_coll);")
-			defer testhelper.AssertQueryRuns(connection, "DROP TYPE public.composite_type")
+			testutils.SkipIfBefore6(connectionPool)
+			testhelper.AssertQueryRuns(connectionPool, `CREATE COLLATION public.some_coll (lc_collate = 'POSIX', lc_ctype = 'POSIX');`)
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP COLLATION public.some_coll")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE TYPE public.composite_type AS (name int4, name2 numeric(8,2), name1 character(8) COLLATE public.some_coll);")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TYPE public.composite_type")
 
-			results := backup.GetCompositeTypes(connection)
+			results := backup.GetCompositeTypes(connectionPool)
 
 			Expect(results).To(HaveLen(1))
 			compositeType.Attributes = []backup.Attribute{
@@ -95,39 +95,39 @@ var _ = Describe("backup integration tests", func() {
 			structmatcher.ExpectStructsToMatchIncluding(&compositeType, &results[0], "Type", "Schema", "Name", "Attributes")
 		})
 		It("returns a slice for a base type with default values", func() {
-			testhelper.AssertQueryRuns(connection, "CREATE TYPE public.base_type")
-			defer testhelper.AssertQueryRuns(connection, "DROP TYPE public.base_type CASCADE")
-			testhelper.AssertQueryRuns(connection, "CREATE FUNCTION public.base_fn_in(cstring) RETURNS public.base_type AS 'boolin' LANGUAGE internal")
-			testhelper.AssertQueryRuns(connection, "CREATE FUNCTION public.base_fn_out(public.base_type) RETURNS cstring AS 'boolout' LANGUAGE internal")
-			testhelper.AssertQueryRuns(connection, "CREATE TYPE public.base_type(INPUT=public.base_fn_in, OUTPUT=public.base_fn_out)")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE TYPE public.base_type")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TYPE public.base_type CASCADE")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE FUNCTION public.base_fn_in(cstring) RETURNS public.base_type AS 'boolin' LANGUAGE internal")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE FUNCTION public.base_fn_out(public.base_type) RETURNS cstring AS 'boolout' LANGUAGE internal")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE TYPE public.base_type(INPUT=public.base_fn_in, OUTPUT=public.base_fn_out)")
 
-			results := backup.GetBaseTypes(connection)
+			results := backup.GetBaseTypes(connectionPool)
 
 			Expect(results).To(HaveLen(1))
-			if connection.Version.Before("5") {
+			if connectionPool.Version.Before("5") {
 				structmatcher.ExpectStructsToMatchExcluding(&baseTypeDefault, &results[0], "Oid", "ModIn", "ModOut")
 			} else {
 				structmatcher.ExpectStructsToMatchExcluding(&baseTypeDefault, &results[0], "Oid")
 			}
 		})
 		It("returns a slice for a base type with custom configuration", func() {
-			testhelper.AssertQueryRuns(connection, "CREATE TYPE public.base_type")
-			defer testhelper.AssertQueryRuns(connection, "DROP TYPE public.base_type CASCADE")
-			testhelper.AssertQueryRuns(connection, "CREATE FUNCTION public.base_fn_in(cstring) RETURNS public.base_type AS 'boolin' LANGUAGE internal")
-			testhelper.AssertQueryRuns(connection, "CREATE FUNCTION public.base_fn_out(public.base_type) RETURNS cstring AS 'boolout' LANGUAGE internal")
-			if connection.Version.Before("6") {
-				testhelper.AssertQueryRuns(connection, "CREATE TYPE public.base_type(INPUT=public.base_fn_in, OUTPUT=public.base_fn_out, INTERNALLENGTH=8, PASSEDBYVALUE, ALIGNMENT=double, STORAGE=plain, DEFAULT=0, ELEMENT=integer, DELIMITER=';')")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE TYPE public.base_type")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TYPE public.base_type CASCADE")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE FUNCTION public.base_fn_in(cstring) RETURNS public.base_type AS 'boolin' LANGUAGE internal")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE FUNCTION public.base_fn_out(public.base_type) RETURNS cstring AS 'boolout' LANGUAGE internal")
+			if connectionPool.Version.Before("6") {
+				testhelper.AssertQueryRuns(connectionPool, "CREATE TYPE public.base_type(INPUT=public.base_fn_in, OUTPUT=public.base_fn_out, INTERNALLENGTH=8, PASSEDBYVALUE, ALIGNMENT=double, STORAGE=plain, DEFAULT=0, ELEMENT=integer, DELIMITER=';')")
 			} else {
-				testhelper.AssertQueryRuns(connection, "CREATE TYPE public.base_type(INPUT=public.base_fn_in, OUTPUT=public.base_fn_out, INTERNALLENGTH=8, PASSEDBYVALUE, ALIGNMENT=double, STORAGE=plain, DEFAULT=0, ELEMENT=integer, DELIMITER=';', CATEGORY='N', PREFERRED=true, COLLATABLE=true)")
+				testhelper.AssertQueryRuns(connectionPool, "CREATE TYPE public.base_type(INPUT=public.base_fn_in, OUTPUT=public.base_fn_out, INTERNALLENGTH=8, PASSEDBYVALUE, ALIGNMENT=double, STORAGE=plain, DEFAULT=0, ELEMENT=integer, DELIMITER=';', CATEGORY='N', PREFERRED=true, COLLATABLE=true)")
 			}
-			testhelper.AssertQueryRuns(connection, "ALTER TYPE public.base_type SET DEFAULT ENCODING (compresstype=zlib)")
+			testhelper.AssertQueryRuns(connectionPool, "ALTER TYPE public.base_type SET DEFAULT ENCODING (compresstype=zlib)")
 
-			results := backup.GetBaseTypes(connection)
+			results := backup.GetBaseTypes(connectionPool)
 
 			Expect(results).To(HaveLen(1))
-			if connection.Version.Before("5") {
+			if connectionPool.Version.Before("5") {
 				structmatcher.ExpectStructsToMatchExcluding(&baseTypeCustom, &results[0], "Oid", "ModIn", "ModOut")
-			} else if connection.Version.Before("6") {
+			} else if connectionPool.Version.Before("6") {
 				structmatcher.ExpectStructsToMatchExcluding(&baseTypeCustom, &results[0], "Oid")
 			} else {
 				baseTypeCustom.Category = "N"
@@ -137,64 +137,64 @@ var _ = Describe("backup integration tests", func() {
 			}
 		})
 		It("returns a slice for an enum type", func() {
-			testutils.SkipIfBefore5(connection)
-			testhelper.AssertQueryRuns(connection, "CREATE TYPE public.enum_type AS ENUM ('label1','label2','label3')")
-			defer testhelper.AssertQueryRuns(connection, "DROP TYPE public.enum_type")
+			testutils.SkipIfBefore5(connectionPool)
+			testhelper.AssertQueryRuns(connectionPool, "CREATE TYPE public.enum_type AS ENUM ('label1','label2','label3')")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TYPE public.enum_type")
 
-			results := backup.GetEnumTypes(connection)
+			results := backup.GetEnumTypes(connectionPool)
 
 			Expect(results).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchExcluding(&enumType, &results[0], "Oid")
 		})
 		It("returns a slice for enum types with labels in the correct order", func() {
-			testutils.SkipIfBefore5(connection)
+			testutils.SkipIfBefore5(connectionPool)
 
-			testhelper.AssertQueryRuns(connection, "CREATE TYPE public.enum_type AS ENUM ('label1','label2','label3')")
-			defer testhelper.AssertQueryRuns(connection, "DROP TYPE public.enum_type")
-			if connection.Version.Before("6") {
-				testhelper.AssertQueryRuns(connection, "CREATE TYPE public.enum_type2 AS ENUM ('label3','label2','label1')")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE TYPE public.enum_type AS ENUM ('label1','label2','label3')")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TYPE public.enum_type")
+			if connectionPool.Version.Before("6") {
+				testhelper.AssertQueryRuns(connectionPool, "CREATE TYPE public.enum_type2 AS ENUM ('label3','label2','label1')")
 			} else {
-				testhelper.AssertQueryRuns(connection, "CREATE TYPE public.enum_type2 AS ENUM ('label3', 'label1')")
-				testhelper.AssertQueryRuns(connection, "ALTER TYPE public.enum_type2 ADD VALUE 'label2' BEFORE 'label1'")
+				testhelper.AssertQueryRuns(connectionPool, "CREATE TYPE public.enum_type2 AS ENUM ('label3', 'label1')")
+				testhelper.AssertQueryRuns(connectionPool, "ALTER TYPE public.enum_type2 ADD VALUE 'label2' BEFORE 'label1'")
 			}
-			defer testhelper.AssertQueryRuns(connection, "DROP TYPE public.enum_type2")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TYPE public.enum_type2")
 
-			results := backup.GetEnumTypes(connection)
+			results := backup.GetEnumTypes(connectionPool)
 
 			Expect(results).To(HaveLen(2))
 			structmatcher.ExpectStructsToMatchExcluding(&enumType, &results[0], "Oid")
 			structmatcher.ExpectStructsToMatchExcluding(&enumType2, &results[1], "Oid")
 		})
 		It("does not return types for sequences or views", func() {
-			testhelper.AssertQueryRuns(connection, "CREATE SEQUENCE public.my_sequence START 10")
-			defer testhelper.AssertQueryRuns(connection, "DROP SEQUENCE public.my_sequence")
-			testhelper.AssertQueryRuns(connection, "CREATE VIEW public.simpleview AS SELECT rolname FROM pg_roles")
-			defer testhelper.AssertQueryRuns(connection, "DROP VIEW public.simpleview")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE SEQUENCE public.my_sequence START 10")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP SEQUENCE public.my_sequence")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE VIEW public.simpleview AS SELECT rolname FROM pg_roles")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP VIEW public.simpleview")
 
-			results := backup.GetCompositeTypes(connection)
+			results := backup.GetCompositeTypes(connectionPool)
 
 			Expect(results).To(BeEmpty())
 		})
 		It("does not return types for foreign tables", func() {
-			testutils.SkipIfBefore6(connection)
-			testhelper.AssertQueryRuns(connection, "CREATE FOREIGN DATA WRAPPER foreignwrapper")
-			defer testhelper.AssertQueryRuns(connection, "DROP FOREIGN DATA WRAPPER foreignwrapper")
-			testhelper.AssertQueryRuns(connection, "CREATE SERVER foreignserver FOREIGN DATA WRAPPER foreignwrapper")
-			defer testhelper.AssertQueryRuns(connection, "DROP SERVER foreignserver")
-			testhelper.AssertQueryRuns(connection, "CREATE FOREIGN TABLE public.ft1 (c1 integer) SERVER foreignserver;")
-			defer testhelper.AssertQueryRuns(connection, "DROP FOREIGN TABLE public.ft1")
+			testutils.SkipIfBefore6(connectionPool)
+			testhelper.AssertQueryRuns(connectionPool, "CREATE FOREIGN DATA WRAPPER foreignwrapper")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP FOREIGN DATA WRAPPER foreignwrapper")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE SERVER foreignserver FOREIGN DATA WRAPPER foreignwrapper")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP SERVER foreignserver")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE FOREIGN TABLE public.ft1 (c1 integer) SERVER foreignserver;")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP FOREIGN TABLE public.ft1")
 
-			results := backup.GetCompositeTypes(connection)
+			results := backup.GetCompositeTypes(connectionPool)
 
 			Expect(results).To(BeEmpty())
 		})
 		It("does not return implicit base or composite types for tables with length > NAMEDATALEN", func() {
-			testhelper.AssertQueryRuns(connection, "CREATE TABLE public.looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong(i int)")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE TABLE public.looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong(i int)")
 			// The table's name will be truncated to 63 characters upon creation, as will the names of its implicit types
-			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo;")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLE public.loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo;")
 
-			bases := backup.GetBaseTypes(connection)
-			composites := backup.GetCompositeTypes(connection)
+			bases := backup.GetBaseTypes(connectionPool)
+			composites := backup.GetCompositeTypes(connectionPool)
 
 			Expect(bases).To(BeEmpty())
 			Expect(composites).To(BeEmpty())
@@ -203,40 +203,40 @@ var _ = Describe("backup integration tests", func() {
 			domainType := backup.Type{
 				Oid: 1, Type: "d", Schema: "public", Name: "domain1", DefaultVal: "'abc'::bpchar", BaseType: "character(8)", NotNull: false,
 			}
-			testhelper.AssertQueryRuns(connection, "CREATE DOMAIN public.domain1 AS character(8) DEFAULT 'abc'")
-			defer testhelper.AssertQueryRuns(connection, "DROP DOMAIN public.domain1")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE DOMAIN public.domain1 AS character(8) DEFAULT 'abc'")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP DOMAIN public.domain1")
 
-			results := backup.GetDomainTypes(connection)
+			results := backup.GetDomainTypes(connectionPool)
 
 			Expect(results).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchIncluding(&domainType, &results[0], "Schema", "Name", "Type", "DefaultVal", "BaseType", "NotNull")
 		})
 		It("returns a slice for a domain type with a collation", func() {
-			testutils.SkipIfBefore6(connection)
+			testutils.SkipIfBefore6(connectionPool)
 			domainType := backup.Type{
 				Oid: 1, Type: "d", Schema: "public", Name: "domain1", DefaultVal: "'abc'::bpchar", BaseType: "character(8)", NotNull: false,
 			}
 			domainType.Collation = "public.some_coll"
-			testhelper.AssertQueryRuns(connection, "CREATE COLLATION public.some_coll (lc_collate = 'POSIX', lc_ctype = 'POSIX')")
-			defer testhelper.AssertQueryRuns(connection, "DROP COLLATION public.some_coll")
-			testhelper.AssertQueryRuns(connection, "CREATE DOMAIN public.domain1 AS character(8) DEFAULT 'abc' COLLATE public.some_coll")
-			defer testhelper.AssertQueryRuns(connection, "DROP DOMAIN public.domain1")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE COLLATION public.some_coll (lc_collate = 'POSIX', lc_ctype = 'POSIX')")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP COLLATION public.some_coll")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE DOMAIN public.domain1 AS character(8) DEFAULT 'abc' COLLATE public.some_coll")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP DOMAIN public.domain1")
 
-			results := backup.GetDomainTypes(connection)
+			results := backup.GetDomainTypes(connectionPool)
 
 			Expect(results).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchIncluding(&domainType, &results[0], "Schema", "Name", "Type", "DefaultVal", "BaseType", "NotNull")
 		})
 		It("returns a slice for a type in a specific schema", func() {
-			testhelper.AssertQueryRuns(connection, "CREATE TYPE public.shell_type")
-			defer testhelper.AssertQueryRuns(connection, "DROP TYPE public.shell_type")
-			testhelper.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
-			defer testhelper.AssertQueryRuns(connection, "DROP SCHEMA testschema")
-			testhelper.AssertQueryRuns(connection, "CREATE TYPE testschema.shell_type")
-			defer testhelper.AssertQueryRuns(connection, "DROP TYPE testschema.shell_type")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE TYPE public.shell_type")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TYPE public.shell_type")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE SCHEMA testschema")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP SCHEMA testschema")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE TYPE testschema.shell_type")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TYPE testschema.shell_type")
 			backupCmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 
-			results := backup.GetShellTypes(connection)
+			results := backup.GetShellTypes(connectionPool)
 			shellTypeOtherSchema := backup.Type{Type: "p", Schema: "testschema", Name: "shell_type"}
 
 			Expect(results).To(HaveLen(1))
@@ -245,11 +245,11 @@ var _ = Describe("backup integration tests", func() {
 	})
 	Describe("GetCollations", func() {
 		It("returns a slice of collations", func() {
-			testutils.SkipIfBefore6(connection)
-			testhelper.AssertQueryRuns(connection, `CREATE COLLATION public.some_coll (lc_collate = 'POSIX', lc_ctype = 'POSIX');`)
-			defer testhelper.AssertQueryRuns(connection, "DROP COLLATION public.some_coll")
+			testutils.SkipIfBefore6(connectionPool)
+			testhelper.AssertQueryRuns(connectionPool, `CREATE COLLATION public.some_coll (lc_collate = 'POSIX', lc_ctype = 'POSIX');`)
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP COLLATION public.some_coll")
 
-			results := backup.GetCollations(connection)
+			results := backup.GetCollations(connectionPool)
 
 			Expect(results).To(HaveLen(1))
 
@@ -258,16 +258,16 @@ var _ = Describe("backup integration tests", func() {
 
 		})
 		It("returns a slice of collations in a specific schema", func() {
-			testutils.SkipIfBefore6(connection)
-			testhelper.AssertQueryRuns(connection, `CREATE COLLATION public.some_coll (lc_collate = 'POSIX', lc_ctype = 'POSIX');`)
-			defer testhelper.AssertQueryRuns(connection, "DROP COLLATION public.some_coll")
-			testhelper.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
-			defer testhelper.AssertQueryRuns(connection, "DROP SCHEMA testschema")
-			testhelper.AssertQueryRuns(connection, `CREATE COLLATION testschema.some_coll (lc_collate = 'POSIX', lc_ctype = 'POSIX');`)
-			defer testhelper.AssertQueryRuns(connection, "DROP COLLATION testschema.some_coll")
+			testutils.SkipIfBefore6(connectionPool)
+			testhelper.AssertQueryRuns(connectionPool, `CREATE COLLATION public.some_coll (lc_collate = 'POSIX', lc_ctype = 'POSIX');`)
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP COLLATION public.some_coll")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE SCHEMA testschema")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP SCHEMA testschema")
+			testhelper.AssertQueryRuns(connectionPool, `CREATE COLLATION testschema.some_coll (lc_collate = 'POSIX', lc_ctype = 'POSIX');`)
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP COLLATION testschema.some_coll")
 			backupCmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 
-			results := backup.GetCollations(connection)
+			results := backup.GetCollations(connectionPool)
 
 			Expect(results).To(HaveLen(1))
 

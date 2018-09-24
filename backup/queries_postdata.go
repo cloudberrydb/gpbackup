@@ -23,7 +23,7 @@ import (
  * to get indexes, but multiple unique indexes can be created on the
  * same column so we only want to filter out the implicit ones.
  */
-func ConstructImplicitIndexNames(connection *dbconn.DBConn) *utils.FilterSet {
+func ConstructImplicitIndexNames(connectionPool *dbconn.DBConn) *utils.FilterSet {
 	query := `
 SELECT DISTINCT
 	n.nspname || '.' || t.relname || '_' || a.attname || '_key' AS string
@@ -40,7 +40,7 @@ WHERE a.attnum > 0
 AND i.indisunique = 't'
 AND i.indisprimary = 'f';
 `
-	indexNames := dbconn.MustSelectStringSlice(connection, query)
+	indexNames := dbconn.MustSelectStringSlice(connectionPool, query)
 	indexNameSet := utils.NewExcludeSet(indexNames)
 	return indexNameSet
 }
@@ -55,10 +55,10 @@ type IndexDefinition struct {
 	IsClustered  bool
 }
 
-func GetIndexes(connection *dbconn.DBConn) []IndexDefinition {
+func GetIndexes(connectionPool *dbconn.DBConn) []IndexDefinition {
 	resultIndexes := make([]IndexDefinition, 0)
-	if connection.Version.Before("6") {
-		indexNameSet := ConstructImplicitIndexNames(connection)
+	if connectionPool.Version.Before("6") {
+		indexNameSet := ConstructImplicitIndexNames(connectionPool)
 		query := fmt.Sprintf(`
 SELECT DISTINCT
 	i.indexrelid AS oid,
@@ -87,7 +87,7 @@ AND %s
 ORDER BY name;`, relationAndSchemaFilterClause(), ExtensionFilterClause("c"))
 
 		results := make([]IndexDefinition, 0)
-		err := connection.Select(&results, query)
+		err := connectionPool.Select(&results, query)
 		gplog.FatalOnError(err)
 		for _, index := range results {
 			// We don't want to quote the index name to use it as a map key, just prepend the schema
@@ -127,7 +127,7 @@ AND n.nspname || '.' || c.relname NOT IN (SELECT partitionschemaname || '.' || p
 AND con.conindid IS NULL
 AND %s
 ORDER BY name;`, relationAndSchemaFilterClause(), ExtensionFilterClause("c")) // The index itself does not have a dependency on the extension, but the index's table does
-		err := connection.Select(&resultIndexes, query)
+		err := connectionPool.Select(&resultIndexes, query)
 		gplog.FatalOnError(err)
 	}
 	return resultIndexes
@@ -152,7 +152,7 @@ type QuerySimpleDefinition struct {
  * built-in rules and we don't want to back them up. We use two `%` to
  * prevent Go from interpolating the % symbol.
  */
-func GetRules(connection *dbconn.DBConn) []QuerySimpleDefinition {
+func GetRules(connectionPool *dbconn.DBConn) []QuerySimpleDefinition {
 	query := fmt.Sprintf(`
 SELECT
 	r.oid,
@@ -172,14 +172,14 @@ AND %s
 ORDER BY rulename;`, relationAndSchemaFilterClause(), ExtensionFilterClause("c"))
 
 	results := make([]QuerySimpleDefinition, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	return results
 }
 
-func GetTriggers(connection *dbconn.DBConn) []QuerySimpleDefinition {
+func GetTriggers(connectionPool *dbconn.DBConn) []QuerySimpleDefinition {
 	constraintClause := "NOT tgisinternal"
-	if connection.Version.Before("6") {
+	if connectionPool.Version.Before("6") {
 		constraintClause = "tgisconstraint = 'f'"
 	}
 	query := fmt.Sprintf(`
@@ -201,7 +201,7 @@ AND %s
 ORDER BY tgname;`, relationAndSchemaFilterClause(), constraintClause, ExtensionFilterClause("c"))
 
 	results := make([]QuerySimpleDefinition, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	return results
 }

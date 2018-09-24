@@ -8,11 +8,11 @@ import (
 	"github.com/greenplum-db/gpbackup/utils"
 )
 
-func GetAOIncrementalMetadata(connection *dbconn.DBConn) map[string]utils.AOEntry {
+func GetAOIncrementalMetadata(connectionPool *dbconn.DBConn) map[string]utils.AOEntry {
 	gplog.Verbose("Querying table row mod counts")
-	var modCounts = getAllModCounts(connection)
+	var modCounts = getAllModCounts(connectionPool)
 	gplog.Verbose("Querying last DDL modification timestamp for tables")
-	var lastDDLTimestamps = getLastDDLTimestamps(connection)
+	var lastDDLTimestamps = getLastDDLTimestamps(connectionPool)
 	aoTableEntries := make(map[string]utils.AOEntry)
 	for aoTableFQN := range modCounts {
 		aoTableEntries[aoTableFQN] = utils.AOEntry{
@@ -24,16 +24,16 @@ func GetAOIncrementalMetadata(connection *dbconn.DBConn) map[string]utils.AOEntr
 	return aoTableEntries
 }
 
-func getAllModCounts(connection *dbconn.DBConn) map[string]int64 {
-	var segTableFQNs = getAOSegTableFQNs(connection)
+func getAllModCounts(connectionPool *dbconn.DBConn) map[string]int64 {
+	var segTableFQNs = getAOSegTableFQNs(connectionPool)
 	modCounts := make(map[string]int64)
 	for aoTableFQN, segTableFQN := range segTableFQNs {
-		modCounts[aoTableFQN] = getModCount(connection, segTableFQN)
+		modCounts[aoTableFQN] = getModCount(connectionPool, segTableFQN)
 	}
 	return modCounts
 }
 
-func getAOSegTableFQNs(connection *dbconn.DBConn) map[string]string {
+func getAOSegTableFQNs(connectionPool *dbconn.DBConn) map[string]string {
 	query := fmt.Sprintf(`
 	SELECT
 		seg.aotablefqn,
@@ -73,7 +73,7 @@ func getAOSegTableFQNs(connection *dbconn.DBConn) map[string]string {
 		AOTableFQN    string
 		AOSegTableFQN string
 	}, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	resultMap := make(map[string]string)
 	for _, result := range results {
@@ -82,7 +82,7 @@ func getAOSegTableFQNs(connection *dbconn.DBConn) map[string]string {
 	return resultMap
 }
 
-func getModCount(connection *dbconn.DBConn, aosegtablefqn string) int64 {
+func getModCount(connectionPool *dbconn.DBConn, aosegtablefqn string) int64 {
 	query := fmt.Sprintf(`
 	SELECT modcount FROM %s
 `, aosegtablefqn)
@@ -90,7 +90,7 @@ func getModCount(connection *dbconn.DBConn, aosegtablefqn string) int64 {
 	var results []struct {
 		Modcount int64
 	}
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 
 	if len(results) == 0 {
@@ -99,7 +99,7 @@ func getModCount(connection *dbconn.DBConn, aosegtablefqn string) int64 {
 	return results[0].Modcount
 }
 
-func getLastDDLTimestamps(connection *dbconn.DBConn) map[string]string {
+func getLastDDLTimestamps(connectionPool *dbconn.DBConn) map[string]string {
 	query := fmt.Sprintf(`
 	SELECT
 		quote_ident(aoschema) || '.' || quote_ident(aorelname) as aotablefqn,
@@ -141,7 +141,7 @@ func getLastDDLTimestamps(connection *dbconn.DBConn) map[string]string {
 		AOTableFQN       string
 		LastDDLTimestamp string
 	}
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	resultMap := make(map[string]string)
 	for _, result := range results {

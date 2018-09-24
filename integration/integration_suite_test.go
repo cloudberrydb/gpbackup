@@ -25,7 +25,7 @@ import (
 
 var (
 	buffer                  *bytes.Buffer
-	connection              *dbconn.DBConn
+	connectionPool          *dbconn.DBConn
 	toc                     *utils.TOC
 	backupfile              *utils.FileWithByteCount
 	testCluster             *cluster.Cluster
@@ -46,28 +46,28 @@ var _ = BeforeSuite(func() {
 	}
 	Expect(err).To(BeNil())
 	stdout, stderr, logFile = testhelper.SetupTestLogger()
-	connection = testutils.SetupTestDbConn("testdb")
+	connectionPool = testutils.SetupTestDbConn("testdb")
 	// We can't use AssertQueryRuns since if a role already exists it will error
-	connection.Exec("CREATE ROLE testrole SUPERUSER")
-	connection.Exec("CREATE ROLE anothertestrole SUPERUSER")
-	backup.InitializeMetadataParams(connection)
-	backup.SetConnection(connection)
-	segConfig := cluster.MustGetSegmentConfiguration(connection)
+	connectionPool.Exec("CREATE ROLE testrole SUPERUSER")
+	connectionPool.Exec("CREATE ROLE anothertestrole SUPERUSER")
+	backup.InitializeMetadataParams(connectionPool)
+	backup.SetConnection(connectionPool)
+	segConfig := cluster.MustGetSegmentConfiguration(connectionPool)
 	testCluster = cluster.NewCluster(segConfig)
-	testhelper.AssertQueryRuns(connection, "SET ROLE testrole")
-	testhelper.AssertQueryRuns(connection, "ALTER DATABASE testdb OWNER TO anothertestrole")
-	testhelper.AssertQueryRuns(connection, "ALTER SCHEMA public OWNER TO anothertestrole")
-	testhelper.AssertQueryRuns(connection, "DROP PROTOCOL IF EXISTS gphdfs")
-	testhelper.AssertQueryRuns(connection, `SET standard_conforming_strings TO "on"`)
-	testhelper.AssertQueryRuns(connection, `SET search_path=pg_catalog`)
-	if connection.Version.AtLeast("6") {
+	testhelper.AssertQueryRuns(connectionPool, "SET ROLE testrole")
+	testhelper.AssertQueryRuns(connectionPool, "ALTER DATABASE testdb OWNER TO anothertestrole")
+	testhelper.AssertQueryRuns(connectionPool, "ALTER SCHEMA public OWNER TO anothertestrole")
+	testhelper.AssertQueryRuns(connectionPool, "DROP PROTOCOL IF EXISTS gphdfs")
+	testhelper.AssertQueryRuns(connectionPool, `SET standard_conforming_strings TO "on"`)
+	testhelper.AssertQueryRuns(connectionPool, `SET search_path=pg_catalog`)
+	if connectionPool.Version.AtLeast("6") {
 		// Drop plpgsql extension to not interfere in extension tests
-		testhelper.AssertQueryRuns(connection, "DROP EXTENSION plpgsql CASCADE")
-		testhelper.AssertQueryRuns(connection, "CREATE LANGUAGE plpgsql")
-		testhelper.AssertQueryRuns(connection, "SET allow_system_table_mods = true")
+		testhelper.AssertQueryRuns(connectionPool, "DROP EXTENSION plpgsql CASCADE")
+		testhelper.AssertQueryRuns(connectionPool, "CREATE LANGUAGE plpgsql")
+		testhelper.AssertQueryRuns(connectionPool, "SET allow_system_table_mods = true")
 	}
-	if connection.Version.Before("6") {
-		testhelper.AssertQueryRuns(connection, "SET allow_system_table_mods = 'DML'")
+	if connectionPool.Version.Before("6") {
+		testhelper.AssertQueryRuns(connectionPool, "SET allow_system_table_mods = 'DML'")
 		setupTestFilespace(testCluster)
 	} else {
 		remoteOutput := testCluster.GenerateAndExecuteCommand("Creating filespace test directories on all hosts", func(contentID int) string {
@@ -100,7 +100,7 @@ var _ = BeforeEach(func() {
 
 var _ = AfterSuite(func() {
 	gexec.CleanupBuildArtifacts()
-	if connection.Version.Before("6") {
+	if connectionPool.Version.Before("6") {
 		destroyTestFilespace()
 	} else {
 		remoteOutput := testCluster.GenerateAndExecuteCommand("Removing /tmp/test_dir* directories on all hosts", func(contentID int) string {
@@ -110,8 +110,8 @@ var _ = AfterSuite(func() {
 			Fail("Could not remove /tmp/testdir* directories on 1 or more hosts")
 		}
 	}
-	if connection != nil {
-		connection.Close()
+	if connectionPool != nil {
+		connectionPool.Close()
 		err := exec.Command("dropdb", "testdb").Run()
 		Expect(err).To(BeNil())
 	}
@@ -132,7 +132,7 @@ func setupTestFilespace(testCluster *cluster.Cluster) {
 	}
 	// Construct a filespace config like the one that gpfilespace generates
 	filespaceConfigQuery := `COPY (SELECT hostname || ':' || dbid || ':/tmp/test_dir/' || preferred_role || content FROM gp_segment_configuration AS subselect) TO '/tmp/temp_filespace_config';`
-	testhelper.AssertQueryRuns(connection, filespaceConfigQuery)
+	testhelper.AssertQueryRuns(connectionPool, filespaceConfigQuery)
 	out, err := exec.Command("bash", "-c", "echo \"filespace:test_dir\" > /tmp/filespace_config").CombinedOutput()
 	if err != nil {
 		Fail(fmt.Sprintf("Cannot create test filespace configuration: %s: %s", out, err.Error()))
@@ -146,18 +146,18 @@ func setupTestFilespace(testCluster *cluster.Cluster) {
 	if err != nil {
 		Fail(fmt.Sprintf("Cannot create test filespace: %s: %s", out, err.Error()))
 	}
-	filespaceName := dbconn.MustSelectString(connection, "SELECT fsname AS string FROM pg_filespace WHERE fsname = 'test_dir';")
+	filespaceName := dbconn.MustSelectString(connectionPool, "SELECT fsname AS string FROM pg_filespace WHERE fsname = 'test_dir';")
 	if filespaceName != "test_dir" {
 		Fail("Filespace test_dir was not successfully created")
 	}
 }
 
 func destroyTestFilespace() {
-	filespaceName := dbconn.MustSelectString(connection, "SELECT fsname AS string FROM pg_filespace WHERE fsname = 'test_dir';")
+	filespaceName := dbconn.MustSelectString(connectionPool, "SELECT fsname AS string FROM pg_filespace WHERE fsname = 'test_dir';")
 	if filespaceName != "test_dir" {
 		return
 	}
-	testhelper.AssertQueryRuns(connection, "DROP FILESPACE test_dir")
+	testhelper.AssertQueryRuns(connectionPool, "DROP FILESPACE test_dir")
 	out, err := exec.Command("bash", "-c", "rm -rf /tmp/test_dir /tmp/filespace_config /tmp/temp_filespace_config").CombinedOutput()
 	if err != nil {
 		Fail(fmt.Sprintf("Could not remove test filespace directory and configuration files: %s: %s", out, err.Error()))

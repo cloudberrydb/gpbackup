@@ -17,10 +17,10 @@ type SessionGUCs struct {
 	ClientEncoding string `db:"client_encoding"`
 }
 
-func GetSessionGUCs(connection *dbconn.DBConn) SessionGUCs {
+func GetSessionGUCs(connectionPool *dbconn.DBConn) SessionGUCs {
 	result := SessionGUCs{}
 	query := "SHOW client_encoding;"
-	err := connection.Get(&result, query)
+	err := connectionPool.Get(&result, query)
 	gplog.FatalOnError(err)
 	return result
 }
@@ -34,9 +34,9 @@ type Database struct {
 	Encoding   string
 }
 
-func GetDatabaseInfo(connection *dbconn.DBConn) Database {
+func GetDatabaseInfo(connectionPool *dbconn.DBConn) Database {
 	lcQuery := ""
-	if connection.Version.AtLeast("6") {
+	if connectionPool.Version.AtLeast("6") {
 		lcQuery = "datcollate AS collate, datctype AS ctype,"
 	}
 	query := fmt.Sprintf(`
@@ -49,15 +49,15 @@ SELECT
 FROM pg_database d
 JOIN pg_tablespace t
 ON d.dattablespace = t.oid
-WHERE d.datname = '%s';`, lcQuery, connection.DBName)
+WHERE d.datname = '%s';`, lcQuery, connectionPool.DBName)
 
 	result := Database{}
-	err := connection.Get(&result, query)
+	err := connectionPool.Get(&result, query)
 	gplog.FatalOnError(err)
 	return result
 }
 
-func GetDatabaseGUCs(connection *dbconn.DBConn) []string {
+func GetDatabaseGUCs(connectionPool *dbconn.DBConn) []string {
 	//We do not want to quote list type config settings such as search_path and DateStyle
 	query := `
 SELECT CASE
@@ -68,14 +68,14 @@ END AS string
 FROM pg_options_to_table(
 	(%s)
 );`
-	if connection.Version.Before("6") {
-		subquery := fmt.Sprintf("SELECT datconfig FROM pg_database WHERE datname = '%s'", connection.DBName)
+	if connectionPool.Version.Before("6") {
+		subquery := fmt.Sprintf("SELECT datconfig FROM pg_database WHERE datname = '%s'", connectionPool.DBName)
 		query = fmt.Sprintf(query, subquery)
 	} else {
-		subquery := fmt.Sprintf("SELECT setconfig FROM pg_db_role_setting WHERE setdatabase = (SELECT oid FROM pg_database WHERE datname = '%s')", connection.DBName)
+		subquery := fmt.Sprintf("SELECT setconfig FROM pg_db_role_setting WHERE setdatabase = (SELECT oid FROM pg_database WHERE datname = '%s')", connectionPool.DBName)
 		query = fmt.Sprintf(query, subquery)
 	}
-	return dbconn.MustSelectStringSlice(connection, query)
+	return dbconn.MustSelectStringSlice(connectionPool, query)
 }
 
 type ResourceQueue struct {
@@ -89,7 +89,7 @@ type ResourceQueue struct {
 	MemoryLimit      string
 }
 
-func GetResourceQueues(connection *dbconn.DBConn) []ResourceQueue {
+func GetResourceQueues(connectionPool *dbconn.DBConn) []ResourceQueue {
 	/*
 	 * maxcost and mincost are represented as real types in the database, but we round to two decimals
 	 * and cast them as text for more consistent formatting. pg_dumpall does this as well.
@@ -114,7 +114,7 @@ FROM
 		ON r.oid = memory_capability.resqueueid;
 `
 	results := make([]ResourceQueue, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	return results
 }
@@ -131,7 +131,7 @@ type ResourceGroup struct {
 	Cpuset            string
 }
 
-func GetResourceGroups(connection *dbconn.DBConn) []ResourceGroup {
+func GetResourceGroups(connectionPool *dbconn.DBConn) []ResourceGroup {
 	query := `
 SELECT g.oid,
 	quote_ident(g.rsgname) AS name,
@@ -159,7 +159,7 @@ WHERE t1.reslimittype = 1 AND
 	t7.reslimittype = 7;`
 
 	results := make([]ResourceGroup, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	return results
 }
@@ -198,9 +198,9 @@ type Role struct {
  * we standardize times to UTC but do not lose time zone information
  * in the timestamp.
  */
-func GetRoles(connection *dbconn.DBConn) []Role {
+func GetRoles(connectionPool *dbconn.DBConn) []Role {
 	resgroupQuery := ""
-	if connection.Version.AtLeast("5") {
+	if connectionPool.Version.AtLeast("5") {
 		resgroupQuery = "(SELECT quote_ident(rsgname) FROM pg_resgroup WHERE pg_resgroup.oid = rolresgroup) AS resgroup,"
 	}
 	query := fmt.Sprintf(`
@@ -226,10 +226,10 @@ FROM
 	pg_authid`, resgroupQuery)
 
 	roles := make([]Role, 0)
-	err := connection.Select(&roles, query)
+	err := connectionPool.Select(&roles, query)
 	gplog.FatalOnError(err)
 
-	constraintsByRole := getTimeConstraintsByRole(connection)
+	constraintsByRole := getTimeConstraintsByRole(connectionPool)
 
 	for idx, role := range roles {
 		roles[idx].TimeConstraints = constraintsByRole[role.Oid]
@@ -238,7 +238,7 @@ FROM
 	return roles
 }
 
-func GetRoleGUCs(connection *dbconn.DBConn) map[string][]string {
+func GetRoleGUCs(connectionPool *dbconn.DBConn) map[string][]string {
 	query := `
 SELECT
 	quote_ident(rolname) AS name,
@@ -260,7 +260,7 @@ FROM (
 		Name   string
 		Config pq.StringArray
 	}, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	resultMap := make(map[string][]string, len(results))
 	for _, result := range results {
@@ -269,7 +269,7 @@ FROM (
 	return resultMap
 }
 
-func getTimeConstraintsByRole(connection *dbconn.DBConn) map[uint32][]TimeConstraint {
+func getTimeConstraintsByRole(connectionPool *dbconn.DBConn) map[uint32][]TimeConstraint {
 	timeConstraints := make([]TimeConstraint, 0)
 	query := `
 SELECT
@@ -282,7 +282,7 @@ FROM
 	pg_auth_time_constraint
 	`
 
-	err := connection.Select(&timeConstraints, query)
+	err := connectionPool.Select(&timeConstraints, query)
 	gplog.FatalOnError(err)
 
 	constraintsByRole := make(map[uint32][]TimeConstraint, 0)
@@ -304,7 +304,7 @@ type RoleMember struct {
 	IsAdmin bool
 }
 
-func GetRoleMembers(connection *dbconn.DBConn) []RoleMember {
+func GetRoleMembers(connectionPool *dbconn.DBConn) []RoleMember {
 	query := `
 SELECT
 	quote_ident(pg_get_userbyid(roleid)) AS role,
@@ -315,7 +315,7 @@ FROM pg_auth_members
 ORDER BY roleid, member;`
 
 	results := make([]RoleMember, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	return results
 }
@@ -327,7 +327,7 @@ type Tablespace struct {
 	SegmentLocations []string
 }
 
-func GetTablespaces(connection *dbconn.DBConn) []Tablespace {
+func GetTablespaces(connectionPool *dbconn.DBConn) []Tablespace {
 	before6query := `
 SELECT
 	t.oid,
@@ -349,33 +349,33 @@ AND spcname != 'pg_global';`
 
 	results := make([]Tablespace, 0)
 	var err error
-	if connection.Version.Before("6") {
-		err = connection.Select(&results, before6query)
+	if connectionPool.Version.Before("6") {
+		err = connectionPool.Select(&results, before6query)
 	} else {
-		err = connection.Select(&results, query)
+		err = connectionPool.Select(&results, query)
 		for i := 0; i < len(results); i++ {
-			results[i].SegmentLocations = GetSegmentTablespaces(connection, results[i].Oid)
+			results[i].SegmentLocations = GetSegmentTablespaces(connectionPool, results[i].Oid)
 		}
 	}
 	gplog.FatalOnError(err)
 	return results
 }
 
-func GetSegmentTablespaces(connection *dbconn.DBConn, Oid uint32) []string {
+func GetSegmentTablespaces(connectionPool *dbconn.DBConn, Oid uint32) []string {
 	query := fmt.Sprintf(`
 SELECT
 	'content' || gp_segment_id || ' ''' || tblspc_loc || '''' AS string
 FROM gp_tablespace_segment_location(%d) WHERE tblspc_loc != pg_tablespace_location(%d)
 ORDER BY gp_segment_id;`, Oid, Oid)
 
-	return dbconn.MustSelectStringSlice(connection, query)
+	return dbconn.MustSelectStringSlice(connectionPool, query)
 }
 
 //Potentially expensive query
-func GetDBSize(connection *dbconn.DBConn) string {
+func GetDBSize(connectionPool *dbconn.DBConn) string {
 	size := struct{ DBSize string }{}
-	sizeQuery := fmt.Sprintf("SELECT pg_size_pretty(pg_database_size(E'%s')) as dbsize", dbconn.EscapeConnectionParam(connection.DBName))
-	err := connection.Get(&size, sizeQuery)
+	sizeQuery := fmt.Sprintf("SELECT pg_size_pretty(pg_database_size(E'%s')) as dbsize", dbconn.EscapeConnectionParam(connectionPool.DBName))
+	err := connectionPool.Get(&size, sizeQuery)
 	gplog.FatalOnError(err)
 	return size.DBSize
 }

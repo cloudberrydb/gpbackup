@@ -143,15 +143,15 @@ func (backupFPInfo *FilePathInfo) GetHelperLogPath() string {
  * Helper functions
  */
 
-func GetSegPrefix(connection *dbconn.DBConn) string {
+func GetSegPrefix(connectionPool *dbconn.DBConn) string {
 	query := ""
-	if connection.Version.Before("6") {
+	if connectionPool.Version.Before("6") {
 		query = "SELECT fselocation FROM pg_filespace_entry WHERE fsedbid = 1;"
 	} else {
 		query = "SELECT datadir FROM gp_segment_configuration WHERE dbid = 1;"
 	}
 	result := ""
-	err := connection.Get(&result, query)
+	err := connectionPool.Get(&result, query)
 	gplog.FatalOnError(err)
 	_, segPrefix := path.Split(result)
 	segPrefix = segPrefix[:len(segPrefix)-2] // Remove "-1" segment ID from string

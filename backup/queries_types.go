@@ -20,9 +20,9 @@ import (
  * in an EXCEPT clause to exclude them in larger base and composite type retrieval
  * queries that are constructed in their respective functions.
  */
-func getTypeQuery(connection *dbconn.DBConn, selectClause string, groupBy string, typeType string) string {
+func getTypeQuery(connectionPool *dbconn.DBConn, selectClause string, groupBy string, typeType string) string {
 	arrayTypesClause := ""
-	if connection.Version.Before("5") {
+	if connectionPool.Version.Before("5") {
 		/*
 		 * In GPDB 4, all automatically-generated array types are guaranteed to be
 		 * the name of the corresponding base type prepended with an underscore.
@@ -125,9 +125,9 @@ func (t Type) FQN() string {
 	return utils.MakeFQN(t.Schema, t.Name)
 }
 
-func GetBaseTypes(connection *dbconn.DBConn) []Type {
+func GetBaseTypes(connectionPool *dbconn.DBConn) []Type {
 	typeModClause := ""
-	if connection.Version.Before("5") {
+	if connectionPool.Version.Before("5") {
 		typeModClause = `t.typreceive AS receive,
 	t.typsend AS send,`
 	} else {
@@ -139,7 +139,7 @@ func GetBaseTypes(connection *dbconn.DBConn) []Type {
 
 	typeCategoryClause := ""
 	typeCollatableClause := ""
-	if connection.Version.Before("6") {
+	if connectionPool.Version.Before("6") {
 		typeCategoryClause = "'U' AS typcategory,"
 	} else {
 		typeCategoryClause = "t.typcategory, t.typispreferred,"
@@ -168,25 +168,25 @@ FROM pg_type t
 JOIN pg_namespace n ON t.typnamespace = n.oid
 LEFT JOIN pg_type_encoding e ON t.oid = e.typid`, typeModClause, typeCategoryClause, typeCollatableClause)
 	groupBy := "t.oid, schema, name, t.typtype, t.typinput, t.typoutput, receive, send,%st.typlen, t.typbyval, alignment, t.typstorage, defaultval, element, t.typdelim, storageoptions"
-	if connection.Version.Is("4") {
+	if connectionPool.Version.Is("4") {
 		groupBy = fmt.Sprintf(groupBy, " ")
-	} else if connection.Version.Is("5") {
+	} else if connectionPool.Version.Is("5") {
 		groupBy = fmt.Sprintf(groupBy, " modin, modout, ")
 	} else {
 		groupBy = fmt.Sprintf(groupBy, " modin, modout, t.typcategory, t.typispreferred, t.typcollation, ")
 
 	}
-	query := getTypeQuery(connection, selectClause, groupBy, "b")
+	query := getTypeQuery(connectionPool, selectClause, groupBy, "b")
 
 	results := make([]Type, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	/*
 	 * GPDB 4.3 has no built-in regproc-to-text cast and uses "-" in place of
 	 * NULL for several fields, so to avoid dealing with hyphens later on we
 	 * replace those with empty strings here.
 	 */
-	if connection.Version.Before("5") {
+	if connectionPool.Version.Before("5") {
 		for i := range results {
 			if results[i].Send == "-" {
 				results[i].Send = ""
@@ -199,7 +199,7 @@ LEFT JOIN pg_type_encoding e ON t.oid = e.typid`, typeModClause, typeCategoryCla
 	return results
 }
 
-func GetCompositeTypes(connection *dbconn.DBConn) []Type {
+func GetCompositeTypes(connectionPool *dbconn.DBConn) []Type {
 	selectClause := `
 SELECT
 	t.oid,
@@ -209,13 +209,13 @@ SELECT
 FROM pg_type t
 JOIN pg_namespace n ON t.typnamespace = n.oid`
 	groupBy := "t.oid, schema, name, t.typtype"
-	query := getTypeQuery(connection, selectClause, groupBy, "c")
+	query := getTypeQuery(connectionPool, selectClause, groupBy, "c")
 
 	compTypes := make([]Type, 0)
-	err := connection.Select(&compTypes, query)
+	err := connectionPool.Select(&compTypes, query)
 	gplog.FatalOnError(err)
 
-	attributeMap := getCompositeTypeAttributes(connection)
+	attributeMap := getCompositeTypeAttributes(connectionPool)
 
 	for i, compType := range compTypes {
 		compTypes[i].Attributes = attributeMap[compType.Oid]
@@ -231,7 +231,7 @@ type Attribute struct {
 	Collation        string
 }
 
-func getCompositeTypeAttributes(connection *dbconn.DBConn) map[uint32][]Attribute {
+func getCompositeTypeAttributes(connectionPool *dbconn.DBConn) map[uint32][]Attribute {
 	version4query := `SELECT
 	t.oid AS compositetypeoid,
 	quote_ident(a.attname) AS name,
@@ -264,10 +264,10 @@ func getCompositeTypeAttributes(connection *dbconn.DBConn) map[uint32][]Attribut
 
 	results := make([]Attribute, 0)
 	var err error
-	if connection.Version.Before("6") {
-		err = connection.Select(&results, version4query)
+	if connectionPool.Version.Before("6") {
+		err = connectionPool.Select(&results, version4query)
 	} else {
-		err = connection.Select(&results, masterQuery)
+		err = connectionPool.Select(&results, masterQuery)
 	}
 	gplog.FatalOnError(err)
 
@@ -279,7 +279,7 @@ func getCompositeTypeAttributes(connection *dbconn.DBConn) map[uint32][]Attribut
 	return attributeMap
 }
 
-func GetDomainTypes(connection *dbconn.DBConn) []Type {
+func GetDomainTypes(connectionPool *dbconn.DBConn) []Type {
 	results := make([]Type, 0)
 	version4query := fmt.Sprintf(`
 SELECT
@@ -318,19 +318,19 @@ AND %s
 ORDER BY n.nspname, t.typname;`, SchemaFilterClause("n"), ExtensionFilterClause("t"))
 	var err error
 
-	if connection.Version.Before("6") {
-		err = connection.Select(&results, version4query)
+	if connectionPool.Version.Before("6") {
+		err = connectionPool.Select(&results, version4query)
 	} else {
-		err = connection.Select(&results, masterQuery)
+		err = connectionPool.Select(&results, masterQuery)
 	}
 
 	gplog.FatalOnError(err)
 	return results
 }
 
-func GetEnumTypes(connection *dbconn.DBConn) []Type {
+func GetEnumTypes(connectionPool *dbconn.DBConn) []Type {
 	enumSortClause := "ORDER BY e.enumsortorder"
-	if connection.Version.Is("5") {
+	if connectionPool.Version.Is("5") {
 		enumSortClause = "ORDER BY e.oid"
 	}
 	query := fmt.Sprintf(`
@@ -351,12 +351,12 @@ AND %s
 ORDER BY n.nspname, t.typname;`, enumSortClause, SchemaFilterClause("n"), ExtensionFilterClause("t"))
 
 	results := make([]Type, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	return results
 }
 
-func GetShellTypes(connection *dbconn.DBConn) []Type {
+func GetShellTypes(connectionPool *dbconn.DBConn) []Type {
 	query := fmt.Sprintf(`
 SELECT
 	t.oid,
@@ -371,7 +371,7 @@ AND %s
 ORDER BY n.nspname, t.typname;`, SchemaFilterClause("n"), ExtensionFilterClause("t"))
 
 	results := make([]Type, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	return results
 }
@@ -384,7 +384,7 @@ type Collation struct {
 	Ctype   string
 }
 
-func GetCollations(connection *dbconn.DBConn) []Collation {
+func GetCollations(connectionPool *dbconn.DBConn) []Collation {
 	results := make([]Collation, 0)
 
 	query := fmt.Sprintf(`
@@ -398,7 +398,7 @@ FROM pg_collation c
 JOIN pg_namespace n ON c.collnamespace = n.oid
 WHERE %s`, SchemaFilterClause("n"))
 
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	return results
 }

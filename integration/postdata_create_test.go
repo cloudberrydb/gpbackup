@@ -26,12 +26,12 @@ var _ = Describe("backup integration create statement tests", func() {
 			backup.PrintCreateIndexStatements(backupfile, toc, indexes, indexMetadataMap)
 
 			//Create table whose columns we can index
-			testhelper.AssertQueryRuns(connection, "CREATE TABLE public.testtable(i int)")
-			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.testtable")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE TABLE public.testtable(i int)")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLE public.testtable")
 
-			testhelper.AssertQueryRuns(connection, buffer.String())
+			testhelper.AssertQueryRuns(connectionPool, buffer.String())
 
-			resultIndexes := backup.GetIndexes(connection)
+			resultIndexes := backup.GetIndexes(connectionPool)
 			Expect(resultIndexes).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchExcluding(&resultIndexes[0], &indexes[0], "Oid")
 		})
@@ -40,12 +40,12 @@ var _ = Describe("backup integration create statement tests", func() {
 			backup.PrintCreateIndexStatements(backupfile, toc, indexes, indexMetadataMap)
 
 			//Create table whose columns we can index
-			testhelper.AssertQueryRuns(connection, "CREATE TABLE public.testtable(i int)")
-			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.testtable")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE TABLE public.testtable(i int)")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLE public.testtable")
 
-			testhelper.AssertQueryRuns(connection, buffer.String())
+			testhelper.AssertQueryRuns(connectionPool, buffer.String())
 
-			resultIndexes := backup.GetIndexes(connection)
+			resultIndexes := backup.GetIndexes(connectionPool)
 			Expect(resultIndexes).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchExcluding(&resultIndexes[0], &indexes[0], "Oid")
 		})
@@ -56,36 +56,36 @@ var _ = Describe("backup integration create statement tests", func() {
 			backup.PrintCreateIndexStatements(backupfile, toc, indexes, indexMetadataMap)
 
 			//Create table whose columns we can index
-			testhelper.AssertQueryRuns(connection, "CREATE TABLE public.testtable(i int)")
-			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.testtable")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE TABLE public.testtable(i int)")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLE public.testtable")
 
-			testhelper.AssertQueryRuns(connection, buffer.String())
+			testhelper.AssertQueryRuns(connectionPool, buffer.String())
 
-			indexes[0].Oid = testutils.OidFromObjectName(connection, "", "index1", backup.TYPE_INDEX)
-			resultIndexes := backup.GetIndexes(connection)
-			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_INDEX)
+			indexes[0].Oid = testutils.OidFromObjectName(connectionPool, "", "index1", backup.TYPE_INDEX)
+			resultIndexes := backup.GetIndexes(connectionPool)
+			resultMetadataMap := backup.GetCommentsForObjectType(connectionPool, backup.TYPE_INDEX)
 			resultMetadata := resultMetadataMap[indexes[0].Oid]
 			Expect(resultIndexes).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchExcluding(&resultIndexes[0], &indexes[0], "Oid")
 			structmatcher.ExpectStructsToMatch(&resultMetadata, &indexMetadata)
 		})
 		It("creates an index in a non-default tablespace", func() {
-			if connection.Version.Before("6") {
-				testhelper.AssertQueryRuns(connection, "CREATE TABLESPACE test_tablespace FILESPACE test_dir")
+			if connectionPool.Version.Before("6") {
+				testhelper.AssertQueryRuns(connectionPool, "CREATE TABLESPACE test_tablespace FILESPACE test_dir")
 			} else {
-				testhelper.AssertQueryRuns(connection, "CREATE TABLESPACE test_tablespace LOCATION '/tmp/test_dir'")
+				testhelper.AssertQueryRuns(connectionPool, "CREATE TABLESPACE test_tablespace LOCATION '/tmp/test_dir'")
 			}
-			defer testhelper.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLESPACE test_tablespace")
 			indexes := []backup.IndexDefinition{{Oid: 0, Name: "index1", OwningSchema: "public", OwningTable: "testtable", Tablespace: "test_tablespace", Def: "CREATE INDEX index1 ON public.testtable USING btree (i)"}}
 			backup.PrintCreateIndexStatements(backupfile, toc, indexes, indexMetadataMap)
 
 			//Create table whose columns we can index
-			testhelper.AssertQueryRuns(connection, "CREATE TABLE public.testtable(i int)")
-			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.testtable")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE TABLE public.testtable(i int)")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLE public.testtable")
 
-			testhelper.AssertQueryRuns(connection, buffer.String())
+			testhelper.AssertQueryRuns(connectionPool, buffer.String())
 
-			resultIndexes := backup.GetIndexes(connection)
+			resultIndexes := backup.GetIndexes(connectionPool)
 			Expect(resultIndexes).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchExcluding(&resultIndexes[0], &indexes[0], "Oid")
 		})
@@ -97,7 +97,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		)
 		BeforeEach(func() {
 			ruleMetadataMap = backup.MetadataMap{}
-			if connection.Version.Before("6") {
+			if connectionPool.Version.Before("6") {
 				ruleDef = "CREATE RULE update_notify AS ON UPDATE TO public.testtable DO NOTIFY testtable;"
 			} else {
 				ruleDef = "CREATE RULE update_notify AS\n    ON UPDATE TO public.testtable DO \n NOTIFY testtable;"
@@ -107,12 +107,12 @@ var _ = Describe("backup integration create statement tests", func() {
 			rules := []backup.QuerySimpleDefinition{{Oid: 0, Name: "update_notify", OwningSchema: "public", OwningTable: "testtable", Def: ruleDef}}
 			backup.PrintCreateRuleStatements(backupfile, toc, rules, ruleMetadataMap)
 
-			testhelper.AssertQueryRuns(connection, "CREATE TABLE public.testtable(i int)")
-			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.testtable")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE TABLE public.testtable(i int)")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLE public.testtable")
 
-			testhelper.AssertQueryRuns(connection, buffer.String())
+			testhelper.AssertQueryRuns(connectionPool, buffer.String())
 
-			resultRules := backup.GetRules(connection)
+			resultRules := backup.GetRules(connectionPool)
 			Expect(resultRules).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchExcluding(&resultRules[0], &rules[0], "Oid")
 		})
@@ -122,14 +122,14 @@ var _ = Describe("backup integration create statement tests", func() {
 			ruleMetadata := ruleMetadataMap[1]
 			backup.PrintCreateRuleStatements(backupfile, toc, rules, ruleMetadataMap)
 
-			testhelper.AssertQueryRuns(connection, "CREATE TABLE public.testtable(i int)")
-			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.testtable")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE TABLE public.testtable(i int)")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLE public.testtable")
 
-			testhelper.AssertQueryRuns(connection, buffer.String())
+			testhelper.AssertQueryRuns(connectionPool, buffer.String())
 
-			rules[0].Oid = testutils.OidFromObjectName(connection, "", "update_notify", backup.TYPE_RULE)
-			resultRules := backup.GetRules(connection)
-			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_RULE)
+			rules[0].Oid = testutils.OidFromObjectName(connectionPool, "", "update_notify", backup.TYPE_RULE)
+			resultRules := backup.GetRules(connectionPool)
+			resultMetadataMap := backup.GetCommentsForObjectType(connectionPool, backup.TYPE_RULE)
 			resultMetadata := resultMetadataMap[rules[0].Oid]
 			Expect(resultRules).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchExcluding(&resultRules[0], &rules[0], "Oid")
@@ -147,12 +147,12 @@ var _ = Describe("backup integration create statement tests", func() {
 			triggers := []backup.QuerySimpleDefinition{{Oid: 0, Name: "sync_testtable", OwningSchema: "public", OwningTable: "testtable", Def: `CREATE TRIGGER sync_testtable AFTER INSERT OR DELETE OR UPDATE ON public.testtable FOR EACH STATEMENT EXECUTE PROCEDURE "RI_FKey_check_ins"()`}}
 			backup.PrintCreateTriggerStatements(backupfile, toc, triggers, triggerMetadataMap)
 
-			testhelper.AssertQueryRuns(connection, "CREATE TABLE public.testtable(i int)")
-			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.testtable")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE TABLE public.testtable(i int)")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLE public.testtable")
 
-			testhelper.AssertQueryRuns(connection, buffer.String())
+			testhelper.AssertQueryRuns(connectionPool, buffer.String())
 
-			resultTriggers := backup.GetTriggers(connection)
+			resultTriggers := backup.GetTriggers(connectionPool)
 			Expect(resultTriggers).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchExcluding(&resultTriggers[0], &triggers[0], "Oid")
 		})
@@ -162,14 +162,14 @@ var _ = Describe("backup integration create statement tests", func() {
 			triggerMetadata := triggerMetadataMap[1]
 			backup.PrintCreateTriggerStatements(backupfile, toc, triggers, triggerMetadataMap)
 
-			testhelper.AssertQueryRuns(connection, "CREATE TABLE public.testtable(i int)")
-			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.testtable")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE TABLE public.testtable(i int)")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLE public.testtable")
 
-			testhelper.AssertQueryRuns(connection, buffer.String())
+			testhelper.AssertQueryRuns(connectionPool, buffer.String())
 
-			triggers[0].Oid = testutils.OidFromObjectName(connection, "", "sync_testtable", backup.TYPE_TRIGGER)
-			resultTriggers := backup.GetTriggers(connection)
-			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_TRIGGER)
+			triggers[0].Oid = testutils.OidFromObjectName(connectionPool, "", "sync_testtable", backup.TYPE_TRIGGER)
+			resultTriggers := backup.GetTriggers(connectionPool)
+			resultMetadataMap := backup.GetCommentsForObjectType(connectionPool, backup.TYPE_TRIGGER)
 			resultMetadata := resultMetadataMap[triggers[0].Oid]
 			Expect(resultTriggers).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchExcluding(&resultTriggers[0], &triggers[0], "Oid")

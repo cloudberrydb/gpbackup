@@ -246,7 +246,7 @@ Backup Status: %s
 	_ = operating.System.Chmod(reportFilename, 0444)
 }
 
-func WriteRestoreReportFile(reportFilename string, backupTimestamp string, startTimestamp string, connection *dbconn.DBConn, restoreVersion string, errMsg string) {
+func WriteRestoreReportFile(reportFilename string, backupTimestamp string, startTimestamp string, connectionPool *dbconn.DBConn, restoreVersion string, errMsg string) {
 	reportFile, err := iohelper.OpenFileForWriting(reportFilename)
 	if err != nil {
 		gplog.Error("Unable to open restore report file %s", reportFilename)
@@ -278,8 +278,8 @@ Restore Status: %s`
 	}
 
 	_, err = fmt.Fprintf(reportFile, reportFileTemplate,
-		backupTimestamp, connection.Version.VersionString, restoreVersion,
-		connection.DBName, gprestoreCommandLine,
+		backupTimestamp, connectionPool.Version.VersionString, restoreVersion,
+		connectionPool.DBName, gprestoreCommandLine,
 		start, end, duration, restoreStatus)
 	if err != nil {
 		gplog.Error("Unable to write restore report file %s", reportFilename)

@@ -12,7 +12,7 @@ import (
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 )
 
-func GetExternalTableDefinitions(connection *dbconn.DBConn) map[uint32]ExternalTableDefinition {
+func GetExternalTableDefinitions(connectionPool *dbconn.DBConn) map[uint32]ExternalTableDefinition {
 	execOptions := "'ALL_SEGMENTS', 'HOST', 'MASTER_ONLY', 'PER_HOST', 'SEGMENT_ID', 'TOTAL_SEGS'"
 	version4query := fmt.Sprintf(`
 SELECT
@@ -75,12 +75,12 @@ FROM pg_exttable e LEFT JOIN pg_class c ON (e.reloid = c.oid);`
 
 	results := make([]ExternalTableDefinition, 0)
 	var err error
-	if connection.Version.Before("5") {
-		err = connection.Select(&results, version4query)
-	} else if connection.Version.Before("6") {
-		err = connection.Select(&results, version5query)
+	if connectionPool.Version.Before("5") {
+		err = connectionPool.Select(&results, version4query)
+	} else if connectionPool.Version.Before("6") {
+		err = connectionPool.Select(&results, version5query)
 	} else {
-		err = connection.Select(&results, query)
+		err = connectionPool.Select(&results, query)
 	}
 	gplog.FatalOnError(err)
 	resultMap := make(map[uint32]ExternalTableDefinition)
@@ -118,7 +118,7 @@ func (p ExternalProtocol) FQN() string {
 	return p.Name
 }
 
-func GetExternalProtocols(connection *dbconn.DBConn) []ExternalProtocol {
+func GetExternalProtocols(connectionPool *dbconn.DBConn) []ExternalProtocol {
 	results := make([]ExternalProtocol, 0)
 	query := `
 SELECT
@@ -131,7 +131,7 @@ SELECT
 	p.ptcvalidatorfn
 FROM pg_extprotocol p;
 `
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	return results
 }
@@ -148,7 +148,7 @@ type PartitionInfo struct {
 	IsExternal             bool
 }
 
-func GetExternalPartitionInfo(connection *dbconn.DBConn) ([]PartitionInfo, map[uint32]PartitionInfo) {
+func GetExternalPartitionInfo(connectionPool *dbconn.DBConn) ([]PartitionInfo, map[uint32]PartitionInfo) {
 	results := make([]PartitionInfo, 0)
 	query := `
 SELECT
@@ -197,7 +197,7 @@ FROM (
 	AND cl2.relnamespace = n2.oid
 ) AS subquery;
 `
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 
 	extPartitions := make([]PartitionInfo, 0)

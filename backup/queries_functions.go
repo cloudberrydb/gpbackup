@@ -56,12 +56,12 @@ func (f Function) FQN() string {
  * 5 or later but in GPDB 4.3 we must query pg_proc directly and construct
  * those values here.
  */
-func GetFunctionsAllVersions(connection *dbconn.DBConn) []Function {
+func GetFunctionsAllVersions(connectionPool *dbconn.DBConn) []Function {
 	var functions []Function
-	if connection.Version.Before("5") {
-		functions = GetFunctions4(connection)
-		arguments, tableArguments := GetFunctionArgsAndIdentArgs(connection)
-		returns := GetFunctionReturnTypes(connection)
+	if connectionPool.Version.Before("5") {
+		functions = GetFunctions4(connectionPool)
+		arguments, tableArguments := GetFunctionArgsAndIdentArgs(connectionPool)
+		returns := GetFunctionReturnTypes(connectionPool)
 		for i := range functions {
 			oid := functions[i].Oid
 			functions[i].Arguments = arguments[oid]
@@ -74,14 +74,14 @@ func GetFunctionsAllVersions(connection *dbconn.DBConn) []Function {
 			}
 		}
 	} else {
-		functions = GetFunctionsMaster(connection)
+		functions = GetFunctionsMaster(connectionPool)
 	}
 	return functions
 }
 
-func GetFunctionsMaster(connection *dbconn.DBConn) []Function {
+func GetFunctionsMaster(connectionPool *dbconn.DBConn) []Function {
 	masterAtts := ""
-	if connection.Version.AtLeast("6") {
+	if connectionPool.Version.AtLeast("6") {
 		masterAtts = "proiswindow,proexeclocation,proleakproof,"
 	} else {
 		masterAtts = "'a' AS proexeclocation,"
@@ -118,7 +118,7 @@ AND %s
 ORDER BY nspname, proname, identargs;`, masterAtts, SchemaFilterClause("n"), ExtensionFilterClause("p"))
 
 	results := make([]Function, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	return results
 }
@@ -127,7 +127,7 @@ ORDER BY nspname, proname, identargs;`, masterAtts, SchemaFilterClause("n"), Ext
  * In addition to lacking the pg_get_function_* functions, GPDB 4.3 lacks
  * several columns in pg_proc compared to GPDB 5, so we don't retrieve those.
  */
-func GetFunctions4(connection *dbconn.DBConn) []Function {
+func GetFunctions4(connectionPool *dbconn.DBConn) []Function {
 	query := fmt.Sprintf(`
 SELECT
 	p.oid,
@@ -152,7 +152,7 @@ AND proisagg = 'f'
 ORDER BY nspname, proname;`, SchemaFilterClause("n"))
 
 	results := make([]Function, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	return results
 }
@@ -162,7 +162,7 @@ ORDER BY nspname, proname;`, SchemaFilterClause("n"))
  * difference between a function's "arguments" and "identity arguments" and
  * we can use the same map for both fields.
  */
-func GetFunctionArgsAndIdentArgs(connection *dbconn.DBConn) (map[uint32]string, map[uint32]string) {
+func GetFunctionArgsAndIdentArgs(connectionPool *dbconn.DBConn) (map[uint32]string, map[uint32]string) {
 	query := `
 SELECT
     p.oid,
@@ -188,7 +188,7 @@ ON p.pronamespace = n.oid;`
 		Name string
 		Mode string
 	}, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 
 	argMap := make(map[uint32]string, 0)
@@ -231,7 +231,7 @@ ON p.pronamespace = n.oid;`
 	return argMap, tableArgMap
 }
 
-func GetFunctionReturnTypes(connection *dbconn.DBConn) map[uint32]Function {
+func GetFunctionReturnTypes(connectionPool *dbconn.DBConn) map[uint32]Function {
 	query := fmt.Sprintf(`
 SELECT
     p.oid,
@@ -246,7 +246,7 @@ ON p.pronamespace = n.oid
 WHERE %s`, SchemaFilterClause("n"))
 
 	results := make([]Function, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 
 	returnMap := make(map[uint32]Function, 0)
@@ -286,7 +286,7 @@ type Aggregate struct {
 	MInitValIsNull             bool
 }
 
-func GetAggregates(connection *dbconn.DBConn) []Aggregate {
+func GetAggregates(connectionPool *dbconn.DBConn) []Aggregate {
 	version4query := fmt.Sprintf(`
 SELECT
 	p.oid,
@@ -365,22 +365,22 @@ AND %s;`, SchemaFilterClause("n"), ExtensionFilterClause("p"))
 
 	aggregates := make([]Aggregate, 0)
 	query := ""
-	if connection.Version.Before("5") {
+	if connectionPool.Version.Before("5") {
 		query = version4query
-	} else if connection.Version.Before("6") {
+	} else if connectionPool.Version.Before("6") {
 		query = version5query
 	} else {
 		query = masterQuery
 	}
-	err := connection.Select(&aggregates, query)
+	err := connectionPool.Select(&aggregates, query)
 	gplog.FatalOnError(err)
 	for i := range aggregates {
 		if aggregates[i].MTransitionDataType == "-" {
 			aggregates[i].MTransitionDataType = ""
 		}
 	}
-	if connection.Version.Before("5") {
-		arguments, _ := GetFunctionArgsAndIdentArgs(connection)
+	if connectionPool.Version.Before("5") {
+		arguments, _ := GetFunctionArgsAndIdentArgs(connectionPool)
 		for i := range aggregates {
 			oid := aggregates[i].Oid
 			aggregates[i].Arguments = arguments[oid]
@@ -396,7 +396,7 @@ type FunctionInfo struct {
 	IsInternal    bool
 }
 
-func GetFunctionOidToInfoMap(connection *dbconn.DBConn) map[uint32]FunctionInfo {
+func GetFunctionOidToInfoMap(connectionPool *dbconn.DBConn) map[uint32]FunctionInfo {
 	version4query := `
 SELECT
 	p.oid,
@@ -423,14 +423,14 @@ LEFT JOIN pg_namespace n ON p.pronamespace = n.oid;
 	}, 0)
 	funcMap := make(map[uint32]FunctionInfo, 0)
 	var err error
-	if connection.Version.Before("5") {
-		err = connection.Select(&results, version4query)
-		arguments, _ := GetFunctionArgsAndIdentArgs(connection)
+	if connectionPool.Version.Before("5") {
+		err = connectionPool.Select(&results, version4query)
+		arguments, _ := GetFunctionArgsAndIdentArgs(connectionPool)
 		for i := range results {
 			results[i].Arguments = arguments[results[i].Oid]
 		}
 	} else {
-		err = connection.Select(&results, query)
+		err = connectionPool.Select(&results, query)
 	}
 	gplog.FatalOnError(err)
 	for _, function := range results {
@@ -458,19 +458,19 @@ type Cast struct {
 	CastMethod     string
 }
 
-func GetCasts(connection *dbconn.DBConn) []Cast {
+func GetCasts(connectionPool *dbconn.DBConn) []Cast {
 	/* This query retrieves all casts where either the source type, the target
 	 * type, or the cast function is user-defined.
 	 */
 	argStr := ""
-	if connection.Version.Before("5") {
+	if connectionPool.Version.Before("5") {
 		argStr = `'' AS functionargs,
 	coalesce(p.oid, 0::oid) AS functionoid,`
 	} else {
 		argStr = `coalesce(pg_get_function_arguments(p.oid), '') AS functionargs,`
 	}
 	methodStr := ""
-	if connection.Version.AtLeast("6") {
+	if connectionPool.Version.AtLeast("6") {
 		methodStr = "castmethod,"
 	} else {
 		methodStr = "CASE WHEN c.castfunc = 0 THEN 'b' ELSE 'f' END AS castmethod,"
@@ -499,10 +499,10 @@ ORDER BY 1, 2;
 `, argStr, methodStr, SchemaFilterClause("sn"), SchemaFilterClause("tn"), SchemaFilterClause("n"), ExtensionFilterClause("c"))
 
 	casts := make([]Cast, 0)
-	err := connection.Select(&casts, query)
+	err := connectionPool.Select(&casts, query)
 	gplog.FatalOnError(err)
-	if connection.Version.Before("5") {
-		arguments, _ := GetFunctionArgsAndIdentArgs(connection)
+	if connectionPool.Version.Before("5") {
+		arguments, _ := GetFunctionArgsAndIdentArgs(connectionPool)
 		for i := range casts {
 			oid := casts[i].FunctionOid
 			casts[i].FunctionArgs = arguments[oid]
@@ -517,7 +517,7 @@ type Extension struct {
 	Schema string
 }
 
-func GetExtensions(connection *dbconn.DBConn) []Extension {
+func GetExtensions(connectionPool *dbconn.DBConn) []Extension {
 	results := make([]Extension, 0)
 
 	query := `
@@ -528,7 +528,7 @@ SELECT
 FROM pg_extension e
 JOIN pg_namespace n ON e.extnamespace = n.oid;
 `
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	return results
 }
@@ -544,7 +544,7 @@ type ProceduralLanguage struct {
 	Validator uint32 `db:"lanvalidator"`
 }
 
-func GetProceduralLanguages(connection *dbconn.DBConn) []ProceduralLanguage {
+func GetProceduralLanguages(connectionPool *dbconn.DBConn) []ProceduralLanguage {
 	results := make([]ProceduralLanguage, 0)
 	// Languages are owned by the bootstrap superuser, OID 10
 	version4query := `
@@ -576,10 +576,10 @@ WHERE l.lanispl='t'
 AND l.lanname != 'plpgsql'
 AND %s;`, ExtensionFilterClause("l"))
 	var err error
-	if connection.Version.Before("5") {
-		err = connection.Select(&results, version4query)
+	if connectionPool.Version.Before("5") {
+		err = connectionPool.Select(&results, version4query)
 	} else {
-		err = connection.Select(&results, query)
+		err = connectionPool.Select(&results, query)
 	}
 	gplog.FatalOnError(err)
 	return results
@@ -595,7 +595,7 @@ type Conversion struct {
 	IsDefault          bool `db:"condefault"`
 }
 
-func GetConversions(connection *dbconn.DBConn) []Conversion {
+func GetConversions(connectionPool *dbconn.DBConn) []Conversion {
 	results := make([]Conversion, 0)
 	query := fmt.Sprintf(`
 SELECT
@@ -614,7 +614,7 @@ WHERE %s
 AND %s
 ORDER BY n.nspname, c.conname;`, SchemaFilterClause("n"), ExtensionFilterClause("c"))
 
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	return results
 }
@@ -627,7 +627,7 @@ type ForeignDataWrapper struct {
 	Options   string
 }
 
-func GetForeignDataWrappers(connection *dbconn.DBConn) []ForeignDataWrapper {
+func GetForeignDataWrappers(connectionPool *dbconn.DBConn) []ForeignDataWrapper {
 	results := make([]ForeignDataWrapper, 0)
 	query := fmt.Sprintf(`
 SELECT
@@ -643,7 +643,7 @@ SELECT
 FROM pg_foreign_data_wrapper
 WHERE %s;`, ExtensionFilterClause(""))
 
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	return results
 }
@@ -657,7 +657,7 @@ type ForeignServer struct {
 	Options            string
 }
 
-func GetForeignServers(connection *dbconn.DBConn) []ForeignServer {
+func GetForeignServers(connectionPool *dbconn.DBConn) []ForeignServer {
 	results := make([]ForeignServer, 0)
 	query := fmt.Sprintf(`
 SELECT
@@ -675,7 +675,7 @@ FROM pg_foreign_server fs
 LEFT JOIN pg_foreign_data_wrapper fdw ON fdw.oid = srvfdw
 WHERE %s`, ExtensionFilterClause("fs"))
 
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	return results
 }
@@ -687,7 +687,7 @@ type UserMapping struct {
 	Options string
 }
 
-func GetUserMappings(connection *dbconn.DBConn) []UserMapping {
+func GetUserMappings(connectionPool *dbconn.DBConn) []UserMapping {
 	results := make([]UserMapping, 0)
 	query := fmt.Sprintf(`
 SELECT
@@ -703,7 +703,7 @@ FROM pg_user_mappings um
 WHERE um.umid NOT IN (select objid from pg_depend where deptype = 'e')
 ORDER by um.usename;`)
 
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	return results
 }

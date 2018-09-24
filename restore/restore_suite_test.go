@@ -23,13 +23,13 @@ import (
 )
 
 var (
-	connection    *dbconn.DBConn
-	mock          sqlmock.Sqlmock
-	stdout        *gbytes.Buffer
-	stderr        *gbytes.Buffer
-	logfile       *gbytes.Buffer
-	buffer        *gbytes.Buffer
-	gprestorePath = ""
+	connectionPool *dbconn.DBConn
+	mock           sqlmock.Sqlmock
+	stdout         *gbytes.Buffer
+	stderr         *gbytes.Buffer
+	logfile        *gbytes.Buffer
+	buffer         *gbytes.Buffer
+	gprestorePath  = ""
 )
 
 /* This function is a helper function to execute gprestore and return a session
@@ -51,12 +51,12 @@ func TestRestore(t *testing.T) {
 var cmdFlags *pflag.FlagSet
 
 var _ = BeforeSuite(func() {
-	connection, mock, stdout, stderr, logfile = testutils.SetupTestEnvironment()
+	connectionPool, mock, stdout, stderr, logfile = testutils.SetupTestEnvironment()
 	buffer = gbytes.NewBuffer()
 })
 
 var _ = BeforeEach(func() {
-	connection, mock = testutils.CreateAndConnectMockDB(1)
+	connectionPool, mock = testutils.CreateAndConnectMockDB(1)
 
 	cmdFlags = pflag.NewFlagSet("gprestore", pflag.ExitOnError)
 	restore.SetCmdFlags(cmdFlags)

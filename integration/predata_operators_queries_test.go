@@ -14,24 +14,24 @@ import (
 var _ = Describe("backup integration tests", func() {
 	Describe("GetOperators", func() {
 		It("returns a slice of operators", func() {
-			testhelper.AssertQueryRuns(connection, "CREATE OPERATOR public.## (LEFTARG = bigint, PROCEDURE = numeric_fac)")
-			defer testhelper.AssertQueryRuns(connection, "DROP OPERATOR public.## (bigint, NONE)")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE OPERATOR public.## (LEFTARG = bigint, PROCEDURE = numeric_fac)")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR public.## (bigint, NONE)")
 
 			expectedOperator := backup.Operator{Oid: 0, Schema: "public", Name: "##", Procedure: "numeric_fac", LeftArgType: "bigint", RightArgType: "-", CommutatorOp: "0", NegatorOp: "0", RestrictFunction: "-", JoinFunction: "-", CanHash: false, CanMerge: false}
 
-			results := backup.GetOperators(connection)
+			results := backup.GetOperators(connectionPool)
 
 			Expect(results).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchExcluding(&expectedOperator, &results[0], "Oid")
 		})
 		It("returns a slice of operators with a full-featured operator", func() {
-			testhelper.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
-			defer testhelper.AssertQueryRuns(connection, "DROP SCHEMA testschema")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE SCHEMA testschema")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP SCHEMA testschema")
 
-			testhelper.AssertQueryRuns(connection, `CREATE FUNCTION testschema."testFunc"(path,path) RETURNS BOOLEAN AS 'SELECT true' LANGUAGE SQL IMMUTABLE`)
-			defer testhelper.AssertQueryRuns(connection, `DROP FUNCTION testschema."testFunc"(path,path)`)
+			testhelper.AssertQueryRuns(connectionPool, `CREATE FUNCTION testschema."testFunc"(path,path) RETURNS BOOLEAN AS 'SELECT true' LANGUAGE SQL IMMUTABLE`)
+			defer testhelper.AssertQueryRuns(connectionPool, `DROP FUNCTION testschema."testFunc"(path,path)`)
 
-			testhelper.AssertQueryRuns(connection, `
+			testhelper.AssertQueryRuns(connectionPool, `
 			CREATE OPERATOR testschema.## (
 				LEFTARG = path,
 				RIGHTARG = path,
@@ -43,33 +43,33 @@ var _ = Describe("backup integration tests", func() {
 				HASHES,
 				MERGES
 			)`)
-			defer testhelper.AssertQueryRuns(connection, "DROP OPERATOR testschema.## (path, path)")
-			defer testhelper.AssertQueryRuns(connection, "DROP OPERATOR public.### (path, path)")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR testschema.## (path, path)")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR public.### (path, path)")
 
 			version4expectedOperator := backup.Operator{Oid: 0, Schema: "testschema", Name: "##", Procedure: `testschema."testFunc"`, LeftArgType: "path", RightArgType: "path", CommutatorOp: "testschema.##", NegatorOp: "public.###", RestrictFunction: "eqsel", JoinFunction: "eqjoinsel", CanHash: true, CanMerge: false}
 			expectedOperator := backup.Operator{Oid: 0, Schema: "testschema", Name: "##", Procedure: `testschema."testFunc"`, LeftArgType: "path", RightArgType: "path", CommutatorOp: "testschema.##", NegatorOp: "public.###", RestrictFunction: "eqsel", JoinFunction: "eqjoinsel", CanHash: true, CanMerge: true}
 
-			results := backup.GetOperators(connection)
+			results := backup.GetOperators(connectionPool)
 
 			Expect(results).To(HaveLen(1))
-			if connection.Version.Before("5") {
+			if connectionPool.Version.Before("5") {
 				structmatcher.ExpectStructsToMatchExcluding(&version4expectedOperator, &results[0], "Oid")
 			} else {
 				structmatcher.ExpectStructsToMatchExcluding(&expectedOperator, &results[0], "Oid")
 			}
 		})
 		It("returns a slice of operators from a specific schema", func() {
-			testhelper.AssertQueryRuns(connection, "CREATE OPERATOR public.## (LEFTARG = bigint, PROCEDURE = numeric_fac)")
-			defer testhelper.AssertQueryRuns(connection, "DROP OPERATOR public.## (bigint, NONE)")
-			testhelper.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
-			defer testhelper.AssertQueryRuns(connection, "DROP SCHEMA testschema")
-			testhelper.AssertQueryRuns(connection, "CREATE OPERATOR testschema.## (LEFTARG = bigint, PROCEDURE = numeric_fac)")
-			defer testhelper.AssertQueryRuns(connection, "DROP OPERATOR testschema.## (bigint, NONE)")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE OPERATOR public.## (LEFTARG = bigint, PROCEDURE = numeric_fac)")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR public.## (bigint, NONE)")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE SCHEMA testschema")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP SCHEMA testschema")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE OPERATOR testschema.## (LEFTARG = bigint, PROCEDURE = numeric_fac)")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR testschema.## (bigint, NONE)")
 			backupCmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 
 			expectedOperator := backup.Operator{Oid: 0, Schema: "testschema", Name: "##", Procedure: "numeric_fac", LeftArgType: "bigint", RightArgType: "-", CommutatorOp: "0", NegatorOp: "0", RestrictFunction: "-", JoinFunction: "-", CanHash: false, CanMerge: false}
 
-			results := backup.GetOperators(connection)
+			results := backup.GetOperators(connectionPool)
 
 			Expect(results).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchExcluding(&expectedOperator, &results[0], "Oid")
@@ -77,31 +77,31 @@ var _ = Describe("backup integration tests", func() {
 	})
 	Describe("GetOperatorFamilies", func() {
 		BeforeEach(func() {
-			testutils.SkipIfBefore5(connection)
+			testutils.SkipIfBefore5(connectionPool)
 		})
 		It("returns a slice of operator families", func() {
-			testhelper.AssertQueryRuns(connection, "CREATE OPERATOR FAMILY public.testfam USING hash;")
-			defer testhelper.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.testfam USING hash")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE OPERATOR FAMILY public.testfam USING hash;")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR FAMILY public.testfam USING hash")
 
 			expectedOperator := backup.OperatorFamily{Oid: 0, Schema: "public", Name: "testfam", IndexMethod: "hash"}
 
-			results := backup.GetOperatorFamilies(connection)
+			results := backup.GetOperatorFamilies(connectionPool)
 
 			Expect(results).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchExcluding(&expectedOperator, &results[0], "Oid")
 		})
 		It("returns a slice of operator families in a specific schema", func() {
-			testhelper.AssertQueryRuns(connection, "CREATE OPERATOR FAMILY public.testfam USING hash;")
-			defer testhelper.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.testfam USING hash")
-			testhelper.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
-			defer testhelper.AssertQueryRuns(connection, "DROP SCHEMA testschema")
-			testhelper.AssertQueryRuns(connection, "CREATE OPERATOR FAMILY testschema.testfam USING hash;")
-			defer testhelper.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testschema.testfam USING hash")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE OPERATOR FAMILY public.testfam USING hash;")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR FAMILY public.testfam USING hash")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE SCHEMA testschema")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP SCHEMA testschema")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE OPERATOR FAMILY testschema.testfam USING hash;")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR FAMILY testschema.testfam USING hash")
 			backupCmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 
 			expectedOperator := backup.OperatorFamily{Oid: 0, Schema: "testschema", Name: "testfam", IndexMethod: "hash"}
 
-			results := backup.GetOperatorFamilies(connection)
+			results := backup.GetOperatorFamilies(connectionPool)
 
 			Expect(results).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchExcluding(&expectedOperator, &results[0], "Oid")
@@ -109,56 +109,56 @@ var _ = Describe("backup integration tests", func() {
 	})
 	Describe("GetOperatorClasses", func() {
 		It("returns a slice of operator classes", func() {
-			testhelper.AssertQueryRuns(connection, "CREATE OPERATOR CLASS public.testclass FOR TYPE int USING hash AS STORAGE int")
-			if connection.Version.Before("5") {
-				defer testhelper.AssertQueryRuns(connection, "DROP OPERATOR CLASS public.testclass USING hash")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE OPERATOR CLASS public.testclass FOR TYPE int USING hash AS STORAGE int")
+			if connectionPool.Version.Before("5") {
+				defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR CLASS public.testclass USING hash")
 			} else {
-				defer testhelper.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.testclass USING hash")
+				defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR FAMILY public.testclass USING hash")
 			}
 
 			version4expected := backup.OperatorClass{Oid: 0, Schema: "public", Name: "testclass", FamilySchema: "", FamilyName: "", IndexMethod: "hash", Type: "integer", Default: false, StorageType: "-", Operators: nil, Functions: nil}
 			expected := backup.OperatorClass{Oid: 0, Schema: "public", Name: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "hash", Type: "integer", Default: false, StorageType: "-", Operators: nil, Functions: nil}
 
-			results := backup.GetOperatorClasses(connection)
+			results := backup.GetOperatorClasses(connectionPool)
 
 			Expect(results).To(HaveLen(1))
-			if connection.Version.Before("5") {
+			if connectionPool.Version.Before("5") {
 				structmatcher.ExpectStructsToMatchExcluding(&version4expected, &results[0], "Oid")
 			} else {
 				structmatcher.ExpectStructsToMatchExcluding(&expected, &results[0], "Oid")
 			}
 		})
 		It("returns a slice of operator classes with an operator family", func() {
-			testutils.SkipIfBefore5(connection)
-			testhelper.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
-			defer testhelper.AssertQueryRuns(connection, "DROP SCHEMA testschema CASCADE")
+			testutils.SkipIfBefore5(connectionPool)
+			testhelper.AssertQueryRuns(connectionPool, "CREATE SCHEMA testschema")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP SCHEMA testschema CASCADE")
 
-			testhelper.AssertQueryRuns(connection, "CREATE OPERATOR FAMILY testschema.testfam USING gist;")
-			defer testhelper.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testschema.testfam USING gist CASCADE")
-			testhelper.AssertQueryRuns(connection, "CREATE OPERATOR CLASS public.testclass FOR TYPE int USING gist FAMILY testschema.testfam AS STORAGE int")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE OPERATOR FAMILY testschema.testfam USING gist;")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR FAMILY testschema.testfam USING gist CASCADE")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE OPERATOR CLASS public.testclass FOR TYPE int USING gist FAMILY testschema.testfam AS STORAGE int")
 
 			expected := backup.OperatorClass{Oid: 0, Schema: "public", Name: "testclass", FamilySchema: "testschema", FamilyName: "testfam", IndexMethod: "gist", Type: "integer", Default: false, StorageType: "-", Operators: nil, Functions: nil}
 
-			results := backup.GetOperatorClasses(connection)
+			results := backup.GetOperatorClasses(connectionPool)
 
 			Expect(results).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchExcluding(&expected, &results[0], "Oid")
 		})
 		It("returns a slice of operator classes with different type and storage type", func() {
-			testhelper.AssertQueryRuns(connection, "CREATE OPERATOR CLASS public.testclass DEFAULT FOR TYPE int USING gist AS STORAGE text")
-			if connection.Version.Before("5") {
-				defer testhelper.AssertQueryRuns(connection, "DROP OPERATOR CLASS public.testclass USING gist")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE OPERATOR CLASS public.testclass DEFAULT FOR TYPE int USING gist AS STORAGE text")
+			if connectionPool.Version.Before("5") {
+				defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR CLASS public.testclass USING gist")
 			} else {
-				defer testhelper.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.testclass USING gist")
+				defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR FAMILY public.testclass USING gist")
 			}
 
 			version4expected := backup.OperatorClass{Oid: 0, Schema: "public", Name: "testclass", FamilySchema: "", FamilyName: "", IndexMethod: "gist", Type: "integer", Default: true, StorageType: "text", Operators: nil, Functions: nil}
 			expected := backup.OperatorClass{Oid: 0, Schema: "public", Name: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "gist", Type: "integer", Default: true, StorageType: "text", Operators: nil, Functions: nil}
 
-			results := backup.GetOperatorClasses(connection)
+			results := backup.GetOperatorClasses(connectionPool)
 
 			Expect(results).To(HaveLen(1))
-			if connection.Version.Before("5") {
+			if connectionPool.Version.Before("5") {
 				structmatcher.ExpectStructsToMatchExcluding(&version4expected, &results[0], "Oid")
 			} else {
 				structmatcher.ExpectStructsToMatchExcluding(&expected, &results[0], "Oid")
@@ -167,19 +167,19 @@ var _ = Describe("backup integration tests", func() {
 		It("returns a slice of operator classes with operators and functions", func() {
 			opClassQuery := ""
 			expectedRecheck := false
-			if connection.Version.Before("6") {
+			if connectionPool.Version.Before("6") {
 				opClassQuery = "CREATE OPERATOR CLASS public.testclass FOR TYPE int USING gist AS OPERATOR 1 = RECHECK, OPERATOR 2 < , FUNCTION 1 abs(integer), FUNCTION 2 int4out(integer)"
 				expectedRecheck = true
 			} else {
 				opClassQuery = "CREATE OPERATOR CLASS public.testclass FOR TYPE int USING gist AS OPERATOR 1 =, OPERATOR 2 < , FUNCTION 1 abs(integer), FUNCTION 2 int4out(integer)"
 			}
 
-			testhelper.AssertQueryRuns(connection, opClassQuery)
+			testhelper.AssertQueryRuns(connectionPool, opClassQuery)
 
-			if connection.Version.Before("5") {
-				defer testhelper.AssertQueryRuns(connection, "DROP OPERATOR CLASS public.testclass USING gist")
+			if connectionPool.Version.Before("5") {
+				defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR CLASS public.testclass USING gist")
 			} else {
-				defer testhelper.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.testclass USING gist")
+				defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR FAMILY public.testclass USING gist")
 			}
 
 			expectedOperators := []backup.OperatorClassOperator{{ClassOid: 0, StrategyNumber: 1, Operator: "=(integer,integer)", Recheck: expectedRecheck}, {ClassOid: 0, StrategyNumber: 2, Operator: "<(integer,integer)", Recheck: false}}
@@ -188,57 +188,57 @@ var _ = Describe("backup integration tests", func() {
 			version4expected := backup.OperatorClass{Oid: 0, Schema: "public", Name: "testclass", FamilySchema: "", FamilyName: "", IndexMethod: "gist", Type: "integer", Default: false, StorageType: "-", Operators: expectedOperators, Functions: expected4Functions}
 			expected := backup.OperatorClass{Oid: 0, Schema: "public", Name: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "gist", Type: "integer", Default: false, StorageType: "-", Operators: expectedOperators, Functions: expectedFunctions}
 
-			results := backup.GetOperatorClasses(connection)
+			results := backup.GetOperatorClasses(connectionPool)
 
 			Expect(results).To(HaveLen(1))
-			if connection.Version.Before("5") {
+			if connectionPool.Version.Before("5") {
 				structmatcher.ExpectStructsToMatchExcluding(&version4expected, &results[0], "Oid", "Operators.ClassOid", "Functions.ClassOid")
 			} else {
 				structmatcher.ExpectStructsToMatchExcluding(&expected, &results[0], "Oid", "Operators.ClassOid", "Functions.ClassOid")
 			}
 		})
 		It("returns a slice of operator classes for a specific schema", func() {
-			testhelper.AssertQueryRuns(connection, "CREATE OPERATOR CLASS public.testclass FOR TYPE int USING hash AS STORAGE int")
-			if connection.Version.Before("5") {
-				defer testhelper.AssertQueryRuns(connection, "DROP OPERATOR CLASS public.testclass USING hash")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE OPERATOR CLASS public.testclass FOR TYPE int USING hash AS STORAGE int")
+			if connectionPool.Version.Before("5") {
+				defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR CLASS public.testclass USING hash")
 			} else {
-				defer testhelper.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.testclass USING hash")
+				defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR FAMILY public.testclass USING hash")
 			}
-			testhelper.AssertQueryRuns(connection, "CREATE SCHEMA testschema")
-			defer testhelper.AssertQueryRuns(connection, "DROP SCHEMA testschema CASCADE")
-			testhelper.AssertQueryRuns(connection, "CREATE OPERATOR CLASS testschema.testclass FOR TYPE int USING hash AS STORAGE int")
-			if connection.Version.Before("5") {
-				defer testhelper.AssertQueryRuns(connection, "DROP OPERATOR CLASS testschema.testclass USING hash")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE SCHEMA testschema")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP SCHEMA testschema CASCADE")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE OPERATOR CLASS testschema.testclass FOR TYPE int USING hash AS STORAGE int")
+			if connectionPool.Version.Before("5") {
+				defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR CLASS testschema.testclass USING hash")
 			} else {
-				defer testhelper.AssertQueryRuns(connection, "DROP OPERATOR FAMILY testschema.testclass USING hash")
+				defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR FAMILY testschema.testclass USING hash")
 			}
 			backupCmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 
 			version4expected := backup.OperatorClass{Oid: 0, Schema: "testschema", Name: "testclass", FamilySchema: "", FamilyName: "", IndexMethod: "hash", Type: "integer", Default: false, StorageType: "-", Operators: nil, Functions: nil}
 			expected := backup.OperatorClass{Oid: 0, Schema: "testschema", Name: "testclass", FamilySchema: "testschema", FamilyName: "testclass", IndexMethod: "hash", Type: "integer", Default: false, StorageType: "-", Operators: nil, Functions: nil}
 
-			results := backup.GetOperatorClasses(connection)
+			results := backup.GetOperatorClasses(connectionPool)
 
 			Expect(results).To(HaveLen(1))
-			if connection.Version.Before("5") {
+			if connectionPool.Version.Before("5") {
 				structmatcher.ExpectStructsToMatchExcluding(&version4expected, &results[0], "Oid")
 			} else {
 				structmatcher.ExpectStructsToMatchExcluding(&expected, &results[0], "Oid")
 			}
 		})
 		It("returns a slice of operator classes with an operator with a sort family", func() {
-			testutils.SkipIfBefore6(connection)
+			testutils.SkipIfBefore6(connectionPool)
 
-			testhelper.AssertQueryRuns(connection, "CREATE OPERATOR FAMILY public.sort_family USING btree")
-			defer testhelper.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.sort_family USING btree")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE OPERATOR FAMILY public.sort_family USING btree")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR FAMILY public.sort_family USING btree")
 			opClassQuery := "CREATE OPERATOR CLASS public.testclass FOR TYPE int USING gist AS OPERATOR 1 = FOR ORDER BY public.sort_family"
-			testhelper.AssertQueryRuns(connection, opClassQuery)
-			defer testhelper.AssertQueryRuns(connection, "DROP OPERATOR FAMILY public.testclass USING gist")
+			testhelper.AssertQueryRuns(connectionPool, opClassQuery)
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR FAMILY public.testclass USING gist")
 
 			expectedOperators := []backup.OperatorClassOperator{{ClassOid: 0, StrategyNumber: 1, Operator: "=(integer,integer)", Recheck: false, OrderByFamily: "public.sort_family"}}
 			expected := backup.OperatorClass{Oid: 0, Schema: "public", Name: "testclass", FamilySchema: "public", FamilyName: "testclass", IndexMethod: "gist", Type: "integer", Default: false, StorageType: "-", Operators: expectedOperators, Functions: nil}
 
-			results := backup.GetOperatorClasses(connection)
+			results := backup.GetOperatorClasses(connectionPool)
 
 			Expect(results).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchExcluding(&expected, &results[0], "Oid", "Operators.ClassOid", "Functions.ClassOid")

@@ -19,31 +19,31 @@ var _ = Describe("backup integration tests", func() {
 			tables := []backup.Relation{{SchemaOid: 2200, Schema: "public", Name: "foo"}}
 
 			// Create and ANALYZE a table to generate statistics
-			testhelper.AssertQueryRuns(connection, "CREATE TABLE public.foo(i int, j text, k bool)")
-			defer testhelper.AssertQueryRuns(connection, "DROP TABLE public.foo")
-			testhelper.AssertQueryRuns(connection, "INSERT INTO public.foo VALUES (1, 'a', 't')")
-			testhelper.AssertQueryRuns(connection, "INSERT INTO public.foo VALUES (2, 'b', 'f')")
-			testhelper.AssertQueryRuns(connection, "ANALYZE public.foo")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE TABLE public.foo(i int, j text, k bool)")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLE public.foo")
+			testhelper.AssertQueryRuns(connectionPool, "INSERT INTO public.foo VALUES (1, 'a', 't')")
+			testhelper.AssertQueryRuns(connectionPool, "INSERT INTO public.foo VALUES (2, 'b', 'f')")
+			testhelper.AssertQueryRuns(connectionPool, "ANALYZE public.foo")
 
-			oldTableOid := testutils.OidFromObjectName(connection, "public", "foo", backup.TYPE_RELATION)
+			oldTableOid := testutils.OidFromObjectName(connectionPool, "public", "foo", backup.TYPE_RELATION)
 			tables[0].Oid = oldTableOid
 
-			beforeAttStats := backup.GetAttributeStatistics(connection, tables)
-			beforeTupleStats := backup.GetTupleStatistics(connection, tables)
+			beforeAttStats := backup.GetAttributeStatistics(connectionPool, tables)
+			beforeTupleStats := backup.GetTupleStatistics(connectionPool, tables)
 			beforeTupleStat := beforeTupleStats[oldTableOid]
 
 			// Drop and recreate the table to clear the statistics
-			testhelper.AssertQueryRuns(connection, "DROP TABLE public.foo")
-			testhelper.AssertQueryRuns(connection, "CREATE TABLE public.foo(i int, j text, k bool)")
+			testhelper.AssertQueryRuns(connectionPool, "DROP TABLE public.foo")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE TABLE public.foo(i int, j text, k bool)")
 
 			// Reload the retrieved statistics into the new table
 			backup.PrintStatisticsStatements(backupfile, toc, tables, beforeAttStats, beforeTupleStats)
-			testhelper.AssertQueryRuns(connection, buffer.String())
+			testhelper.AssertQueryRuns(connectionPool, buffer.String())
 
-			newTableOid := testutils.OidFromObjectName(connection, "public", "foo", backup.TYPE_RELATION)
+			newTableOid := testutils.OidFromObjectName(connectionPool, "public", "foo", backup.TYPE_RELATION)
 			tables[0].Oid = newTableOid
-			afterAttStats := backup.GetAttributeStatistics(connection, tables)
-			afterTupleStats := backup.GetTupleStatistics(connection, tables)
+			afterAttStats := backup.GetAttributeStatistics(connectionPool, tables)
+			afterTupleStats := backup.GetTupleStatistics(connectionPool, tables)
 			afterTupleStat := afterTupleStats[newTableOid]
 
 			oldAtts := beforeAttStats[oldTableOid]

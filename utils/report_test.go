@@ -183,7 +183,7 @@ types                        1000`))
 		timestamp := "20170101010101"
 		restoreStartTime := "20170101010102"
 		restoreVersion := "0.1.0"
-		connection := &dbconn.DBConn{
+		connectionPool := &dbconn.DBConn{
 			DBName: "testdb",
 			Version: dbconn.GPDBVersion{
 				VersionString: "5.0.0 build test",
@@ -207,7 +207,7 @@ types                        1000`))
 
 		It("writes a report for a failed restore", func() {
 			gplog.SetErrorCode(2)
-			utils.WriteRestoreReportFile("filename", timestamp, restoreStartTime, connection, restoreVersion, "Cannot access /tmp/backups: Permission denied")
+			utils.WriteRestoreReportFile("filename", timestamp, restoreStartTime, connectionPool, restoreVersion, "Cannot access /tmp/backups: Permission denied")
 			Expect(buffer).To(gbytes.Say(`Greenplum Database Restore Report
 
 Timestamp Key: 20170101010101
@@ -226,7 +226,7 @@ Restore Error: Cannot access /tmp/backups: Permission denied`))
 		})
 		It("writes a report for a successful restore", func() {
 			gplog.SetErrorCode(0)
-			utils.WriteRestoreReportFile("filename", timestamp, restoreStartTime, connection, restoreVersion, "")
+			utils.WriteRestoreReportFile("filename", timestamp, restoreStartTime, connectionPool, restoreVersion, "")
 			Expect(buffer).To(gbytes.Say(`Greenplum Database Restore Report
 
 Timestamp Key: 20170101010101
@@ -244,7 +244,7 @@ Restore Status: Success`))
 		})
 		It("writes a report for a successful restore with errors", func() {
 			gplog.SetErrorCode(1)
-			utils.WriteRestoreReportFile("filename", timestamp, restoreStartTime, connection, restoreVersion, "")
+			utils.WriteRestoreReportFile("filename", timestamp, restoreStartTime, connectionPool, restoreVersion, "")
 			Expect(buffer).To(gbytes.Say(`Greenplum Database Restore Report
 
 Timestamp Key: 20170101010101

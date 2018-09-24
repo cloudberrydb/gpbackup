@@ -26,7 +26,7 @@ type TextSearchParser struct {
 	HeadlineFunc string
 }
 
-func GetTextSearchParsers(connection *dbconn.DBConn) []TextSearchParser {
+func GetTextSearchParsers(connectionPool *dbconn.DBConn) []TextSearchParser {
 	query := fmt.Sprintf(`
 SELECT
 	p.oid,
@@ -44,7 +44,7 @@ AND %s
 ORDER BY prsname;`, SchemaFilterClause("n"), ExtensionFilterClause("p"))
 
 	results := make([]TextSearchParser, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	return results
 }
@@ -57,7 +57,7 @@ type TextSearchTemplate struct {
 	LexizeFunc string
 }
 
-func GetTextSearchTemplates(connection *dbconn.DBConn) []TextSearchTemplate {
+func GetTextSearchTemplates(connectionPool *dbconn.DBConn) []TextSearchTemplate {
 	query := fmt.Sprintf(`
 SELECT
 	p.oid,
@@ -72,7 +72,7 @@ AND %s
 ORDER BY tmplname;`, SchemaFilterClause("n"), ExtensionFilterClause("p"))
 
 	results := make([]TextSearchTemplate, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	return results
 }
@@ -85,7 +85,7 @@ type TextSearchDictionary struct {
 	InitOption string
 }
 
-func GetTextSearchDictionaries(connection *dbconn.DBConn) []TextSearchDictionary {
+func GetTextSearchDictionaries(connectionPool *dbconn.DBConn) []TextSearchDictionary {
 	query := fmt.Sprintf(`
 SELECT
 	d.oid,
@@ -102,7 +102,7 @@ AND %s
 ORDER BY dictname;`, SchemaFilterClause("dict_ns"), ExtensionFilterClause("d"))
 
 	results := make([]TextSearchDictionary, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	return results
 }
@@ -115,7 +115,7 @@ type TextSearchConfiguration struct {
 	TokenToDicts map[string][]string
 }
 
-func GetTextSearchConfigurations(connection *dbconn.DBConn) []TextSearchConfiguration {
+func GetTextSearchConfigurations(connectionPool *dbconn.DBConn) []TextSearchConfiguration {
 	query := fmt.Sprintf(`
 SELECT
 	c.oid AS configoid,
@@ -138,11 +138,11 @@ ORDER BY cfgname;`, SchemaFilterClause("cfg_ns"), ExtensionFilterClause("c"))
 		ParserOid uint32
 		ParserFQN string
 	}, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 
 	parserTokens := NewParserTokenTypes()
-	typeMappings := getTypeMappings(connection)
+	typeMappings := getTypeMappings(connectionPool)
 
 	configurations := make([]TextSearchConfiguration, 0)
 	for _, row := range results {
@@ -153,7 +153,7 @@ ORDER BY cfgname;`, SchemaFilterClause("cfg_ns"), ExtensionFilterClause("c"))
 		config.Parser = row.ParserFQN
 		config.TokenToDicts = make(map[string][]string, 0)
 		for _, mapping := range typeMappings[row.ConfigOid] {
-			tokenName := parserTokens.TokenName(connection, row.ParserOid, mapping.TokenType)
+			tokenName := parserTokens.TokenName(connectionPool, row.ParserOid, mapping.TokenType)
 			config.TokenToDicts[tokenName] = append(config.TokenToDicts[tokenName], mapping.Dictionary)
 		}
 
@@ -176,12 +176,12 @@ func NewParserTokenTypes() *ParserTokenTypes {
 	return &ParserTokenTypes{map[uint32][]ParserTokenType{}}
 }
 
-func (tokenTypes *ParserTokenTypes) TokenName(connection *dbconn.DBConn, parserOid uint32, tokenTypeID uint32) string {
+func (tokenTypes *ParserTokenTypes) TokenName(connectionPool *dbconn.DBConn, parserOid uint32, tokenTypeID uint32) string {
 	typesForParser, ok := tokenTypes.forParser[parserOid]
 	if !ok {
 		typesForParser = make([]ParserTokenType, 0)
 		query := fmt.Sprintf("SELECT tokid AS tokenid, alias FROM pg_catalog.ts_token_type('%d'::pg_catalog.oid)", parserOid)
-		err := connection.Select(&typesForParser, query)
+		err := connectionPool.Select(&typesForParser, query)
 		gplog.FatalOnError(err)
 
 		tokenTypes.forParser[parserOid] = typesForParser
@@ -200,7 +200,7 @@ type TypeMapping struct {
 	Dictionary string
 }
 
-func getTypeMappings(connection *dbconn.DBConn) map[uint32][]TypeMapping {
+func getTypeMappings(connectionPool *dbconn.DBConn) map[uint32][]TypeMapping {
 	query := `
 SELECT
 	mapcfg,
@@ -213,7 +213,7 @@ FROM pg_ts_config_map m`
 		MapTokenType uint32
 		MapDictName  string
 	}, 0)
-	err := connection.Select(&rows, query)
+	err := connectionPool.Select(&rows, query)
 	gplog.FatalOnError(err)
 
 	mapping := make(map[uint32][]TypeMapping, 0)

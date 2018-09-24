@@ -43,7 +43,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			domainType.DefaultVal = "'abc'::bpchar"
 			domainType.NotNull = true
 			types = []backup.Type{shellType, baseType, compositeType, domainType}
-			if connection.Version.AtLeast("5") {
+			if connectionPool.Version.AtLeast("5") {
 				types = append(types, enumType)
 			}
 			typeMetadata = backup.ObjectMetadata{}
@@ -52,11 +52,11 @@ var _ = Describe("backup integration create statement tests", func() {
 		It("creates shell types for base and shell types only", func() {
 			backup.PrintCreateShellTypeStatements(backupfile, toc, types)
 
-			testhelper.AssertQueryRuns(connection, buffer.String())
-			defer testhelper.AssertQueryRuns(connection, "DROP TYPE public.shell_type")
-			defer testhelper.AssertQueryRuns(connection, "DROP TYPE public.base_type")
+			testhelper.AssertQueryRuns(connectionPool, buffer.String())
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TYPE public.shell_type")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TYPE public.base_type")
 
-			shells := backup.GetShellTypes(connection)
+			shells := backup.GetShellTypes(connectionPool)
 			Expect(shells).To(HaveLen(2))
 			Expect(shells[0].Name).To(Equal("base_type"))
 			Expect(shells[1].Name).To(Equal("shell_type"))
@@ -65,25 +65,25 @@ var _ = Describe("backup integration create statement tests", func() {
 		It("creates composite types", func() {
 			backup.PrintCreateCompositeTypeStatement(backupfile, toc, compositeType, typeMetadata)
 
-			testhelper.AssertQueryRuns(connection, buffer.String())
-			defer testhelper.AssertQueryRuns(connection, "DROP TYPE public.composite_type")
+			testhelper.AssertQueryRuns(connectionPool, buffer.String())
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TYPE public.composite_type")
 
-			resultTypes := backup.GetCompositeTypes(connection)
+			resultTypes := backup.GetCompositeTypes(connectionPool)
 
 			Expect(resultTypes).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchExcluding(&compositeType, &resultTypes[0], "Oid", "Attributes.CompositeTypeOid", "Category")
 		})
 		It("creates composite types with a collation", func() {
-			testutils.SkipIfBefore6(connection)
-			testhelper.AssertQueryRuns(connection, `CREATE COLLATION public.some_coll (lc_collate = 'POSIX', lc_ctype = 'POSIX');`)
-			defer testhelper.AssertQueryRuns(connection, "DROP COLLATION public.some_coll")
+			testutils.SkipIfBefore6(connectionPool)
+			testhelper.AssertQueryRuns(connectionPool, `CREATE COLLATION public.some_coll (lc_collate = 'POSIX', lc_ctype = 'POSIX');`)
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP COLLATION public.some_coll")
 			compositeType.Attributes[0].Collation = "public.some_coll"
 			backup.PrintCreateCompositeTypeStatement(backupfile, toc, compositeType, typeMetadata)
 
-			testhelper.AssertQueryRuns(connection, buffer.String())
-			defer testhelper.AssertQueryRuns(connection, "DROP TYPE public.composite_type")
+			testhelper.AssertQueryRuns(connectionPool, buffer.String())
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TYPE public.composite_type")
 
-			resultTypes := backup.GetCompositeTypes(connection)
+			resultTypes := backup.GetCompositeTypes(connectionPool)
 
 			Expect(resultTypes).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchExcluding(&compositeType, &resultTypes[0], "Oid", "Attributes.CompositeTypeOid", "Category")
@@ -92,31 +92,31 @@ var _ = Describe("backup integration create statement tests", func() {
 			compositeType.Attributes[0].Comment = "'comment for att1'"
 			backup.PrintCreateCompositeTypeStatement(backupfile, toc, compositeType, typeMetadata)
 
-			testhelper.AssertQueryRuns(connection, buffer.String())
-			defer testhelper.AssertQueryRuns(connection, "DROP TYPE public.composite_type")
+			testhelper.AssertQueryRuns(connectionPool, buffer.String())
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TYPE public.composite_type")
 
-			resultTypes := backup.GetCompositeTypes(connection)
+			resultTypes := backup.GetCompositeTypes(connectionPool)
 
 			Expect(resultTypes).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchExcluding(&compositeType, &resultTypes[0], "Oid", "Attributes.CompositeTypeOid", "Category")
 		})
 
 		It("creates enum types", func() {
-			testutils.SkipIfBefore5(connection)
+			testutils.SkipIfBefore5(connectionPool)
 			enums := []backup.Type{enumType}
 			backup.PrintCreateEnumTypeStatements(backupfile, toc, enums, typeMetadataMap)
 
-			testhelper.AssertQueryRuns(connection, buffer.String())
-			defer testhelper.AssertQueryRuns(connection, "DROP TYPE public.enum_type")
+			testhelper.AssertQueryRuns(connectionPool, buffer.String())
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TYPE public.enum_type")
 
-			resultTypes := backup.GetEnumTypes(connection)
+			resultTypes := backup.GetEnumTypes(connectionPool)
 
 			Expect(resultTypes).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchIncluding(&resultTypes[0], &enumType, "Type", "Schema", "Name", "Comment", "Owner", "EnumLabels")
 		})
 
 		It("creates base types", func() {
-			if connection.Version.AtLeast("6") {
+			if connectionPool.Version.AtLeast("6") {
 				baseType.Category = "N"
 				baseType.Preferred = true
 				baseType.Collatable = true
@@ -124,31 +124,31 @@ var _ = Describe("backup integration create statement tests", func() {
 			backup.PrintCreateBaseTypeStatement(backupfile, toc, baseType, typeMetadata)
 
 			//Run queries to set up the database state so we can successfully create base types
-			testhelper.AssertQueryRuns(connection, "CREATE TYPE public.base_type")
-			defer testhelper.AssertQueryRuns(connection, "DROP TYPE public.base_type CASCADE")
-			testhelper.AssertQueryRuns(connection, "CREATE FUNCTION public.base_fn_in(cstring) RETURNS public.base_type AS 'boolin' LANGUAGE internal")
-			testhelper.AssertQueryRuns(connection, "CREATE FUNCTION public.base_fn_out(public.base_type) RETURNS cstring AS 'boolout' LANGUAGE internal")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE TYPE public.base_type")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TYPE public.base_type CASCADE")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE FUNCTION public.base_fn_in(cstring) RETURNS public.base_type AS 'boolin' LANGUAGE internal")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE FUNCTION public.base_fn_out(public.base_type) RETURNS cstring AS 'boolout' LANGUAGE internal")
 
-			testhelper.AssertQueryRuns(connection, buffer.String())
+			testhelper.AssertQueryRuns(connectionPool, buffer.String())
 
-			resultTypes := backup.GetBaseTypes(connection)
+			resultTypes := backup.GetBaseTypes(connectionPool)
 
 			Expect(resultTypes).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchExcluding(&baseType, &resultTypes[0], "Oid")
 		})
 		It("creates domain types", func() {
 			constraints := []backup.Constraint{}
-			if connection.Version.AtLeast("6") {
-				testhelper.AssertQueryRuns(connection, "CREATE COLLATION public.some_coll (lc_collate = 'POSIX', lc_ctype = 'POSIX')")
-				defer testhelper.AssertQueryRuns(connection, "DROP COLLATION public.some_coll")
+			if connectionPool.Version.AtLeast("6") {
+				testhelper.AssertQueryRuns(connectionPool, "CREATE COLLATION public.some_coll (lc_collate = 'POSIX', lc_ctype = 'POSIX')")
+				defer testhelper.AssertQueryRuns(connectionPool, "DROP COLLATION public.some_coll")
 				domainType.Collation = "public.some_coll"
 			}
 			backup.PrintCreateDomainStatement(backupfile, toc, domainType, typeMetadata, constraints)
 
-			testhelper.AssertQueryRuns(connection, buffer.String())
-			defer testhelper.AssertQueryRuns(connection, "DROP TYPE public.domain_type")
+			testhelper.AssertQueryRuns(connectionPool, buffer.String())
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TYPE public.domain_type")
 
-			resultTypes := backup.GetDomainTypes(connection)
+			resultTypes := backup.GetDomainTypes(connectionPool)
 
 			Expect(resultTypes).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchIncluding(&domainType, &resultTypes[0], "Schema", "Name", "Type", "DefaultVal", "BaseType", "NotNull", "Collation")
@@ -156,35 +156,35 @@ var _ = Describe("backup integration create statement tests", func() {
 	})
 	Describe("PrintCreateCollationStatement", func() {
 		It("creates a basic collation", func() {
-			testutils.SkipIfBefore6(connection)
+			testutils.SkipIfBefore6(connectionPool)
 			collations := []backup.Collation{{Oid: 0, Schema: "public", Name: "testcollation", Collate: "POSIX", Ctype: "POSIX"}}
 
 			backup.PrintCreateCollationStatements(backupfile, toc, collations, backup.MetadataMap{})
 
-			testhelper.AssertQueryRuns(connection, buffer.String())
-			defer testhelper.AssertQueryRuns(connection, "DROP COLLATION public.testcollation")
+			testhelper.AssertQueryRuns(connectionPool, buffer.String())
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP COLLATION public.testcollation")
 
-			resultCollations := backup.GetCollations(connection)
+			resultCollations := backup.GetCollations(connectionPool)
 
 			Expect(resultCollations).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchExcluding(&collations[0], &resultCollations[0], "Oid")
 		})
 		It("creates a basic collation with comment and owner", func() {
-			testutils.SkipIfBefore6(connection)
+			testutils.SkipIfBefore6(connectionPool)
 			collations := []backup.Collation{{Oid: 1, Schema: "public", Name: "testcollation", Collate: "POSIX", Ctype: "POSIX"}}
 			collationMetadataMap := testutils.DefaultMetadataMap("COLLATION", false, true, true)
 			collationMetadata := collationMetadataMap[1]
 
 			backup.PrintCreateCollationStatements(backupfile, toc, collations, collationMetadataMap)
 
-			testhelper.AssertQueryRuns(connection, buffer.String())
-			defer testhelper.AssertQueryRuns(connection, "DROP COLLATION public.testcollation")
+			testhelper.AssertQueryRuns(connectionPool, buffer.String())
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP COLLATION public.testcollation")
 
-			resultCollations := backup.GetCollations(connection)
-			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_COLLATION)
+			resultCollations := backup.GetCollations(connectionPool)
+			resultMetadataMap := backup.GetMetadataForObjectType(connectionPool, backup.TYPE_COLLATION)
 
 			Expect(resultCollations).To(HaveLen(1))
-			oid := testutils.OidFromObjectName(connection, "public", "testcollation", backup.TYPE_COLLATION)
+			oid := testutils.OidFromObjectName(connectionPool, "public", "testcollation", backup.TYPE_COLLATION)
 			resultMetadata := resultMetadataMap[oid]
 			structmatcher.ExpectStructsToMatchExcluding(&collations[0], &resultCollations[0], "Oid")
 			structmatcher.ExpectStructsToMatch(&collationMetadata, &resultMetadata)

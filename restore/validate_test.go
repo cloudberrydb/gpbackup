@@ -79,7 +79,7 @@ var _ = Describe("restore/validate tests", func() {
 					mock.ExpectQuery("SELECT (.*)").WillReturnRows(no_table_rows)
 					filterList = []string{"public.table2"}
 					defer testhelper.ShouldPanicWithMessage("Relation public.table2 must exist for data-only restore")
-					restore.ValidateRelationsInRestoreDatabase(connection, filterList)
+					restore.ValidateRelationsInRestoreDatabase(connectionPool, filterList)
 				})
 				It("panics if some tables missing from database", func() {
 					single_table_row := sqlmock.NewRows([]string{"string"}).
@@ -87,14 +87,14 @@ var _ = Describe("restore/validate tests", func() {
 					mock.ExpectQuery("SELECT (.*)").WillReturnRows(single_table_row)
 					filterList = []string{"public.table1", "public.table2"}
 					defer testhelper.ShouldPanicWithMessage("Relation public.table2 must exist for data-only restore")
-					restore.ValidateRelationsInRestoreDatabase(connection, filterList)
+					restore.ValidateRelationsInRestoreDatabase(connectionPool, filterList)
 				})
 				It("passes if all tables are present in database", func() {
 					two_table_rows := sqlmock.NewRows([]string{"string"}).
 						AddRow("public.table1").AddRow("public.table2")
 					mock.ExpectQuery("SELECT (.*)").WillReturnRows(two_table_rows)
 					filterList = []string{"public.table1", "public.table2"}
-					restore.ValidateRelationsInRestoreDatabase(connection, filterList)
+					restore.ValidateRelationsInRestoreDatabase(connectionPool, filterList)
 				})
 			})
 			Context("without filtering", func() {
@@ -102,20 +102,20 @@ var _ = Describe("restore/validate tests", func() {
 					no_table_rows := sqlmock.NewRows([]string{"string"})
 					mock.ExpectQuery("SELECT (.*)").WillReturnRows(no_table_rows)
 					defer testhelper.ShouldPanicWithMessage("Relation public.table2 must exist for data-only restore")
-					restore.ValidateRelationsInRestoreDatabase(connection, filterList)
+					restore.ValidateRelationsInRestoreDatabase(connectionPool, filterList)
 				})
 				It("panics if some tables missing from database", func() {
 					single_table_row := sqlmock.NewRows([]string{"string"}).
 						AddRow("public.table1")
 					mock.ExpectQuery("SELECT (.*)").WillReturnRows(single_table_row)
 					defer testhelper.ShouldPanicWithMessage("Relation public.table2 must exist for data-only restore")
-					restore.ValidateRelationsInRestoreDatabase(connection, filterList)
+					restore.ValidateRelationsInRestoreDatabase(connectionPool, filterList)
 				})
 				It("passes if all tables are present in database", func() {
 					two_table_rows := sqlmock.NewRows([]string{"string"}).
 						AddRow("public.table1").AddRow("public.view1")
 					mock.ExpectQuery("SELECT (.*)").WillReturnRows(two_table_rows)
-					restore.ValidateRelationsInRestoreDatabase(connection, filterList)
+					restore.ValidateRelationsInRestoreDatabase(connectionPool, filterList)
 				})
 			})
 		})
@@ -125,7 +125,7 @@ var _ = Describe("restore/validate tests", func() {
 					no_table_rows := sqlmock.NewRows([]string{"string"})
 					mock.ExpectQuery("SELECT (.*)").WillReturnRows(no_table_rows)
 					filterList = []string{"public.table2"}
-					restore.ValidateRelationsInRestoreDatabase(connection, filterList)
+					restore.ValidateRelationsInRestoreDatabase(connectionPool, filterList)
 				})
 				It("panics if single table is present in database", func() {
 					single_table_row := sqlmock.NewRows([]string{"string"}).
@@ -133,7 +133,7 @@ var _ = Describe("restore/validate tests", func() {
 					mock.ExpectQuery("SELECT (.*)").WillReturnRows(single_table_row)
 					filterList = []string{"public.table1"}
 					defer testhelper.ShouldPanicWithMessage("Relation public.table1 already exists")
-					restore.ValidateRelationsInRestoreDatabase(connection, filterList)
+					restore.ValidateRelationsInRestoreDatabase(connectionPool, filterList)
 				})
 				It("panics if multiple tables are present in database", func() {
 					two_table_rows := sqlmock.NewRows([]string{"string"}).
@@ -141,34 +141,34 @@ var _ = Describe("restore/validate tests", func() {
 					mock.ExpectQuery("SELECT (.*)").WillReturnRows(two_table_rows)
 					filterList = []string{"public.table1", "public.view1"}
 					defer testhelper.ShouldPanicWithMessage("Relation public.table1 already exists")
-					restore.ValidateRelationsInRestoreDatabase(connection, filterList)
+					restore.ValidateRelationsInRestoreDatabase(connectionPool, filterList)
 				})
 			})
 			Context("without filtering", func() {
 				It("passes if table is not present in database", func() {
 					no_table_rows := sqlmock.NewRows([]string{"string"})
 					mock.ExpectQuery("SELECT (.*)").WillReturnRows(no_table_rows)
-					restore.ValidateRelationsInRestoreDatabase(connection, filterList)
+					restore.ValidateRelationsInRestoreDatabase(connectionPool, filterList)
 				})
 				It("passes if there are no data entries in the backup", func() {
 					toc, _ = testutils.InitializeTestTOC(buffer, "metadata")
 					restore.SetTOC(toc)
 
-					restore.ValidateRelationsInRestoreDatabase(connection, filterList)
+					restore.ValidateRelationsInRestoreDatabase(connectionPool, filterList)
 				})
 				It("panics if single table is present in database", func() {
 					single_table_row := sqlmock.NewRows([]string{"string"}).
 						AddRow("public.table1")
 					mock.ExpectQuery("SELECT (.*)").WillReturnRows(single_table_row)
 					defer testhelper.ShouldPanicWithMessage("Relation public.table1 already exists")
-					restore.ValidateRelationsInRestoreDatabase(connection, filterList)
+					restore.ValidateRelationsInRestoreDatabase(connectionPool, filterList)
 				})
 				It("panics if multiple tables are present in database", func() {
 					two_table_rows := sqlmock.NewRows([]string{"string"}).
 						AddRow("public.table1").AddRow("public.table2")
 					mock.ExpectQuery("SELECT (.*)").WillReturnRows(two_table_rows)
 					defer testhelper.ShouldPanicWithMessage("Relation public.table1 already exists")
-					restore.ValidateRelationsInRestoreDatabase(connection, filterList)
+					restore.ValidateRelationsInRestoreDatabase(connectionPool, filterList)
 				})
 			})
 		})

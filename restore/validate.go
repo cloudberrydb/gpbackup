@@ -59,7 +59,7 @@ func ValidateFilterSchemasInBackupSet(schemaList []string) {
 	gplog.Fatal(errors.Errorf("Could not find the following schema(s) in the backup set: %s", strings.Join(keys, ", ")), "")
 }
 
-func ValidateRelationsInRestoreDatabase(connection *dbconn.DBConn, relationList []string) {
+func ValidateRelationsInRestoreDatabase(connectionPool *dbconn.DBConn, relationList []string) {
 	if len(relationList) == 0 {
 		if len(globalTOC.DataEntries) == 0 {
 			return
@@ -77,7 +77,7 @@ SELECT
 FROM pg_namespace n
 JOIN pg_class c ON n.oid = c.relnamespace
 WHERE quote_ident(n.nspname) || '.' || quote_ident(c.relname) IN (%s)`, quotedTablesStr)
-	relationsInDB := dbconn.MustSelectStringSlice(connection, query)
+	relationsInDB := dbconn.MustSelectStringSlice(connectionPool, query)
 
 	/*
 	 * For data-only we check that the relations we are planning to restore

@@ -17,8 +17,8 @@ var (
 	tableDelim = ","
 )
 
-func CopyTableIn(connection *dbconn.DBConn, tableName string, tableAttributes string, destinationToRead string, singleDataFile bool, whichConn int) (int64, error) {
-	whichConn = connection.ValidateConnNum(whichConn)
+func CopyTableIn(connectionPool *dbconn.DBConn, tableName string, tableAttributes string, destinationToRead string, singleDataFile bool, whichConn int) (int64, error) {
+	whichConn = connectionPool.ValidateConnNum(whichConn)
 	copyCommand := ""
 	readFromDestinationCommand := "cat"
 	customPipeThroughCommand := utils.GetPipeThroughProgram().InputCommand
@@ -33,7 +33,7 @@ func CopyTableIn(connection *dbconn.DBConn, tableName string, tableAttributes st
 	copyCommand = fmt.Sprintf("PROGRAM '%s %s | %s'", readFromDestinationCommand, destinationToRead, customPipeThroughCommand)
 
 	query := fmt.Sprintf("COPY %s%s FROM %s WITH CSV DELIMITER '%s' ON SEGMENT;", tableName, tableAttributes, copyCommand, tableDelim)
-	result, err := connection.Exec(query, whichConn)
+	result, err := connectionPool.Exec(query, whichConn)
 	if err != nil {
 		return 0, errors.Wrap(err, fmt.Sprintf("Error loading data into table %s", tableName))
 	}

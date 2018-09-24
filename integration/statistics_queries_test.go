@@ -15,18 +15,18 @@ var _ = Describe("backup integration tests", func() {
 	tables := []backup.Relation{{Schema: "public", Name: "foo"}}
 	var tableOid uint32
 	BeforeEach(func() {
-		testhelper.AssertQueryRuns(connection, "CREATE TABLE public.foo(i int, j text, k bool)")
-		tableOid = testutils.OidFromObjectName(connection, "public", "foo", backup.TYPE_RELATION)
-		testhelper.AssertQueryRuns(connection, "INSERT INTO public.foo VALUES (1, 'a', 't')")
-		testhelper.AssertQueryRuns(connection, "INSERT INTO public.foo VALUES (2, 'b', 'f')")
-		testhelper.AssertQueryRuns(connection, "ANALYZE public.foo")
+		testhelper.AssertQueryRuns(connectionPool, "CREATE TABLE public.foo(i int, j text, k bool)")
+		tableOid = testutils.OidFromObjectName(connectionPool, "public", "foo", backup.TYPE_RELATION)
+		testhelper.AssertQueryRuns(connectionPool, "INSERT INTO public.foo VALUES (1, 'a', 't')")
+		testhelper.AssertQueryRuns(connectionPool, "INSERT INTO public.foo VALUES (2, 'b', 'f')")
+		testhelper.AssertQueryRuns(connectionPool, "ANALYZE public.foo")
 	})
 	AfterEach(func() {
-		testhelper.AssertQueryRuns(connection, "DROP TABLE public.foo")
+		testhelper.AssertQueryRuns(connectionPool, "DROP TABLE public.foo")
 	})
 	Describe("GetAttributeStatistics", func() {
 		It("returns attribute statistics for a table", func() {
-			attStats := backup.GetAttributeStatistics(connection, tables)
+			attStats := backup.GetAttributeStatistics(connectionPool, tables)
 			Expect(attStats).To(HaveLen(1))
 			Expect(attStats[tableOid]).To(HaveLen(3))
 			tableAttStatsI := attStats[tableOid][0]
@@ -61,7 +61,7 @@ var _ = Describe("backup integration tests", func() {
 			sort.Strings(tableAttStatsI.Values1)
 			sort.Strings(tableAttStatsJ.Values1)
 			sort.Strings(tableAttStatsK.Values1)
-			if connection.Version.Before("5") {
+			if connectionPool.Version.Before("5") {
 				structmatcher.ExpectStructsToMatchExcluding(&expectedStats4I, &tableAttStatsI, "Numbers2")
 				structmatcher.ExpectStructsToMatchExcluding(&expectedStats4J, &tableAttStatsJ, "Numbers2")
 				structmatcher.ExpectStructsToMatchExcluding(&expectedStats4K, &tableAttStatsK, "Numbers2")
@@ -74,7 +74,7 @@ var _ = Describe("backup integration tests", func() {
 	})
 	Describe("GetTupleStatistics", func() {
 		It("returns tuple statistics for a table", func() {
-			tupleStats := backup.GetTupleStatistics(connection, tables)
+			tupleStats := backup.GetTupleStatistics(connectionPool, tables)
 			Expect(tupleStats).To(HaveLen(1))
 			tableTupleStats := tupleStats[tableOid]
 

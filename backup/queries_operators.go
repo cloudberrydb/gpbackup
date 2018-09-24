@@ -27,7 +27,7 @@ type Operator struct {
 	CanMerge         bool
 }
 
-func GetOperators(connection *dbconn.DBConn) []Operator {
+func GetOperators(connectionPool *dbconn.DBConn) []Operator {
 	results := make([]Operator, 0)
 	version4query := fmt.Sprintf(`
 SELECT
@@ -66,10 +66,10 @@ WHERE %s AND oprcode != 0
 AND %s`, SchemaFilterClause("n"), ExtensionFilterClause("o"))
 
 	var err error
-	if connection.Version.Before("5") {
-		err = connection.Select(&results, version4query)
+	if connectionPool.Version.Before("5") {
+		err = connectionPool.Select(&results, version4query)
 	} else {
-		err = connection.Select(&results, masterQuery)
+		err = connectionPool.Select(&results, masterQuery)
 	}
 	gplog.FatalOnError(err)
 	return results
@@ -87,7 +87,7 @@ type OperatorFamily struct {
 	IndexMethod string
 }
 
-func GetOperatorFamilies(connection *dbconn.DBConn) []OperatorFamily {
+func GetOperatorFamilies(connectionPool *dbconn.DBConn) []OperatorFamily {
 	results := make([]OperatorFamily, 0)
 	query := fmt.Sprintf(`
 SELECT
@@ -99,7 +99,7 @@ FROM pg_opfamily o
 JOIN pg_namespace n on n.oid = o.opfnamespace
 WHERE %s
 AND %s`, SchemaFilterClause("n"), ExtensionFilterClause("o"))
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	return results
 }
@@ -118,7 +118,7 @@ type OperatorClass struct {
 	Functions    []OperatorClassFunction
 }
 
-func GetOperatorClasses(connection *dbconn.DBConn) []OperatorClass {
+func GetOperatorClasses(connectionPool *dbconn.DBConn) []OperatorClass {
 	results := make([]OperatorClass, 0)
 	/*
 	 * In the GPDB 4.3 query, we assign the class schema and name to both the
@@ -160,18 +160,18 @@ WHERE %s
 AND %s`, SchemaFilterClause("cls_ns"), ExtensionFilterClause("c"))
 
 	var err error
-	if connection.Version.Before("5") {
-		err = connection.Select(&results, version4query)
+	if connectionPool.Version.Before("5") {
+		err = connectionPool.Select(&results, version4query)
 	} else {
-		err = connection.Select(&results, masterQuery)
+		err = connectionPool.Select(&results, masterQuery)
 	}
 	gplog.FatalOnError(err)
 
-	operators := GetOperatorClassOperators(connection)
+	operators := GetOperatorClassOperators(connectionPool)
 	for i := range results {
 		results[i].Operators = operators[results[i].Oid]
 	}
-	functions := GetOperatorClassFunctions(connection)
+	functions := GetOperatorClassFunctions(connectionPool)
 	for i := range results {
 		results[i].Functions = functions[results[i].Oid]
 	}
@@ -187,7 +187,7 @@ type OperatorClassOperator struct {
 	OrderByFamily  string
 }
 
-func GetOperatorClassOperators(connection *dbconn.DBConn) map[uint32][]OperatorClassOperator {
+func GetOperatorClassOperators(connectionPool *dbconn.DBConn) map[uint32][]OperatorClassOperator {
 	results := make([]OperatorClassOperator, 0)
 	version4query := fmt.Sprintf(`
 SELECT
@@ -227,12 +227,12 @@ AND classid = 'pg_catalog.pg_amop'::pg_catalog.regclass
 ORDER BY amopstrategy
 `)
 	var err error
-	if connection.Version.Before("5") {
-		err = connection.Select(&results, version4query)
-	} else if connection.Version.Before("6") {
-		err = connection.Select(&results, version5query)
+	if connectionPool.Version.Before("5") {
+		err = connectionPool.Select(&results, version4query)
+	} else if connectionPool.Version.Before("6") {
+		err = connectionPool.Select(&results, version5query)
 	} else {
-		err = connection.Select(&results, masterQuery)
+		err = connectionPool.Select(&results, masterQuery)
 	}
 	gplog.FatalOnError(err)
 
@@ -251,7 +251,7 @@ type OperatorClassFunction struct {
 	RightType     string `db:"amprocrighttype"`
 }
 
-func GetOperatorClassFunctions(connection *dbconn.DBConn) map[uint32][]OperatorClassFunction {
+func GetOperatorClassFunctions(connectionPool *dbconn.DBConn) map[uint32][]OperatorClassFunction {
 	results := make([]OperatorClassFunction, 0)
 	version4query := fmt.Sprintf(`
 SELECT
@@ -277,10 +277,10 @@ ORDER BY amprocnum
 `)
 
 	var err error
-	if connection.Version.Before("5") {
-		err = connection.Select(&results, version4query)
+	if connectionPool.Version.Before("5") {
+		err = connectionPool.Select(&results, version4query)
 	} else {
-		err = connection.Select(&results, masterQuery)
+		err = connectionPool.Select(&results, masterQuery)
 	}
 	gplog.FatalOnError(err)
 

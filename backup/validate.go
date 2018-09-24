@@ -21,11 +21,11 @@ func validateFilterLists() {
 	ValidateFilterTables(connectionPool, MustGetFlagStringSlice(utils.INCLUDE_RELATION))
 }
 
-func ValidateFilterSchemas(connection *dbconn.DBConn, schemaList []string) {
+func ValidateFilterSchemas(connectionPool *dbconn.DBConn, schemaList []string) {
 	if len(schemaList) > 0 {
 		quotedSchemasStr := utils.SliceToQuotedString(schemaList)
 		query := fmt.Sprintf("SELECT nspname AS string FROM pg_namespace WHERE nspname IN (%s)", quotedSchemasStr)
-		resultSchemas := dbconn.MustSelectStringSlice(connection, query)
+		resultSchemas := dbconn.MustSelectStringSlice(connectionPool, query)
 		if len(resultSchemas) < len(schemaList) {
 			schemaSet := utils.NewIncludeSet(resultSchemas)
 			for _, schema := range schemaList {
@@ -37,7 +37,7 @@ func ValidateFilterSchemas(connection *dbconn.DBConn, schemaList []string) {
 	}
 }
 
-func ValidateFilterTables(connection *dbconn.DBConn, tableList []string) {
+func ValidateFilterTables(connectionPool *dbconn.DBConn, tableList []string) {
 	if len(tableList) > 0 {
 		utils.ValidateFQNs(tableList)
 		quotedTablesStr := utils.SliceToQuotedString(tableList)
@@ -52,14 +52,14 @@ WHERE quote_ident(n.nspname) || '.' || quote_ident(c.relname) IN (%s)`, quotedTa
 			Oid  uint32
 			Name string
 		}, 0)
-		err := connection.Select(&resultTables, query)
+		err := connectionPool.Select(&resultTables, query)
 		gplog.FatalOnError(err)
 		tableMap := make(map[string]uint32)
 		for _, table := range resultTables {
 			tableMap[table.Name] = table.Oid
 		}
 
-		partTableMap := GetPartitionTableMap(connection)
+		partTableMap := GetPartitionTableMap(connectionPool)
 		for _, table := range tableList {
 			tableOid := tableMap[table]
 			if tableOid == 0 {

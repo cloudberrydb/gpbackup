@@ -18,14 +18,14 @@ import (
 )
 
 var (
-	connection *dbconn.DBConn
-	mock       sqlmock.Sqlmock
-	stdout     *gbytes.Buffer
-	stderr     *gbytes.Buffer
-	logfile    *gbytes.Buffer
-	buffer     *gbytes.Buffer
-	toc        *utils.TOC
-	backupfile *utils.FileWithByteCount
+	connectionPool *dbconn.DBConn
+	mock           sqlmock.Sqlmock
+	stdout         *gbytes.Buffer
+	stderr         *gbytes.Buffer
+	logfile        *gbytes.Buffer
+	buffer         *gbytes.Buffer
+	toc            *utils.TOC
+	backupfile     *utils.FileWithByteCount
 )
 
 func TestUtils(t *testing.T) {
@@ -36,7 +36,7 @@ func TestUtils(t *testing.T) {
 var backupCmdFlags *pflag.FlagSet
 
 var _ = BeforeSuite(func() {
-	connection, mock, stdout, stderr, logfile = testutils.SetupTestEnvironment()
+	connectionPool, mock, stdout, stderr, logfile = testutils.SetupTestEnvironment()
 
 	backupCmdFlags = pflag.NewFlagSet("gpbackup", pflag.ExitOnError)
 
@@ -47,7 +47,7 @@ var _ = BeforeSuite(func() {
 
 var _ = BeforeEach(func() {
 	stdout, stderr, logfile = testhelper.SetupTestLogger()
-	connection, mock = testutils.CreateAndConnectMockDB(1)
+	connectionPool, mock = testutils.CreateAndConnectMockDB(1)
 	operating.System = operating.InitializeSystemFunctions()
 	buffer = gbytes.NewBuffer()
 })

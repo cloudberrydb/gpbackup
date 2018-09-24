@@ -82,7 +82,7 @@ func InitializeSignalHandler(cleanupFunc func(), procDesc string, termFlag *bool
 }
 
 // TODO: Uniquely identify COPY commands in the multiple data file case to allow terminating sessions
-func TerminateHangingCopySessions(connection *dbconn.DBConn, fpInfo FilePathInfo, appName string) {
+func TerminateHangingCopySessions(connectionPool *dbconn.DBConn, fpInfo FilePathInfo, appName string) {
 	copyFileName := fpInfo.GetSegmentPipePathForCopyCommand()
 	query := fmt.Sprintf(`SELECT
 	pg_terminate_backend(procpid)
@@ -91,13 +91,13 @@ WHERE application_name = '%s'
 AND current_query LIKE '%%%s%%'
 AND procpid <> pg_backend_pid()`, appName, copyFileName)
 	// We don't check the error as the connection may have finished or been previously terminated
-	_, _ = connection.Exec(query)
+	_, _ = connectionPool.Exec(query)
 }
 
-func ValidateGPDBVersionCompatibility(connection *dbconn.DBConn) {
-	if connection.Version.Before(MINIMUM_GPDB4_VERSION) {
-		gplog.Fatal(errors.Errorf(`GPDB version %s is not supported. Please upgrade to GPDB %s.0 or later.`, connection.Version.VersionString, MINIMUM_GPDB4_VERSION), "")
-	} else if connection.Version.Is("5") && connection.Version.Before(MINIMUM_GPDB5_VERSION) {
-		gplog.Fatal(errors.Errorf(`GPDB version %s is not supported. Please upgrade to GPDB %s or later.`, connection.Version.VersionString, MINIMUM_GPDB5_VERSION), "")
+func ValidateGPDBVersionCompatibility(connectionPool *dbconn.DBConn) {
+	if connectionPool.Version.Before(MINIMUM_GPDB4_VERSION) {
+		gplog.Fatal(errors.Errorf(`GPDB version %s is not supported. Please upgrade to GPDB %s.0 or later.`, connectionPool.Version.VersionString, MINIMUM_GPDB4_VERSION), "")
+	} else if connectionPool.Version.Is("5") && connectionPool.Version.Before(MINIMUM_GPDB5_VERSION) {
+		gplog.Fatal(errors.Errorf(`GPDB version %s is not supported. Please upgrade to GPDB %s or later.`, connectionPool.Version.VersionString, MINIMUM_GPDB5_VERSION), "")
 	}
 }

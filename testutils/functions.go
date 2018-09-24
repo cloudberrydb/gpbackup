@@ -26,18 +26,18 @@ import (
  */
 
 func SetupTestEnvironment() (*dbconn.DBConn, sqlmock.Sqlmock, *gbytes.Buffer, *gbytes.Buffer, *gbytes.Buffer) {
-	connection, mock, testStdout, testStderr, testLogfile := testhelper.SetupTestEnvironment()
+	connectionPool, mock, testStdout, testStderr, testLogfile := testhelper.SetupTestEnvironment()
 	SetupTestCluster()
 	backup.SetVersion("0.1.0")
-	return connection, mock, testStdout, testStderr, testLogfile
+	return connectionPool, mock, testStdout, testStderr, testLogfile
 }
 
 func CreateAndConnectMockDB(numConns int) (*dbconn.DBConn, sqlmock.Sqlmock) {
-	connection, mock := testhelper.CreateAndConnectMockDB(numConns)
-	backup.SetConnection(connection)
-	restore.SetConnection(connection)
-	backup.InitializeMetadataParams(connection)
-	return connection, mock
+	connectionPool, mock := testhelper.CreateAndConnectMockDB(numConns)
+	backup.SetConnection(connectionPool)
+	restore.SetConnection(connectionPool)
+	backup.InitializeMetadataParams(connectionPool)
+	return connectionPool, mock
 }
 
 func SetupTestCluster() {
@@ -272,12 +272,12 @@ func ExpectEntry(entries []utils.MetadataEntry, index int, schema, referenceObje
 	structmatcher.ExpectStructsToMatchExcluding(entries[index], utils.MetadataEntry{Schema: schema, Name: name, ObjectType: objectType, ReferenceObject: referenceObject, StartByte: 0, EndByte: 0}, "StartByte", "EndByte")
 }
 
-func ExecuteSQLFile(connection *dbconn.DBConn, filename string) {
+func ExecuteSQLFile(connectionPool *dbconn.DBConn, filename string) {
 	connStr := []string{
-		"-U", connection.User,
-		"-d", connection.DBName,
-		"-h", connection.Host,
-		"-p", fmt.Sprintf("%d", connection.Port),
+		"-U", connectionPool.User,
+		"-d", connectionPool.DBName,
+		"-h", connectionPool.Host,
+		"-p", fmt.Sprintf("%d", connectionPool.Port),
 		"-f", filename,
 		"-v", "ON_ERROR_STOP=1",
 		"-q",
@@ -292,19 +292,19 @@ func BufferLength(buffer *gbytes.Buffer) uint64 {
 	return uint64(len(buffer.Contents()))
 }
 
-func OidFromCast(connection *dbconn.DBConn, castSource uint32, castTarget uint32) uint32 {
+func OidFromCast(connectionPool *dbconn.DBConn, castSource uint32, castTarget uint32) uint32 {
 	query := fmt.Sprintf("SELECT c.oid FROM pg_cast c WHERE castsource = '%d' AND casttarget = '%d'", castSource, castTarget)
 	result := struct {
 		Oid uint32
 	}{}
-	err := connection.Get(&result, query)
+	err := connectionPool.Get(&result, query)
 	if err != nil {
 		Fail(fmt.Sprintf("Execution of query failed: %v", err))
 	}
 	return result.Oid
 }
 
-func OidFromObjectName(connection *dbconn.DBConn, schemaName string, objectName string, params backup.MetadataQueryParams) uint32 {
+func OidFromObjectName(connectionPool *dbconn.DBConn, schemaName string, objectName string, params backup.MetadataQueryParams) uint32 {
 	catalogTable := params.CatalogTable
 	if params.OidTable != "" {
 		catalogTable = params.OidTable
@@ -317,31 +317,31 @@ func OidFromObjectName(connection *dbconn.DBConn, schemaName string, objectName 
 	result := struct {
 		Oid uint32
 	}{}
-	err := connection.Get(&result, query)
+	err := connectionPool.Get(&result, query)
 	if err != nil {
 		Fail(fmt.Sprintf("Execution of query failed: %v", err))
 	}
 	return result.Oid
 }
 
-func GetUserByID(connection *dbconn.DBConn, oid uint32) string {
-	return dbconn.MustSelectString(connection, fmt.Sprintf("SELECT rolname AS string FROM pg_roles WHERE oid = %d", oid))
+func GetUserByID(connectionPool *dbconn.DBConn, oid uint32) string {
+	return dbconn.MustSelectString(connectionPool, fmt.Sprintf("SELECT rolname AS string FROM pg_roles WHERE oid = %d", oid))
 }
 
-func SkipIfNot4(connection *dbconn.DBConn) {
-	if connection.Version.AtLeast("5") {
+func SkipIfNot4(connectionPool *dbconn.DBConn) {
+	if connectionPool.Version.AtLeast("5") {
 		Skip("Test only applicable to GPDB4")
 	}
 }
 
-func SkipIfBefore5(connection *dbconn.DBConn) {
-	if connection.Version.Before("5") {
+func SkipIfBefore5(connectionPool *dbconn.DBConn) {
+	if connectionPool.Version.Before("5") {
 		Skip("Test only applicable to GPDB5 and above")
 	}
 }
 
-func SkipIfBefore6(connection *dbconn.DBConn) {
-	if connection.Version.Before("6") {
+func SkipIfBefore6(connectionPool *dbconn.DBConn) {
+	if connectionPool.Version.Before("6") {
 		Skip("Test only applicable to GPDB6 and above")
 	}
 }

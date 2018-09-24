@@ -26,11 +26,11 @@ var _ = Describe("backup integration create statement tests", func() {
 			gucs := []string{defaultOidGUC, searchPathGUC, defaultStorageGUC}
 
 			backup.PrintDatabaseGUCs(backupfile, toc, gucs, "testdb")
-			testhelper.AssertQueryRuns(connection, buffer.String())
-			defer testhelper.AssertQueryRuns(connection, "ALTER DATABASE testdb RESET default_with_oids")
-			defer testhelper.AssertQueryRuns(connection, "ALTER DATABASE testdb RESET search_path")
-			defer testhelper.AssertQueryRuns(connection, "ALTER DATABASE testdb RESET gp_default_storage_options")
-			resultGUCs := backup.GetDatabaseGUCs(connection)
+			testhelper.AssertQueryRuns(connectionPool, buffer.String())
+			defer testhelper.AssertQueryRuns(connectionPool, "ALTER DATABASE testdb RESET default_with_oids")
+			defer testhelper.AssertQueryRuns(connectionPool, "ALTER DATABASE testdb RESET search_path")
+			defer testhelper.AssertQueryRuns(connectionPool, "ALTER DATABASE testdb RESET gp_default_storage_options")
+			resultGUCs := backup.GetDatabaseGUCs(connectionPool)
 			Expect(resultGUCs).To(Equal(gucs))
 		})
 	})
@@ -45,13 +45,13 @@ var _ = Describe("backup integration create statement tests", func() {
 			// CREATE RESOURCE QUEUE statements can not be part of a multi-command statement, so
 			// feed the CREATE RESOURCE QUEUE and COMMENT ON statements separately.
 			hunks := regexp.MustCompile(";\n\n").Split(buffer.String(), 2)
-			testhelper.AssertQueryRuns(connection, hunks[0])
-			defer testhelper.AssertQueryRuns(connection, `DROP RESOURCE QUEUE "basicQueue"`)
-			testhelper.AssertQueryRuns(connection, hunks[1])
+			testhelper.AssertQueryRuns(connectionPool, hunks[0])
+			defer testhelper.AssertQueryRuns(connectionPool, `DROP RESOURCE QUEUE "basicQueue"`)
+			testhelper.AssertQueryRuns(connectionPool, hunks[1])
 
-			resultResourceQueues := backup.GetResourceQueues(connection)
-			resQueueOid := testutils.OidFromObjectName(connection, "", "basicQueue", backup.TYPE_RESOURCEQUEUE)
-			resultMetadataMap := backup.GetCommentsForObjectType(connection, backup.TYPE_RESOURCEQUEUE)
+			resultResourceQueues := backup.GetResourceQueues(connectionPool)
+			resQueueOid := testutils.OidFromObjectName(connectionPool, "", "basicQueue", backup.TYPE_RESOURCEQUEUE)
+			resultMetadataMap := backup.GetCommentsForObjectType(connectionPool, backup.TYPE_RESOURCEQUEUE)
 			resultMetadata := resultMetadataMap[resQueueOid]
 			structmatcher.ExpectStructsToMatch(&resultMetadata, &resQueueMetadata)
 
@@ -68,10 +68,10 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			backup.PrintCreateResourceQueueStatements(backupfile, toc, []backup.ResourceQueue{everythingQueue}, emptyMetadataMap)
 
-			testhelper.AssertQueryRuns(connection, buffer.String())
-			defer testhelper.AssertQueryRuns(connection, `DROP RESOURCE QUEUE "everythingQueue"`)
+			testhelper.AssertQueryRuns(connectionPool, buffer.String())
+			defer testhelper.AssertQueryRuns(connectionPool, `DROP RESOURCE QUEUE "everythingQueue"`)
 
-			resultResourceQueues := backup.GetResourceQueues(connection)
+			resultResourceQueues := backup.GetResourceQueues(connectionPool)
 
 			for _, resultQueue := range resultResourceQueues {
 				if resultQueue.Name == `"everythingQueue"` {
@@ -84,7 +84,7 @@ var _ = Describe("backup integration create statement tests", func() {
 	})
 	Describe("PrintCreateResourceGroupStatements", func() {
 		BeforeEach(func() {
-			testutils.SkipIfBefore5(connection)
+			testutils.SkipIfBefore5(connectionPool)
 		})
 		It("creates a basic resource group", func() {
 			someGroup := backup.ResourceGroup{Oid: 1, Name: "some_group", CPURateLimit: 10, MemoryLimit: 20, Concurrency: 15, MemorySharedQuota: 25, MemorySpillRatio: 30, MemoryAuditor: 0, Cpuset: "-1"}
@@ -92,10 +92,10 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			backup.PrintCreateResourceGroupStatements(backupfile, toc, []backup.ResourceGroup{someGroup}, emptyMetadataMap)
 
-			testhelper.AssertQueryRuns(connection, buffer.String())
-			defer testhelper.AssertQueryRuns(connection, `DROP RESOURCE GROUP some_group`)
+			testhelper.AssertQueryRuns(connectionPool, buffer.String())
+			defer testhelper.AssertQueryRuns(connectionPool, `DROP RESOURCE GROUP some_group`)
 
-			resultResourceGroups := backup.GetResourceGroups(connection)
+			resultResourceGroups := backup.GetResourceGroups(connectionPool)
 
 			for _, resultGroup := range resultResourceGroups {
 				if resultGroup.Name == "some_group" {
@@ -113,9 +113,9 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			hunks := regexp.MustCompile(";\n\n").Split(buffer.String(), 5)
 			for i := 0; i < 5; i++ {
-				testhelper.AssertQueryRuns(connection, hunks[i])
+				testhelper.AssertQueryRuns(connectionPool, hunks[i])
 			}
-			resultResourceGroups := backup.GetResourceGroups(connection)
+			resultResourceGroups := backup.GetResourceGroups(connectionPool)
 
 			for _, resultGroup := range resultResourceGroups {
 				if resultGroup.Name == "default_group" {
@@ -149,18 +149,18 @@ var _ = Describe("backup integration create statement tests", func() {
 		}
 		emptyConfigMap := map[string][]string{}
 		It("creates a basic role", func() {
-			if connection.Version.Before("5") {
+			if connectionPool.Version.Before("5") {
 				role1.ResGroup = ""
 			}
 			emptyMetadataMap := backup.MetadataMap{}
 
 			backup.PrintCreateRoleStatements(backupfile, toc, []backup.Role{role1}, emptyConfigMap, emptyMetadataMap)
 
-			testhelper.AssertQueryRuns(connection, buffer.String())
-			defer testhelper.AssertQueryRuns(connection, `DROP ROLE "role1"`)
-			role1.Oid = testutils.OidFromObjectName(connection, "", "role1", backup.TYPE_ROLE)
+			testhelper.AssertQueryRuns(connectionPool, buffer.String())
+			defer testhelper.AssertQueryRuns(connectionPool, `DROP ROLE "role1"`)
+			role1.Oid = testutils.OidFromObjectName(connectionPool, "", "role1", backup.TYPE_ROLE)
 
-			resultRoles := backup.GetRoles(connection)
+			resultRoles := backup.GetRoles(connectionPool)
 			for _, role := range resultRoles {
 				if role.Name == "role1" {
 					structmatcher.ExpectStructsToMatch(&role1, role)
@@ -170,7 +170,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			Fail("Role 'role1' was not found")
 		})
 		It("creates a basic role with user GUCs set", func() {
-			if connection.Version.Before("5") {
+			if connectionPool.Version.Before("5") {
 				role1.ResGroup = ""
 			}
 			roleConfigMap := map[string][]string{
@@ -180,12 +180,12 @@ var _ = Describe("backup integration create statement tests", func() {
 
 			backup.PrintCreateRoleStatements(backupfile, toc, []backup.Role{role1}, roleConfigMap, emptyMetadataMap)
 
-			testhelper.AssertQueryRuns(connection, buffer.String())
-			defer testhelper.AssertQueryRuns(connection, `DROP ROLE "role1"`)
-			role1.Oid = testutils.OidFromObjectName(connection, "", "role1", backup.TYPE_ROLE)
+			testhelper.AssertQueryRuns(connectionPool, buffer.String())
+			defer testhelper.AssertQueryRuns(connectionPool, `DROP ROLE "role1"`)
+			role1.Oid = testutils.OidFromObjectName(connectionPool, "", "role1", backup.TYPE_ROLE)
 
-			resultRoles := backup.GetRoles(connection)
-			resultGUCs := backup.GetRoleGUCs(connection)
+			resultRoles := backup.GetRoles(connectionPool)
+			resultGUCs := backup.GetRoleGUCs(connectionPool)
 			testRole := "role1"
 			for _, role := range resultRoles {
 				if role.Name == testRole {
@@ -234,18 +234,18 @@ var _ = Describe("backup integration create statement tests", func() {
 					},
 				},
 			}
-			if connection.Version.Before("5") {
+			if connectionPool.Version.Before("5") {
 				role1.ResGroup = ""
 			}
 			metadataMap := testutils.DefaultMetadataMap("ROLE", false, false, true)
 
 			backup.PrintCreateRoleStatements(backupfile, toc, []backup.Role{role1}, emptyConfigMap, metadataMap)
 
-			testhelper.AssertQueryRuns(connection, buffer.String())
-			defer testhelper.AssertQueryRuns(connection, `DROP ROLE "role1"`)
-			role1.Oid = testutils.OidFromObjectName(connection, "", "role1", backup.TYPE_ROLE)
+			testhelper.AssertQueryRuns(connectionPool, buffer.String())
+			defer testhelper.AssertQueryRuns(connectionPool, `DROP ROLE "role1"`)
+			role1.Oid = testutils.OidFromObjectName(connectionPool, "", "role1", backup.TYPE_ROLE)
 
-			resultRoles := backup.GetRoles(connection)
+			resultRoles := backup.GetRoles(connectionPool)
 			for _, role := range resultRoles {
 				if role.Name == "role1" {
 					structmatcher.ExpectStructsToMatchExcluding(&role1, role, "TimeConstraints.Oid")
@@ -257,21 +257,21 @@ var _ = Describe("backup integration create statement tests", func() {
 	})
 	Describe("PrintRoleMembershipStatements", func() {
 		BeforeEach(func() {
-			testhelper.AssertQueryRuns(connection, `CREATE ROLE usergroup`)
-			testhelper.AssertQueryRuns(connection, `CREATE ROLE testuser`)
+			testhelper.AssertQueryRuns(connectionPool, `CREATE ROLE usergroup`)
+			testhelper.AssertQueryRuns(connectionPool, `CREATE ROLE testuser`)
 		})
 		AfterEach(func() {
-			defer testhelper.AssertQueryRuns(connection, `DROP ROLE usergroup`)
-			defer testhelper.AssertQueryRuns(connection, `DROP ROLE testuser`)
+			defer testhelper.AssertQueryRuns(connectionPool, `DROP ROLE usergroup`)
+			defer testhelper.AssertQueryRuns(connectionPool, `DROP ROLE testuser`)
 		})
 		It("grants a role without ADMIN OPTION", func() {
-			numRoleMembers := len(backup.GetRoleMembers(connection))
+			numRoleMembers := len(backup.GetRoleMembers(connectionPool))
 			expectedRoleMember := backup.RoleMember{Role: "usergroup", Member: "testuser", Grantor: "testrole", IsAdmin: false}
 			backup.PrintRoleMembershipStatements(backupfile, toc, []backup.RoleMember{expectedRoleMember})
 
-			testhelper.AssertQueryRuns(connection, buffer.String())
+			testhelper.AssertQueryRuns(connectionPool, buffer.String())
 
-			resultRoleMembers := backup.GetRoleMembers(connection)
+			resultRoleMembers := backup.GetRoleMembers(connectionPool)
 			Expect(resultRoleMembers).To(HaveLen(numRoleMembers + 1))
 			for _, roleMember := range resultRoleMembers {
 				if roleMember.Role == "usergroup" {
@@ -282,13 +282,13 @@ var _ = Describe("backup integration create statement tests", func() {
 			Fail("Role 'testuser' is not a member of role 'usergroup'")
 		})
 		It("grants a role WITH ADMIN OPTION", func() {
-			numRoleMembers := len(backup.GetRoleMembers(connection))
+			numRoleMembers := len(backup.GetRoleMembers(connectionPool))
 			expectedRoleMember := backup.RoleMember{Role: "usergroup", Member: "testuser", Grantor: "testrole", IsAdmin: true}
 			backup.PrintRoleMembershipStatements(backupfile, toc, []backup.RoleMember{expectedRoleMember})
 
-			testhelper.AssertQueryRuns(connection, buffer.String())
+			testhelper.AssertQueryRuns(connectionPool, buffer.String())
 
-			resultRoleMembers := backup.GetRoleMembers(connection)
+			resultRoleMembers := backup.GetRoleMembers(connectionPool)
 			Expect(resultRoleMembers).To(HaveLen(numRoleMembers + 1))
 			for _, roleMember := range resultRoleMembers {
 				if roleMember.Role == "usergroup" {
@@ -302,21 +302,21 @@ var _ = Describe("backup integration create statement tests", func() {
 	Describe("PrintCreateTablespaceStatements", func() {
 		var expectedTablespace backup.Tablespace
 		BeforeEach(func() {
-			if connection.Version.AtLeast("6") {
+			if connectionPool.Version.AtLeast("6") {
 				expectedTablespace = backup.Tablespace{Oid: 1, Tablespace: "test_tablespace", FileLocation: "'/tmp/test_dir'", SegmentLocations: []string{}}
 			} else {
 				expectedTablespace = backup.Tablespace{Oid: 1, Tablespace: "test_tablespace", FileLocation: "test_dir"}
 			}
 		})
 		It("creates a basic tablespace", func() {
-			numTablespaces := len(backup.GetTablespaces(connection))
+			numTablespaces := len(backup.GetTablespaces(connectionPool))
 			emptyMetadataMap := backup.MetadataMap{}
 			backup.PrintCreateTablespaceStatements(backupfile, toc, []backup.Tablespace{expectedTablespace}, emptyMetadataMap)
 
-			testhelper.AssertQueryRuns(connection, buffer.String())
-			defer testhelper.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")
+			testhelper.AssertQueryRuns(connectionPool, buffer.String())
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLESPACE test_tablespace")
 
-			resultTablespaces := backup.GetTablespaces(connection)
+			resultTablespaces := backup.GetTablespaces(connectionPool)
 			Expect(resultTablespaces).To(HaveLen(numTablespaces + 1))
 			for _, tablespace := range resultTablespaces {
 				if tablespace.Tablespace == "test_tablespace" {
@@ -327,20 +327,20 @@ var _ = Describe("backup integration create statement tests", func() {
 			Fail("Tablespace 'test_tablespace' was not created")
 		})
 		It("creates a basic tablespace with different filespace locations", func() {
-			testutils.SkipIfBefore6(connection)
+			testutils.SkipIfBefore6(connectionPool)
 
 			expectedTablespace = backup.Tablespace{
 				Oid: 1, Tablespace: "test_tablespace", FileLocation: "'/tmp/test_dir'",
 				SegmentLocations: []string{"content0 '/tmp/test_dir1'", "content1 '/tmp/test_dir2'"},
 			}
-			numTablespaces := len(backup.GetTablespaces(connection))
+			numTablespaces := len(backup.GetTablespaces(connectionPool))
 			emptyMetadataMap := backup.MetadataMap{}
 			backup.PrintCreateTablespaceStatements(backupfile, toc, []backup.Tablespace{expectedTablespace}, emptyMetadataMap)
 
-			testhelper.AssertQueryRuns(connection, buffer.String())
-			defer testhelper.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")
+			testhelper.AssertQueryRuns(connectionPool, buffer.String())
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLESPACE test_tablespace")
 
-			resultTablespaces := backup.GetTablespaces(connection)
+			resultTablespaces := backup.GetTablespaces(connectionPool)
 			Expect(resultTablespaces).To(HaveLen(numTablespaces + 1))
 			for _, tablespace := range resultTablespaces {
 				if tablespace.Tablespace == "test_tablespace" {
@@ -351,12 +351,12 @@ var _ = Describe("backup integration create statement tests", func() {
 			Fail("Tablespace 'test_tablespace' was not created")
 		})
 		It("creates a tablespace with permissions, an owner, and a comment", func() {
-			numTablespaces := len(backup.GetTablespaces(connection))
+			numTablespaces := len(backup.GetTablespaces(connectionPool))
 			tablespaceMetadataMap := testutils.DefaultMetadataMap("TABLESPACE", true, true, true)
 			tablespaceMetadata := tablespaceMetadataMap[1]
 			backup.PrintCreateTablespaceStatements(backupfile, toc, []backup.Tablespace{expectedTablespace}, tablespaceMetadataMap)
 
-			if connection.Version.AtLeast("6") {
+			if connectionPool.Version.AtLeast("6") {
 				/*
 				 * In GPDB 6 and later, a CREATE TABLESPACE statement can't be run in a multi-command string
 				 * with other statements, so we execute it separately from the metadata statements.
@@ -364,17 +364,17 @@ var _ = Describe("backup integration create statement tests", func() {
 				gbuffer := gbytes.BufferWithBytes([]byte(buffer.String()))
 				entries, _ := testutils.SliceBufferByEntries(toc.GlobalEntries, gbuffer)
 				create, metadata := entries[0], entries[1]
-				testhelper.AssertQueryRuns(connection, create)
-				defer testhelper.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")
-				testhelper.AssertQueryRuns(connection, metadata)
+				testhelper.AssertQueryRuns(connectionPool, create)
+				defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLESPACE test_tablespace")
+				testhelper.AssertQueryRuns(connectionPool, metadata)
 			} else {
-				testhelper.AssertQueryRuns(connection, buffer.String())
-				defer testhelper.AssertQueryRuns(connection, "DROP TABLESPACE test_tablespace")
+				testhelper.AssertQueryRuns(connectionPool, buffer.String())
+				defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLESPACE test_tablespace")
 			}
 
-			resultTablespaces := backup.GetTablespaces(connection)
-			resultMetadataMap := backup.GetMetadataForObjectType(connection, backup.TYPE_TABLESPACE)
-			oid := testutils.OidFromObjectName(connection, "", "test_tablespace", backup.TYPE_TABLESPACE)
+			resultTablespaces := backup.GetTablespaces(connectionPool)
+			resultMetadataMap := backup.GetMetadataForObjectType(connectionPool, backup.TYPE_TABLESPACE)
+			oid := testutils.OidFromObjectName(connectionPool, "", "test_tablespace", backup.TYPE_TABLESPACE)
 			resultMetadata := resultMetadataMap[oid]
 			structmatcher.ExpectStructsToMatchExcluding(&tablespaceMetadata, &resultMetadata, "Oid")
 			Expect(resultTablespaces).To(HaveLen(numTablespaces + 1))

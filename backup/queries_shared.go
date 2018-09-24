@@ -29,7 +29,7 @@ import (
  * package (especially Table and Schema) are intended for more general use.
  */
 
-func GetAllUserSchemas(connection *dbconn.DBConn) []Schema {
+func GetAllUserSchemas(connectionPool *dbconn.DBConn) []Schema {
 	/*
 	 * This query is constructed from scratch, but the list of schemas to exclude
 	 * is copied from gpcrondump so that gpbackup exhibits similar behavior regarding
@@ -46,7 +46,7 @@ ORDER BY name;`, SchemaFilterClause("n"), ExtensionFilterClause(""))
 
 	results := make([]Schema, 0)
 
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	return results
 }
@@ -62,7 +62,7 @@ type Constraint struct {
 	IsPartitionParent  bool
 }
 
-func GetConstraints(connection *dbconn.DBConn, includeTables ...Relation) []Constraint {
+func GetConstraints(connectionPool *dbconn.DBConn, includeTables ...Relation) []Constraint {
 	// This query is adapted from the queries underlying \d in psql.
 	tableQuery := fmt.Sprintf(`
 SELECT
@@ -121,7 +121,7 @@ ORDER BY name;
 		query = fmt.Sprintf("%s\nUNION\n%s", tableQuery, nonTableQuery)
 	}
 	results := make([]Constraint, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	return results
 }
@@ -174,7 +174,7 @@ var (
 	TYPE_TYPE               MetadataQueryParams
 )
 
-func InitializeMetadataParams(connection *dbconn.DBConn) {
+func InitializeMetadataParams(connectionPool *dbconn.DBConn) {
 	TYPE_AGGREGATE = MetadataQueryParams{NameField: "proname", SchemaField: "pronamespace", OwnerField: "proowner", CatalogTable: "pg_proc"}
 	TYPE_CAST = MetadataQueryParams{NameField: "typname", OidField: "oid", OidTable: "pg_type", CatalogTable: "pg_cast"}
 	TYPE_COLLATION = MetadataQueryParams{NameField: "collname", OidField: "oid", SchemaField: "collnamespace", OwnerField: "collowner", CatalogTable: "pg_collation"}
@@ -187,7 +187,7 @@ func InitializeMetadataParams(connection *dbconn.DBConn) {
 	TYPE_FUNCTION = MetadataQueryParams{NameField: "proname", SchemaField: "pronamespace", ACLField: "proacl", OwnerField: "proowner", CatalogTable: "pg_proc"}
 	TYPE_INDEX = MetadataQueryParams{NameField: "relname", OidField: "indexrelid", OidTable: "pg_class", CommentTable: "pg_class", CatalogTable: "pg_index"}
 	TYPE_PROCLANGUAGE = MetadataQueryParams{NameField: "lanname", ACLField: "lanacl", CatalogTable: "pg_language"}
-	if connection.Version.Before("5") {
+	if connectionPool.Version.Before("5") {
 		TYPE_PROCLANGUAGE.OwnerField = "10" // In GPDB 4.3, there is no lanowner field in pg_language, but languages have an implicit owner
 	} else {
 		TYPE_PROCLANGUAGE.OwnerField = "lanowner"
@@ -240,7 +240,7 @@ type MetadataQueryStruct struct {
 	Comment    string
 }
 
-func GetMetadataForObjectType(connection *dbconn.DBConn, params MetadataQueryParams) MetadataMap {
+func GetMetadataForObjectType(connectionPool *dbconn.DBConn, params MetadataQueryParams) MetadataMap {
 	aclStr := "''"
 	kindStr := "''"
 	schemaStr := ""
@@ -286,12 +286,12 @@ ORDER BY o.oid;
 `, aclStr, kindStr, ownerStr, params.CatalogTable, descFunc, params.CatalogTable, subidStr, schemaStr)
 
 	results := make([]MetadataQueryStruct, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	return ConstructMetadataMap(results)
 }
 
-func GetQuotedRoleNames(connection *dbconn.DBConn) map[string]string {
+func GetQuotedRoleNames(connectionPool *dbconn.DBConn) map[string]string {
 	quotedRoleNames := make(map[string]string)
 
 	quotedRoleNamesQuery := `
@@ -300,7 +300,7 @@ SELECT rolname AS rolename, quote_ident(rolname) AS quotedrolename FROM pg_authi
 		RoleName       string
 		QuotedRoleName string
 	}, 0)
-	err := connection.Select(&results, quotedRoleNamesQuery)
+	err := connectionPool.Select(&results, quotedRoleNamesQuery)
 	gplog.FatalOnError(err)
 	for _, result := range results {
 		quotedRoleNames[result.RoleName] = result.QuotedRoleName
@@ -316,7 +316,7 @@ func sortACLs(privileges []ACL) []ACL {
 	return privileges
 }
 
-func GetCommentsForObjectType(connection *dbconn.DBConn, params MetadataQueryParams) MetadataMap {
+func GetCommentsForObjectType(connectionPool *dbconn.DBConn, params MetadataQueryParams) MetadataMap {
 	schemaStr := ""
 	if params.SchemaField != "" {
 		schemaStr = fmt.Sprintf(` JOIN pg_namespace n ON o.%s = n.oid
@@ -343,7 +343,7 @@ SELECT
 		Oid     uint32
 		Comment string
 	}, 0)
-	err := connection.Select(&results, query)
+	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 
 	metadataMap := make(MetadataMap)
