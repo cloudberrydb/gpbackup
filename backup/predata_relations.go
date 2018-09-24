@@ -176,19 +176,19 @@ func ConstructDefinitionsForTables(connection *dbconn.DBConn, tables []Relation)
 	for _, table := range tables {
 		oid := table.Oid
 		tableDef := TableDefinition{
-			distributionPolicies[oid],
-			partitionDefs[oid],
-			partTemplateDefs[oid],
-			tableStorageOptions[oid],
-			tablespaceNames[oid],
-			columnDefs[oid],
-			(extTableDefs[oid].Oid != 0),
-			extTableDefs[oid],
-			partTableMap[oid],
-			tableTypeMap[oid],
-			unloggedTableMap[oid],
-			foreignTableDefs[oid],
-			inheritanceMap[oid],
+			DistPolicy:         distributionPolicies[oid],
+			PartDef:            partitionDefs[oid],
+			PartTemplateDef:    partTemplateDefs[oid],
+			StorageOpts:        tableStorageOptions[oid],
+			TablespaceName:     tablespaceNames[oid],
+			ColumnDefs:         columnDefs[oid],
+			IsExternal:         (extTableDefs[oid].Oid != 0),
+			ExtTableDef:        extTableDefs[oid],
+			PartitionLevelInfo: partTableMap[oid],
+			TableType:          tableTypeMap[oid],
+			IsUnlogged:         unloggedTableMap[oid],
+			ForeignDef:         foreignTableDefs[oid],
+			Inherits:           inheritanceMap[oid],
 		}
 		if tableDef.Inherits == nil {
 			tableDef.Inherits = []string{}
