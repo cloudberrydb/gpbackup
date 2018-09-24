@@ -56,6 +56,7 @@ SET default_with_oids = off;
 	}
 	if connectionPool.Version.AtLeast("6") {
 		setupQuery += "SET allow_system_table_mods = true;\n"
+		setupQuery += "SET lock_timeout = 0;\n"
 	}
 	setupQuery += SetMaxCsvLineLengthQuery(connectionPool)
 
