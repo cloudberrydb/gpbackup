@@ -19,7 +19,7 @@
     "structmatcher",
     "testhelper"
   ]
-  revision = "6ae0bc3408913019c4d3520f761858a4ef6c6979"
+  revision = "4e4542430302c7f243701ebea15a888520643260"
 
 [[projects]]
   name = "github.com/hpcloud/tail"
@@ -134,8 +134,8 @@
     "matchers/support/goraph/util",
     "types"
   ]
-  revision = "b6ea1ea48f981d0f615a154a45eabb9dd466556d"
-  version = "v1.4.1"
+  revision = "7615b9433f86a8bdf29709bf288bc4fd0636a369"
+  version = "v1.4.2"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -169,13 +169,13 @@
     "html/atom",
     "html/charset"
   ]
-  revision = "8a410e7b638dca158bf9e766925842f6651ff828"
+  revision = "f04abc6bdfa7a0171a8a0c9fd2ada9391044d056"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "4910a1d54f876d7b22162a85f4d066d3ee649450"
+  revision = "b09afc3d579e346c4a7e4705953acaf6f9e551bd"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -210,7 +210,7 @@
     "imports",
     "internal/fastwalk"
   ]
-  revision = "f6ba5742950514ddd66494151ed5498ed77969ca"
+  revision = "0b24b358f4c7eaa92895f67a3f6cea2a0cf525d5"
 
 [[projects]]
   name = "gopkg.in/DATA-DOG/go-sqlmock.v1"
