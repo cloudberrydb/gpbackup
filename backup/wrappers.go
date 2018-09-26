@@ -145,16 +145,20 @@ func RetrieveAndProcessTables() ([]Relation, []Relation, map[uint32]TableDefinit
 	return metadataTables, dataTables, tableDefs
 }
 
-func RetrieveFunctions(procLangs []ProceduralLanguage) ([]Function, []Function, MetadataMap) {
+func RetrieveFunctions(sortables *[]Sortable, metadataMap MetadataMap, procLangs []ProceduralLanguage) ([]Function, MetadataMap) {
 	gplog.Verbose("Retrieving function information")
 	functions := GetFunctionsAllVersions(connectionPool)
 	objectCounts["Functions"] = len(functions)
 	functionMetadata := GetMetadataForObjectType(connectionPool, TYPE_FUNCTION)
 	langFuncs, otherFuncs := ExtractLanguageFunctions(functions, procLangs)
-	return langFuncs, otherFuncs, functionMetadata
+
+	*sortables = append(*sortables, convertToSortableSlice(otherFuncs)...)
+	addToMetadataMap(functionMetadata, metadataMap)
+
+	return langFuncs, functionMetadata
 }
 
-func RetrieveTypes() ([]Type, MetadataMap, map[uint32]FunctionInfo) {
+func RetrieveTypes(sortables *[]Sortable, metadataMap MetadataMap) ([]Type, MetadataMap, map[uint32]FunctionInfo) {
 	gplog.Verbose("Retrieving type information")
 	shells := GetShellTypes(connectionPool)
 	bases := GetBaseTypes(connectionPool)
@@ -166,6 +170,10 @@ func RetrieveTypes() ([]Type, MetadataMap, map[uint32]FunctionInfo) {
 	types = append(types, domains...)
 	objectCounts["Types"] = len(types)
 	typeMetadata := GetMetadataForObjectType(connectionPool, TYPE_TYPE)
+
+	*sortables = append(*sortables, convertToSortableSlice(types)...)
+	addToMetadataMap(typeMetadata, metadataMap)
+
 	return types, typeMetadata, funcInfoMap
 }
 
@@ -181,18 +189,62 @@ func RetrieveSequences() ([]Sequence, map[string]string) {
 	return sequences, sequenceOwnerColumns
 }
 
-func RetrieveAndProcessProtocols(funcInfoMap map[uint32]FunctionInfo) ([]ExternalProtocol, MetadataMap) {
+func RetrieveAndProcessProtocols(sortables *[]Sortable, metadataMap MetadataMap, funcInfoMap map[uint32]FunctionInfo) []ExternalProtocol {
 	protocols := GetExternalProtocols(connectionPool)
 	protocolsToBackUp := ProcessProtocols(protocols, funcInfoMap)
 	objectCounts["Protocols"] = len(protocolsToBackUp)
 	protoMetadata := GetMetadataForObjectType(connectionPool, TYPE_PROTOCOL)
-	return protocolsToBackUp, protoMetadata
+
+	*sortables = append(*sortables, convertToSortableSlice(protocols)...)
+	addToMetadataMap(protoMetadata, metadataMap)
+
+	return protocols
 }
 
-func RetrieveViews() []View {
+func RetrieveViews(sortables *[]Sortable) {
 	views := GetViews(connectionPool)
 	objectCounts["Views"] = len(views)
-	return views
+
+	*sortables = append(*sortables, convertToSortableSlice(views)...)
+}
+
+func RetrieveTSParsers(sortables *[]Sortable, metadataMap MetadataMap) {
+	parsers := GetTextSearchParsers(connectionPool)
+	objectCounts["Text Search Parsers"] = len(parsers)
+	parserMetadata := GetCommentsForObjectType(connectionPool, TYPE_TSPARSER)
+
+	*sortables = append(*sortables, convertToSortableSlice(parsers)...)
+	addToMetadataMap(parserMetadata, metadataMap)
+}
+
+func RetrieveTSTemplates(sortables *[]Sortable, metadataMap MetadataMap) {
+	gplog.Verbose("Writing CREATE TEXT SEARCH TEMPLATE statements to metadata file")
+	templates := GetTextSearchTemplates(connectionPool)
+	objectCounts["Text Search Templates"] = len(templates)
+	templateMetadata := GetCommentsForObjectType(connectionPool, TYPE_TSTEMPLATE)
+
+	*sortables = append(*sortables, convertToSortableSlice(templates)...)
+	addToMetadataMap(templateMetadata, metadataMap)
+}
+
+func RetrieveTSDictionaries(sortables *[]Sortable, metadataMap MetadataMap) {
+	gplog.Verbose("Writing CREATE TEXT SEARCH DICTIONARY statements to metadata file")
+	dictionaries := GetTextSearchDictionaries(connectionPool)
+	objectCounts["Text Search Dictionaries"] = len(dictionaries)
+	dictionaryMetadata := GetMetadataForObjectType(connectionPool, TYPE_TSDICTIONARY)
+
+	*sortables = append(*sortables, convertToSortableSlice(dictionaries)...)
+	addToMetadataMap(dictionaryMetadata, metadataMap)
+}
+
+func RetrieveTSConfigurations(sortables *[]Sortable, metadataMap MetadataMap) {
+	gplog.Verbose("Writing CREATE TEXT SEARCH CONFIGURATION statements to metadata file")
+	configurations := GetTextSearchConfigurations(connectionPool)
+	objectCounts["Text Search Configurations"] = len(configurations)
+	configurationMetadata := GetMetadataForObjectType(connectionPool, TYPE_TSCONFIGURATION)
+
+	*sortables = append(*sortables, convertToSortableSlice(configurations)...)
+	addToMetadataMap(configurationMetadata, metadataMap)
 }
 
 /*
@@ -368,6 +420,12 @@ func convertToSortableSlice(objSlice interface{}) []Sortable {
 	return sortableSlice
 }
 
+func addToMetadataMap(newMetadata MetadataMap, metadataMap MetadataMap) {
+	for k, v := range newMetadata {
+		metadataMap[k] = v
+	}
+}
+
 // This function is fairly unwieldy, but there's not really a good way to break it down
 func BackupDependentObjects(metadataFile *utils.FileWithByteCount, tables []Relation,
 	protocols []ExternalProtocol, filteredMetadata MetadataMap, tableDefs map[uint32]TableDefinition, constraints []Constraint, sortables []Sortable) {
@@ -377,6 +435,7 @@ func BackupDependentObjects(metadataFile *utils.FileWithByteCount, tables []Rela
 	gplog.Verbose("Writing CREATE TABLE statements to metadata file")
 	gplog.Verbose("Writing CREATE VIEW statements to metadata file")
 	gplog.Verbose("Writing CREATE PROTOCOL statements to metadata file")
+	gplog.Verbose("Writing CREATE TEXT SEARCH PARSER statements to metadata file")
 
 	backupSet := createBackupSet(sortables)
 	relevantDeps := GetDependencies(connectionPool, backupSet)
@@ -394,13 +453,10 @@ func BackupDependentObjects(metadataFile *utils.FileWithByteCount, tables []Rela
 }
 
 // This function should be used only with a table-only backup.  For an unfiltered backup, the above function is used.
-func BackupDependentTablesAndViews(metadataFile *utils.FileWithByteCount, tables []Relation, views []View, relationMetadata MetadataMap, tableDefs map[uint32]TableDefinition, constraints []Constraint) {
+func BackupDependentTablesAndViews(metadataFile *utils.FileWithByteCount, tables []Relation, sortables []Sortable, relationMetadata MetadataMap, tableDefs map[uint32]TableDefinition, constraints []Constraint) {
 	gplog.Verbose("Writing CREATE TABLE statements to metadata file")
 	gplog.Verbose("Writing CREATE VIEW statements to metadata file")
 
-	sortables := make([]Sortable, 0)
-	sortables = append(sortables, convertToSortableSlice(tables)...)
-	sortables = append(sortables, convertToSortableSlice(views)...)
 	backupSet := createBackupSet(sortables)
 	relevantDeps := GetDependencies(connectionPool, backupSet)
 	sortedSlice := TopologicalSort(sortables, relevantDeps)
@@ -411,38 +467,6 @@ func BackupDependentTablesAndViews(metadataFile *utils.FileWithByteCount, tables
 		gplog.Verbose("Writing EXCHANGE PARTITION statements to metadata file")
 		PrintExchangeExternalPartitionStatements(metadataFile, globalTOC, extPartInfo, partInfoMap, tables)
 	}
-}
-
-func BackupTSParsers(metadataFile *utils.FileWithByteCount) {
-	gplog.Verbose("Writing CREATE TEXT SEARCH PARSER statements to metadata file")
-	parsers := GetTextSearchParsers(connectionPool)
-	objectCounts["Text Search Parsers"] = len(parsers)
-	parserMetadata := GetCommentsForObjectType(connectionPool, TYPE_TSPARSER)
-	PrintCreateTextSearchParserStatements(metadataFile, globalTOC, parsers, parserMetadata)
-}
-
-func BackupTSTemplates(metadataFile *utils.FileWithByteCount) {
-	gplog.Verbose("Writing CREATE TEXT SEARCH TEMPLATE statements to metadata file")
-	templates := GetTextSearchTemplates(connectionPool)
-	objectCounts["Text Search Templates"] = len(templates)
-	templateMetadata := GetCommentsForObjectType(connectionPool, TYPE_TSTEMPLATE)
-	PrintCreateTextSearchTemplateStatements(metadataFile, globalTOC, templates, templateMetadata)
-}
-
-func BackupTSDictionaries(metadataFile *utils.FileWithByteCount) {
-	gplog.Verbose("Writing CREATE TEXT SEARCH DICTIONARY statements to metadata file")
-	dictionaries := GetTextSearchDictionaries(connectionPool)
-	objectCounts["Text Search Dictionaries"] = len(dictionaries)
-	dictionaryMetadata := GetMetadataForObjectType(connectionPool, TYPE_TSDICTIONARY)
-	PrintCreateTextSearchDictionaryStatements(metadataFile, globalTOC, dictionaries, dictionaryMetadata)
-}
-
-func BackupTSConfigurations(metadataFile *utils.FileWithByteCount) {
-	gplog.Verbose("Writing CREATE TEXT SEARCH CONFIGURATION statements to metadata file")
-	configurations := GetTextSearchConfigurations(connectionPool)
-	objectCounts["Text Search Configurations"] = len(configurations)
-	configurationMetadata := GetMetadataForObjectType(connectionPool, TYPE_TSCONFIGURATION)
-	PrintCreateTextSearchConfigurationStatements(metadataFile, globalTOC, configurations, configurationMetadata)
 }
 
 func BackupConversions(metadataFile *utils.FileWithByteCount) {

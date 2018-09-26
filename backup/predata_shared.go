@@ -473,25 +473,34 @@ func PrintDependentObjectStatements(metadataFile *utils.FileWithByteCount, toc *
 		conMap[constraint.OwningObject] = append(conMap[constraint.OwningObject], constraint)
 	}
 	for _, object := range objects {
+		objMetadata := metadataMap[object.GetUniqueID()]
 		switch obj := object.(type) {
 		case Type:
 			switch obj.Type {
 			case "b":
-				PrintCreateBaseTypeStatement(metadataFile, toc, obj, metadataMap[obj.GetUniqueID()])
+				PrintCreateBaseTypeStatement(metadataFile, toc, obj, objMetadata)
 			case "c":
-				PrintCreateCompositeTypeStatement(metadataFile, toc, obj, metadataMap[obj.GetUniqueID()])
+				PrintCreateCompositeTypeStatement(metadataFile, toc, obj, objMetadata)
 			case "d":
 				domainName := utils.MakeFQN(obj.Schema, obj.Name)
-				PrintCreateDomainStatement(metadataFile, toc, obj, metadataMap[obj.GetUniqueID()], conMap[domainName])
+				PrintCreateDomainStatement(metadataFile, toc, obj, objMetadata, conMap[domainName])
 			}
 		case Function:
-			PrintCreateFunctionStatement(metadataFile, toc, obj, metadataMap[obj.GetUniqueID()])
+			PrintCreateFunctionStatement(metadataFile, toc, obj, objMetadata)
 		case Relation:
-			PrintCreateTableStatement(metadataFile, toc, obj, tableDefsMap[obj.Oid], metadataMap[obj.GetUniqueID()])
+			PrintCreateTableStatement(metadataFile, toc, obj, tableDefsMap[obj.Oid], objMetadata)
 		case ExternalProtocol:
-			PrintCreateExternalProtocolStatement(metadataFile, toc, obj, metadataMap[obj.GetUniqueID()])
+			PrintCreateExternalProtocolStatement(metadataFile, toc, obj, objMetadata)
 		case View:
-			PrintCreateViewStatement(metadataFile, toc, obj, metadataMap[obj.GetUniqueID()])
+			PrintCreateViewStatement(metadataFile, toc, obj, objMetadata)
+		case TextSearchParser:
+			PrintCreateTextSearchParserStatement(metadataFile, toc, obj, objMetadata)
+		case TextSearchConfiguration:
+			PrintCreateTextSearchConfigurationStatement(metadataFile, toc, obj, objMetadata)
+		case TextSearchTemplate:
+			PrintCreateTextSearchTemplateStatement(metadataFile, toc, obj, objMetadata)
+		case TextSearchDictionary:
+			PrintCreateTextSearchDictionaryStatement(metadataFile, toc, obj, objMetadata)
 		}
 	}
 }

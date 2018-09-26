@@ -214,6 +214,10 @@ func backupPredata(metadataFile *utils.FileWithByteCount, tables []Relation, tab
 	}
 	gplog.Info("Writing pre-data metadata")
 
+	sortables := make([]Sortable, 0)
+	sortables = append(sortables, convertToSortableSlice(tables)...)
+	metadataMap := make(MetadataMap)
+
 	BackupSchemas(metadataFile)
 	if len(MustGetFlagStringSlice(utils.INCLUDE_SCHEMA)) == 0 && connectionPool.Version.AtLeast("5") {
 		BackupExtensions(metadataFile)
@@ -224,8 +228,8 @@ func backupPredata(metadataFile *utils.FileWithByteCount, tables []Relation, tab
 	}
 
 	procLangs := GetProceduralLanguages(connectionPool)
-	langFuncs, otherFuncs, functionMetadata := RetrieveFunctions(procLangs)
-	types, typeMetadata, funcInfoMap := RetrieveTypes()
+	langFuncs, functionMetadata := RetrieveFunctions(&sortables, metadataMap, procLangs)
+	types, typeMetadata, funcInfoMap := RetrieveTypes(&sortables, metadataMap)
 
 	if len(MustGetFlagStringSlice(utils.INCLUDE_SCHEMA)) == 0 {
 		BackupProceduralLanguages(metadataFile, procLangs, langFuncs, functionMetadata, funcInfoMap)
@@ -249,26 +253,16 @@ func backupPredata(metadataFile *utils.FileWithByteCount, tables []Relation, tab
 	BackupCreateSequences(metadataFile, sequences, relationMetadata)
 
 	constraints, conMetadata := RetrieveConstraints()
-	protocols, protoMetadata := RetrieveAndProcessProtocols(funcInfoMap)
+	protocols := RetrieveAndProcessProtocols(&sortables, metadataMap, funcInfoMap)
 
-	views := RetrieveViews()
+	RetrieveViews(&sortables)
+	RetrieveTSParsers(&sortables, metadataMap)
+	RetrieveTSConfigurations(&sortables, metadataMap)
+	RetrieveTSTemplates(&sortables, metadataMap)
+	RetrieveTSDictionaries(&sortables, metadataMap)
 
-	sortables := make([]Sortable, 0)
-	sortables = append(sortables, convertToSortableSlice(types)...)
-	sortables = append(sortables, convertToSortableSlice(tables)...)
-	sortables = append(sortables, convertToSortableSlice(otherFuncs)...)
-	sortables = append(sortables, convertToSortableSlice(protocols)...)
-	sortables = append(sortables, convertToSortableSlice(views)...)
-	filteredMetadata := ConstructDependentObjectMetadataMap(functionMetadata, typeMetadata, relationMetadata, protoMetadata)
-	BackupDependentObjects(metadataFile, tables, protocols, filteredMetadata, tableDefs, constraints, sortables)
+	BackupDependentObjects(metadataFile, tables, protocols, metadataMap, tableDefs, constraints, sortables)
 	PrintAlterSequenceStatements(metadataFile, globalTOC, sequences, sequenceOwnerColumns)
-
-	if connectionPool.Version.AtLeast("5") {
-		BackupTSParsers(metadataFile)
-		BackupTSTemplates(metadataFile)
-		BackupTSDictionaries(metadataFile)
-		BackupTSConfigurations(metadataFile)
-	}
 
 	BackupOperators(metadataFile)
 	if connectionPool.Version.AtLeast("5") {
@@ -293,6 +287,9 @@ func backupRelationPredata(metadataFile *utils.FileWithByteCount, tables []Relat
 	}
 	gplog.Info("Writing table metadata")
 
+	sortables := make([]Sortable, 0)
+	sortables = append(sortables, convertToSortableSlice(tables)...)
+
 	relationMetadata := GetMetadataForObjectType(connectionPool, TYPE_RELATION)
 
 	sequences, sequenceOwnerColumns := RetrieveSequences()
@@ -300,9 +297,9 @@ func backupRelationPredata(metadataFile *utils.FileWithByteCount, tables []Relat
 
 	constraints, conMetadata := RetrieveConstraints(tables...)
 
-	views := RetrieveViews()
+	RetrieveViews(&sortables)
 
-	BackupDependentTablesAndViews(metadataFile, tables, views, relationMetadata, tableDefs, constraints)
+	BackupDependentTablesAndViews(metadataFile, tables, sortables, relationMetadata, tableDefs, constraints)
 	PrintAlterSequenceStatements(metadataFile, globalTOC, sequences, sequenceOwnerColumns)
 
 	BackupConstraints(metadataFile, constraints, conMetadata)

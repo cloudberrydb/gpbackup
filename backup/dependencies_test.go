@@ -98,12 +98,20 @@ var _ = Describe("backup/dependencies tests", func() {
 			typeMap := backup.MetadataMap{backup.UniqueID{Oid: 2}: backup.ObjectMetadata{Comment: "type"}}
 			tableMap := backup.MetadataMap{backup.UniqueID{Oid: 3}: backup.ObjectMetadata{Comment: "relation"}}
 			protoMap := backup.MetadataMap{backup.UniqueID{Oid: 4}: backup.ObjectMetadata{Comment: "protocol"}}
-			result := backup.ConstructDependentObjectMetadataMap(funcMap, typeMap, tableMap, protoMap)
+			tsParserMap := backup.MetadataMap{backup.UniqueID{Oid: 5}: backup.ObjectMetadata{Comment: "text search parser"}}
+			tsConfigMap := backup.MetadataMap{backup.UniqueID{Oid: 6}: backup.ObjectMetadata{Comment: "text search config"}}
+			tsTemplateMap := backup.MetadataMap{backup.UniqueID{Oid: 7}: backup.ObjectMetadata{Comment: "text search template"}}
+			tsDictionaryMap := backup.MetadataMap{backup.UniqueID{Oid: 8}: backup.ObjectMetadata{Comment: "text search dictionary"}}
+			result := backup.ConstructDependentObjectMetadataMap(funcMap, typeMap, tableMap, protoMap, tsParserMap, tsConfigMap, tsTemplateMap, tsDictionaryMap)
 			expected := backup.MetadataMap{
 				backup.UniqueID{Oid: 1}: backup.ObjectMetadata{Comment: "function"},
 				backup.UniqueID{Oid: 2}: backup.ObjectMetadata{Comment: "type"},
 				backup.UniqueID{Oid: 3}: backup.ObjectMetadata{Comment: "relation"},
 				backup.UniqueID{Oid: 4}: backup.ObjectMetadata{Comment: "protocol"},
+				backup.UniqueID{Oid: 5}: backup.ObjectMetadata{Comment: "text search parser"},
+				backup.UniqueID{Oid: 6}: backup.ObjectMetadata{Comment: "text search config"},
+				backup.UniqueID{Oid: 7}: backup.ObjectMetadata{Comment: "text search template"},
+				backup.UniqueID{Oid: 8}: backup.ObjectMetadata{Comment: "text search dictionary"},
 			}
 			Expect(result).To(Equal(expected))
 		})

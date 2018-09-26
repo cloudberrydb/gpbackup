@@ -57,6 +57,8 @@ CREATE TEXT SEARCH CONFIGURATION testconfiguration (
 CREATE TEXT SEARCH TEMPLATE testtemplate (
     LEXIZE = dsimple_lexize );
 
+CREATE TEXT SEARCH DICTIONARY testdictionary2 (
+    TEMPLATE = public.testtemplate);
 
 
 CREATE TEXT SEARCH PARSER testparser (
@@ -65,3 +67,12 @@ CREATE TEXT SEARCH PARSER testparser (
     END = prsd_end,
     LEXTYPES = prsd_lextype );
 
+CREATE TEXT SEARCH CONFIGURATION testconfiguration2 (
+    PARSER = public.testparser );
+
+CREATE VIEW ts_config_view AS SELECT * FROM ts_debug('public.testconfiguration2', '
+PostgreSQL, the highly scalable, SQL compliant, open source
+object-relational database management system, is now undergoing
+beta testing of the nextversion of our software');
+
+CREATE VIEW ts_dict_view AS SELECT ts_lexize('public.testdictionary2', 'hello world');

@@ -71,7 +71,7 @@ var (
 	PG_USER_MAPPING_OID         uint32 = 1418
 )
 
-func ConstructDependentObjectMetadataMap(functions MetadataMap, types MetadataMap, tables MetadataMap, protocols MetadataMap) MetadataMap {
+func ConstructDependentObjectMetadataMap(functions MetadataMap, types MetadataMap, tables MetadataMap, protocols MetadataMap, tsParsers MetadataMap, tsConfigs MetadataMap, tsTemplates MetadataMap, tsDicts MetadataMap) MetadataMap {
 	metadataMap := make(MetadataMap, 0)
 	for k, v := range functions {
 		metadataMap[k] = v
@@ -83,6 +83,18 @@ func ConstructDependentObjectMetadataMap(functions MetadataMap, types MetadataMa
 		metadataMap[k] = v
 	}
 	for k, v := range protocols {
+		metadataMap[k] = v
+	}
+	for k, v := range tsParsers {
+		metadataMap[k] = v
+	}
+	for k, v := range tsConfigs {
+		metadataMap[k] = v
+	}
+	for k, v := range tsTemplates {
+		metadataMap[k] = v
+	}
+	for k, v := range tsDicts {
 		metadataMap[k] = v
 	}
 	return metadataMap

@@ -13,6 +13,7 @@ import (
 
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
+	"github.com/greenplum-db/gpbackup/utils"
 )
 
 type TextSearchParser struct {
@@ -28,6 +29,10 @@ type TextSearchParser struct {
 
 func (tsp TextSearchParser) GetUniqueID() UniqueID {
 	return UniqueID{ClassID: PG_TS_PARSER_OID, Oid: tsp.Oid}
+}
+
+func (tsp TextSearchParser) FQN() string {
+	return utils.MakeFQN(tsp.Schema, tsp.Name)
 }
 
 func GetTextSearchParsers(connectionPool *dbconn.DBConn) []TextSearchParser {
@@ -65,6 +70,10 @@ func (tst TextSearchTemplate) GetUniqueID() UniqueID {
 	return UniqueID{ClassID: PG_TS_TEMPLATE_OID, Oid: tst.Oid}
 }
 
+func (tst TextSearchTemplate) FQN() string {
+	return utils.MakeFQN(tst.Schema, tst.Name)
+}
+
 func GetTextSearchTemplates(connectionPool *dbconn.DBConn) []TextSearchTemplate {
 	query := fmt.Sprintf(`
 SELECT
@@ -95,6 +104,10 @@ type TextSearchDictionary struct {
 
 func (tsd TextSearchDictionary) GetUniqueID() UniqueID {
 	return UniqueID{ClassID: PG_TS_DICT_OID, Oid: tsd.Oid}
+}
+
+func (tsd TextSearchDictionary) FQN() string {
+	return utils.MakeFQN(tsd.Schema, tsd.Name)
 }
 
 func GetTextSearchDictionaries(connectionPool *dbconn.DBConn) []TextSearchDictionary {
@@ -129,6 +142,10 @@ type TextSearchConfiguration struct {
 
 func (tsc TextSearchConfiguration) GetUniqueID() UniqueID {
 	return UniqueID{ClassID: PG_TS_CONFIG_OID, Oid: tsc.Oid}
+}
+
+func (tsc TextSearchConfiguration) FQN() string {
+	return utils.MakeFQN(tsc.Schema, tsc.Name)
 }
 
 func GetTextSearchConfigurations(connectionPool *dbconn.DBConn) []TextSearchConfiguration {

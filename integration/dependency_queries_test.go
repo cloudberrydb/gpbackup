@@ -275,5 +275,22 @@ var _ = Describe("backup integration tests", func() {
 				Expect(deps[typeEntry]).To(HaveKey(tableEntry))
 			})
 		})
+		Describe("text search dependencies", func() {
+			It("text search config depends on text search parser", func() {
+				testhelper.AssertQueryRuns(connectionPool, "CREATE TEXT SEARCH PARSER public.testparser(START = prsd_start, GETTOKEN = prsd_nexttoken, END = prsd_end, LEXTYPES = prsd_lextype);")
+				defer testhelper.AssertQueryRuns(connectionPool, "DROP TEXT SEARCH PARSER public.testparser;")
+				testhelper.AssertQueryRuns(connectionPool, "CREATE TEXT SEARCH CONFIGURATION public.testconfig(PARSER = public.testparser);")
+				defer testhelper.AssertQueryRuns(connectionPool, "DROP TEXT SEARCH CONFIGURATION public.testconfig;")
+
+				parserID := testutils.UniqueIDFromObjectName(connectionPool, "public", "testparser", backup.TYPE_TSPARSER)
+				configID := testutils.UniqueIDFromObjectName(connectionPool, "public", "testconfig", backup.TYPE_TSCONFIGURATION)
+				backupSet := map[backup.UniqueID]bool{parserID: true, configID: true}
+
+				deps := backup.GetDependencies(connectionPool, backupSet)
+				Expect(deps).To(HaveLen(1))
+				Expect(deps[configID]).To(HaveLen(1))
+				Expect(deps[configID]).To(HaveKey(parserID))
+			})
+		})
 	})
 })

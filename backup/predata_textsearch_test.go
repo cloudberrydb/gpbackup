@@ -13,8 +13,8 @@ var _ = Describe("backup/predata_textsearch tests", func() {
 	})
 	Describe("PrintCreateTextSearchParserStatements", func() {
 		It("prints a basic text search parser", func() {
-			parsers := []backup.TextSearchParser{{Oid: 0, Schema: "public", Name: "testparser", StartFunc: "start_func", TokenFunc: "token_func", EndFunc: "end_func", LexTypesFunc: "lextypes_func"}}
-			backup.PrintCreateTextSearchParserStatements(backupfile, toc, parsers, backup.MetadataMap{})
+			parser := backup.TextSearchParser{Oid: 0, Schema: "public", Name: "testparser", StartFunc: "start_func", TokenFunc: "token_func", EndFunc: "end_func", LexTypesFunc: "lextypes_func"}
+			backup.PrintCreateTextSearchParserStatement(backupfile, toc, parser, backup.ObjectMetadata{})
 			testutils.ExpectEntry(toc.PredataEntries, 0, "public", "", "testparser", "TEXT SEARCH PARSER")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE TEXT SEARCH PARSER public.testparser (
 	START = start_func,
@@ -24,9 +24,9 @@ var _ = Describe("backup/predata_textsearch tests", func() {
 );`)
 		})
 		It("prints a text search parser with a headline and comment", func() {
-			parsers := []backup.TextSearchParser{{Oid: 1, Schema: "public", Name: "testparser", StartFunc: "start_func", TokenFunc: "token_func", EndFunc: "end_func", LexTypesFunc: "lextypes_func", HeadlineFunc: "headline_func"}}
-			metadataMap := testutils.DefaultMetadataMap("TEXT SEARCH PARSER", false, false, true)
-			backup.PrintCreateTextSearchParserStatements(backupfile, toc, parsers, metadataMap)
+			parser := backup.TextSearchParser{Oid: 1, Schema: "public", Name: "testparser", StartFunc: "start_func", TokenFunc: "token_func", EndFunc: "end_func", LexTypesFunc: "lextypes_func", HeadlineFunc: "headline_func"}
+			metadata := testutils.DefaultMetadata("TEXT SEARCH PARSER", false, false, true)
+			backup.PrintCreateTextSearchParserStatement(backupfile, toc, parser, metadata)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE TEXT SEARCH PARSER public.testparser (
 	START = start_func,
 	GETTOKEN = token_func,
@@ -38,11 +38,11 @@ var _ = Describe("backup/predata_textsearch tests", func() {
 COMMENT ON TEXT SEARCH PARSER public.testparser IS 'This is a text search parser comment.';`)
 		})
 	})
-	Describe("PrintCreateTextSearchTemplateStatements", func() {
+	Describe("PrintCreateTextSearchTemplateStatement", func() {
 		It("prints a basic text search template with comment", func() {
-			templates := []backup.TextSearchTemplate{{Oid: 1, Schema: "public", Name: "testtemplate", InitFunc: "dsimple_init", LexizeFunc: "dsimple_lexize"}}
-			metadataMap := testutils.DefaultMetadataMap("TEXT SEARCH TEMPLATE", false, false, true)
-			backup.PrintCreateTextSearchTemplateStatements(backupfile, toc, templates, metadataMap)
+			template := backup.TextSearchTemplate{Oid: 1, Schema: "public", Name: "testtemplate", InitFunc: "dsimple_init", LexizeFunc: "dsimple_lexize"}
+			metadata := testutils.DefaultMetadata("TEXT SEARCH TEMPLATE", false, false, true)
+			backup.PrintCreateTextSearchTemplateStatement(backupfile, toc, template, metadata)
 			testutils.ExpectEntry(toc.PredataEntries, 0, "public", "", "testtemplate", "TEXT SEARCH TEMPLATE")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE TEXT SEARCH TEMPLATE public.testtemplate (
 	INIT = dsimple_init,
@@ -52,11 +52,11 @@ COMMENT ON TEXT SEARCH PARSER public.testparser IS 'This is a text search parser
 COMMENT ON TEXT SEARCH TEMPLATE public.testtemplate IS 'This is a text search template comment.';`)
 		})
 	})
-	Describe("PrintCreateTextSearchDictionaryStatements", func() {
+	Describe("PrintCreateTextSearchDictionaryStatement", func() {
 		It("prints a basic text search dictionary with comment", func() {
-			dictionaries := []backup.TextSearchDictionary{{Oid: 1, Schema: "public", Name: "testdictionary", Template: "testschema.snowball", InitOption: "language = 'russian', stopwords = 'russian'"}}
-			metadataMap := testutils.DefaultMetadataMap("TEXT SEARCH DICTIONARY", false, true, true)
-			backup.PrintCreateTextSearchDictionaryStatements(backupfile, toc, dictionaries, metadataMap)
+			dictionary := backup.TextSearchDictionary{Oid: 1, Schema: "public", Name: "testdictionary", Template: "testschema.snowball", InitOption: "language = 'russian', stopwords = 'russian'"}
+			metadata := testutils.DefaultMetadata("TEXT SEARCH DICTIONARY", false, true, true)
+			backup.PrintCreateTextSearchDictionaryStatement(backupfile, toc, dictionary, metadata)
 			testutils.ExpectEntry(toc.PredataEntries, 0, "public", "", "testdictionary", "TEXT SEARCH DICTIONARY")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE TEXT SEARCH DICTIONARY public.testdictionary (
 	TEMPLATE = testschema.snowball,
@@ -69,19 +69,19 @@ COMMENT ON TEXT SEARCH DICTIONARY public.testdictionary IS 'This is a text searc
 ALTER TEXT SEARCH DICTIONARY public.testdictionary OWNER TO testrole;`)
 		})
 	})
-	Describe("PrintCreateTextSearchConfigurationStatements", func() {
+	Describe("PrintCreateTextSearchConfigurationStatement", func() {
 		It("prints a basic text search configuration", func() {
-			configurations := []backup.TextSearchConfiguration{{Oid: 0, Schema: "public", Name: "testconfiguration", Parser: `pg_catalog."default"`, TokenToDicts: map[string][]string{}}}
-			backup.PrintCreateTextSearchConfigurationStatements(backupfile, toc, configurations, backup.MetadataMap{})
+			configurations := backup.TextSearchConfiguration{Oid: 0, Schema: "public", Name: "testconfiguration", Parser: `pg_catalog."default"`, TokenToDicts: map[string][]string{}}
+			backup.PrintCreateTextSearchConfigurationStatement(backupfile, toc, configurations, backup.ObjectMetadata{})
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE TEXT SEARCH CONFIGURATION public.testconfiguration (
 	PARSER = pg_catalog."default"
 );`)
 		})
 		It("prints a text search configuration with multiple mappings and comment", func() {
 			tokenToDicts := map[string][]string{"int": {"simple", "english_stem"}, "asciiword": {"english_stem"}}
-			configurations := []backup.TextSearchConfiguration{{Oid: 1, Schema: "public", Name: "testconfiguration", Parser: `pg_catalog."default"`, TokenToDicts: tokenToDicts}}
-			metadataMap := testutils.DefaultMetadataMap("TEXT SEARCH CONFIGURATION", false, true, true)
-			backup.PrintCreateTextSearchConfigurationStatements(backupfile, toc, configurations, metadataMap)
+			configurations := backup.TextSearchConfiguration{Oid: 1, Schema: "public", Name: "testconfiguration", Parser: `pg_catalog."default"`, TokenToDicts: tokenToDicts}
+			metadata := testutils.DefaultMetadata("TEXT SEARCH CONFIGURATION", false, true, true)
+			backup.PrintCreateTextSearchConfigurationStatement(backupfile, toc, configurations, metadata)
 			testutils.ExpectEntry(toc.PredataEntries, 0, "public", "", "testconfiguration", "TEXT SEARCH CONFIGURATION")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE TEXT SEARCH CONFIGURATION public.testconfiguration (
 	PARSER = pg_catalog."default"
