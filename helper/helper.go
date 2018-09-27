@@ -113,6 +113,9 @@ func doBackupAgent() {
 	 * and properly clean it up if an error occurs while creating the writer.
 	 */
 	for i, oid := range oidList {
+		if wasTerminated {
+			return
+		}
 		if i < len(oidList)-1 {
 			log(fmt.Sprintf("Creating pipe for oid %d\n", oidList[i+1]))
 			nextPipe = fmt.Sprintf("%s_%d", *pipeFile, oidList[i+1])
@@ -233,6 +236,9 @@ func doRestoreAgent() {
 	writer, writeHandle = getRestorePipeWriter(currentPipe)
 	reader := getRestorePipeReader()
 	for i, oid := range oidList {
+		if wasTerminated {
+			return
+		}
 		log(fmt.Sprintf("Restoring table with oid %d", oid))
 		if i < len(oidList)-1 {
 			nextPipe = fmt.Sprintf("%s_%d", *pipeFile, oidList[i+1])

@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -106,6 +107,27 @@ func assertRelationsCreated(conn *dbconn.DBConn, numTables int) {
 	countQuery := `SELECT count(*) AS string FROM pg_class c LEFT JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relkind IN ('S','v','r') AND n.nspname IN ('public', 'schema2');`
 	tableCount := dbconn.MustSelectString(conn, countQuery)
 	Expect(tableCount).To(Equal(strconv.Itoa(numTables)))
+}
+
+func assertArtifactsCleaned(conn *dbconn.DBConn, timestamp string) {
+	cmdStr := fmt.Sprintf("ps -ef | grep -v grep | grep -E gpbackup_helper.*%s || true", timestamp)
+	output := mustRunCommand(exec.Command("bash", "-c", cmdStr))
+	Eventually(func() string { return strings.TrimSpace(string(output)) }, 5*time.Second, 100*time.Millisecond).Should(Equal(""))
+
+	fpInfo := utils.NewFilePathInfo(backupCluster, "", timestamp, utils.GetSegPrefix(conn))
+	description := "Checking if helper files are cleaned up properly"
+	cleanupFunc := func(contentID int) string {
+		errorFile := fmt.Sprintf("%s_error", fpInfo.GetSegmentPipeFilePath(contentID))
+		oidFile := fpInfo.GetSegmentHelperFilePath(contentID, "oid")
+		scriptFile := fpInfo.GetSegmentHelperFilePath(contentID, "script")
+		pipeFile := fpInfo.GetSegmentPipeFilePath(contentID)
+
+		return fmt.Sprintf("! ls %s && ! ls %s && ! ls %s && ! ls %s*", errorFile, oidFile, scriptFile, pipeFile)
+	}
+	remoteOutput := backupCluster.GenerateAndExecuteCommand(description, cleanupFunc, cluster.ON_SEGMENTS_AND_MASTER)
+	if remoteOutput.NumErrors != 0 {
+		Fail(fmt.Sprintf("Helper files found for timestamp %s", timestamp))
+	}
 }
 
 func mustRunCommand(cmd *exec.Cmd) []byte {
@@ -234,6 +256,7 @@ var _ = Describe("backup end to end integration tests", func() {
 
 				assertRelationsCreated(restoreConn, 19)
 				assertDataRestored(restoreConn, publicSchemaTupleCounts)
+				assertArtifactsCleaned(restoreConn, timestamp)
 			})
 			It("runs gpbackup and gprestore with include-table backup flag", func() {
 				skipIfOldBackupVersionBefore("1.4.0")
@@ -370,6 +393,7 @@ var _ = Describe("backup end to end integration tests", func() {
 				assertRelationsCreated(restoreConn, 36)
 				assertDataRestored(restoreConn, publicSchemaTupleCounts)
 				assertDataRestored(restoreConn, schema2TupleCounts)
+				assertArtifactsCleaned(restoreConn, timestamp)
 
 				os.RemoveAll(backupdir)
 			})
@@ -381,6 +405,7 @@ var _ = Describe("backup end to end integration tests", func() {
 				assertRelationsCreated(restoreConn, 36)
 				assertDataRestored(restoreConn, publicSchemaTupleCounts)
 				assertDataRestored(restoreConn, schema2TupleCounts)
+				assertArtifactsCleaned(restoreConn, timestamp)
 
 				os.RemoveAll(backupdir)
 			})
@@ -401,6 +426,7 @@ var _ = Describe("backup end to end integration tests", func() {
 				}
 				timestamp := gpbackup(gpbackupPath, backupHelperPath, "--leaf-partition-data", "--single-data-file")
 				gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb")
+				assertArtifactsCleaned(restoreConn, timestamp)
 			})
 
 			Context("with include filtering on restore", func() {
@@ -412,6 +438,7 @@ var _ = Describe("backup end to end integration tests", func() {
 					gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--backup-dir", backupdir, "--include-table-file", "/tmp/include-tables.txt")
 					assertRelationsCreated(restoreConn, 16)
 					assertDataRestored(restoreConn, map[string]int{"public.sales": 13, "public.foo": 40000})
+					assertArtifactsCleaned(restoreConn, timestamp)
 
 					os.RemoveAll(backupdir)
 					os.Remove("/tmp/include-tables.txt")
@@ -423,6 +450,7 @@ var _ = Describe("backup end to end integration tests", func() {
 
 					assertRelationsCreated(restoreConn, 17)
 					assertDataRestored(restoreConn, schema2TupleCounts)
+					assertArtifactsCleaned(restoreConn, timestamp)
 
 					os.RemoveAll(backupdir)
 				})
@@ -445,6 +473,7 @@ var _ = Describe("backup end to end integration tests", func() {
 					assertRelationsCreated(restoreConn, 36)
 					assertDataRestored(restoreConn, publicSchemaTupleCounts)
 					assertDataRestored(restoreConn, schema2TupleCounts)
+					assertArtifactsCleaned(restoreConn, timestamp)
 
 					os.RemoveAll(pluginDir)
 				})
@@ -461,6 +490,7 @@ var _ = Describe("backup end to end integration tests", func() {
 					assertRelationsCreated(restoreConn, 36)
 					assertDataRestored(restoreConn, publicSchemaTupleCounts)
 					assertDataRestored(restoreConn, schema2TupleCounts)
+					assertArtifactsCleaned(restoreConn, timestamp)
 
 					os.RemoveAll(pluginDir)
 				})
@@ -475,6 +505,7 @@ var _ = Describe("backup end to end integration tests", func() {
 					gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--plugin-config", pluginConfigPath)
 
 					assertRelationsCreated(restoreConn, 36)
+					assertArtifactsCleaned(restoreConn, timestamp)
 
 					os.RemoveAll(pluginDir)
 				})
@@ -665,6 +696,9 @@ var _ = Describe("backup end to end integration tests", func() {
 					assertDataRestored(restoreConn, publicSchemaTupleCounts)
 					schema2TupleCounts["schema2.ao1"] = 1002
 					assertDataRestored(restoreConn, schema2TupleCounts)
+					assertArtifactsCleaned(restoreConn, fullBackupTimestamp)
+					assertArtifactsCleaned(restoreConn, incremental1Timestamp)
+					assertArtifactsCleaned(restoreConn, incremental2Timestamp)
 				})
 			})
 		})
@@ -818,6 +852,7 @@ var _ = Describe("backup end to end integration tests", func() {
 			Expect(stdout).To(ContainSubstring("Received a termination signal, aborting restore process"))
 			Expect(stdout).To(ContainSubstring("Cleanup complete"))
 			Expect(stdout).To(Not(ContainSubstring("CRITICAL")))
+			assertArtifactsCleaned(restoreConn, timestamp)
 
 			os.RemoveAll(backupdir)
 		})

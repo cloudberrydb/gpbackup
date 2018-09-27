@@ -191,7 +191,11 @@ func restorePredata(metadataFilename string) {
 	ExecuteRestoreMetadataStatements(statements, "Pre-data objects", progressBar, utils.PB_VERBOSE, false)
 
 	progressBar.Finish()
-	gplog.Info("Pre-data metadata restore complete")
+	if wasTerminated {
+		gplog.Info("Pre-data metadata restore complete")
+	} else {
+		gplog.Info("Pre-data metadata restore incomplete")
+	}
 }
 
 func restoreData(fpInfoList []utils.FilePathInfo, gucStatements []utils.StatementWithType) {
@@ -222,7 +226,11 @@ func restoreData(fpInfoList []utils.FilePathInfo, gucStatements []utils.Statemen
 	}
 
 	dataProgressBar.Finish()
-	gplog.Info("Data restore complete")
+	if wasTerminated {
+		gplog.Info("Data restore incomplete")
+	} else {
+		gplog.Info("Data restore complete")
+	}
 }
 
 func restoreDataFromTimestamp(fpInfo utils.FilePathInfo, dataEntries []utils.MasterDataEntry,
@@ -242,6 +250,9 @@ func restoreDataFromTimestamp(fpInfo utils.FilePathInfo, dataEntries []utils.Mas
 		utils.WriteOidListToSegments(filteredOids, globalCluster, fpInfo)
 		firstOid := fmt.Sprintf("%d", dataEntries[0].Oid)
 		utils.CreateFirstSegmentPipeOnAllHosts(firstOid, globalCluster, fpInfo)
+		if wasTerminated {
+			return
+		}
 		utils.StartAgent(globalCluster, fpInfo, "--restore-agent", MustGetFlagString(utils.PLUGIN_CONFIG), "")
 	}
 	/*
@@ -311,7 +322,11 @@ func restorePostdata(metadataFilename string) {
 	ExecuteRestoreMetadataStatements(firstBatch, "", progressBar, utils.PB_VERBOSE, connectionPool.NumConns > 1)
 	ExecuteRestoreMetadataStatements(secondBatch, "", progressBar, utils.PB_VERBOSE, connectionPool.NumConns > 1)
 	progressBar.Finish()
-	gplog.Info("Post-data metadata restore complete")
+	if wasTerminated {
+		gplog.Info("Post-data metadata restore complete")
+	} else {
+		gplog.Info("Post-data metadata restore incomplete")
+	}
 }
 
 func restoreStatistics() {
