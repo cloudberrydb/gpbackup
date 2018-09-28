@@ -195,7 +195,7 @@ func RetrieveAndProcessProtocols(sortables *[]Sortable, metadataMap MetadataMap,
 	objectCounts["Protocols"] = len(protocolsToBackUp)
 	protoMetadata := GetMetadataForObjectType(connectionPool, TYPE_PROTOCOL)
 
-	*sortables = append(*sortables, convertToSortableSlice(protocols)...)
+	*sortables = append(*sortables, convertToSortableSlice(protocolsToBackUp)...)
 	addToMetadataMap(protoMetadata, metadataMap)
 
 	return protocols
