@@ -277,6 +277,7 @@ var _ = Describe("backup integration tests", func() {
 		})
 		Describe("text search dependencies", func() {
 			It("text search config depends on text search parser", func() {
+				testutils.SkipIfBefore5(connectionPool)
 				testhelper.AssertQueryRuns(connectionPool, "CREATE TEXT SEARCH PARSER public.testparser(START = prsd_start, GETTOKEN = prsd_nexttoken, END = prsd_end, LEXTYPES = prsd_lextype);")
 				defer testhelper.AssertQueryRuns(connectionPool, "DROP TEXT SEARCH PARSER public.testparser;")
 				testhelper.AssertQueryRuns(connectionPool, "CREATE TEXT SEARCH CONFIGURATION public.testconfig(PARSER = public.testparser);")
