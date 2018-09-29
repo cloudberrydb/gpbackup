@@ -256,10 +256,12 @@ func backupPredata(metadataFile *utils.FileWithByteCount, tables []Relation, tab
 	protocols := RetrieveAndProcessProtocols(&sortables, metadataMap, funcInfoMap)
 
 	RetrieveViews(&sortables)
-	RetrieveTSParsers(&sortables, metadataMap)
-	RetrieveTSConfigurations(&sortables, metadataMap)
-	RetrieveTSTemplates(&sortables, metadataMap)
-	RetrieveTSDictionaries(&sortables, metadataMap)
+	if connectionPool.Version.AtLeast("5") {
+		RetrieveTSParsers(&sortables, metadataMap)
+		RetrieveTSConfigurations(&sortables, metadataMap)
+		RetrieveTSTemplates(&sortables, metadataMap)
+		RetrieveTSDictionaries(&sortables, metadataMap)
+	}
 
 	BackupDependentObjects(metadataFile, tables, protocols, metadataMap, tableDefs, constraints, sortables)
 	PrintAlterSequenceStatements(metadataFile, globalTOC, sequences, sequenceOwnerColumns)
