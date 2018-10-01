@@ -91,6 +91,29 @@ var _ = Describe("backup integration tests", func() {
 			Expect(deps[childEntry]).To(HaveKey(parent1Entry))
 			Expect(deps[childEntry]).To(HaveKey(parent2Entry))
 		})
+		It("constructs dependencies correctly for a view dependent on text search objects", func() {
+			testutils.SkipIfBefore5(connectionPool)
+			testhelper.AssertQueryRuns(connectionPool, "CREATE TEXT SEARCH PARSER public.testparser(START = prsd_start, GETTOKEN = prsd_nexttoken, END = prsd_end, LEXTYPES = prsd_lextype);")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TEXT SEARCH PARSER public.testparser;")
+			testhelper.AssertQueryRuns(connectionPool, "CREATE TEXT SEARCH CONFIGURATION public.testconfig(PARSER = public.testparser);")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP TEXT SEARCH CONFIGURATION public.testconfig;")
+			testhelper.AssertQueryRuns(connectionPool, `CREATE VIEW public.ts_config_view AS SELECT * FROM ts_debug('public.testconfig',
+'PostgreSQL, the highly scalable, SQL compliant, open source
+object-relational database management system');`)
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP VIEW public.ts_config_view;")
+
+			parserID := testutils.UniqueIDFromObjectName(connectionPool, "public", "testparser", backup.TYPE_TSPARSER)
+			configID := testutils.UniqueIDFromObjectName(connectionPool, "public", "testconfig", backup.TYPE_TSCONFIGURATION)
+			viewID := testutils.UniqueIDFromObjectName(connectionPool, "public", "ts_config_view", backup.TYPE_RELATION)
+			backupSet := map[backup.UniqueID]bool{parserID: true, configID: true, viewID: true}
+
+			deps := backup.GetDependencies(connectionPool, backupSet)
+			Expect(deps).To(HaveLen(2))
+			Expect(deps[configID]).To(HaveLen(1))
+			Expect(deps[configID]).To(HaveKey(parserID))
+			Expect(deps[viewID]).To(HaveLen(1))
+			Expect(deps[viewID]).To(HaveKey(configID))
+		})
 		Describe("function dependencies", func() {
 			var compositeEntry backup.UniqueID
 			BeforeEach(func() {
@@ -273,24 +296,6 @@ var _ = Describe("backup integration tests", func() {
 				Expect(deps).To(HaveLen(1))
 				Expect(deps[typeEntry]).To(HaveLen(1))
 				Expect(deps[typeEntry]).To(HaveKey(tableEntry))
-			})
-		})
-		Describe("text search dependencies", func() {
-			It("text search config depends on text search parser", func() {
-				testutils.SkipIfBefore5(connectionPool)
-				testhelper.AssertQueryRuns(connectionPool, "CREATE TEXT SEARCH PARSER public.testparser(START = prsd_start, GETTOKEN = prsd_nexttoken, END = prsd_end, LEXTYPES = prsd_lextype);")
-				defer testhelper.AssertQueryRuns(connectionPool, "DROP TEXT SEARCH PARSER public.testparser;")
-				testhelper.AssertQueryRuns(connectionPool, "CREATE TEXT SEARCH CONFIGURATION public.testconfig(PARSER = public.testparser);")
-				defer testhelper.AssertQueryRuns(connectionPool, "DROP TEXT SEARCH CONFIGURATION public.testconfig;")
-
-				parserID := testutils.UniqueIDFromObjectName(connectionPool, "public", "testparser", backup.TYPE_TSPARSER)
-				configID := testutils.UniqueIDFromObjectName(connectionPool, "public", "testconfig", backup.TYPE_TSCONFIGURATION)
-				backupSet := map[backup.UniqueID]bool{parserID: true, configID: true}
-
-				deps := backup.GetDependencies(connectionPool, backupSet)
-				Expect(deps).To(HaveLen(1))
-				Expect(deps[configID]).To(HaveLen(1))
-				Expect(deps[configID]).To(HaveKey(parserID))
 			})
 		})
 	})

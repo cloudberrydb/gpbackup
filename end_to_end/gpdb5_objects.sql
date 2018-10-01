@@ -76,3 +76,9 @@ object-relational database management system, is now undergoing
 beta testing of the nextversion of our software');
 
 CREATE VIEW ts_dict_view AS SELECT ts_lexize('public.testdictionary2', 'hello world');
+
+CREATE OPERATOR FAMILY test_fam USING hash;
+
+CREATE OPERATOR CLASS test_op_class
+    FOR TYPE _int4 USING hash FAMILY test_fam AS
+    STORAGE _int4;

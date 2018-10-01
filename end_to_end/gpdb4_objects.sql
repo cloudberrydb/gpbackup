@@ -107,11 +107,6 @@ CREATE OPERATOR #### (
 );
 
 
-CREATE OPERATOR CLASS test_op_class
-    FOR TYPE _int4 USING hash AS
-    STORAGE _int4;
-
-
 CREATE OPERATOR CLASS testclass
 	FOR TYPE int USING gist AS
 	OPERATOR 1 = RECHECK,

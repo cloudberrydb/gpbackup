@@ -261,16 +261,15 @@ func backupPredata(metadataFile *utils.FileWithByteCount, tables []Relation, tab
 		RetrieveTSConfigurations(&sortables, metadataMap)
 		RetrieveTSTemplates(&sortables, metadataMap)
 		RetrieveTSDictionaries(&sortables, metadataMap)
+
+		BackupOperatorFamilies(metadataFile)
 	}
+
+	RetrieveOperators(&sortables, metadataMap)
+	RetrieveOperatorClasses(&sortables, metadataMap)
 
 	BackupDependentObjects(metadataFile, tables, protocols, metadataMap, tableDefs, constraints, sortables)
 	PrintAlterSequenceStatements(metadataFile, globalTOC, sequences, sequenceOwnerColumns)
-
-	BackupOperators(metadataFile)
-	if connectionPool.Version.AtLeast("5") {
-		BackupOperatorFamilies(metadataFile)
-	}
-	BackupOperatorClasses(metadataFile)
 
 	BackupConversions(metadataFile)
 	BackupAggregates(metadataFile, funcInfoMap)

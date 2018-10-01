@@ -247,6 +247,26 @@ func RetrieveTSConfigurations(sortables *[]Sortable, metadataMap MetadataMap) {
 	addToMetadataMap(configurationMetadata, metadataMap)
 }
 
+func RetrieveOperators(sortables *[]Sortable, metadataMap MetadataMap) {
+	gplog.Verbose("Writing CREATE OPERATOR statements to metadata file")
+	operators := GetOperators(connectionPool)
+	objectCounts["Operators"] = len(operators)
+	operatorMetadata := GetMetadataForObjectType(connectionPool, TYPE_OPERATOR)
+
+	*sortables = append(*sortables, convertToSortableSlice(operators)...)
+	addToMetadataMap(operatorMetadata, metadataMap)
+}
+
+func RetrieveOperatorClasses(sortables *[]Sortable, metadataMap MetadataMap) {
+	gplog.Verbose("Writing CREATE OPERATOR CLASS statements to metadata file")
+	operatorClasses := GetOperatorClasses(connectionPool)
+	objectCounts["Operator Classes"] = len(operatorClasses)
+	operatorClassMetadata := GetMetadataForObjectType(connectionPool, TYPE_OPERATORCLASS)
+
+	*sortables = append(*sortables, convertToSortableSlice(operatorClasses)...)
+	addToMetadataMap(operatorClassMetadata, metadataMap)
+}
+
 /*
  * Generic metadata wrapper functions
  */
@@ -477,28 +497,12 @@ func BackupConversions(metadataFile *utils.FileWithByteCount) {
 	PrintCreateConversionStatements(metadataFile, globalTOC, conversions, convMetadata)
 }
 
-func BackupOperators(metadataFile *utils.FileWithByteCount) {
-	gplog.Verbose("Writing CREATE OPERATOR statements to metadata file")
-	operators := GetOperators(connectionPool)
-	objectCounts["Operators"] = len(operators)
-	operatorMetadata := GetMetadataForObjectType(connectionPool, TYPE_OPERATOR)
-	PrintCreateOperatorStatements(metadataFile, globalTOC, operators, operatorMetadata)
-}
-
 func BackupOperatorFamilies(metadataFile *utils.FileWithByteCount) {
 	gplog.Verbose("Writing CREATE OPERATOR FAMILY statements to metadata file")
 	operatorFamilies := GetOperatorFamilies(connectionPool)
 	objectCounts["Operator Families"] = len(operatorFamilies)
 	operatorFamilyMetadata := GetMetadataForObjectType(connectionPool, TYPE_OPERATORFAMILY)
 	PrintCreateOperatorFamilyStatements(metadataFile, globalTOC, operatorFamilies, operatorFamilyMetadata)
-}
-
-func BackupOperatorClasses(metadataFile *utils.FileWithByteCount) {
-	gplog.Verbose("Writing CREATE OPERATOR CLASS statements to metadata file")
-	operatorClasses := GetOperatorClasses(connectionPool)
-	objectCounts["Operator Classes"] = len(operatorClasses)
-	operatorClassMetadata := GetMetadataForObjectType(connectionPool, TYPE_OPERATORCLASS)
-	PrintCreateOperatorClassStatements(metadataFile, globalTOC, operatorClasses, operatorClassMetadata)
 }
 
 func BackupAggregates(metadataFile *utils.FileWithByteCount, funcInfoMap map[uint32]FunctionInfo) {

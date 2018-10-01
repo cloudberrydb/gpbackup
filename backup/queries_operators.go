@@ -10,6 +10,7 @@ import (
 
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
+	"github.com/greenplum-db/gpbackup/utils"
 )
 
 type Operator struct {
@@ -29,6 +30,10 @@ type Operator struct {
 
 func (o Operator) GetUniqueID() UniqueID {
 	return UniqueID{ClassID: PG_OPERATOR_OID, Oid: o.Oid}
+}
+
+func (o Operator) FQN() string {
+	return utils.MakeFQN(o.Schema, o.Name)
 }
 
 func GetOperators(connectionPool *dbconn.DBConn) []Operator {
@@ -130,12 +135,16 @@ func (opc OperatorClass) GetUniqueID() UniqueID {
 	return UniqueID{ClassID: PG_OPCLASS_OID, Oid: opc.Oid}
 }
 
+func (opc OperatorClass) FQN() string {
+	return fmt.Sprintf("%s USING %s", utils.MakeFQN(opc.Schema, opc.Name), opc.IndexMethod)
+}
+
 func GetOperatorClasses(connectionPool *dbconn.DBConn) []OperatorClass {
 	results := make([]OperatorClass, 0)
 	/*
 	 * In the GPDB 4.3 query, we assign the class schema and name to both the
 	 * class schema/name and family schema/name fields, so that the logic in
-	 * PrintCreateOperatorClassStatements to not print FAMILY if the class and
+	 * PrintCreateOperatorClassStatement to not print FAMILY if the class and
 	 * family have the same schema and name will work for both versions.
 	 */
 	version4query := fmt.Sprintf(`

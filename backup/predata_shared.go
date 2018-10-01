@@ -501,6 +501,10 @@ func PrintDependentObjectStatements(metadataFile *utils.FileWithByteCount, toc *
 			PrintCreateTextSearchTemplateStatement(metadataFile, toc, obj, objMetadata)
 		case TextSearchDictionary:
 			PrintCreateTextSearchDictionaryStatement(metadataFile, toc, obj, objMetadata)
+		case Operator:
+			PrintCreateOperatorStatement(metadataFile, toc, obj, objMetadata)
+		case OperatorClass:
+			PrintCreateOperatorClassStatement(metadataFile, toc, obj, objMetadata)
 		}
 	}
 }
