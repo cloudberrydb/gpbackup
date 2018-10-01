@@ -467,7 +467,7 @@ func (obj ObjectMetadata) GetCommentStatement(objectName string, objectType stri
 	return commentStr
 }
 
-func PrintDependentObjectStatements(metadataFile *utils.FileWithByteCount, toc *utils.TOC, objects []Sortable, metadataMap MetadataMap, tableDefsMap map[uint32]TableDefinition, constraints []Constraint) {
+func PrintDependentObjectStatements(metadataFile *utils.FileWithByteCount, toc *utils.TOC, objects []Sortable, metadataMap MetadataMap, tableDefsMap map[uint32]TableDefinition, constraints []Constraint, funcInfoMap map[uint32]FunctionInfo) {
 	conMap := make(map[string][]Constraint)
 	for _, constraint := range constraints {
 		conMap[constraint.OwningObject] = append(conMap[constraint.OwningObject], constraint)
@@ -505,6 +505,8 @@ func PrintDependentObjectStatements(metadataFile *utils.FileWithByteCount, toc *
 			PrintCreateOperatorStatement(metadataFile, toc, obj, objMetadata)
 		case OperatorClass:
 			PrintCreateOperatorClassStatement(metadataFile, toc, obj, objMetadata)
+		case Aggregate:
+			PrintCreateAggregateStatements(metadataFile, toc, obj, funcInfoMap, objMetadata)
 		}
 	}
 }

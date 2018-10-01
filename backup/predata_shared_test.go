@@ -533,7 +533,7 @@ ALTER VIEW public.viewname OWNER TO testrole;`)
 			constraints := []backup.Constraint{
 				{Name: "check_constraint", ConDef: "CHECK (VALUE > 2)", OwningObject: "public.domain"},
 			}
-			backup.PrintDependentObjectStatements(backupfile, toc, objects, metadataMap, tableDefsMap, constraints)
+			backup.PrintDependentObjectStatements(backupfile, toc, objects, metadataMap, tableDefsMap, constraints, map[uint32]backup.FunctionInfo{})
 			testhelper.ExpectRegexp(buffer, `
 CREATE FUNCTION public.function(integer, integer) RETURNS integer AS
 $_$SELECT $1 + $2$_$
@@ -580,7 +580,7 @@ COMMENT ON PROTOCOL ext_protocol IS 'protocol';
 		})
 		It("prints create statements for dependent types, functions, protocols, and tables (no domain constraint)", func() {
 			constraints := []backup.Constraint{}
-			backup.PrintDependentObjectStatements(backupfile, toc, objects, metadataMap, tableDefsMap, constraints)
+			backup.PrintDependentObjectStatements(backupfile, toc, objects, metadataMap, tableDefsMap, constraints, map[uint32]backup.FunctionInfo{})
 			testhelper.ExpectRegexp(buffer, `
 CREATE FUNCTION public.function(integer, integer) RETURNS integer AS
 $_$SELECT $1 + $2$_$

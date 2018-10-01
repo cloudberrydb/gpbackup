@@ -196,7 +196,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 	})
 	Describe("PrintCreateAggregateStatements", func() {
-		emptyMetadataMap := backup.MetadataMap{}
+		emptyMetadata := backup.ObjectMetadata{}
 		basicAggregateDef := backup.Aggregate{
 			Oid: 1, Schema: "public", Name: "agg_prefunc", Arguments: "numeric, numeric",
 			IdentArgs: "numeric, numeric", TransitionFunction: 1, PreliminaryFunction: 2,
@@ -236,7 +236,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testhelper.AssertQueryRuns(connectionPool, "DROP FUNCTION public.mypre_accum(numeric, numeric)")
 		})
 		It("creates a basic aggregate", func() {
-			backup.PrintCreateAggregateStatements(backupfile, toc, []backup.Aggregate{basicAggregateDef}, funcInfoMap, emptyMetadataMap)
+			backup.PrintCreateAggregateStatements(backupfile, toc, basicAggregateDef, funcInfoMap, emptyMetadata)
 
 			testhelper.AssertQueryRuns(connectionPool, buffer.String())
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP AGGREGATE public.agg_prefunc(numeric, numeric)")
@@ -247,8 +247,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 		It("creates an aggregate with an owner and a comment", func() {
 			aggMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{}, Owner: "testrole", Comment: "This is an aggregate comment."}
-			aggMetadataMap := backup.MetadataMap{basicAggregateDef.GetUniqueID(): aggMetadata}
-			backup.PrintCreateAggregateStatements(backupfile, toc, []backup.Aggregate{basicAggregateDef}, funcInfoMap, aggMetadataMap)
+			backup.PrintCreateAggregateStatements(backupfile, toc, basicAggregateDef, funcInfoMap, aggMetadata)
 
 			testhelper.AssertQueryRuns(connectionPool, buffer.String())
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP AGGREGATE public.agg_prefunc(numeric, numeric)")
@@ -268,7 +267,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				TransitionDataType: "internal", InitValIsNull: true, FinalFuncExtra: true, Hypothetical: true, MInitValIsNull: true,
 			}
 
-			backup.PrintCreateAggregateStatements(backupfile, toc, []backup.Aggregate{complexAggregateDef}, funcInfoMap, emptyMetadataMap)
+			backup.PrintCreateAggregateStatements(backupfile, toc, complexAggregateDef, funcInfoMap, emptyMetadata)
 
 			testhelper.AssertQueryRuns(connectionPool, buffer.String())
 			defer testhelper.AssertQueryRuns(connectionPool, `DROP AGGREGATE public.agg_hypo_ord(VARIADIC "any" ORDER BY VARIADIC "any")`)
@@ -285,7 +284,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				FinalFunction: 0, SortOperator: 0, TransitionDataType: "numeric", TransitionDataSize: 1000,
 				InitialValue: "0", IsOrdered: false, MInitValIsNull: true,
 			}
-			backup.PrintCreateAggregateStatements(backupfile, toc, []backup.Aggregate{aggregateDef}, funcInfoMap, emptyMetadataMap)
+			backup.PrintCreateAggregateStatements(backupfile, toc, aggregateDef, funcInfoMap, emptyMetadata)
 
 			testhelper.AssertQueryRuns(connectionPool, buffer.String())
 			defer testhelper.AssertQueryRuns(connectionPool, `DROP AGGREGATE public.agg_6_features(numeric, numeric)`)
@@ -303,7 +302,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				IsOrdered: false, InitValIsNull: true, MInitValIsNull: true,
 			}
 
-			backup.PrintCreateAggregateStatements(backupfile, toc, []backup.Aggregate{aggregateDef}, funcInfoMap, emptyMetadataMap)
+			backup.PrintCreateAggregateStatements(backupfile, toc, aggregateDef, funcInfoMap, emptyMetadata)
 
 			testhelper.AssertQueryRuns(connectionPool, buffer.String())
 			defer testhelper.AssertQueryRuns(connectionPool, `DROP AGGREGATE public.myavg(numeric)`)
@@ -322,7 +321,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				MFinalFuncExtra: true, MInitialValue: "0", MInitValIsNull: false,
 			}
 
-			backup.PrintCreateAggregateStatements(backupfile, toc, []backup.Aggregate{aggregateDef}, funcInfoMap, emptyMetadataMap)
+			backup.PrintCreateAggregateStatements(backupfile, toc, aggregateDef, funcInfoMap, emptyMetadata)
 
 			testhelper.AssertQueryRuns(connectionPool, buffer.String())
 			defer testhelper.AssertQueryRuns(connectionPool, `DROP AGGREGATE public.moving_agg(numeric, numeric)`)

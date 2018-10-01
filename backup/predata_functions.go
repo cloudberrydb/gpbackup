@@ -95,85 +95,83 @@ func PrintFunctionModifiers(metadataFile *utils.FileWithByteCount, funcDef Funct
 	}
 }
 
-func PrintCreateAggregateStatements(metadataFile *utils.FileWithByteCount, toc *utils.TOC, aggDefs []Aggregate, funcInfoMap map[uint32]FunctionInfo, aggMetadata MetadataMap) {
-	for _, aggDef := range aggDefs {
-		start := metadataFile.ByteCount
-		aggFQN := utils.MakeFQN(aggDef.Schema, aggDef.Name)
-		orderedStr := ""
-		if aggDef.IsOrdered {
-			orderedStr = "ORDERED "
-		}
-		argumentsStr := "*"
-		if aggDef.Arguments != "" {
-			argumentsStr = aggDef.Arguments
-		}
-		metadataFile.MustPrintf("\n\nCREATE %sAGGREGATE %s(%s) (\n", orderedStr, aggFQN, argumentsStr)
-
-		metadataFile.MustPrintf("\tSFUNC = %s,\n", funcInfoMap[aggDef.TransitionFunction].QualifiedName)
-		metadataFile.MustPrintf("\tSTYPE = %s", aggDef.TransitionDataType)
-
-		if aggDef.TransitionDataSize != 0 {
-			metadataFile.MustPrintf(",\n\tSSPACE = %d", aggDef.TransitionDataSize)
-		}
-		if aggDef.PreliminaryFunction != 0 {
-			metadataFile.MustPrintf(",\n\tPREFUNC = %s", funcInfoMap[aggDef.PreliminaryFunction].QualifiedName)
-		}
-		if aggDef.CombineFunction != 0 {
-			metadataFile.MustPrintf(",\n\tCOMBINEFUNC = %s", funcInfoMap[aggDef.CombineFunction].QualifiedName)
-		}
-		if aggDef.SerialFunction != 0 {
-			metadataFile.MustPrintf(",\n\tSERIALFUNC = %s", funcInfoMap[aggDef.SerialFunction].QualifiedName)
-		}
-		if aggDef.DeserialFunction != 0 {
-			metadataFile.MustPrintf(",\n\tDESERIALFUNC = %s", funcInfoMap[aggDef.DeserialFunction].QualifiedName)
-		}
-		if aggDef.FinalFunction != 0 {
-			metadataFile.MustPrintf(",\n\tFINALFUNC = %s", funcInfoMap[aggDef.FinalFunction].QualifiedName)
-		}
-		if aggDef.FinalFuncExtra {
-			metadataFile.MustPrintf(",\n\tFINALFUNC_EXTRA")
-		}
-		if !aggDef.InitValIsNull {
-			metadataFile.MustPrintf(",\n\tINITCOND = '%s'", aggDef.InitialValue)
-		}
-		if aggDef.SortOperator != 0 {
-			metadataFile.MustPrintf(",\n\tSORTOP = %s", funcInfoMap[aggDef.SortOperator].QualifiedName)
-		}
-		if aggDef.Hypothetical {
-			metadataFile.MustPrintf(",\n\tHYPOTHETICAL")
-		}
-		if aggDef.MTransitionFunction != 0 {
-			metadataFile.MustPrintf(",\n\tMSFUNC = %s", funcInfoMap[aggDef.MTransitionFunction].QualifiedName)
-		}
-		if aggDef.MInverseTransitionFunction != 0 {
-			metadataFile.MustPrintf(",\n\tMINVFUNC = %s", funcInfoMap[aggDef.MInverseTransitionFunction].QualifiedName)
-		}
-		if aggDef.MTransitionDataType != "" {
-			metadataFile.MustPrintf(",\n\tMSTYPE = %s", aggDef.MTransitionDataType)
-		}
-		if aggDef.MTransitionDataSize != 0 {
-			metadataFile.MustPrintf(",\n\tMSSPACE = %d", aggDef.MTransitionDataSize)
-		}
-		if aggDef.MFinalFunction != 0 {
-			metadataFile.MustPrintf(",\n\tMFINALFUNC = %s", funcInfoMap[aggDef.MFinalFunction].QualifiedName)
-		}
-		if aggDef.MFinalFuncExtra {
-			metadataFile.MustPrintf(",\n\tMFINALFUNC_EXTRA")
-		}
-		if !aggDef.MInitValIsNull {
-			metadataFile.MustPrintf(",\n\tMINITCOND = '%s'", aggDef.MInitialValue)
-		}
-		metadataFile.MustPrintln("\n);")
-
-		identArgumentsStr := "*"
-		if aggDef.IdentArgs != "" {
-			identArgumentsStr = aggDef.IdentArgs
-		}
-		aggFQN = fmt.Sprintf("%s(%s)", aggFQN, identArgumentsStr)
-		aggWithArgs := fmt.Sprintf("%s(%s)", aggDef.Name, identArgumentsStr)
-		PrintObjectMetadata(metadataFile, aggMetadata[aggDef.GetUniqueID()], aggFQN, "AGGREGATE")
-		toc.AddPredataEntry(aggDef.Schema, aggWithArgs, "AGGREGATE", "", start, metadataFile)
+func PrintCreateAggregateStatements(metadataFile *utils.FileWithByteCount, toc *utils.TOC, aggDef Aggregate, funcInfoMap map[uint32]FunctionInfo, aggMetadata ObjectMetadata) {
+	start := metadataFile.ByteCount
+	aggFQN := utils.MakeFQN(aggDef.Schema, aggDef.Name)
+	orderedStr := ""
+	if aggDef.IsOrdered {
+		orderedStr = "ORDERED "
 	}
+	argumentsStr := "*"
+	if aggDef.Arguments != "" {
+		argumentsStr = aggDef.Arguments
+	}
+	metadataFile.MustPrintf("\n\nCREATE %sAGGREGATE %s(%s) (\n", orderedStr, aggFQN, argumentsStr)
+
+	metadataFile.MustPrintf("\tSFUNC = %s,\n", funcInfoMap[aggDef.TransitionFunction].QualifiedName)
+	metadataFile.MustPrintf("\tSTYPE = %s", aggDef.TransitionDataType)
+
+	if aggDef.TransitionDataSize != 0 {
+		metadataFile.MustPrintf(",\n\tSSPACE = %d", aggDef.TransitionDataSize)
+	}
+	if aggDef.PreliminaryFunction != 0 {
+		metadataFile.MustPrintf(",\n\tPREFUNC = %s", funcInfoMap[aggDef.PreliminaryFunction].QualifiedName)
+	}
+	if aggDef.CombineFunction != 0 {
+		metadataFile.MustPrintf(",\n\tCOMBINEFUNC = %s", funcInfoMap[aggDef.CombineFunction].QualifiedName)
+	}
+	if aggDef.SerialFunction != 0 {
+		metadataFile.MustPrintf(",\n\tSERIALFUNC = %s", funcInfoMap[aggDef.SerialFunction].QualifiedName)
+	}
+	if aggDef.DeserialFunction != 0 {
+		metadataFile.MustPrintf(",\n\tDESERIALFUNC = %s", funcInfoMap[aggDef.DeserialFunction].QualifiedName)
+	}
+	if aggDef.FinalFunction != 0 {
+		metadataFile.MustPrintf(",\n\tFINALFUNC = %s", funcInfoMap[aggDef.FinalFunction].QualifiedName)
+	}
+	if aggDef.FinalFuncExtra {
+		metadataFile.MustPrintf(",\n\tFINALFUNC_EXTRA")
+	}
+	if !aggDef.InitValIsNull {
+		metadataFile.MustPrintf(",\n\tINITCOND = '%s'", aggDef.InitialValue)
+	}
+	if aggDef.SortOperator != 0 {
+		metadataFile.MustPrintf(",\n\tSORTOP = %s", funcInfoMap[aggDef.SortOperator].QualifiedName)
+	}
+	if aggDef.Hypothetical {
+		metadataFile.MustPrintf(",\n\tHYPOTHETICAL")
+	}
+	if aggDef.MTransitionFunction != 0 {
+		metadataFile.MustPrintf(",\n\tMSFUNC = %s", funcInfoMap[aggDef.MTransitionFunction].QualifiedName)
+	}
+	if aggDef.MInverseTransitionFunction != 0 {
+		metadataFile.MustPrintf(",\n\tMINVFUNC = %s", funcInfoMap[aggDef.MInverseTransitionFunction].QualifiedName)
+	}
+	if aggDef.MTransitionDataType != "" {
+		metadataFile.MustPrintf(",\n\tMSTYPE = %s", aggDef.MTransitionDataType)
+	}
+	if aggDef.MTransitionDataSize != 0 {
+		metadataFile.MustPrintf(",\n\tMSSPACE = %d", aggDef.MTransitionDataSize)
+	}
+	if aggDef.MFinalFunction != 0 {
+		metadataFile.MustPrintf(",\n\tMFINALFUNC = %s", funcInfoMap[aggDef.MFinalFunction].QualifiedName)
+	}
+	if aggDef.MFinalFuncExtra {
+		metadataFile.MustPrintf(",\n\tMFINALFUNC_EXTRA")
+	}
+	if !aggDef.MInitValIsNull {
+		metadataFile.MustPrintf(",\n\tMINITCOND = '%s'", aggDef.MInitialValue)
+	}
+	metadataFile.MustPrintln("\n);")
+
+	identArgumentsStr := "*"
+	if aggDef.IdentArgs != "" {
+		identArgumentsStr = aggDef.IdentArgs
+	}
+	aggFQN = fmt.Sprintf("%s(%s)", aggFQN, identArgumentsStr)
+	aggWithArgs := fmt.Sprintf("%s(%s)", aggDef.Name, identArgumentsStr)
+	PrintObjectMetadata(metadataFile, aggMetadata, aggFQN, "AGGREGATE")
+	toc.AddPredataEntry(aggDef.Schema, aggWithArgs, "AGGREGATE", "", start, metadataFile)
 }
 
 func PrintCreateCastStatements(metadataFile *utils.FileWithByteCount, toc *utils.TOC, castDefs []Cast, castMetadata MetadataMap) {

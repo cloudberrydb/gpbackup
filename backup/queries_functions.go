@@ -290,6 +290,10 @@ func (a Aggregate) GetUniqueID() UniqueID {
 	return UniqueID{ClassID: PG_AGGREGATE_OID, Oid: a.Oid}
 }
 
+func (a Aggregate) FQN() string {
+	return utils.MakeFQN(a.Schema, a.Name)
+}
+
 func GetAggregates(connectionPool *dbconn.DBConn) []Aggregate {
 	version4query := fmt.Sprintf(`
 SELECT

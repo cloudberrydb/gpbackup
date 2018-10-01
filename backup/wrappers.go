@@ -267,6 +267,16 @@ func RetrieveOperatorClasses(sortables *[]Sortable, metadataMap MetadataMap) {
 	addToMetadataMap(operatorClassMetadata, metadataMap)
 }
 
+func RetrieveAggregates(sortables *[]Sortable, metadataMap MetadataMap) {
+	gplog.Verbose("Writing CREATE AGGREGATE statements to metadata file")
+	aggregates := GetAggregates(connectionPool)
+	objectCounts["Aggregates"] = len(aggregates)
+	aggMetadata := GetMetadataForObjectType(connectionPool, TYPE_AGGREGATE)
+
+	*sortables = append(*sortables, convertToSortableSlice(aggregates)...)
+	addToMetadataMap(aggMetadata, metadataMap)
+}
+
 /*
  * Generic metadata wrapper functions
  */
@@ -448,7 +458,8 @@ func addToMetadataMap(newMetadata MetadataMap, metadataMap MetadataMap) {
 
 // This function is fairly unwieldy, but there's not really a good way to break it down
 func BackupDependentObjects(metadataFile *utils.FileWithByteCount, tables []Relation,
-	protocols []ExternalProtocol, filteredMetadata MetadataMap, tableDefs map[uint32]TableDefinition, constraints []Constraint, sortables []Sortable) {
+	protocols []ExternalProtocol, filteredMetadata MetadataMap, tableDefs map[uint32]TableDefinition,
+	constraints []Constraint, sortables []Sortable, funcInfoMap map[uint32]FunctionInfo) {
 
 	gplog.Verbose("Writing CREATE FUNCTION statements to metadata file")
 	gplog.Verbose("Writing CREATE TYPE statements for base, composite, and domain types to metadata file")
@@ -464,7 +475,7 @@ func BackupDependentObjects(metadataFile *utils.FileWithByteCount, tables []Rela
 	}
 	sortedSlice := TopologicalSort(sortables, relevantDeps)
 
-	PrintDependentObjectStatements(metadataFile, globalTOC, sortedSlice, filteredMetadata, tableDefs, constraints)
+	PrintDependentObjectStatements(metadataFile, globalTOC, sortedSlice, filteredMetadata, tableDefs, constraints, funcInfoMap)
 	extPartInfo, partInfoMap := GetExternalPartitionInfo(connectionPool)
 	if len(extPartInfo) > 0 {
 		gplog.Verbose("Writing EXCHANGE PARTITION statements to metadata file")
@@ -481,7 +492,7 @@ func BackupDependentTablesAndViews(metadataFile *utils.FileWithByteCount, tables
 	relevantDeps := GetDependencies(connectionPool, backupSet)
 	sortedSlice := TopologicalSort(sortables, relevantDeps)
 
-	PrintDependentObjectStatements(metadataFile, globalTOC, sortedSlice, relationMetadata, tableDefs, constraints)
+	PrintDependentObjectStatements(metadataFile, globalTOC, sortedSlice, relationMetadata, tableDefs, constraints, map[uint32]FunctionInfo{})
 	extPartInfo, partInfoMap := GetExternalPartitionInfo(connectionPool)
 	if len(extPartInfo) > 0 {
 		gplog.Verbose("Writing EXCHANGE PARTITION statements to metadata file")
@@ -503,14 +514,6 @@ func BackupOperatorFamilies(metadataFile *utils.FileWithByteCount) {
 	objectCounts["Operator Families"] = len(operatorFamilies)
 	operatorFamilyMetadata := GetMetadataForObjectType(connectionPool, TYPE_OPERATORFAMILY)
 	PrintCreateOperatorFamilyStatements(metadataFile, globalTOC, operatorFamilies, operatorFamilyMetadata)
-}
-
-func BackupAggregates(metadataFile *utils.FileWithByteCount, funcInfoMap map[uint32]FunctionInfo) {
-	gplog.Verbose("Writing CREATE AGGREGATE statements to metadata file")
-	aggregates := GetAggregates(connectionPool)
-	objectCounts["Aggregates"] = len(aggregates)
-	aggMetadata := GetMetadataForObjectType(connectionPool, TYPE_AGGREGATE)
-	PrintCreateAggregateStatements(metadataFile, globalTOC, aggregates, funcInfoMap, aggMetadata)
 }
 
 func BackupCasts(metadataFile *utils.FileWithByteCount) {
