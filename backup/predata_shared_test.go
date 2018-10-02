@@ -501,8 +501,13 @@ ALTER VIEW public.viewname OWNER TO testrole;`)
 			objects      []backup.Sortable
 			metadataMap  backup.MetadataMap
 			tableDefsMap map[uint32]backup.TableDefinition
+			funcInfoMap  map[uint32]backup.FunctionInfo
 		)
 		BeforeEach(func() {
+			funcInfoMap = map[uint32]backup.FunctionInfo{
+				1: {QualifiedName: "public.write_to_s3", Arguments: "", IsInternal: false},
+				2: {QualifiedName: "public.read_from_s3", Arguments: "", IsInternal: false},
+			}
 			objects = []backup.Sortable{
 				backup.Function{Oid: 1, Schema: "public", Name: "function", FunctionBody: "SELECT $1 + $2",
 					Arguments: "integer, integer", IdentArgs: "integer, integer", ResultType: "integer", Language: "sql"},
@@ -510,12 +515,7 @@ ALTER VIEW public.viewname OWNER TO testrole;`)
 				backup.Type{Oid: 3, Schema: "public", Name: "composite", Type: "c", Attributes: []backup.Attribute{{Name: "foo", Type: "integer"}}, Category: "U"},
 				backup.Type{Oid: 4, Schema: "public", Name: "domain", Type: "d", BaseType: "numeric", Category: "U"},
 				backup.Relation{Oid: 5, Schema: "public", Name: "relation"},
-				backup.ExternalProtocol{Oid: 6, Name: "ext_protocol", Trusted: true, ReadFunction: 2, WriteFunction: 1, Validator: 0,
-					FuncMap: map[uint32]string{
-						1: "public.write_to_s3",
-						2: "public.read_from_s3",
-					},
-				},
+				backup.ExternalProtocol{Oid: 6, Name: "ext_protocol", Trusted: true, ReadFunction: 2, WriteFunction: 1, Validator: 0},
 			}
 			metadataMap = backup.MetadataMap{
 				backup.UniqueID{ClassID: backup.PG_PROC_OID, Oid: 1}:        backup.ObjectMetadata{Comment: "function"},
@@ -533,7 +533,7 @@ ALTER VIEW public.viewname OWNER TO testrole;`)
 			constraints := []backup.Constraint{
 				{Name: "check_constraint", ConDef: "CHECK (VALUE > 2)", OwningObject: "public.domain"},
 			}
-			backup.PrintDependentObjectStatements(backupfile, toc, objects, metadataMap, tableDefsMap, constraints, map[uint32]backup.FunctionInfo{})
+			backup.PrintDependentObjectStatements(backupfile, toc, objects, metadataMap, tableDefsMap, constraints, funcInfoMap)
 			testhelper.ExpectRegexp(buffer, `
 CREATE FUNCTION public.function(integer, integer) RETURNS integer AS
 $_$SELECT $1 + $2$_$
@@ -580,7 +580,7 @@ COMMENT ON PROTOCOL ext_protocol IS 'protocol';
 		})
 		It("prints create statements for dependent types, functions, protocols, and tables (no domain constraint)", func() {
 			constraints := []backup.Constraint{}
-			backup.PrintDependentObjectStatements(backupfile, toc, objects, metadataMap, tableDefsMap, constraints, map[uint32]backup.FunctionInfo{})
+			backup.PrintDependentObjectStatements(backupfile, toc, objects, metadataMap, tableDefsMap, constraints, funcInfoMap)
 			testhelper.ExpectRegexp(buffer, `
 CREATE FUNCTION public.function(integer, integer) RETURNS integer AS
 $_$SELECT $1 + $2$_$

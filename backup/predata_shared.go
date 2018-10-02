@@ -490,7 +490,7 @@ func PrintDependentObjectStatements(metadataFile *utils.FileWithByteCount, toc *
 		case Relation:
 			PrintCreateTableStatement(metadataFile, toc, obj, tableDefsMap[obj.Oid], objMetadata)
 		case ExternalProtocol:
-			PrintCreateExternalProtocolStatement(metadataFile, toc, obj, objMetadata)
+			PrintCreateExternalProtocolStatement(metadataFile, toc, obj, funcInfoMap, objMetadata)
 		case View:
 			PrintCreateViewStatement(metadataFile, toc, obj, objMetadata)
 		case TextSearchParser:

@@ -210,38 +210,29 @@ func PrintExternalTableStatements(metadataFile *utils.FileWithByteCount, table R
 	}
 }
 
-func ProcessProtocols(protocols []ExternalProtocol, funcInfoMap map[uint32]FunctionInfo) []ExternalProtocol {
-	protocolsToBackup := make([]ExternalProtocol, 0, len(protocols))
-	for _, p := range protocols {
-		p.FuncMap = make(map[uint32]string)
-		funcOidList := []uint32{p.ReadFunction, p.WriteFunction, p.Validator}
-		hasUserDefinedFunc := false
-		for _, funcOid := range funcOidList {
-			if funcInfo, hasFunction := funcInfoMap[funcOid]; hasFunction {
-				if !funcInfo.IsInternal {
-					hasUserDefinedFunc = true
-				}
-				p.FuncMap[funcOid] = funcInfo.QualifiedName
-			}
-		}
-		if hasUserDefinedFunc {
-			protocolsToBackup = append(protocolsToBackup, p)
+func PrintCreateExternalProtocolStatement(metadataFile *utils.FileWithByteCount, toc *utils.TOC, protocol ExternalProtocol, funcInfoMap map[uint32]FunctionInfo, protoMetadata ObjectMetadata) {
+	start := metadataFile.ByteCount
+
+	funcOidList := []uint32{protocol.ReadFunction, protocol.WriteFunction, protocol.Validator}
+	hasUserDefinedFunc := false
+	for _, funcOid := range funcOidList {
+		if funcInfo, ok := funcInfoMap[funcOid]; ok && !funcInfo.IsInternal {
+			hasUserDefinedFunc = true
 		}
 	}
-	return protocolsToBackup
-}
+	if !hasUserDefinedFunc {
+		return
+	}
 
-func PrintCreateExternalProtocolStatement(metadataFile *utils.FileWithByteCount, toc *utils.TOC, protocol ExternalProtocol, protoMetadata ObjectMetadata) {
-	start := metadataFile.ByteCount
 	protocolFunctions := []string{}
 	if protocol.ReadFunction != 0 {
-		protocolFunctions = append(protocolFunctions, fmt.Sprintf("readfunc = %s", protocol.FuncMap[protocol.ReadFunction]))
+		protocolFunctions = append(protocolFunctions, fmt.Sprintf("readfunc = %s", funcInfoMap[protocol.ReadFunction].QualifiedName))
 	}
 	if protocol.WriteFunction != 0 {
-		protocolFunctions = append(protocolFunctions, fmt.Sprintf("writefunc = %s", protocol.FuncMap[protocol.WriteFunction]))
+		protocolFunctions = append(protocolFunctions, fmt.Sprintf("writefunc = %s", funcInfoMap[protocol.WriteFunction].QualifiedName))
 	}
 	if protocol.Validator != 0 {
-		protocolFunctions = append(protocolFunctions, fmt.Sprintf("validatorfunc = %s", protocol.FuncMap[protocol.Validator]))
+		protocolFunctions = append(protocolFunctions, fmt.Sprintf("validatorfunc = %s", funcInfoMap[protocol.Validator].QualifiedName))
 	}
 
 	metadataFile.MustPrintf("\n\nCREATE ")

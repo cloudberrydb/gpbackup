@@ -189,13 +189,12 @@ func RetrieveSequences() ([]Sequence, map[string]string) {
 	return sequences, sequenceOwnerColumns
 }
 
-func RetrieveAndProcessProtocols(sortables *[]Sortable, metadataMap MetadataMap, funcInfoMap map[uint32]FunctionInfo) []ExternalProtocol {
+func RetrieveProtocols(sortables *[]Sortable, metadataMap MetadataMap) []ExternalProtocol {
 	protocols := GetExternalProtocols(connectionPool)
-	protocolsToBackUp := ProcessProtocols(protocols, funcInfoMap)
-	objectCounts["Protocols"] = len(protocolsToBackUp)
+	objectCounts["Protocols"] = len(protocols)
 	protoMetadata := GetMetadataForObjectType(connectionPool, TYPE_PROTOCOL)
 
-	*sortables = append(*sortables, convertToSortableSlice(protocolsToBackUp)...)
+	*sortables = append(*sortables, convertToSortableSlice(protocols)...)
 	addToMetadataMap(protoMetadata, metadataMap)
 
 	return protocols

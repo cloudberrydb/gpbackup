@@ -253,7 +253,7 @@ func backupPredata(metadataFile *utils.FileWithByteCount, tables []Relation, tab
 	BackupCreateSequences(metadataFile, sequences, relationMetadata)
 
 	constraints, conMetadata := RetrieveConstraints()
-	protocols := RetrieveAndProcessProtocols(&sortables, metadataMap, funcInfoMap)
+	protocols := RetrieveProtocols(&sortables, metadataMap)
 
 	RetrieveViews(&sortables)
 	if connectionPool.Version.AtLeast("5") {

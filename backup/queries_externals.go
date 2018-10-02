@@ -107,7 +107,6 @@ type ExternalProtocol struct {
 	ReadFunction  uint32 `db:"ptcreadfn"`
 	WriteFunction uint32 `db:"ptcwritefn"`
 	Validator     uint32 `db:"ptcvalidatorfn"`
-	FuncMap       map[uint32]string
 }
 
 func (p ExternalProtocol) GetUniqueID() UniqueID {
