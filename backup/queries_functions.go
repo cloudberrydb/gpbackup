@@ -470,6 +470,10 @@ func (c Cast) GetUniqueID() UniqueID {
 	return UniqueID{ClassID: PG_CAST_OID, Oid: c.Oid}
 }
 
+func (c Cast) FQN() string {
+	return fmt.Sprintf("(%s AS %s)", c.SourceTypeFQN, c.TargetTypeFQN)
+}
+
 func GetCasts(connectionPool *dbconn.DBConn) []Cast {
 	/* This query retrieves all casts where either the source type, the target
 	 * type, or the cast function is user-defined.

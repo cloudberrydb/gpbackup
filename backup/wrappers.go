@@ -276,6 +276,16 @@ func RetrieveAggregates(sortables *[]Sortable, metadataMap MetadataMap) {
 	addToMetadataMap(aggMetadata, metadataMap)
 }
 
+func RetrieveCasts(sortables *[]Sortable, metadataMap MetadataMap) {
+	gplog.Verbose("Writing CREATE CAST statements to metadata file")
+	casts := GetCasts(connectionPool)
+	objectCounts["Casts"] = len(casts)
+	castMetadata := GetCommentsForObjectType(connectionPool, TYPE_CAST)
+
+	*sortables = append(*sortables, convertToSortableSlice(casts)...)
+	addToMetadataMap(castMetadata, metadataMap)
+}
+
 /*
  * Generic metadata wrapper functions
  */
@@ -513,14 +523,6 @@ func BackupOperatorFamilies(metadataFile *utils.FileWithByteCount) {
 	objectCounts["Operator Families"] = len(operatorFamilies)
 	operatorFamilyMetadata := GetMetadataForObjectType(connectionPool, TYPE_OPERATORFAMILY)
 	PrintCreateOperatorFamilyStatements(metadataFile, globalTOC, operatorFamilies, operatorFamilyMetadata)
-}
-
-func BackupCasts(metadataFile *utils.FileWithByteCount) {
-	gplog.Verbose("Writing CREATE CAST statements to metadata file")
-	casts := GetCasts(connectionPool)
-	objectCounts["Casts"] = len(casts)
-	castMetadata := GetCommentsForObjectType(connectionPool, TYPE_CAST)
-	PrintCreateCastStatements(metadataFile, globalTOC, casts, castMetadata)
 }
 
 func BackupCollations(metadataFile *utils.FileWithByteCount) {

@@ -507,6 +507,8 @@ func PrintDependentObjectStatements(metadataFile *utils.FileWithByteCount, toc *
 			PrintCreateOperatorClassStatement(metadataFile, toc, obj, objMetadata)
 		case Aggregate:
 			PrintCreateAggregateStatements(metadataFile, toc, obj, funcInfoMap, objMetadata)
+		case Cast:
+			PrintCreateCastStatement(metadataFile, toc, obj, objMetadata)
 		}
 	}
 }

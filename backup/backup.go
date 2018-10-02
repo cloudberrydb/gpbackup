@@ -268,12 +268,12 @@ func backupPredata(metadataFile *utils.FileWithByteCount, tables []Relation, tab
 	RetrieveOperators(&sortables, metadataMap)
 	RetrieveOperatorClasses(&sortables, metadataMap)
 	RetrieveAggregates(&sortables, metadataMap)
+	RetrieveCasts(&sortables, metadataMap)
 
 	BackupDependentObjects(metadataFile, tables, protocols, metadataMap, tableDefs, constraints, sortables, funcInfoMap)
 	PrintAlterSequenceStatements(metadataFile, globalTOC, sequences, sequenceOwnerColumns)
 
 	BackupConversions(metadataFile)
-	BackupCasts(metadataFile)
 	BackupConstraints(metadataFile, constraints, conMetadata)
 	if wasTerminated {
 		gplog.Info("Pre-data metadata backup incomplete")

@@ -331,12 +331,12 @@ var _ = Describe("backup integration create statement tests", func() {
 			structmatcher.ExpectStructsToMatchExcluding(&aggregateDef, &resultAggregates[0], "Oid", "TransitionFunction", "MTransitionFunction", "MInverseTransitionFunction", "MFinalFunction")
 		})
 	})
-	Describe("PrintCreateCastStatements", func() {
+	Describe("PrintCreateCastStatement", func() {
 		var (
-			castMetadataMap backup.MetadataMap
+			castMetadata backup.ObjectMetadata
 		)
 		BeforeEach(func() {
-			castMetadataMap = backup.MetadataMap{}
+			castMetadata = backup.ObjectMetadata{}
 		})
 		It("prints a basic cast with a function", func() {
 			castDef := backup.Cast{Oid: 0, SourceTypeFQN: "pg_catalog.money", TargetTypeFQN: "pg_catalog.text", FunctionSchema: "public", FunctionName: "money_to_text", FunctionArgs: "money", CastContext: "a", CastMethod: "f"}
@@ -344,7 +344,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testhelper.AssertQueryRuns(connectionPool, "CREATE FUNCTION public.money_to_text(money) RETURNS TEXT AS $$ SELECT textin(cash_out($1)) $$ LANGUAGE SQL;")
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP FUNCTION public.money_to_text(money)")
 
-			backup.PrintCreateCastStatements(backupfile, toc, []backup.Cast{castDef}, castMetadataMap)
+			backup.PrintCreateCastStatement(backupfile, toc, castDef, castMetadata)
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP CAST (money AS text)")
 
 			testhelper.AssertQueryRuns(connectionPool, buffer.String())
@@ -361,7 +361,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testhelper.AssertQueryRuns(connectionPool, "CREATE TYPE public.casttesttype (INTERNALLENGTH = variable, INPUT = public.cast_in, OUTPUT = public.cast_out)")
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP TYPE public.casttesttype CASCADE")
 
-			backup.PrintCreateCastStatements(backupfile, toc, []backup.Cast{castDef}, castMetadataMap)
+			backup.PrintCreateCastStatement(backupfile, toc, castDef, castMetadata)
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP CAST (text AS public.casttesttype)")
 
 			testhelper.AssertQueryRuns(connectionPool, buffer.String())
@@ -372,13 +372,12 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 		It("prints a cast with a comment", func() {
 			castDef := backup.Cast{Oid: 1, SourceTypeFQN: "pg_catalog.money", TargetTypeFQN: "pg_catalog.text", FunctionSchema: "public", FunctionName: "money_to_text", FunctionArgs: "money", CastContext: "a", CastMethod: "f"}
-			castMetadataMap = testutils.DefaultMetadataMap("CAST", false, false, true)
-			castMetadata := castMetadataMap[castDef.GetUniqueID()]
+			castMetadata = testutils.DefaultMetadata("CAST", false, false, true)
 
 			testhelper.AssertQueryRuns(connectionPool, "CREATE FUNCTION public.money_to_text(money) RETURNS TEXT AS $$ SELECT textin(cash_out($1)) $$ LANGUAGE SQL;")
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP FUNCTION public.money_to_text(money)")
 
-			backup.PrintCreateCastStatements(backupfile, toc, []backup.Cast{castDef}, castMetadataMap)
+			backup.PrintCreateCastStatement(backupfile, toc, castDef, castMetadata)
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP CAST (money AS text)")
 
 			testhelper.AssertQueryRuns(connectionPool, buffer.String())
@@ -396,7 +395,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testhelper.AssertQueryRuns(connectionPool, "CREATE TYPE public.custom_numeric AS (i numeric)")
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP TYPE public.custom_numeric")
 
-			backup.PrintCreateCastStatements(backupfile, toc, []backup.Cast{castDef}, castMetadataMap)
+			backup.PrintCreateCastStatement(backupfile, toc, castDef, castMetadata)
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP CAST (varchar AS public.custom_numeric)")
 
 			testhelper.AssertQueryRuns(connectionPool, buffer.String())

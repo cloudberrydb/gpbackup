@@ -174,35 +174,33 @@ func PrintCreateAggregateStatements(metadataFile *utils.FileWithByteCount, toc *
 	toc.AddPredataEntry(aggDef.Schema, aggWithArgs, "AGGREGATE", "", start, metadataFile)
 }
 
-func PrintCreateCastStatements(metadataFile *utils.FileWithByteCount, toc *utils.TOC, castDefs []Cast, castMetadata MetadataMap) {
-	for _, castDef := range castDefs {
-		start := metadataFile.ByteCount
-		castStr := fmt.Sprintf("(%s AS %s)", castDef.SourceTypeFQN, castDef.TargetTypeFQN)
-		metadataFile.MustPrintf("\n\nCREATE CAST %s\n", castStr)
-		switch castDef.CastMethod {
-		case "i":
-			metadataFile.MustPrintf("\tWITH INOUT")
-		case "b":
-			metadataFile.MustPrintf("\tWITHOUT FUNCTION")
-		case "f":
-			funcFQN := utils.MakeFQN(castDef.FunctionSchema, castDef.FunctionName)
-			metadataFile.MustPrintf("\tWITH FUNCTION %s(%s)", funcFQN, castDef.FunctionArgs)
-		}
-		switch castDef.CastContext {
-		case "a":
-			metadataFile.MustPrintf("\nAS ASSIGNMENT")
-		case "i":
-			metadataFile.MustPrintf("\nAS IMPLICIT")
-		case "e": // Default case, don't print anything else
-		}
-		metadataFile.MustPrintf(";")
-		PrintObjectMetadata(metadataFile, castMetadata[castDef.GetUniqueID()], castStr, "CAST")
-		filterSchema := "pg_catalog"
-		if castDef.CastMethod == "f" {
-			filterSchema = castDef.FunctionSchema // Use the function's schema to allow restore filtering
-		}
-		toc.AddPredataEntry(filterSchema, castStr, "CAST", "", start, metadataFile)
+func PrintCreateCastStatement(metadataFile *utils.FileWithByteCount, toc *utils.TOC, castDef Cast, castMetadata ObjectMetadata) {
+	start := metadataFile.ByteCount
+	castStr := fmt.Sprintf("(%s AS %s)", castDef.SourceTypeFQN, castDef.TargetTypeFQN)
+	metadataFile.MustPrintf("\n\nCREATE CAST %s\n", castStr)
+	switch castDef.CastMethod {
+	case "i":
+		metadataFile.MustPrintf("\tWITH INOUT")
+	case "b":
+		metadataFile.MustPrintf("\tWITHOUT FUNCTION")
+	case "f":
+		funcFQN := utils.MakeFQN(castDef.FunctionSchema, castDef.FunctionName)
+		metadataFile.MustPrintf("\tWITH FUNCTION %s(%s)", funcFQN, castDef.FunctionArgs)
 	}
+	switch castDef.CastContext {
+	case "a":
+		metadataFile.MustPrintf("\nAS ASSIGNMENT")
+	case "i":
+		metadataFile.MustPrintf("\nAS IMPLICIT")
+	case "e": // Default case, don't print anything else
+	}
+	metadataFile.MustPrintf(";")
+	PrintObjectMetadata(metadataFile, castMetadata, castStr, "CAST")
+	filterSchema := "pg_catalog"
+	if castDef.CastMethod == "f" {
+		filterSchema = castDef.FunctionSchema // Use the function's schema to allow restore filtering
+	}
+	toc.AddPredataEntry(filterSchema, castStr, "CAST", "", start, metadataFile)
 }
 
 func PrintCreateExtensionStatements(metadataFile *utils.FileWithByteCount, toc *utils.TOC, extensionDefs []Extension, extensionMetadata MetadataMap) {
