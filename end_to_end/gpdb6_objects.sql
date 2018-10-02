@@ -36,14 +36,13 @@ CREATE FOREIGN TABLE ft1 (
     c2 text OPTIONS (param2 'val2', param3 'val3')
 ) SERVER sc OPTIONS (delimiter ',', quote '"');
 
-CREATE OR REPLACE FUNCTION abort_any_command()
+CREATE OR REPLACE FUNCTION do_nothing()
   RETURNS event_trigger
  LANGUAGE plpgsql
   AS $$
-BEGIN
-  RAISE EXCEPTION 'command % is disabled', tg_tag;
-END;
+BEGIN END;
 $$;
 
-CREATE EVENT TRIGGER abort_ddl ON ddl_command_start
-   EXECUTE PROCEDURE abort_any_command();
+CREATE EVENT TRIGGER nothing_ddl ON ddl_command_start
+   WHEN TAG IN ('ALTER SERVER')
+   EXECUTE PROCEDURE do_nothing();
