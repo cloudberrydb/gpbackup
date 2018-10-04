@@ -215,8 +215,11 @@ func backupPredata(metadataFile *utils.FileWithByteCount, tables []Relation, tab
 	gplog.Info("Writing pre-data metadata")
 
 	sortables := make([]Sortable, 0)
-	sortables = append(sortables, convertToSortableSlice(tables)...)
 	metadataMap := make(MetadataMap)
+
+	sortables = append(sortables, convertToSortableSlice(tables)...)
+	relationMetadata := GetMetadataForObjectType(connectionPool, TYPE_RELATION)
+	addToMetadataMap(relationMetadata, metadataMap)
 
 	BackupSchemas(metadataFile)
 	if len(MustGetFlagStringSlice(utils.INCLUDE_SCHEMA)) == 0 && connectionPool.Version.AtLeast("5") {
@@ -248,7 +251,6 @@ func backupPredata(metadataFile *utils.FileWithByteCount, tables []Relation, tab
 		}
 	}
 
-	relationMetadata := GetMetadataForObjectType(connectionPool, TYPE_RELATION)
 	sequences, sequenceOwnerColumns := RetrieveSequences()
 	BackupCreateSequences(metadataFile, sequences, relationMetadata)
 
