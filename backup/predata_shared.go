@@ -487,9 +487,15 @@ func PrintDependentObjectStatements(metadataFile *utils.FileWithByteCount, toc *
 		case OperatorClass:
 			PrintCreateOperatorClassStatement(metadataFile, toc, obj, objMetadata)
 		case Aggregate:
-			PrintCreateAggregateStatements(metadataFile, toc, obj, funcInfoMap, objMetadata)
+			PrintCreateAggregateStatement(metadataFile, toc, obj, funcInfoMap, objMetadata)
 		case Cast:
 			PrintCreateCastStatement(metadataFile, toc, obj, objMetadata)
+		case ForeignDataWrapper:
+			PrintCreateForeignDataWrapperStatement(metadataFile, toc, obj, funcInfoMap, objMetadata)
+		case ForeignServer:
+			PrintCreateServerStatement(metadataFile, toc, obj, objMetadata)
+		case UserMapping:
+			PrintCreateUserMappingStatement(metadataFile, toc, obj)
 		}
 	}
 }

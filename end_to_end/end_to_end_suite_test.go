@@ -415,6 +415,8 @@ var _ = Describe("backup end to end integration tests", func() {
 				defer testutils.ExecuteSQLFile(backupConn, "test_tables_ddl.sql")
 				defer testhelper.AssertQueryRuns(backupConn, "DROP SCHEMA IF EXISTS schema2 CASCADE; DROP SCHEMA public CASCADE; CREATE SCHEMA public; DROP PROCEDURAL LANGUAGE IF EXISTS plpythonu;")
 				defer testhelper.AssertQueryRuns(restoreConn, "DROP SCHEMA IF EXISTS schema2 CASCADE; DROP SCHEMA public CASCADE; CREATE SCHEMA public; DROP PROCEDURAL LANGUAGE IF EXISTS plpythonu;")
+				testhelper.AssertQueryRuns(backupConn, "CREATE ROLE testrole SUPERUSER")
+				defer testhelper.AssertQueryRuns(backupConn, "DROP ROLE testrole")
 				testutils.ExecuteSQLFile(backupConn, "gpdb4_objects.sql")
 				if backupConn.Version.AtLeast("5") {
 					testutils.ExecuteSQLFile(backupConn, "gpdb5_objects.sql")

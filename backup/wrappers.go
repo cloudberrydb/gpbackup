@@ -285,6 +285,35 @@ func RetrieveCasts(sortables *[]Sortable, metadataMap MetadataMap) {
 	addToMetadataMap(castMetadata, metadataMap)
 }
 
+func RetrieveForeignDataWrappers(sortables *[]Sortable, metadataMap MetadataMap) {
+	gplog.Verbose("Writing CREATE FOREIGN DATA WRAPPER statements to metadata file")
+	wrappers := GetForeignDataWrappers(connectionPool)
+	objectCounts["Foreign Data Wrappers"] = len(wrappers)
+	fdwMetadata := GetMetadataForObjectType(connectionPool, TYPE_FOREIGNDATAWRAPPER)
+
+	*sortables = append(*sortables, convertToSortableSlice(wrappers)...)
+	addToMetadataMap(fdwMetadata, metadataMap)
+}
+
+func RetrieveForeignServers(sortables *[]Sortable, metadataMap MetadataMap) {
+	gplog.Verbose("Writing CREATE SERVER statements to metadata file")
+	servers := GetForeignServers(connectionPool)
+	objectCounts["Foreign Servers"] = len(servers)
+	serverMetadata := GetMetadataForObjectType(connectionPool, TYPE_FOREIGNSERVER)
+
+	*sortables = append(*sortables, convertToSortableSlice(servers)...)
+	addToMetadataMap(serverMetadata, metadataMap)
+}
+
+func RetrieveUserMappings(sortables *[]Sortable) {
+	gplog.Verbose("Writing CREATE USER MAPPING statements to metadata file")
+	mappings := GetUserMappings(connectionPool)
+	objectCounts["User Mappings"] = len(mappings)
+	// No comments, owners, or ACLs on UserMappings so no need to get metadata
+
+	*sortables = append(*sortables, convertToSortableSlice(mappings)...)
+}
+
 /*
  * Generic metadata wrapper functions
  */
@@ -381,29 +410,6 @@ func BackupProceduralLanguages(metadataFile *utils.FileWithByteCount, procLangs 
 	}
 	procLangMetadata := GetMetadataForObjectType(connectionPool, TYPE_PROCLANGUAGE)
 	PrintCreateLanguageStatements(metadataFile, globalTOC, procLangs, funcInfoMap, procLangMetadata)
-}
-
-func BackupForeignDataWrappers(metadataFile *utils.FileWithByteCount, funcInfoMap map[uint32]FunctionInfo) {
-	gplog.Verbose("Writing CREATE FOREIGN DATA WRAPPER statements to metadata file")
-	wrappers := GetForeignDataWrappers(connectionPool)
-	objectCounts["Foreign Data Wrappers"] = len(wrappers)
-	fdwMetadata := GetMetadataForObjectType(connectionPool, TYPE_FOREIGNDATAWRAPPER)
-	PrintCreateForeignDataWrapperStatements(metadataFile, globalTOC, wrappers, funcInfoMap, fdwMetadata)
-}
-
-func BackupForeignServers(metadataFile *utils.FileWithByteCount) {
-	gplog.Verbose("Writing CREATE SERVER statements to metadata file")
-	servers := GetForeignServers(connectionPool)
-	objectCounts["Foreign Servers"] = len(servers)
-	serverMetadata := GetMetadataForObjectType(connectionPool, TYPE_FOREIGNSERVER)
-	PrintCreateServerStatements(metadataFile, globalTOC, servers, serverMetadata)
-}
-
-func BackupUserMappings(metadataFile *utils.FileWithByteCount) {
-	gplog.Verbose("Writing CREATE USER MAPPING statements to metadata file")
-	mappings := GetUserMappings(connectionPool)
-	objectCounts["User Mappings"] = len(mappings)
-	PrintCreateUserMappingStatements(metadataFile, globalTOC, mappings)
 }
 
 func BackupShellTypes(metadataFile *utils.FileWithByteCount, types []Type) {

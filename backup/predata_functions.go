@@ -95,7 +95,7 @@ func PrintFunctionModifiers(metadataFile *utils.FileWithByteCount, funcDef Funct
 	}
 }
 
-func PrintCreateAggregateStatements(metadataFile *utils.FileWithByteCount, toc *utils.TOC, aggDef Aggregate, funcInfoMap map[uint32]FunctionInfo, aggMetadata ObjectMetadata) {
+func PrintCreateAggregateStatement(metadataFile *utils.FileWithByteCount, toc *utils.TOC, aggDef Aggregate, funcInfoMap map[uint32]FunctionInfo, aggMetadata ObjectMetadata) {
 	start := metadataFile.ByteCount
 	aggFQN := utils.MakeFQN(aggDef.Schema, aggDef.Name)
 	orderedStr := ""
@@ -297,59 +297,53 @@ func PrintCreateConversionStatements(metadataFile *utils.FileWithByteCount, toc 
 	}
 }
 
-func PrintCreateForeignDataWrapperStatements(metadataFile *utils.FileWithByteCount, toc *utils.TOC,
-	wrappers []ForeignDataWrapper, funcInfoMap map[uint32]FunctionInfo, fdwMetadata MetadataMap) {
-	for _, fdw := range wrappers {
-		start := metadataFile.ByteCount
-		metadataFile.MustPrintf("\n\nCREATE FOREIGN DATA WRAPPER %s", fdw.Name)
+func PrintCreateForeignDataWrapperStatement(metadataFile *utils.FileWithByteCount, toc *utils.TOC,
+	fdw ForeignDataWrapper, funcInfoMap map[uint32]FunctionInfo, fdwMetadata ObjectMetadata) {
+	start := metadataFile.ByteCount
+	metadataFile.MustPrintf("\n\nCREATE FOREIGN DATA WRAPPER %s", fdw.Name)
 
-		if fdw.Handler != 0 {
-			metadataFile.MustPrintf("\n\tHANDLER %s", funcInfoMap[fdw.Handler].QualifiedName)
-		}
-		if fdw.Validator != 0 {
-			metadataFile.MustPrintf("\n\tVALIDATOR %s", funcInfoMap[fdw.Validator].QualifiedName)
-		}
-		if fdw.Options != "" {
-			metadataFile.MustPrintf("\n\tOPTIONS (%s)", fdw.Options)
-		}
-		metadataFile.MustPrintf(";")
-		PrintObjectMetadata(metadataFile, fdwMetadata[fdw.GetUniqueID()], fdw.Name, "FOREIGN DATA WRAPPER")
-		toc.AddPredataEntry("", fdw.Name, "FOREIGN DATA WRAPPER", "", start, metadataFile)
+	if fdw.Handler != 0 {
+		metadataFile.MustPrintf("\n\tHANDLER %s", funcInfoMap[fdw.Handler].QualifiedName)
 	}
+	if fdw.Validator != 0 {
+		metadataFile.MustPrintf("\n\tVALIDATOR %s", funcInfoMap[fdw.Validator].QualifiedName)
+	}
+	if fdw.Options != "" {
+		metadataFile.MustPrintf("\n\tOPTIONS (%s)", fdw.Options)
+	}
+	metadataFile.MustPrintf(";")
+	PrintObjectMetadata(metadataFile, fdwMetadata, fdw.Name, "FOREIGN DATA WRAPPER")
+	toc.AddPredataEntry("", fdw.Name, "FOREIGN DATA WRAPPER", "", start, metadataFile)
 }
 
-func PrintCreateServerStatements(metadataFile *utils.FileWithByteCount, toc *utils.TOC, servers []ForeignServer, serverMetadata MetadataMap) {
-	for _, server := range servers {
-		start := metadataFile.ByteCount
-		metadataFile.MustPrintf("\n\nCREATE SERVER %s", server.Name)
-		if server.Type != "" {
-			metadataFile.MustPrintf("\n\tTYPE '%s'", server.Type)
-		}
-		if server.Version != "" {
-			metadataFile.MustPrintf("\n\tVERSION '%s'", server.Version)
-		}
-		metadataFile.MustPrintf("\n\tFOREIGN DATA WRAPPER %s", server.ForeignDataWrapper)
-		if server.Options != "" {
-			metadataFile.MustPrintf("\n\tOPTIONS (%s)", server.Options)
-		}
-		metadataFile.MustPrintf(";")
-
-		//NOTE: We must specify SERVER when creating and dropping, but FOREIGN SERVER when granting and revoking
-		PrintObjectMetadata(metadataFile, serverMetadata[server.GetUniqueID()], server.Name, "FOREIGN SERVER")
-		toc.AddPredataEntry("", server.Name, "FOREIGN SERVER", "", start, metadataFile)
+func PrintCreateServerStatement(metadataFile *utils.FileWithByteCount, toc *utils.TOC, server ForeignServer, serverMetadata ObjectMetadata) {
+	start := metadataFile.ByteCount
+	metadataFile.MustPrintf("\n\nCREATE SERVER %s", server.Name)
+	if server.Type != "" {
+		metadataFile.MustPrintf("\n\tTYPE '%s'", server.Type)
 	}
+	if server.Version != "" {
+		metadataFile.MustPrintf("\n\tVERSION '%s'", server.Version)
+	}
+	metadataFile.MustPrintf("\n\tFOREIGN DATA WRAPPER %s", server.ForeignDataWrapper)
+	if server.Options != "" {
+		metadataFile.MustPrintf("\n\tOPTIONS (%s)", server.Options)
+	}
+	metadataFile.MustPrintf(";")
+
+	//NOTE: We must specify SERVER when creating and dropping, but FOREIGN SERVER when granting and revoking
+	PrintObjectMetadata(metadataFile, serverMetadata, server.Name, "FOREIGN SERVER")
+	toc.AddPredataEntry("", server.Name, "FOREIGN SERVER", "", start, metadataFile)
 }
 
-func PrintCreateUserMappingStatements(metadataFile *utils.FileWithByteCount, toc *utils.TOC, mappings []UserMapping) {
-	for _, mapping := range mappings {
-		start := metadataFile.ByteCount
-		metadataFile.MustPrintf("\n\nCREATE USER MAPPING FOR %s\n\tSERVER %s", mapping.User, mapping.Server)
-		if mapping.Options != "" {
-			metadataFile.MustPrintf("\n\tOPTIONS (%s)", mapping.Options)
-		}
-		metadataFile.MustPrintf(";")
-		// User mappings don't have a unique name, so we construct an arbitrary identifier
-		mappingStr := fmt.Sprintf("%s ON %s", mapping.User, mapping.Server)
-		toc.AddPredataEntry("", mappingStr, "USER MAPPING", "", start, metadataFile)
+func PrintCreateUserMappingStatement(metadataFile *utils.FileWithByteCount, toc *utils.TOC, mapping UserMapping) {
+	start := metadataFile.ByteCount
+	metadataFile.MustPrintf("\n\nCREATE USER MAPPING FOR %s\n\tSERVER %s", mapping.User, mapping.Server)
+	if mapping.Options != "" {
+		metadataFile.MustPrintf("\n\tOPTIONS (%s)", mapping.Options)
 	}
+	metadataFile.MustPrintf(";")
+	// User mappings don't have a unique name, so we construct an arbitrary identifier
+	mappingStr := fmt.Sprintf("%s ON %s", mapping.User, mapping.Server)
+	toc.AddPredataEntry("", mappingStr, "USER MAPPING", "", start, metadataFile)
 }

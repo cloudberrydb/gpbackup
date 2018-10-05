@@ -261,7 +261,7 @@ $_$`)
 		})
 
 	})
-	Describe("PrintCreateAggregateStatements", func() {
+	Describe("PrintCreateAggregateStatement", func() {
 		var (
 			aggDefinition backup.Aggregate
 			emptyMetadata backup.ObjectMetadata
@@ -281,7 +281,7 @@ $_$`)
 		})
 
 		It("prints an aggregate definition for an unordered aggregate with no optional specifications", func() {
-			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
 			testutils.ExpectEntry(toc.PredataEntries, 0, "public", "", "agg_name(integer, integer)", "AGGREGATE")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
@@ -290,7 +290,7 @@ $_$`)
 		})
 		It("prints an aggregate definition for an ordered aggregate with no optional specifications", func() {
 			aggDefinition.IsOrdered = true
-			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE ORDERED AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
 	STYPE = integer
@@ -299,7 +299,7 @@ $_$`)
 		It("prints an aggregate definition for an unordered aggregate with no arguments", func() {
 			aggDefinition.Arguments = ""
 			aggDefinition.IdentArgs = ""
-			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(*) (
 	SFUNC = public.mysfunc,
 	STYPE = integer
@@ -307,7 +307,7 @@ $_$`)
 		})
 		It("prints an aggregate with a preliminary function", func() {
 			aggDefinition.PreliminaryFunction = 2
-			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
 	STYPE = integer,
@@ -316,7 +316,7 @@ $_$`)
 		})
 		It("prints an aggregate with a combine function", func() {
 			aggDefinition.CombineFunction = 2
-			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
 	STYPE = integer,
@@ -325,7 +325,7 @@ $_$`)
 		})
 		It("prints an aggregate with a serial function", func() {
 			aggDefinition.SerialFunction = 2
-			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
 	STYPE = integer,
@@ -334,7 +334,7 @@ $_$`)
 		})
 		It("prints an aggregate with a deserial function", func() {
 			aggDefinition.DeserialFunction = 2
-			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
 	STYPE = integer,
@@ -343,7 +343,7 @@ $_$`)
 		})
 		It("prints an aggregate with a final function", func() {
 			aggDefinition.FinalFunction = 3
-			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
 	STYPE = integer,
@@ -352,7 +352,7 @@ $_$`)
 		})
 		It("prints an aggregate with a final function extra attribute", func() {
 			aggDefinition.FinalFuncExtra = true
-			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
 	STYPE = integer,
@@ -362,7 +362,7 @@ $_$`)
 		It("prints an aggregate with an initial condition", func() {
 			aggDefinition.InitialValue = "0"
 			aggDefinition.InitValIsNull = false
-			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
 	STYPE = integer,
@@ -372,7 +372,7 @@ $_$`)
 		It("prints an aggregate with a sort operator", func() {
 			aggDefinition.SortOperator = "+"
 			aggDefinition.SortOperatorSchema = "myschema"
-			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
 	STYPE = integer,
@@ -381,7 +381,7 @@ $_$`)
 		})
 		It("prints an aggregate with a specified transition data size", func() {
 			aggDefinition.TransitionDataSize = 1000
-			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
 			testutils.ExpectEntry(toc.PredataEntries, 0, "public", "", "agg_name(integer, integer)", "AGGREGATE")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
@@ -391,7 +391,7 @@ $_$`)
 		})
 		It("prints an aggregate with a specified moving transition function", func() {
 			aggDefinition.MTransitionFunction = 1
-			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
 			testutils.ExpectEntry(toc.PredataEntries, 0, "public", "", "agg_name(integer, integer)", "AGGREGATE")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
@@ -401,7 +401,7 @@ $_$`)
 		})
 		It("prints an aggregate with a specified moving inverse transition function", func() {
 			aggDefinition.MInverseTransitionFunction = 1
-			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
 			testutils.ExpectEntry(toc.PredataEntries, 0, "public", "", "agg_name(integer, integer)", "AGGREGATE")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
@@ -411,7 +411,7 @@ $_$`)
 		})
 		It("prints an aggregate with a specified moving state type", func() {
 			aggDefinition.MTransitionDataType = "numeric"
-			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
 			testutils.ExpectEntry(toc.PredataEntries, 0, "public", "", "agg_name(integer, integer)", "AGGREGATE")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
@@ -421,7 +421,7 @@ $_$`)
 		})
 		It("prints an aggregate with a specified moving transition size", func() {
 			aggDefinition.MTransitionDataSize = 100
-			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
 			testutils.ExpectEntry(toc.PredataEntries, 0, "public", "", "agg_name(integer, integer)", "AGGREGATE")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
@@ -431,7 +431,7 @@ $_$`)
 		})
 		It("prints an aggregate with a specified moving final function", func() {
 			aggDefinition.MFinalFunction = 3
-			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
 			testutils.ExpectEntry(toc.PredataEntries, 0, "public", "", "agg_name(integer, integer)", "AGGREGATE")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
@@ -441,7 +441,7 @@ $_$`)
 		})
 		It("prints an aggregate with a moving final function extra attribute", func() {
 			aggDefinition.MFinalFuncExtra = true
-			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
 			testutils.ExpectEntry(toc.PredataEntries, 0, "public", "", "agg_name(integer, integer)", "AGGREGATE")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
@@ -452,7 +452,7 @@ $_$`)
 		It("prints an aggregate with a moving initial condition", func() {
 			aggDefinition.MInitialValue = "0"
 			aggDefinition.MInitValIsNull = false
-			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
 	STYPE = integer,
@@ -463,7 +463,7 @@ $_$`)
 			aggDefinition.FinalFunction = 3
 			aggDefinition.SortOperator = "~>~"
 			aggDefinition.SortOperatorSchema = "myschema"
-			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
 	STYPE = integer,
@@ -478,7 +478,7 @@ $_$`)
 				TransitionDataType: "internal", InitValIsNull: true, MInitValIsNull: true, FinalFuncExtra: true, Hypothetical: true,
 			}
 			aggDefinition = complexAggDefinition
-			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, aggDefinition, funcInfoMap, emptyMetadata)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_hypo_ord(VARIADIC "any" ORDER BY VARIADIC "any") (
 	SFUNC = pg_catalog.ordered_set_transition_multi,
 	STYPE = internal,
@@ -488,7 +488,7 @@ $_$`)
 );`)
 		})
 		It("prints an aggregate with owner and comment", func() {
-			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefinition, funcInfoMap, aggMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, aggDefinition, funcInfoMap, aggMetadata)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(integer, integer) (
 	SFUNC = public.mysfunc,
 	STYPE = integer
@@ -503,7 +503,7 @@ ALTER AGGREGATE public.agg_name(integer, integer) OWNER TO testrole;`)
 		It("prints an aggregate with owner, comment, and no arguments", func() {
 			aggDefinition.Arguments = ""
 			aggDefinition.IdentArgs = ""
-			backup.PrintCreateAggregateStatements(backupfile, toc, aggDefinition, funcInfoMap, aggMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, aggDefinition, funcInfoMap, aggMetadata)
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE AGGREGATE public.agg_name(*) (
 	SFUNC = public.mysfunc,
 	STYPE = integer
@@ -724,73 +724,73 @@ COMMENT ON CONVERSION public.conv_one IS 'This is a conversion comment.';
 ALTER CONVERSION public.conv_one OWNER TO testrole;`)
 		})
 	})
-	Describe("PrintCreateForeignDataWrapperStatements", func() {
+	Describe("PrintCreateForeignDataWrapperStatement", func() {
 		funcInfoMap := map[uint32]backup.FunctionInfo{
 			1: {QualifiedName: "pg_catalog.postgresql_fdw_handler", Arguments: "", IsInternal: true},
 			2: {QualifiedName: "pg_catalog.postgresql_fdw_validator", Arguments: "", IsInternal: true},
 		}
 		It("prints a basic foreign data wrapper", func() {
-			foreignDataWrappers := []backup.ForeignDataWrapper{{Oid: 1, Name: "foreigndata"}}
-			backup.PrintCreateForeignDataWrapperStatements(backupfile, toc, foreignDataWrappers, funcInfoMap, backup.MetadataMap{})
+			foreignDataWrapper := backup.ForeignDataWrapper{Oid: 1, Name: "foreigndata"}
+			backup.PrintCreateForeignDataWrapperStatement(backupfile, toc, foreignDataWrapper, funcInfoMap, backup.ObjectMetadata{})
 			testutils.ExpectEntry(toc.PredataEntries, 0, "", "", "foreigndata", "FOREIGN DATA WRAPPER")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE FOREIGN DATA WRAPPER foreigndata;`)
 		})
 		It("prints a foreign data wrapper with a handler", func() {
-			foreignDataWrappers := []backup.ForeignDataWrapper{{Name: "foreigndata", Handler: 1}}
-			backup.PrintCreateForeignDataWrapperStatements(backupfile, toc, foreignDataWrappers, funcInfoMap, backup.MetadataMap{})
+			foreignDataWrapper := backup.ForeignDataWrapper{Name: "foreigndata", Handler: 1}
+			backup.PrintCreateForeignDataWrapperStatement(backupfile, toc, foreignDataWrapper, funcInfoMap, backup.ObjectMetadata{})
 			testutils.ExpectEntry(toc.PredataEntries, 0, "", "", "foreigndata", "FOREIGN DATA WRAPPER")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE FOREIGN DATA WRAPPER foreigndata
 	HANDLER pg_catalog.postgresql_fdw_handler;`)
 		})
 		It("prints a foreign data wrapper with a validator", func() {
-			foreignDataWrappers := []backup.ForeignDataWrapper{{Name: "foreigndata", Validator: 2}}
-			backup.PrintCreateForeignDataWrapperStatements(backupfile, toc, foreignDataWrappers, funcInfoMap, backup.MetadataMap{})
+			foreignDataWrapper := backup.ForeignDataWrapper{Name: "foreigndata", Validator: 2}
+			backup.PrintCreateForeignDataWrapperStatement(backupfile, toc, foreignDataWrapper, funcInfoMap, backup.ObjectMetadata{})
 			testutils.ExpectEntry(toc.PredataEntries, 0, "", "", "foreigndata", "FOREIGN DATA WRAPPER")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE FOREIGN DATA WRAPPER foreigndata
 	VALIDATOR pg_catalog.postgresql_fdw_validator;`)
 		})
 		It("prints a foreign data wrapper with one option", func() {
-			foreignDataWrappers := []backup.ForeignDataWrapper{{Name: "foreigndata", Options: "debug 'true'"}}
-			backup.PrintCreateForeignDataWrapperStatements(backupfile, toc, foreignDataWrappers, funcInfoMap, backup.MetadataMap{})
+			foreignDataWrapper := backup.ForeignDataWrapper{Name: "foreigndata", Options: "debug 'true'"}
+			backup.PrintCreateForeignDataWrapperStatement(backupfile, toc, foreignDataWrapper, funcInfoMap, backup.ObjectMetadata{})
 			testutils.ExpectEntry(toc.PredataEntries, 0, "", "", "foreigndata", "FOREIGN DATA WRAPPER")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE FOREIGN DATA WRAPPER foreigndata
 	OPTIONS (debug 'true');`)
 		})
 		It("prints a foreign data wrapper with two options", func() {
-			foreignDataWrappers := []backup.ForeignDataWrapper{{Name: "foreigndata", Options: "debug 'true', host 'localhost'"}}
-			backup.PrintCreateForeignDataWrapperStatements(backupfile, toc, foreignDataWrappers, funcInfoMap, backup.MetadataMap{})
+			foreignDataWrapper := backup.ForeignDataWrapper{Name: "foreigndata", Options: "debug 'true', host 'localhost'"}
+			backup.PrintCreateForeignDataWrapperStatement(backupfile, toc, foreignDataWrapper, funcInfoMap, backup.ObjectMetadata{})
 			testutils.ExpectEntry(toc.PredataEntries, 0, "", "", "foreigndata", "FOREIGN DATA WRAPPER")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE FOREIGN DATA WRAPPER foreigndata
 	OPTIONS (debug 'true', host 'localhost');`)
 		})
 	})
-	Describe("PrintCreateServerStatements", func() {
+	Describe("PrintCreateServerStatement", func() {
 		It("prints a basic foreign server", func() {
-			foreignServers := []backup.ForeignServer{{Oid: 1, Name: "foreignserver", ForeignDataWrapper: "foreignwrapper"}}
-			backup.PrintCreateServerStatements(backupfile, toc, foreignServers, backup.MetadataMap{})
+			foreignServer := backup.ForeignServer{Oid: 1, Name: "foreignserver", ForeignDataWrapper: "foreignwrapper"}
+			backup.PrintCreateServerStatement(backupfile, toc, foreignServer, backup.ObjectMetadata{})
 			testutils.ExpectEntry(toc.PredataEntries, 0, "", "", "foreignserver", "FOREIGN SERVER")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE SERVER foreignserver
 	FOREIGN DATA WRAPPER foreignwrapper;`)
 		})
 		It("prints a foreign server with one option", func() {
-			foreignServers := []backup.ForeignServer{{Oid: 1, Name: "foreignserver", ForeignDataWrapper: "foreignwrapper", Options: "host 'localhost'"}}
-			backup.PrintCreateServerStatements(backupfile, toc, foreignServers, backup.MetadataMap{})
+			foreignServer := backup.ForeignServer{Oid: 1, Name: "foreignserver", ForeignDataWrapper: "foreignwrapper", Options: "host 'localhost'"}
+			backup.PrintCreateServerStatement(backupfile, toc, foreignServer, backup.ObjectMetadata{})
 			testutils.ExpectEntry(toc.PredataEntries, 0, "", "", "foreignserver", "FOREIGN SERVER")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE SERVER foreignserver
 	FOREIGN DATA WRAPPER foreignwrapper
 	OPTIONS (host 'localhost');`)
 		})
 		It("prints a foreign server with two options", func() {
-			foreignServers := []backup.ForeignServer{{Oid: 1, Name: "foreignserver", ForeignDataWrapper: "foreignwrapper", Options: "host 'localhost', dbname 'testdb'"}}
-			backup.PrintCreateServerStatements(backupfile, toc, foreignServers, backup.MetadataMap{})
+			foreignServer := backup.ForeignServer{Oid: 1, Name: "foreignserver", ForeignDataWrapper: "foreignwrapper", Options: "host 'localhost', dbname 'testdb'"}
+			backup.PrintCreateServerStatement(backupfile, toc, foreignServer, backup.ObjectMetadata{})
 			testutils.ExpectEntry(toc.PredataEntries, 0, "", "", "foreignserver", "FOREIGN SERVER")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE SERVER foreignserver
 	FOREIGN DATA WRAPPER foreignwrapper
 	OPTIONS (host 'localhost', dbname 'testdb');`)
 		})
 		It("prints a foreign server with type and version", func() {
-			foreignServers := []backup.ForeignServer{{Oid: 1, Name: "foreignserver", Type: "server type", Version: "server version", ForeignDataWrapper: "foreignwrapper"}}
-			backup.PrintCreateServerStatements(backupfile, toc, foreignServers, backup.MetadataMap{})
+			foreignServer := backup.ForeignServer{Oid: 1, Name: "foreignserver", Type: "server type", Version: "server version", ForeignDataWrapper: "foreignwrapper"}
+			backup.PrintCreateServerStatement(backupfile, toc, foreignServer, backup.ObjectMetadata{})
 			testutils.ExpectEntry(toc.PredataEntries, 0, "", "", "foreignserver", "FOREIGN SERVER")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE SERVER foreignserver
 	TYPE 'server type'
@@ -798,25 +798,25 @@ ALTER CONVERSION public.conv_one OWNER TO testrole;`)
 	FOREIGN DATA WRAPPER foreignwrapper;`)
 		})
 	})
-	Describe("PrintCreateUserMappingStatements", func() {
+	Describe("PrintCreateuserMappingtatement", func() {
 		It("prints a basic user mapping", func() {
-			userMappings := []backup.UserMapping{{Oid: 1, User: "testrole", Server: "foreignserver"}}
-			backup.PrintCreateUserMappingStatements(backupfile, toc, userMappings)
+			userMapping := backup.UserMapping{Oid: 1, User: "testrole", Server: "foreignserver"}
+			backup.PrintCreateUserMappingStatement(backupfile, toc, userMapping)
 			testutils.ExpectEntry(toc.PredataEntries, 0, "", "", "testrole ON foreignserver", "USER MAPPING")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE USER MAPPING FOR testrole
 	SERVER foreignserver;`)
 		})
 		It("prints a user mapping with one option", func() {
-			userMappings := []backup.UserMapping{{Oid: 1, User: "testrole", Server: "foreignserver", Options: "host 'localhost'"}}
-			backup.PrintCreateUserMappingStatements(backupfile, toc, userMappings)
+			userMapping := backup.UserMapping{Oid: 1, User: "testrole", Server: "foreignserver", Options: "host 'localhost'"}
+			backup.PrintCreateUserMappingStatement(backupfile, toc, userMapping)
 			testutils.ExpectEntry(toc.PredataEntries, 0, "", "", "testrole ON foreignserver", "USER MAPPING")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE USER MAPPING FOR testrole
 	SERVER foreignserver
 	OPTIONS (host 'localhost');`)
 		})
 		It("prints a user mapping with two options", func() {
-			userMappings := []backup.UserMapping{{Oid: 1, User: "testrole", Server: "foreignserver", Options: "host 'localhost', dbname 'testdb'"}}
-			backup.PrintCreateUserMappingStatements(backupfile, toc, userMappings)
+			userMapping := backup.UserMapping{Oid: 1, User: "testrole", Server: "foreignserver", Options: "host 'localhost', dbname 'testdb'"}
+			backup.PrintCreateUserMappingStatement(backupfile, toc, userMapping)
 			testutils.ExpectEntry(toc.PredataEntries, 0, "", "", "testrole ON foreignserver", "USER MAPPING")
 			testutils.AssertBufferContents(toc.PredataEntries, buffer, `CREATE USER MAPPING FOR testrole
 	SERVER foreignserver

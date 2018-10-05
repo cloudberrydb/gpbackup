@@ -248,9 +248,9 @@ func backupPredata(metadataFile *utils.FileWithByteCount, tables []Relation, tab
 
 		if len(MustGetFlagStringSlice(utils.INCLUDE_SCHEMA)) == 0 &&
 			connectionPool.Version.AtLeast("6") {
-			BackupForeignDataWrappers(metadataFile, funcInfoMap)
-			BackupForeignServers(metadataFile)
-			BackupUserMappings(metadataFile)
+			RetrieveForeignDataWrappers(&sortables, metadataMap)
+			RetrieveForeignServers(&sortables, metadataMap)
+			RetrieveUserMappings(&sortables)
 		}
 
 		protocols = RetrieveProtocols(&sortables, metadataMap)

@@ -31,6 +31,11 @@ CREATE FOREIGN DATA WRAPPER fdw;
 
 CREATE SERVER sc FOREIGN DATA WRAPPER fdw;
 
+CREATE USER MAPPING FOR testrole
+        SERVER sc
+        OPTIONS (user 'foreign_user', password 'password');
+
+
 CREATE FOREIGN TABLE ft1 (
     c1 integer OPTIONS (param1 'val1') NOT NULL,
     c2 text OPTIONS (param2 'val2', param3 'val3')

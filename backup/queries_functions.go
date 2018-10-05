@@ -669,6 +669,10 @@ func (fdw ForeignDataWrapper) GetUniqueID() UniqueID {
 	return UniqueID{ClassID: PG_FOREIGN_DATA_WRAPPER_OID, Oid: fdw.Oid}
 }
 
+func (fdw ForeignDataWrapper) FQN() string {
+	return fdw.Name
+}
+
 func GetForeignDataWrappers(connectionPool *dbconn.DBConn) []ForeignDataWrapper {
 	results := make([]ForeignDataWrapper, 0)
 	query := fmt.Sprintf(`
@@ -703,6 +707,10 @@ func (fs ForeignServer) GetUniqueID() UniqueID {
 	return UniqueID{ClassID: PG_FOREIGN_SERVER_OID, Oid: fs.Oid}
 }
 
+func (fs ForeignServer) FQN() string {
+	return fs.Name
+}
+
 func GetForeignServers(connectionPool *dbconn.DBConn) []ForeignServer {
 	results := make([]ForeignServer, 0)
 	query := fmt.Sprintf(`
@@ -735,6 +743,10 @@ type UserMapping struct {
 
 func (um UserMapping) GetUniqueID() UniqueID {
 	return UniqueID{ClassID: PG_USER_MAPPING_OID, Oid: um.Oid}
+}
+
+func (um UserMapping) FQN() string {
+	return um.User
 }
 
 func GetUserMappings(connectionPool *dbconn.DBConn) []UserMapping {

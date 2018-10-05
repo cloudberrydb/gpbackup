@@ -195,7 +195,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			})
 		})
 	})
-	Describe("PrintCreateAggregateStatements", func() {
+	Describe("PrintCreateAggregateStatement", func() {
 		emptyMetadata := backup.ObjectMetadata{}
 		basicAggregateDef := backup.Aggregate{
 			Oid: 1, Schema: "public", Name: "agg_prefunc", Arguments: "numeric, numeric",
@@ -237,7 +237,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testhelper.AssertQueryRuns(connectionPool, "DROP FUNCTION public.mypre_accum(numeric, numeric)")
 		})
 		It("creates a basic aggregate", func() {
-			backup.PrintCreateAggregateStatements(backupfile, toc, basicAggregateDef, funcInfoMap, emptyMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, basicAggregateDef, funcInfoMap, emptyMetadata)
 
 			testhelper.AssertQueryRuns(connectionPool, buffer.String())
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP AGGREGATE public.agg_prefunc(numeric, numeric)")
@@ -248,7 +248,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 		It("creates an aggregate with an owner and a comment", func() {
 			aggMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{}, Owner: "testrole", Comment: "This is an aggregate comment."}
-			backup.PrintCreateAggregateStatements(backupfile, toc, basicAggregateDef, funcInfoMap, aggMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, basicAggregateDef, funcInfoMap, aggMetadata)
 
 			testhelper.AssertQueryRuns(connectionPool, buffer.String())
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP AGGREGATE public.agg_prefunc(numeric, numeric)")
@@ -268,7 +268,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				TransitionDataType: "internal", InitValIsNull: true, FinalFuncExtra: true, Hypothetical: true, MInitValIsNull: true,
 			}
 
-			backup.PrintCreateAggregateStatements(backupfile, toc, complexAggregateDef, funcInfoMap, emptyMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, complexAggregateDef, funcInfoMap, emptyMetadata)
 
 			testhelper.AssertQueryRuns(connectionPool, buffer.String())
 			defer testhelper.AssertQueryRuns(connectionPool, `DROP AGGREGATE public.agg_hypo_ord(VARIADIC "any" ORDER BY VARIADIC "any")`)
@@ -283,7 +283,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				IdentArgs: "numeric", TransitionFunction: 9, FinalFunction: 0, SortOperator: "+", SortOperatorSchema: "pg_catalog", TransitionDataType: "numeric",
 				InitialValue: "0", IsOrdered: false, MInitValIsNull: true,
 			}
-			backup.PrintCreateAggregateStatements(backupfile, toc, aggregateDef, funcInfoMap, emptyMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, aggregateDef, funcInfoMap, emptyMetadata)
 
 			testhelper.AssertQueryRuns(connectionPool, buffer.String())
 			defer testhelper.AssertQueryRuns(connectionPool, `DROP AGGREGATE public.agg_sort(numeric)`)
@@ -300,7 +300,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				FinalFunction: 0, SortOperator: "", TransitionDataType: "numeric", TransitionDataSize: 1000,
 				InitialValue: "0", IsOrdered: false, MInitValIsNull: true,
 			}
-			backup.PrintCreateAggregateStatements(backupfile, toc, aggregateDef, funcInfoMap, emptyMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, aggregateDef, funcInfoMap, emptyMetadata)
 
 			testhelper.AssertQueryRuns(connectionPool, buffer.String())
 			defer testhelper.AssertQueryRuns(connectionPool, `DROP AGGREGATE public.agg_6_features(numeric, numeric)`)
@@ -318,7 +318,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				IsOrdered: false, InitValIsNull: true, MInitValIsNull: true,
 			}
 
-			backup.PrintCreateAggregateStatements(backupfile, toc, aggregateDef, funcInfoMap, emptyMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, aggregateDef, funcInfoMap, emptyMetadata)
 
 			testhelper.AssertQueryRuns(connectionPool, buffer.String())
 			defer testhelper.AssertQueryRuns(connectionPool, `DROP AGGREGATE public.myavg(numeric)`)
@@ -337,7 +337,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				MFinalFuncExtra: true, MInitialValue: "0", MInitValIsNull: false,
 			}
 
-			backup.PrintCreateAggregateStatements(backupfile, toc, aggregateDef, funcInfoMap, emptyMetadata)
+			backup.PrintCreateAggregateStatement(backupfile, toc, aggregateDef, funcInfoMap, emptyMetadata)
 
 			testhelper.AssertQueryRuns(connectionPool, buffer.String())
 			defer testhelper.AssertQueryRuns(connectionPool, `DROP AGGREGATE public.moving_agg(numeric, numeric)`)
@@ -501,8 +501,8 @@ var _ = Describe("backup integration create statement tests", func() {
 			structmatcher.ExpectStructsToMatch(&convMetadata, &resultMetadata)
 		})
 	})
-	Describe("PrintCreateForeignDataWrapperStatements", func() {
-		emptyMetadataMap := backup.MetadataMap{}
+	Describe("PrintCreateForeignDataWrapperStatement", func() {
+		emptyMetadata := backup.ObjectMetadata{}
 		funcInfoMap := map[uint32]backup.FunctionInfo{
 			1: {QualifiedName: "pg_catalog.postgresql_fdw_validator", Arguments: "", IsInternal: true},
 		}
@@ -511,7 +511,8 @@ var _ = Describe("backup integration create statement tests", func() {
 			foreignDataWrapperValidator := backup.ForeignDataWrapper{Name: "foreigndata1", Validator: 1}
 			foreignDataWrapperOptions := backup.ForeignDataWrapper{Name: "foreigndata2", Options: "dbname 'testdb'"}
 
-			backup.PrintCreateForeignDataWrapperStatements(backupfile, toc, []backup.ForeignDataWrapper{foreignDataWrapperValidator, foreignDataWrapperOptions}, funcInfoMap, emptyMetadataMap)
+			backup.PrintCreateForeignDataWrapperStatement(backupfile, toc, foreignDataWrapperValidator, funcInfoMap, emptyMetadata)
+			backup.PrintCreateForeignDataWrapperStatement(backupfile, toc, foreignDataWrapperOptions, funcInfoMap, emptyMetadata)
 
 			testhelper.AssertQueryRuns(connectionPool, buffer.String())
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP FOREIGN DATA WRAPPER foreigndata1")
@@ -524,13 +525,13 @@ var _ = Describe("backup integration create statement tests", func() {
 			structmatcher.ExpectStructsToMatchExcluding(&foreignDataWrapperOptions, &resultWrappers[1], "Oid", "Validator")
 		})
 	})
-	Describe("PrintCreateServerStatements", func() {
-		emptyMetadataMap := backup.MetadataMap{}
+	Describe("PrintCreateServerStatement", func() {
+		emptyMetadata := backup.ObjectMetadata{}
 		It("creates a foreign server with all options", func() {
 			testutils.SkipIfBefore6(connectionPool)
 			foreignServer := backup.ForeignServer{Name: "foreignserver", Type: "mytype", Version: "myversion", ForeignDataWrapper: "foreigndatawrapper", Options: "dbname 'testdb', host 'localhost'"}
 
-			backup.PrintCreateServerStatements(backupfile, toc, []backup.ForeignServer{foreignServer}, emptyMetadataMap)
+			backup.PrintCreateServerStatement(backupfile, toc, foreignServer, emptyMetadata)
 
 			testhelper.AssertQueryRuns(connectionPool, "CREATE FOREIGN DATA WRAPPER foreigndatawrapper")
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP FOREIGN DATA WRAPPER foreigndatawrapper CASCADE")
@@ -542,7 +543,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			structmatcher.ExpectStructsToMatchExcluding(&foreignServer, &resultServers[0], "Oid")
 		})
 	})
-	Describe("PrintCreateUserMappingStatements", func() {
+	Describe("PrintCreateUserMappingStatement", func() {
 		It("creates a user mapping for a specific user with all options", func() {
 			testutils.SkipIfBefore6(connectionPool)
 			testhelper.AssertQueryRuns(connectionPool, "CREATE FOREIGN DATA WRAPPER foreigndatawrapper")
@@ -550,7 +551,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testhelper.AssertQueryRuns(connectionPool, "CREATE SERVER server FOREIGN DATA WRAPPER foreigndatawrapper")
 			userMapping := backup.UserMapping{User: "testrole", Server: "server", Options: "dbname 'testdb', host 'localhost'"}
 
-			backup.PrintCreateUserMappingStatements(backupfile, toc, []backup.UserMapping{userMapping})
+			backup.PrintCreateUserMappingStatement(backupfile, toc, userMapping)
 
 			testhelper.AssertQueryRuns(connectionPool, buffer.String())
 
@@ -566,7 +567,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testhelper.AssertQueryRuns(connectionPool, "CREATE SERVER server FOREIGN DATA WRAPPER foreigndatawrapper")
 			userMapping := backup.UserMapping{User: "public", Server: "server"}
 
-			backup.PrintCreateUserMappingStatements(backupfile, toc, []backup.UserMapping{userMapping})
+			backup.PrintCreateUserMappingStatement(backupfile, toc, userMapping)
 
 			testhelper.AssertQueryRuns(connectionPool, buffer.String())
 
