@@ -212,7 +212,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			6: {QualifiedName: "pg_catalog.numeric_avg_serialize", Arguments: `internal`},
 			7: {QualifiedName: "pg_catalog.numeric_avg_deserialize", Arguments: `bytea, internal`},
 			8: {QualifiedName: "pg_catalog.numeric_avg_accum", Arguments: `numeric, numeric`},
-			9: {QualifiedName: "pg_catalog.div", Arguments: `numeric, numeric`},
+			9: {QualifiedName: "pg_catalog.power", Arguments: `numeric, numeric`},
 		}
 		BeforeEach(func() {
 			//Run queries to set up the database state so we can successfully create an aggregate
