@@ -38,6 +38,7 @@ var _ = Describe("backup integration tests", func() {
 			Expect(results[2]).To(Equal(`SET lc_time TO 'C'`))
 		})
 		It("only gets GUCs that are non role specific", func() {
+			testutils.SkipIfBefore6(connectionPool)
 			testhelper.AssertQueryRuns(connectionPool, "ALTER ROLE testrole IN DATABASE testdb SET default_with_oids TO false")
 			defer testhelper.AssertQueryRuns(connectionPool, "ALTER ROLE testrole IN DATABASE testdb RESET default_with_oids")
 			testhelper.AssertQueryRuns(connectionPool, "ALTER DATABASE testdb SET default_with_oids TO true")
