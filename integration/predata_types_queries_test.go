@@ -245,6 +245,7 @@ var _ = Describe("backup integration tests", func() {
 	})
 	Describe("GetRangeTypes", func() {
 		It("returns a slice of a range type with a collation", func() {
+			testutils.SkipIfBefore6(connectionPool)
 			testhelper.AssertQueryRuns(connectionPool, "CREATE COLLATION public.some_coll (lc_collate = 'POSIX', lc_ctype = 'POSIX');")
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP COLLATION public.some_coll")
 			testhelper.AssertQueryRuns(connectionPool, `CREATE TYPE public.textrange AS RANGE (
@@ -268,6 +269,7 @@ var _ = Describe("backup integration tests", func() {
 			structmatcher.ExpectStructsToMatchExcluding(&expectedRangeType, &results[0], "Oid")
 		})
 		It("returns a slice of a range type in a specific schema with a subtype diff function", func() {
+			testutils.SkipIfBefore6(connectionPool)
 			testhelper.AssertQueryRuns(connectionPool, "CREATE SCHEMA testschema;")
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP SCHEMA testschema CASCADE;")
 			testhelper.AssertQueryRuns(connectionPool, "CREATE FUNCTION testschema.time_subtype_diff(x time, y time) RETURNS float8 AS 'SELECT EXTRACT(EPOCH FROM (x - y))' LANGUAGE sql STRICT IMMUTABLE;")
