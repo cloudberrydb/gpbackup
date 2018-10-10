@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -161,11 +162,8 @@ func doBackupAgent() {
 		 * written to verify the agent completed.
 		 */
 		log("Uploading remaining data to plugin destination")
-		if err := writeCmd.Wait(); err != nil {
-			handle := iohelper.MustOpenFileForWriting(fmt.Sprintf("%s_error", *pipeFile))
-			_ = handle.Close()
-			gplog.Fatal(err, strings.Trim(errBuf.String(), "\x00"))
-		}
+		err := writeCmd.Wait()
+		gplog.FatalOnError(err, strings.Trim(errBuf.String(), "\x00"))
 	}
 	toc.WriteToFileAndMakeReadOnly(*tocFile)
 	log("Finished writing segment TOC")
@@ -235,6 +233,7 @@ func doRestoreAgent() {
 	 */
 	writer, writeHandle = getRestorePipeWriter(currentPipe)
 	reader := getRestorePipeReader()
+
 	for i, oid := range oidList {
 		if wasTerminated {
 			return
@@ -369,7 +368,15 @@ func removeFileIfExists(filename string) {
  */
 
 func DoTeardown() {
-	_ = recover()
+	if err := recover(); err != nil {
+		// Check if gplog.Fatal did not cause the panic
+		if gplog.GetErrorCode() != 2 {
+			gplog.Error(fmt.Sprintf("%v: %s", err, debug.Stack()))
+			gplog.SetErrorCode(2)
+		}
+		handle := iohelper.MustOpenFileForWriting(fmt.Sprintf("%s_error", *pipeFile))
+		_ = handle.Close()
+	}
 	if wasTerminated {
 		CleanupGroup.Wait()
 		return
