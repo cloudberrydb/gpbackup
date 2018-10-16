@@ -249,7 +249,7 @@ ALTER RESOURCE GROUP default_group SET CPU_RATE_LIMIT 10;`)
 				},
 			},
 		}
-		emptyConfigMap := map[string][]string{}
+		emptyConfigMap := map[string][]backup.RoleGUC{}
 		It("prints basic role", func() {
 			roleMetadataMap := testutils.DefaultMetadataMap("ROLE", false, false, true)
 			backup.PrintCreateRoleStatements(backupfile, toc, []backup.Role{testrole1}, emptyConfigMap, roleMetadataMap)
@@ -262,8 +262,11 @@ COMMENT ON ROLE testrole1 IS 'This is a role comment.';`)
 		})
 		It("prints basic role with user GUCs set", func() {
 			roleMetadataMap := testutils.DefaultMetadataMap("ROLE", false, false, true)
-			roleConfigMap := map[string][]string{
-				"testrole1": {"SET search_path TO public", "SET client_min_messages TO 'error'", "SET gp_default_storage_options TO 'appendonly=true, compresslevel=6, orientation=row, compresstype=none'"},
+			roleConfigMap := map[string][]backup.RoleGUC{
+				"testrole1": {
+					{RoleName: "testrole1", Config: "SET search_path TO public"},
+					{RoleName: "testrole1", DbName: "testdb", Config: "SET client_min_messages TO 'error'"},
+					{RoleName: "testrole1", Config: "SET gp_default_storage_options TO 'appendonly=true, compresslevel=6, orientation=row, compresstype=none'"}},
 			}
 			backup.PrintCreateRoleStatements(backupfile, toc, []backup.Role{testrole1}, roleConfigMap, roleMetadataMap)
 
@@ -273,7 +276,7 @@ ALTER ROLE testrole1 WITH NOSUPERUSER NOINHERIT NOCREATEROLE NOCREATEDB NOLOGIN 
 
 ALTER ROLE testrole1 SET search_path TO public;
 
-ALTER ROLE testrole1 SET client_min_messages TO 'error';
+ALTER ROLE testrole1 IN DATABASE testdb SET client_min_messages TO 'error';
 
 ALTER ROLE testrole1 SET gp_default_storage_options TO 'appendonly=true, compresslevel=6, orientation=row, compresstype=none';
 

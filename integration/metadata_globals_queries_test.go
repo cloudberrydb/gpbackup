@@ -1,8 +1,6 @@
 package integration
 
 import (
-	"sort"
-
 	"github.com/greenplum-db/gp-common-go-libs/structmatcher"
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpbackup/backup"
@@ -327,13 +325,35 @@ CREATEEXTTABLE (protocol='gphdfs', type='writable')`)
 			testhelper.AssertQueryRuns(connectionPool, "ALTER ROLE role1 SET search_path TO public")
 			testhelper.AssertQueryRuns(connectionPool, "ALTER ROLE role1 SET client_min_messages TO 'info'")
 			testhelper.AssertQueryRuns(connectionPool, "ALTER ROLE role1 SET gp_default_storage_options TO 'appendonly=true, compresslevel=6, orientation=row, compresstype=none'")
+
 			results := backup.GetRoleGUCs(connectionPool)
 			roleConfig := results["role1"]
+
 			Expect(roleConfig).To(HaveLen(3))
-			sort.Strings(roleConfig)
-			Expect(roleConfig[0]).To(Equal(`SET client_min_messages TO 'info'`))
-			Expect(roleConfig[1]).To(Equal(`SET gp_default_storage_options TO 'appendonly=true, compresslevel=6, orientation=row, compresstype=none'`))
-			Expect(roleConfig[2]).To(Equal(`SET search_path TO public`))
+			expectedRoleConfig := []backup.RoleGUC{
+				{RoleName: "role1", Config: `SET client_min_messages TO 'info'`},
+				{RoleName: "role1", Config: `SET gp_default_storage_options TO 'appendonly=true, compresslevel=6, orientation=row, compresstype=none'`},
+				{RoleName: "role1", Config: `SET search_path TO public`}}
+
+			Expect(roleConfig).To(ConsistOf(expectedRoleConfig))
+		})
+		It("returns a slice of values for db specific user level GUCs", func() {
+			testutils.SkipIfBefore6(connectionPool)
+
+			testhelper.AssertQueryRuns(connectionPool, "CREATE ROLE role1 SUPERUSER NOINHERIT")
+			defer testhelper.AssertQueryRuns(connectionPool, "DROP ROLE role1")
+			testhelper.AssertQueryRuns(connectionPool, "ALTER ROLE role1 IN DATABASE testdb SET search_path TO public")
+			testhelper.AssertQueryRuns(connectionPool, "ALTER ROLE role1 IN DATABASE testdb SET client_min_messages TO 'info'")
+
+			results := backup.GetRoleGUCs(connectionPool)
+			roleConfig := results["role1"]
+
+			Expect(roleConfig).To(HaveLen(2))
+			expectedRoleConfig := []backup.RoleGUC{
+				{RoleName: "role1", DbName: "testdb", Config: `SET client_min_messages TO 'info'`},
+				{RoleName: "role1", DbName: "testdb", Config: `SET search_path TO public`}}
+
+			Expect(roleConfig).To(ConsistOf(expectedRoleConfig))
 		})
 	})
 	Describe("GetTablespaces", func() {

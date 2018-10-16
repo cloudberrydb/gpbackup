@@ -11,7 +11,6 @@ import (
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpbackup/utils"
-	"github.com/lib/pq"
 )
 
 type SessionGUCs struct {
@@ -255,34 +254,53 @@ FROM
 	return roles
 }
 
-func GetRoleGUCs(connectionPool *dbconn.DBConn) map[string][]string {
-	query := `
+type RoleGUC struct {
+	RoleName string
+	DbName   string
+	Config   string
+}
+
+func GetRoleGUCs(connectionPool *dbconn.DBConn) map[string][]RoleGUC {
+	gucsForDBQuery := ""
+	if connectionPool.Version.AtLeast("6") {
+		gucsForDBQuery = `UNION
+	SELECT
+		quote_ident(r.rolname) AS rolename,
+		quote_ident(d.datname) AS dbname,
+		(pg_options_to_table(setconfig)).option_name,
+		(pg_options_to_table(setconfig)).option_value
+	FROM pg_db_role_setting pgdb
+	JOIN pg_database d ON pgdb.setdatabase = d.oid
+	JOIN pg_roles r ON pgdb.setrole = r.oid`
+	}
+
+	query := fmt.Sprintf(`
 SELECT
-	quote_ident(rolname) AS name,
-	array_agg(guc) AS config
+	rolename,
+	dbname,
+	CASE
+		WHEN option_name='search_path' OR option_name = 'DateStyle'
+		THEN ('SET ' || option_name || ' TO ' || option_value)
+		ELSE ('SET ' || option_name || ' TO ''' || option_value || '''')
+	END AS config
 FROM (
 	SELECT
-		rolname,
-		CASE
-			WHEN option_name='search_path' OR option_name = 'DateStyle'
-			THEN ('SET ' || option_name || ' TO ' || option_value)
-			ELSE ('SET ' || option_name || ' TO ''' || option_value || '''')
-		END AS guc
-	FROM (
-		SELECT rolname, (pg_options_to_table(rolconfig)).option_name, (pg_options_to_table(rolconfig)).option_value FROM pg_roles
-	) AS options
-) AS gucs GROUP BY rolname;`
+		quote_ident(rolname) AS rolename,
+		'' AS dbname,
+		(pg_options_to_table(rolconfig)).option_name,
+		(pg_options_to_table(rolconfig)).option_value 
+	FROM pg_roles
+	%s
+) AS options;`, gucsForDBQuery)
 
-	results := make([]struct {
-		Name   string
-		Config pq.StringArray
-	}, 0)
+	results := make([]RoleGUC, 0)
 	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
-	resultMap := make(map[string][]string, len(results))
+	resultMap := make(map[string][]RoleGUC, 0)
 	for _, result := range results {
-		resultMap[result.Name] = []string(result.Config)
+		resultMap[result.RoleName] = append(resultMap[result.RoleName], result)
 	}
+
 	return resultMap
 }
 

@@ -179,7 +179,7 @@ func PrintCreateResourceGroupStatements(metadataFile *utils.FileWithByteCount, t
 	}
 }
 
-func PrintCreateRoleStatements(metadataFile *utils.FileWithByteCount, toc *utils.TOC, roles []Role, roleGUCs map[string][]string, roleMetadata MetadataMap) {
+func PrintCreateRoleStatements(metadataFile *utils.FileWithByteCount, toc *utils.TOC, roles []Role, roleGUCs map[string][]RoleGUC, roleMetadata MetadataMap) {
 	for _, role := range roles {
 		start := metadataFile.ByteCount
 		attrs := []string{}
@@ -257,9 +257,12 @@ CREATE ROLE %s;
 ALTER ROLE %s WITH %s;`, role.Name, role.Name, strings.Join(attrs, " "))
 
 		for _, roleGUC := range roleGUCs[role.Name] {
-			metadataFile.MustPrintf(`
+			dbString := ""
+			if roleGUC.DbName != "" {
+				dbString = fmt.Sprintf("IN DATABASE %s ", roleGUC.DbName)
+			}
+			metadataFile.MustPrintf("\n\nALTER ROLE %s %s%s;", role.Name, dbString, roleGUC.Config)
 
-ALTER ROLE %s %s;`, role.Name, roleGUC)
 		}
 
 		if len(role.TimeConstraints) != 0 {

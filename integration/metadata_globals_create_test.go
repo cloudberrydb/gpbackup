@@ -2,7 +2,6 @@ package integration
 
 import (
 	"regexp"
-	"sort"
 
 	"github.com/greenplum-db/gp-common-go-libs/structmatcher"
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
@@ -147,12 +146,12 @@ var _ = Describe("backup integration create statement tests", func() {
 			Createwexthdfs:  false,
 			TimeConstraints: nil,
 		}
-		emptyConfigMap := map[string][]string{}
+		emptyConfigMap := map[string][]backup.RoleGUC{}
+		emptyMetadataMap := backup.MetadataMap{}
 		It("creates a basic role", func() {
 			if connectionPool.Version.Before("5") {
 				role1.ResGroup = ""
 			}
-			emptyMetadataMap := backup.MetadataMap{}
 
 			backup.PrintCreateRoleStatements(backupfile, toc, []backup.Role{role1}, emptyConfigMap, emptyMetadataMap)
 
@@ -173,31 +172,38 @@ var _ = Describe("backup integration create statement tests", func() {
 			if connectionPool.Version.Before("5") {
 				role1.ResGroup = ""
 			}
-			roleConfigMap := map[string][]string{
-				"role1": {"SET gp_default_storage_options TO 'appendonly=true, compresslevel=6, orientation=row, compresstype=none'", "SET search_path TO public"},
+			roleConfigMap := map[string][]backup.RoleGUC{
+				"role1": {
+					{RoleName: "role1", Config: "SET gp_default_storage_options TO 'appendonly=true, compresslevel=6, orientation=row, compresstype=none'"},
+					{RoleName: "role1", Config: "SET search_path TO public"}},
 			}
-			emptyMetadataMap := backup.MetadataMap{}
 
 			backup.PrintCreateRoleStatements(backupfile, toc, []backup.Role{role1}, roleConfigMap, emptyMetadataMap)
 
 			testhelper.AssertQueryRuns(connectionPool, buffer.String())
 			defer testhelper.AssertQueryRuns(connectionPool, `DROP ROLE "role1"`)
-			role1.Oid = testutils.OidFromObjectName(connectionPool, "", "role1", backup.TYPE_ROLE)
 
-			resultRoles := backup.GetRoles(connectionPool)
 			resultGUCs := backup.GetRoleGUCs(connectionPool)
-			testRole := "role1"
-			for _, role := range resultRoles {
-				if role.Name == testRole {
-					structmatcher.ExpectStructsToMatch(&role1, role)
-					roleConfig := resultGUCs["role1"]
-					sort.Strings(roleConfig)
-					Expect(roleConfig[0]).To(Equal(`SET gp_default_storage_options TO 'appendonly=true, compresslevel=6, orientation=row, compresstype=none'`))
-					Expect(roleConfig[1]).To(Equal(`SET search_path TO public`))
-					return
-				}
+
+			Expect(resultGUCs["role1"]).To(ConsistOf(roleConfigMap["role1"]))
+		})
+		It("creates a basic role with db specific user GUCs set", func() {
+			testutils.SkipIfBefore6(connectionPool)
+
+			roleConfigMap := map[string][]backup.RoleGUC{
+				"role1": {
+					{RoleName: "role1", DbName: "testdb", Config: "SET gp_default_storage_options TO 'appendonly=true, compresslevel=6, orientation=row, compresstype=none'"},
+					{RoleName: "role1", DbName: "testdb", Config: "SET search_path TO public"}},
 			}
-			Fail("Role 'role1' was not found")
+
+			backup.PrintCreateRoleStatements(backupfile, toc, []backup.Role{role1}, roleConfigMap, emptyMetadataMap)
+
+			testhelper.AssertQueryRuns(connectionPool, buffer.String())
+			defer testhelper.AssertQueryRuns(connectionPool, `DROP ROLE "role1"`)
+
+			resultGUCs := backup.GetRoleGUCs(connectionPool)
+
+			Expect(resultGUCs["role1"]).To(ConsistOf(roleConfigMap["role1"]))
 		})
 		It("creates a role with all attributes", func() {
 			role1 := backup.Role{
