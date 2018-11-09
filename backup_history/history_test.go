@@ -4,11 +4,10 @@ import (
 	"os"
 
 	"github.com/greenplum-db/gp-common-go-libs/iohelper"
-	"github.com/greenplum-db/gp-common-go-libs/operating"
 	"github.com/greenplum-db/gp-common-go-libs/structmatcher"
 	"github.com/greenplum-db/gpbackup/backup_history"
 	. "github.com/onsi/ginkgo"
-	"github.com/pkg/errors"
+	. "github.com/onsi/gomega"
 	"gopkg.in/yaml.v2"
 )
 
@@ -46,31 +45,19 @@ var _ bool = Describe("backup/history tests", func() {
 		}
 	})
 	Describe("NewHistory", func() {
-		Context("history file doesn't exist", func() {
-			It("creates an empty history object", func() {
-				operating.System.Stat = func(name string) (os.FileInfo, error) { return nil, errors.New("file does not exist") }
+		It("creates a history object with entries from the file when history file exists", func() {
+			historyWithEntries := backup_history.History{
+				BackupConfigs: []backup_history.BackupConfig{testConfig1, testConfig2}}
+			historyFileContents, _ := yaml.Marshal(historyWithEntries)
+			fileHandle := iohelper.MustOpenFileForWriting(historyFilePath)
+			fileHandle.Write(historyFileContents)
+			fileHandle.Close()
+			defer os.Remove(historyFilePath)
 
-				resultHistory := backup_history.NewHistory(historyFilePath)
+			resultHistory, err := backup_history.NewHistory(historyFilePath)
+			Expect(err).ToNot(HaveOccurred())
 
-				structmatcher.ExpectStructsToMatch(&backup_history.History{BackupConfigs: []backup_history.BackupConfig{}}, resultHistory)
-
-				operating.System.Stat = os.Stat
-			})
-		})
-		Context("history file exists", func() {
-			It("creates a history object with entries from the file", func() {
-				historyWithEntries := backup_history.History{
-					BackupConfigs: []backup_history.BackupConfig{testConfig1, testConfig2}}
-				historyFileContents, _ := yaml.Marshal(historyWithEntries)
-				fileHandle := iohelper.MustOpenFileForWriting(historyFilePath)
-				fileHandle.Write(historyFileContents)
-				fileHandle.Close()
-				defer os.Remove(historyFilePath)
-
-				resultHistory := backup_history.NewHistory(historyFilePath)
-
-				structmatcher.ExpectStructsToMatch(&historyWithEntries, resultHistory)
-			})
+			structmatcher.ExpectStructsToMatch(&historyWithEntries, resultHistory)
 		})
 	})
 	Describe("AddBackupConfig", func() {

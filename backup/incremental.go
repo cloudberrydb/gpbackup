@@ -37,7 +37,8 @@ func GetTargetBackupTimestamp() string {
 }
 
 func GetLatestMatchingBackupTimestamp() string {
-	history := backup_history.NewHistory(globalFPInfo.GetBackupHistoryFilePath())
+	history, err := backup_history.NewHistory(globalFPInfo.GetBackupHistoryFilePath())
+	gplog.FatalOnError(err)
 	latestMatchingBackupHistoryEntry := GetLatestMatchingBackupConfig(history, &backupReport.BackupConfig)
 	if latestMatchingBackupHistoryEntry == nil {
 		gplog.FatalOnError(errors.Errorf("There was no matching previous backup found with the flags provided. " +
