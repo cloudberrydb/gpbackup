@@ -68,17 +68,15 @@ type History struct {
 
 func NewHistory(filename string) (*History, error) {
 	history := &History{BackupConfigs: make([]BackupConfig, 0)}
-	if historyFileExists := iohelper.FileExistsAndIsReadable(filename); historyFileExists {
-
-		contents, err := operating.System.ReadFile(filename)
-		if err != nil {
-			return nil, err
-		}
-		err = yaml.Unmarshal(contents, history)
-		if err != nil {
-			return nil, err
-		}
+	contents, err := operating.System.ReadFile(filename)
+	if err != nil {
+		return nil, err
 	}
+	err = yaml.Unmarshal(contents, history)
+	if err != nil {
+		return nil, err
+	}
+
 	return history, nil
 }
 
@@ -95,8 +93,13 @@ func WriteBackupHistory(historyFilePath string, currentBackupConfig *BackupConfi
 		_ = lock.Unlock()
 	}()
 
-	history, err := NewHistory(historyFilePath)
-	gplog.FatalOnError(err)
+	history := &History{BackupConfigs: make([]BackupConfig, 0)}
+	var err error
+
+	if iohelper.FileExistsAndIsReadable(historyFilePath) {
+		history, err = NewHistory(historyFilePath)
+		gplog.FatalOnError(err)
+	}
 	if len(history.BackupConfigs) == 0 {
 		gplog.Verbose("No existing backup history file could be found. Creating new backup history file.")
 	}
