@@ -93,15 +93,17 @@ func WriteBackupHistory(historyFilePath string, currentBackupConfig *BackupConfi
 		_ = lock.Unlock()
 	}()
 
-	history := &History{BackupConfigs: make([]BackupConfig, 0)}
-	var err error
+	var history *History
 
 	if iohelper.FileExistsAndIsReadable(historyFilePath) {
+		var err error
 		history, err = NewHistory(historyFilePath)
 		gplog.FatalOnError(err)
+	} else {
+		history = &History{BackupConfigs: make([]BackupConfig, 0)}
 	}
 	if len(history.BackupConfigs) == 0 {
-		gplog.Verbose("No existing backup history file could be found. Creating new backup history file.")
+		gplog.Verbose("No existing backups found. Creating new backup history file.")
 	}
 	history.AddBackupConfig(currentBackupConfig)
 	history.writeToFileAndMakeReadOnly(historyFilePath)

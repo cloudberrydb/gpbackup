@@ -38,14 +38,15 @@ func GetTargetBackupTimestamp() string {
 }
 
 func GetLatestMatchingBackupTimestamp() string {
-	history := &backup_history.History{BackupConfigs: make([]backup_history.BackupConfig, 0)}
+	var history *backup_history.History
+	var latestMatchingBackupHistoryEntry *backup_history.BackupConfig
 	var err error
-
 	if iohelper.FileExistsAndIsReadable(globalFPInfo.GetBackupHistoryFilePath()) {
 		history, err = backup_history.NewHistory(globalFPInfo.GetBackupHistoryFilePath())
 		gplog.FatalOnError(err)
+		latestMatchingBackupHistoryEntry = GetLatestMatchingBackupConfig(history, &backupReport.BackupConfig)
 	}
-	latestMatchingBackupHistoryEntry := GetLatestMatchingBackupConfig(history, &backupReport.BackupConfig)
+
 	if latestMatchingBackupHistoryEntry == nil {
 		gplog.FatalOnError(errors.Errorf("There was no matching previous backup found with the flags provided. " +
 			"Please take a full backup."))

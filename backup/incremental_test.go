@@ -1,9 +1,6 @@
 package backup_test
 
 import (
-	"errors"
-	"os"
-
 	"github.com/greenplum-db/gp-common-go-libs/operating"
 	"github.com/greenplum-db/gp-common-go-libs/structmatcher"
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
@@ -199,48 +196,20 @@ var _ = Describe("backup/incremental tests", func() {
 
 	})
 	Describe("GetLatestMatchingBackupTimestamp", func() {
+		var log *gbytes.Buffer
+		BeforeEach(func() {
+			_, _, log = testhelper.SetupTestLogger()
+		})
 		AfterEach(func() {
 			operating.InitializeSystemFunctions()
 		})
 		It("fatals when trying to take an incremental backup without a full backup", func() {
-			backup.SetFPInfo(backup_filepath.FilePathInfo{UserSpecifiedBackupDir: "/tmp", UserSpecifiedSegPrefix: "/kevin"})
+			backup.SetFPInfo(backup_filepath.FilePathInfo{UserSpecifiedBackupDir: "/tmp", UserSpecifiedSegPrefix: "/test-prefix"})
 			backup.SetReport(&utils.Report{})
-			_, _, log := testhelper.SetupTestLogger()
 
 			Expect(func() { backup.GetLatestMatchingBackupTimestamp() }).Should(Panic())
 			Expect(log.Contents()).To(ContainSubstring("There was no matching previous backup found with the flags provided. Please take a full backup."))
 
-		})
-		It("fatals when gpbackup_history.yaml can't be read", func() {
-			_, _, log := testhelper.SetupTestLogger()
-			operating.System.Stat = func(string) (os.FileInfo, error) { return nil, nil }
-			operating.System.OpenFileRead = func(string, int, os.FileMode) (operating.ReadCloserAt, error) { return nil, nil }
-			operating.System.ReadFile = func(string) ([]byte, error) { return nil, errors.New("read error") }
-
-			Expect(func() { backup.GetLatestMatchingBackupTimestamp() }).Should(Panic())
-			Expect(log).Should(gbytes.Say("read error"))
-
-		})
-		It("fatals when gpbackup_history.yaml is an invalid format", func() {
-			_, _, log := testhelper.SetupTestLogger()
-			operating.System.Stat = func(string) (os.FileInfo, error) { return nil, nil }
-			operating.System.OpenFileRead = func(string, int, os.FileMode) (operating.ReadCloserAt, error) { return nil, nil }
-			operating.System.ReadFile = func(string) ([]byte, error) { return []byte("not yaml"), nil }
-
-			Expect(func() { backup.GetLatestMatchingBackupTimestamp() }).Should(Panic())
-			Expect(log).Should(gbytes.Say(`yaml: unmarshal errors:`))
-			Expect(log).Should(gbytes.Say("not yaml"))
-		})
-		It("fatals when NewHistory returns an empty History", func() {
-			backup.SetFPInfo(backup_filepath.FilePathInfo{UserSpecifiedBackupDir: "/tmp", UserSpecifiedSegPrefix: "/kevin"})
-			backup.SetReport(&utils.Report{})
-			_, _, log := testhelper.SetupTestLogger()
-			operating.System.Stat = func(string) (os.FileInfo, error) { return nil, nil }
-			operating.System.OpenFileRead = func(string, int, os.FileMode) (operating.ReadCloserAt, error) { return nil, nil }
-			operating.System.ReadFile = func(string) ([]byte, error) { return []byte(""), nil }
-
-			Expect(func() { backup.GetLatestMatchingBackupTimestamp() }).Should(Panic())
-			Expect(log).Should(gbytes.Say("There was no matching previous backup found with the flags provided. Please take a full backup."))
 		})
 	})
 })
