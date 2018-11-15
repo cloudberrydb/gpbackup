@@ -250,9 +250,13 @@ ORDER BY n.nspname, c.relname;`, relationAndSchemaFilterClause(), ExtensionFilte
 }
 
 func GetSequenceDefinition(connectionPool *dbconn.DBConn, seqName string) SequenceDefinition {
+	startValQuery := ""
+	if connectionPool.Version.AtLeast("6") {
+		startValQuery = "start_value AS startval,"
+	}
 	query := fmt.Sprintf(`SELECT
 	last_value AS lastval,
-	start_value AS startval,
+	%s
 	increment_by AS increment,
 	max_value AS maxval,
 	min_value AS minval,
@@ -260,7 +264,7 @@ func GetSequenceDefinition(connectionPool *dbconn.DBConn, seqName string) Sequen
 	log_cnt AS logcnt,
 	is_cycled AS iscycled,
 	is_called AS iscalled
-	FROM %s`, seqName)
+	FROM %s`, startValQuery, seqName)
 	result := SequenceDefinition{}
 	err := connectionPool.Get(&result, query)
 	gplog.FatalOnError(err)
