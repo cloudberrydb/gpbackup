@@ -9,7 +9,6 @@ Backing up with a plugin:
 ```
 gpbackup ... --plugin-config <Absolute path to config file>
 ```
-The --plugin-config flag is only supported with --single-data-file or --metadata-only at this time.
 
 Restoring with a plugin:
 ```
