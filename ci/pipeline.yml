@@ -353,6 +353,7 @@ jobs:
       inputs:
        - name: ccp_src
        - name: cluster_env_files
+       - name: gpbackup_ddboost_plugin
 
       image_resource:
         type: docker-image
@@ -368,18 +369,19 @@ jobs:
 
           ccp_src/scripts/setup_ssh_to_cluster.sh
 
+          scp -r gpbackup_ddboost_plugin mdw:/home/gpadmin/gpbackup_ddboost_plugin
+
           cat <<SCRIPT > /tmp/install_dependencies.bash
           set -ex
 
           pushd /tmp
-          curl -u{{ivyrepo_user}}:{{ivyrepo_passwd}} -O "https://{{ivyrepo_host}}/gpdb-ext-release-local/third-party/ext/gpdb5_ext-3.3/targzs/rhel6_x86_64-gpdb5_ext-3.3.targz"
-          curl -u{{ivyrepo_user}}:{{ivyrepo_passwd}} -O "https://{{ivyrepo_host}}/gpdb-ext-release-local/emc/DDBoostSDK/3.3.0.4-550644/targzs/DDBoostSDK-rhel5_x86_64-3.3.0.4-550644.targz"
-          tar -xf rhel6_x86_64-gpdb5_ext-3.3.targz
-          tar -xf DDBoostSDK-rhel5_x86_64-3.3.0.4-550644.targz
-          sudo cp rhel6_x86_64/include/yaml.h /usr/local/include/yaml.h
-          sudo cp rhel5_x86_64/include/* /usr/local/include/.
-          sudo cp rhel6_x86_64/lib/libyaml.so /usr/local/lib64/.
-          sudo cp rhel5_x86_64/lib/libDDBoost.so /usr/local/lib64/.
+            curl -u{{ivyrepo_user}}:{{ivyrepo_passwd}} -O "https://{{ivyrepo_host}}/gpdb-ext-release-local/emc/DDBoostSDK/3.3.0.4-550644/targzs/DDBoostSDK-rhel5_x86_64-3.3.0.4-550644.targz"
+            tar -xf DDBoostSDK-rhel5_x86_64-3.3.0.4-550644.targz
+            # we must run as root to install libDDBoost.so
+            sudo cp rhel5_x86_64/lib/libDDBoost.so /usr/local/lib64/.
+            sudo cp -R rhel5_x86_64 /home/gpadmin/gpbackup_ddboost_plugin/
+            sudo chown -R gpadmin /home/gpadmin/gpbackup_ddboost_plugin
+            sudo yum install -y autoconf automake libtool
           popd
           SCRIPT
 
@@ -426,7 +428,6 @@ jobs:
       inputs:
        - name: gpbackup
          path: go/src/github.com/greenplum-db/gpbackup
-       - name: gpbackup_ddboost_plugin
        - name: ccp_src
        - name: cluster_env_files
 
@@ -443,7 +444,6 @@ jobs:
           set -ex
 
           ccp_src/scripts/setup_ssh_to_cluster.sh
-          scp -r gpbackup_ddboost_plugin mdw:/home/gpadmin/gpbackup_ddboost_plugin
 
           cat <<SCRIPT > /tmp/run_tests.bash
           set -ex
@@ -482,6 +482,8 @@ jobs:
 
           pushd \$GOPATH/src/github.com/greenplum-db/gpbackup/plugins
           ./plugin_test_bench.sh \$GPHOME/bin/gpbackup_ddboost_plugin \$HOME/ddboost_config_replication.yaml \$HOME/ddboost_config_replication_restore.yaml
+
+          # exercise boostfs, which is mounted at /data/gpdata/dd_dir
           pushd \$GOPATH/src/github.com/greenplum-db/gpbackup
           make end_to_end CUSTOM_BACKUP_DIR=/data/gpdata/dd_dir/end_to_end
           SCRIPT
