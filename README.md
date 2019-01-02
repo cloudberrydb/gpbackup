@@ -113,3 +113,28 @@ Note: All contributions must be sent using GitHub Pull Requests.
 **Your pull request is much more likely to be accepted if it is small and focused with a clear message that conveys the intent of your change.**
 
 Overall we follow GPDB's comprehensive contribution policy. Please refer to it [here](https://github.com/greenplum-db/gpdb#contributing) for details.
+
+# Troubleshooting
+
+On macOS, if you see errors in many integration tests, such as:
+
+```
+SECURITY LABEL FOR dummy ON TYPE public.testtype IS 'unclassified';
+      Expected
+          <pgx.PgError>: {
+              Severity: "ERROR",
+              Code: "22023",
+              Message: "security label provider \"dummy\" is not loaded",
+```
+
+then you need to load a "dummy" security label, by using the gpdb tool in `gpdb/contrib/dummy_seclabel`. A utility script for this is:
+
+```bash
+pushd ~/workspace/gpdb/contrib/dummy_seclabel
+    make install
+    gpconfig -c shared_preload_libraries -v dummy_seclabel
+    gpstop -ra
+    gpconfig -s shared_preload_libraries | grep dummy_seclabel
+popd
+
+```
