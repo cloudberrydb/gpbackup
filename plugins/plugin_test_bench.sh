@@ -19,9 +19,9 @@ if [ $# -lt 2 ] || [ $# -gt 3 ]
 fi
 
 time_second=$(date +"%s")
-testfile="/tmp/testseg/backups/2018010101/20180101010101/testfile_$time_second.txt"
-testdata="/tmp/testseg/backups/2018010101/20180101010101/testdata_$time_second.txt"
-test_no_data="/tmp/testseg/backups/2018010101/20180101010101/test_no_data_$time_second.txt"
+testfile="/tmp/testseg/backups/20180101/20180101010101/testfile_$time_second.txt"
+testdata="/tmp/testseg/backups/20180101/20180101010101/testdata_$time_second.txt"
+test_no_data="/tmp/testseg/backups/20180101/20180101010101/test_no_data_$time_second.txt"
 testdir=`dirname $testfile`
 
 text="this is some text"
