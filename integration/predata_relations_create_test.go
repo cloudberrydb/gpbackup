@@ -1,6 +1,8 @@
 package integration
 
 import (
+	"fmt"
+
 	"github.com/greenplum-db/gp-common-go-libs/structmatcher"
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpbackup/backup"
@@ -22,15 +24,19 @@ var _ = Describe("backup integration create statement tests", func() {
 	})
 	Describe("PrintRegularTableCreateStatement", func() {
 		var (
-			extTableEmpty backup.ExternalTableDefinition
-			testTable     backup.Table
-			emptyACL      = []backup.ACL{}
+			extTableEmpty                 backup.ExternalTableDefinition
+			testTable                     backup.Table
+			emptyACL                      = []backup.ACL{}
+			partitionPartFalseExpectation = "false"
 		)
 		BeforeEach(func() {
 			extTableEmpty = backup.ExternalTableDefinition{Oid: 0, Type: -2, Protocol: -2, Location: "", ExecLocation: "ALL_SEGMENTS", FormatType: "t", FormatOpts: "", Options: "", Command: "", RejectLimit: 0, RejectLimitType: "", ErrTableName: "", ErrTableSchema: "", Encoding: "UTF-8", Writable: false, URIs: nil}
 			testTable = backup.Table{
 				Relation:        backup.Relation{Schema: "public", Name: "testtable"},
 				TableDefinition: backup.TableDefinition{DistPolicy: "DISTRIBUTED RANDOMLY", ExtTableDef: extTableEmpty, Inherits: []string{}},
+			}
+			if connectionPool.Version.AtLeast("6") {
+				partitionPartFalseExpectation = "'false'"
 			}
 		})
 		AfterEach(func() {
@@ -110,12 +116,12 @@ var _ = Describe("backup integration create statement tests", func() {
 		It("creates a one-level partition table", func() {
 			rowOne := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "region", NotNull: false, HasDefault: false, Type: "text", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: emptyACL}
 			rowTwo := backup.ColumnDefinition{Oid: 0, Num: 2, Name: "gender", NotNull: false, HasDefault: false, Type: "text", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", ACL: emptyACL}
-			testTable.PartDef = `PARTITION BY LIST(gender) ` + `
+			testTable.PartDef = fmt.Sprintf(`PARTITION BY LIST(gender) `+`
           (
-          PARTITION girls VALUES('F') WITH (tablename='public.rank_1_prt_girls', appendonly=false ), ` + `
-          PARTITION boys VALUES('M') WITH (tablename='public.rank_1_prt_boys', appendonly=false ), ` + `
-          DEFAULT PARTITION other  WITH (tablename='public.rank_1_prt_other', appendonly=false )
-          )`
+          PARTITION girls VALUES('F') WITH (tablename='public.rank_1_prt_girls', appendonly=%[1]s ), `+`
+          PARTITION boys VALUES('M') WITH (tablename='public.rank_1_prt_boys', appendonly=%[1]s ), `+`
+          DEFAULT PARTITION other  WITH (tablename='public.rank_1_prt_other', appendonly=%[1]s )
+          )`, partitionPartFalseExpectation)
 
 			testTable.ColumnDefs = []backup.ColumnDefinition{rowOne, rowTwo}
 			testTable.PartitionLevelInfo.Level = "p"
@@ -171,31 +177,31 @@ SET SUBPARTITION TEMPLATE  ` + `
           )
 `
 			} else {
-				subpartitionDef = `PARTITION BY LIST(gender)
-          SUBPARTITION BY LIST(region) ` + `
+				subpartitionDef = fmt.Sprintf(`PARTITION BY LIST(gender)
+          SUBPARTITION BY LIST(region) `+`
           (
-          PARTITION girls VALUES('F') WITH (tablename='public.rank_1_prt_girls', appendonly=false )` + `
+          PARTITION girls VALUES('F') WITH (tablename='public.rank_1_prt_girls', appendonly=%[1]s )`+`
                   (
-                  SUBPARTITION usa VALUES('usa') WITH (tablename='public.rank_1_prt_girls_2_prt_usa', appendonly=false ), ` + `
-                  SUBPARTITION asia VALUES('asia') WITH (tablename='public.rank_1_prt_girls_2_prt_asia', appendonly=false ), ` + `
-                  SUBPARTITION europe VALUES('europe') WITH (tablename='public.rank_1_prt_girls_2_prt_europe', appendonly=false ), ` + `
-                  DEFAULT SUBPARTITION other_regions  WITH (tablename='public.rank_1_prt_girls_2_prt_other_regions', appendonly=false )
-                  ), ` + `
-          PARTITION boys VALUES('M') WITH (tablename='rank_1_prt_boys', appendonly=false )` + `
+                  SUBPARTITION usa VALUES('usa') WITH (tablename='public.rank_1_prt_girls_2_prt_usa', appendonly=%[1]s ), `+`
+                  SUBPARTITION asia VALUES('asia') WITH (tablename='public.rank_1_prt_girls_2_prt_asia', appendonly=%[1]s ), `+`
+                  SUBPARTITION europe VALUES('europe') WITH (tablename='public.rank_1_prt_girls_2_prt_europe', appendonly=%[1]s ), `+`
+                  DEFAULT SUBPARTITION other_regions  WITH (tablename='public.rank_1_prt_girls_2_prt_other_regions', appendonly=%[1]s )
+                  ), `+`
+          PARTITION boys VALUES('M') WITH (tablename='rank_1_prt_boys', appendonly=%[1]s )`+`
                   (
-                  SUBPARTITION usa VALUES('usa') WITH (tablename='public.rank_1_prt_boys_2_prt_usa', appendonly=false ), ` + `
-                  SUBPARTITION asia VALUES('asia') WITH (tablename='public.rank_1_prt_boys_2_prt_asia', appendonly=false ), ` + `
-                  SUBPARTITION europe VALUES('europe') WITH (tablename='public.rank_1_prt_boys_2_prt_europe', appendonly=false ), ` + `
-                  DEFAULT SUBPARTITION other_regions  WITH (tablename='public.rank_1_prt_boys_2_prt_other_regions', appendonly=false )
-                  ), ` + `
-          DEFAULT PARTITION other  WITH (tablename='public.rank_1_prt_other', appendonly=false )` + `
+                  SUBPARTITION usa VALUES('usa') WITH (tablename='public.rank_1_prt_boys_2_prt_usa', appendonly=%[1]s ), `+`
+                  SUBPARTITION asia VALUES('asia') WITH (tablename='public.rank_1_prt_boys_2_prt_asia', appendonly=%[1]s ), `+`
+                  SUBPARTITION europe VALUES('europe') WITH (tablename='public.rank_1_prt_boys_2_prt_europe', appendonly=%[1]s ), `+`
+                  DEFAULT SUBPARTITION other_regions  WITH (tablename='public.rank_1_prt_boys_2_prt_other_regions', appendonly=%[1]s )
+                  ), `+`
+          DEFAULT PARTITION other  WITH (tablename='public.rank_1_prt_other', appendonly=%[1]s )`+`
                   (
-                  SUBPARTITION usa VALUES('usa') WITH (tablename='public.rank_1_prt_other_2_prt_usa', appendonly=false ), ` + `
-                  SUBPARTITION asia VALUES('asia') WITH (tablename='public.rank_1_prt_other_2_prt_asia', appendonly=false ), ` + `
-                  SUBPARTITION europe VALUES('europe') WITH (tablename='public.rank_1_prt_other_2_prt_europe', appendonly=false ), ` + `
-                  DEFAULT SUBPARTITION other_regions  WITH (tablename='public.rank_1_prt_other_2_prt_other_regions', appendonly=false )
+                  SUBPARTITION usa VALUES('usa') WITH (tablename='public.rank_1_prt_other_2_prt_usa', appendonly=%[1]s ), `+`
+                  SUBPARTITION asia VALUES('asia') WITH (tablename='public.rank_1_prt_other_2_prt_asia', appendonly=%[1]s ), `+`
+                  SUBPARTITION europe VALUES('europe') WITH (tablename='public.rank_1_prt_other_2_prt_europe', appendonly=%[1]s ), `+`
+                  DEFAULT SUBPARTITION other_regions  WITH (tablename='public.rank_1_prt_other_2_prt_other_regions', appendonly=%[1]s )
                   )
-          )`
+          )`, partitionPartFalseExpectation)
 				partTemplateDef = `ALTER TABLE public.testtable ` + `
 SET SUBPARTITION TEMPLATE ` + `
           (

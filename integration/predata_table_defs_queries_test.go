@@ -1,6 +1,8 @@
 package integration
 
 import (
+	"fmt"
+
 	"github.com/greenplum-db/gp-common-go-libs/structmatcher"
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpbackup/backup"
@@ -231,6 +233,12 @@ PARTITION BY RANGE (year)
 		})
 	})
 	Describe("GetPartitionDefinitions", func() {
+		var partitionPartFalseExpectation = "false"
+		BeforeEach(func() {
+			if connectionPool.Version.AtLeast("6") {
+				partitionPartFalseExpectation = "'false'"
+			}
+		})
 		It("returns empty string when no partition exists", func() {
 			testhelper.AssertQueryRuns(connectionPool, "CREATE TABLE public.simple_table(i int)")
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLE public.simple_table")
@@ -255,12 +263,12 @@ PARTITION BY LIST (gender)
 			result := backup.GetPartitionDefinitions(connectionPool)[oid]
 
 			// The spacing is very specific here and is output from the postgres function
-			expectedResult := `PARTITION BY LIST(gender) 
+			expectedResult := fmt.Sprintf(`PARTITION BY LIST(gender) `+`
           (
-          PARTITION girls VALUES('F') WITH (tablename='part_table_1_prt_girls', appendonly=false ), 
-          PARTITION boys VALUES('M') WITH (tablename='part_table_1_prt_boys', appendonly=false ), 
-          DEFAULT PARTITION other  WITH (tablename='part_table_1_prt_other', appendonly=false )
-          )`
+          PARTITION girls VALUES('F') WITH (tablename='part_table_1_prt_girls', appendonly=%[1]s), `+`
+          PARTITION boys VALUES('M') WITH (tablename='part_table_1_prt_boys', appendonly=%[1]s), `+`
+          DEFAULT PARTITION other  WITH (tablename='part_table_1_prt_other', appendonly=%[1]s)
+          )`, partitionPartFalseExpectation)
 			Expect(result).To(Equal(expectedResult))
 		})
 		It("returns a value for a partition definition for a specific table", func() {
@@ -291,12 +299,12 @@ PARTITION BY LIST (gender)
 			result := results[oid]
 
 			// The spacing is very specific here and is output from the postgres function
-			expectedResult := `PARTITION BY LIST(gender) 
+			expectedResult := fmt.Sprintf(`PARTITION BY LIST(gender) `+`
           (
-          PARTITION girls VALUES('F') WITH (tablename='part_table_1_prt_girls', appendonly=false ), 
-          PARTITION boys VALUES('M') WITH (tablename='part_table_1_prt_boys', appendonly=false ), 
-          DEFAULT PARTITION other  WITH (tablename='part_table_1_prt_other', appendonly=false )
-          )`
+          PARTITION girls VALUES('F') WITH (tablename='part_table_1_prt_girls', appendonly=%[1]s), `+`
+          PARTITION boys VALUES('M') WITH (tablename='part_table_1_prt_boys', appendonly=%[1]s), `+`
+          DEFAULT PARTITION other  WITH (tablename='part_table_1_prt_other', appendonly=%[1]s)
+          )`, partitionPartFalseExpectation)
 			Expect(result).To(Equal(expectedResult))
 		})
 		It("returns a value for a partition definition in a specific schema", func() {
@@ -328,12 +336,12 @@ PARTITION BY LIST (gender)
 			result := results[oid]
 
 			// The spacing is very specific here and is output from the postgres function
-			expectedResult := `PARTITION BY LIST(gender) 
+			expectedResult := fmt.Sprintf(`PARTITION BY LIST(gender) `+`
           (
-          PARTITION girls VALUES('F') WITH (tablename='part_table_1_prt_girls', appendonly=false ), 
-          PARTITION boys VALUES('M') WITH (tablename='part_table_1_prt_boys', appendonly=false ), 
-          DEFAULT PARTITION other  WITH (tablename='part_table_1_prt_other', appendonly=false )
-          )`
+          PARTITION girls VALUES('F') WITH (tablename='part_table_1_prt_girls', appendonly=%[1]s), `+`
+          PARTITION boys VALUES('M') WITH (tablename='part_table_1_prt_boys', appendonly=%[1]s), `+`
+          DEFAULT PARTITION other  WITH (tablename='part_table_1_prt_other', appendonly=%[1]s)
+          )`, partitionPartFalseExpectation)
 			Expect(result).To(Equal(expectedResult))
 		})
 	})
