@@ -233,7 +233,7 @@ PARTITION BY RANGE (year)
 		})
 	})
 	Describe("GetPartitionDefinitions", func() {
-		var partitionPartFalseExpectation = "false"
+		var partitionPartFalseExpectation = "false "
 		BeforeEach(func() {
 			if connectionPool.Version.AtLeast("6") {
 				partitionPartFalseExpectation = "'false'"
