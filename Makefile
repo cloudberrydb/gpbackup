@@ -25,7 +25,7 @@ dependencies :
 		go get github.com/alecthomas/gometalinter
 		gometalinter --install
 		curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-		dep ensure
+		dep ensure -v
 		@cd vendor/golang.org/x/tools/cmd/goimports; go install .
 		@cd vendor/github.com/onsi/ginkgo/ginkgo; go install .
 
