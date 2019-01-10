@@ -49,14 +49,18 @@ func ValidateFilterTables(connectionPool *dbconn.DBConn, tableList []string, exc
 		return
 	}
 	utils.ValidateFQNs(tableList)
+	DBValidate(tableList, connectionPool, excludeSet)
+}
+
+func DBValidate(tableList []string, pool *dbconn.DBConn, excludeSet bool) {
 	quotedTablesStr := utils.SliceToQuotedString(tableList)
 	query := fmt.Sprintf(`
-SELECT
-	c.oid,
-	n.nspname || '.' || c.relname AS name
-FROM pg_namespace n
-JOIN pg_class c ON n.oid = c.relnamespace
-WHERE quote_ident(n.nspname) || '.' || quote_ident(c.relname) IN (%s)`, quotedTablesStr)
+	SELECT
+		c.oid,
+		n.nspname || '.' || c.relname AS name
+	FROM pg_namespace n
+	JOIN pg_class c ON n.oid = c.relnamespace
+	WHERE quote_ident(n.nspname) || '.' || quote_ident(c.relname) IN (%s)`, quotedTablesStr)
 	resultTables := make([]struct {
 		Oid  uint32
 		Name string
