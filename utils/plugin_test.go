@@ -15,7 +15,6 @@ import (
 
 var _ = Describe("utils/plugin tests", func() {
 	stdOut := make(map[int]string, 1)
-	stdOut[0] = utils.RequiredPluginVersion // this is a successful result
 	var testCluster *cluster.Cluster
 	var executor testhelper.TestExecutor
 	var subject utils.PluginConfig
@@ -29,6 +28,7 @@ var _ = Describe("utils/plugin tests", func() {
 				Stdouts: stdOut,
 			},
 		}
+		stdOut[0] = utils.RequiredPluginVersion // this is a successful result
 		testCluster = &cluster.Cluster{
 			ContentIDs: []int{-1, 0, 1},
 			Executor:   &executor,
