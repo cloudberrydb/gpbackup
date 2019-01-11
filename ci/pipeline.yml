@@ -12,6 +12,14 @@ resource_types:
     tag: latest
 
 resources:
+- name: nightly-trigger
+  type: time
+  source:
+    location: America/Los_Angeles
+    days: [Sunday, Monday, Tuesday, Wednesday, Thursday, Friday]
+    start: 6:00 AM
+    stop: 7:00 AM
+
 - name: gpbackup
   type: git
   source:
@@ -214,6 +222,8 @@ jobs:
   - aggregate:
     - get: gpbackup
       trigger: true
+    - get: nightly-trigger
+      trigger: true
   - task: unit-tests
     file: gpbackup/ci/tasks/unit-tests.yml
     on_failure:
@@ -225,6 +235,8 @@ jobs:
     - get: gpbackup_s3_plugin
       trigger: true
     - get: gpbackup
+      trigger: true
+    - get: nightly-trigger
       trigger: true
     - get: ccp_src
     - get: gpdb_src
@@ -313,6 +325,9 @@ jobs:
       tags: ["ddboost"]
       trigger: true
     - get: gpbackup
+      tags: ["ddboost"]
+      trigger: true
+    - get: nightly-trigger
       tags: ["ddboost"]
       trigger: true
     - get: ccp_src
@@ -503,6 +518,8 @@ jobs:
   - aggregate:
     - get: gpbackup
       trigger: true
+    - get: nightly-trigger
+      trigger: true
     - get: bin_gpdb_5x_stable
     - get: ccp_src
     - get: gpdb_src
@@ -536,6 +553,8 @@ jobs:
   plan:
   - aggregate:
     - get: gpbackup
+      trigger: true
+    - get: nightly-trigger
       trigger: true
     - get: bin_gpdb_5x_stable_centos7
     - get: ccp_src
@@ -579,6 +598,8 @@ jobs:
   - aggregate:
     - get: gpbackup
       trigger: true
+    - get: nightly-trigger
+      trigger: true
     - get: bin_gpdb_master
     - get: ccp_src
     - get: gpdb_src
@@ -613,6 +634,8 @@ jobs:
   - aggregate:
     - get: gpbackup
       trigger: true
+    - get: nightly-trigger
+      trigger: true
     - get: bin_gpdb_5x_stable
     - get: ccp_src
     - get: gpdb_src
@@ -646,6 +669,8 @@ jobs:
   - aggregate:
     - get: gpbackup
       trigger: true
+    - get: nightly-trigger
+      trigger: true
     - get: bin_gpdb_43_stable
     - get: ccp_src
     - get: gpdb_src
@@ -678,6 +703,8 @@ jobs:
   plan:
   - aggregate:
     - get: gpbackup
+      trigger: true
+    - get: nightly-trigger
       trigger: true
     - get: bin_gpdb_5x_stable
     - get: ccp_src
