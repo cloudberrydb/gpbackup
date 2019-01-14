@@ -65,7 +65,7 @@ func DBValidate(tableList []string, pool *dbconn.DBConn, excludeSet bool) {
 		Name string
 	}, 0)
 	err := connectionPool.Select(&resultTables, query)
-	gplog.FatalOnError(err)
+	gplog.FatalOnError(err, fmt.Sprintf("Query was: %s", query))
 	tableMap := make(map[string]uint32)
 	for _, table := range resultTables {
 		tableMap[table.Name] = table.Oid
