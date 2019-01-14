@@ -121,11 +121,6 @@ func InitializeFilterLists() {
 		err := cmdFlags.Set(utils.EXCLUDE_RELATION, strings.Join(excludeRelations, ","))
 		gplog.FatalOnError(err)
 	}
-	if MustGetFlagString(utils.INCLUDE_RELATION_FILE) != "" {
-		includeRelations := iohelper.MustReadLinesFromFile(MustGetFlagString(utils.INCLUDE_RELATION_FILE))
-		err := cmdFlags.Set(utils.INCLUDE_RELATION, strings.Join(includeRelations, ","))
-		gplog.FatalOnError(err)
-	}
 }
 
 func CreateBackupLockFile(timestamp string) {

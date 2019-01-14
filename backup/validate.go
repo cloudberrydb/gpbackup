@@ -19,7 +19,6 @@ import (
 func validateFilterLists() {
 	ValidateFilterSchemas(connectionPool, MustGetFlagStringSlice(utils.INCLUDE_SCHEMA), false)
 	ValidateFilterSchemas(connectionPool, MustGetFlagStringSlice(utils.EXCLUDE_SCHEMA), true)
-	ValidateFilterTables(connectionPool, MustGetFlagStringSlice(utils.INCLUDE_RELATION), false)
 	ValidateFilterTables(connectionPool, MustGetFlagStringSlice(utils.EXCLUDE_RELATION), true)
 }
 
