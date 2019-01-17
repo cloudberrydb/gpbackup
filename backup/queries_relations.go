@@ -310,7 +310,7 @@ AND %s;`, relationAndSchemaFilterClause())
 	sequenceOwnerTables := make(map[string]string, 0)
 	sequenceOwnerColumns := make(map[string]string, 0)
 	err := connectionPool.Select(&results, query)
-	gplog.FatalOnError(err)
+	gplog.FatalOnError(err, fmt.Sprintf("Failed on query: %s", query))
 	for _, seqOwner := range results {
 		seqFQN := utils.MakeFQN(seqOwner.Schema, seqOwner.Name)
 		tableFQN := fmt.Sprintf("%s.%s", seqOwner.Schema, seqOwner.TableName)
