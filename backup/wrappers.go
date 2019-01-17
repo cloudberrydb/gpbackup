@@ -74,10 +74,10 @@ func NewBackupConfig(dbName string, dbVersion string, backupVersion string, plug
 		ExcludeSchemaFiltered: len(MustGetFlagStringSlice(utils.EXCLUDE_SCHEMA)) > 0,
 		ExcludeSchemas:        MustGetFlagStringSlice(utils.EXCLUDE_SCHEMA),
 		ExcludeTableFiltered:  len(MustGetFlagStringSlice(utils.EXCLUDE_RELATION)) > 0,
-		IncludeRelations:      MustGetFlagStringSlice(utils.INCLUDE_RELATION),
+		IncludeRelations:      MustGetFlagStringArray(utils.INCLUDE_RELATION),
 		IncludeSchemaFiltered: len(MustGetFlagStringSlice(utils.INCLUDE_SCHEMA)) > 0,
 		IncludeSchemas:        MustGetFlagStringSlice(utils.INCLUDE_SCHEMA),
-		IncludeTableFiltered:  len(MustGetFlagStringSlice(utils.INCLUDE_RELATION)) > 0,
+		IncludeTableFiltered:  len(MustGetFlagStringArray(utils.INCLUDE_RELATION)) > 0,
 		Incremental:           MustGetFlagBool(utils.INCREMENTAL),
 		LeafPartitionData:     MustGetFlagBool(utils.LEAF_PARTITION_DATA),
 		MetadataOnly:          MustGetFlagBool(utils.METADATA_ONLY),
@@ -155,7 +155,7 @@ func RetrieveAndProcessTables() ([]Table, []Table) {
 	 * We expand the includeRelations list to include parent and leaf partitions that may not have been
 	 * specified by the user but are used in the backup for metadata or data.
 	 */
-	userPassedIncludeRelations := MustGetFlagStringSlice(utils.INCLUDE_RELATION)
+	userPassedIncludeRelations := MustGetFlagStringArray(utils.INCLUDE_RELATION)
 	ExpandIncludeRelations(tableRelations)
 
 	if connectionPool.Version.AtLeast("6") {

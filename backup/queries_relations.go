@@ -22,8 +22,8 @@ func relationAndSchemaFilterClause() string {
 			filterClause += fmt.Sprintf("\nAND c.oid NOT IN (%s)", strings.Join(excludeOids, ", "))
 		}
 	}
-	if len(MustGetFlagStringSlice(utils.INCLUDE_RELATION)) > 0 {
-		includeOids := GetOidsFromRelationList(connectionPool, MustGetFlagStringSlice(utils.INCLUDE_RELATION))
+	if len(MustGetFlagStringArray(utils.INCLUDE_RELATION)) > 0 {
+		includeOids := GetOidsFromRelationList(connectionPool, MustGetFlagStringArray(utils.INCLUDE_RELATION))
 		filterClause += fmt.Sprintf("\nAND c.oid IN (%s)", strings.Join(includeOids, ", "))
 	}
 	return filterClause
@@ -41,7 +41,7 @@ WHERE quote_ident(n.nspname) || '.' || quote_ident(c.relname) IN (%s)`, relList)
 }
 
 func GetIncludedUserTableRelations(connectionPool *dbconn.DBConn) []Relation {
-	if len(MustGetFlagStringSlice(utils.INCLUDE_RELATION)) > 0 {
+	if len(MustGetFlagStringArray(utils.INCLUDE_RELATION)) > 0 {
 		return GetUserTableRelationsWithIncludeFiltering(connectionPool)
 	}
 	return GetUserTableRelations(connectionPool)
@@ -103,7 +103,7 @@ ORDER BY c.oid;`, relationAndSchemaFilterClause(), childPartitionFilter, Extensi
 }
 
 func GetUserTableRelationsWithIncludeFiltering(connectionPool *dbconn.DBConn) []Relation {
-	includeOids := GetOidsFromRelationList(connectionPool, MustGetFlagStringSlice(utils.INCLUDE_RELATION))
+	includeOids := GetOidsFromRelationList(connectionPool, MustGetFlagStringArray(utils.INCLUDE_RELATION))
 	oidStr := strings.Join(includeOids, ", ")
 	childPartitionFilter := ""
 	if MustGetFlagBool(utils.LEAF_PARTITION_DATA) {

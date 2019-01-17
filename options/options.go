@@ -21,7 +21,7 @@ func (o Options) GetIncludedTables() []string {
 }
 
 func NewOptions(initialFlags *pflag.FlagSet, connectionPool *dbconn.DBConn, validator DbValidator) (*Options, error) {
-	tableNames, err := initialFlags.GetStringSlice(utils.INCLUDE_RELATION)
+	tableNames, err := initialFlags.GetStringArray(utils.INCLUDE_RELATION)
 	if err != nil {
 		return nil, err
 	}

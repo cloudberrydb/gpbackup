@@ -45,7 +45,7 @@ func SetFlagDefaults(flagSet *pflag.FlagSet) {
 	flagSet.String(utils.FROM_TIMESTAMP, "", "A timestamp to use to base the current incremental backup off")
 	flagSet.Bool("help", false, "Help for gpbackup")
 	flagSet.StringSlice(utils.INCLUDE_SCHEMA, []string{}, "Back up only the specified schema(s). --include-schema can be specified multiple times.")
-	flagSet.StringSlice(utils.INCLUDE_RELATION, []string{}, "Back up only the specified table(s). --include-table can be specified multiple times.")
+	flagSet.StringArray(utils.INCLUDE_RELATION, []string{}, "Back up only the specified table(s). --include-table can be specified multiple times.")
 	flagSet.String(utils.INCLUDE_RELATION_FILE, "", "A file containing a list of fully-qualified tables to be included in the backup")
 	flagSet.Bool(utils.INCREMENTAL, false, "Only back up data for AO tables that have been modified since the last backup")
 	flagSet.Int(utils.JOBS, 1, "The number of parallel connections to use when backing up data")
@@ -159,7 +159,7 @@ func DoBackup() {
 	BackupSessionGUCs(metadataFile)
 	if !MustGetFlagBool(utils.DATA_ONLY) {
 		tableOnlyBackup := true
-		if len(MustGetFlagStringSlice(utils.INCLUDE_RELATION)) == 0 {
+		if len(MustGetFlagStringArray(utils.INCLUDE_RELATION)) == 0 {
 			tableOnlyBackup = false
 			backupGlobal(metadataFile)
 		}

@@ -72,7 +72,7 @@ func MatchesIncrementalFlags(backupConfig *backup_history.BackupConfig, currentB
 		backupConfig.Plugin == currentBackupConfig.Plugin &&
 		backupConfig.SingleDataFile == MustGetFlagBool(utils.SINGLE_DATA_FILE) &&
 		backupConfig.Compressed == currentBackupConfig.Compressed &&
-		utils.NewIncludeSet(backupConfig.IncludeRelations).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(utils.INCLUDE_RELATION))) &&
+		utils.NewIncludeSet(backupConfig.IncludeRelations).Equals(utils.NewIncludeSet(MustGetFlagStringArray(utils.INCLUDE_RELATION))) &&
 		utils.NewIncludeSet(backupConfig.IncludeSchemas).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(utils.INCLUDE_SCHEMA))) &&
 		utils.NewIncludeSet(backupConfig.ExcludeRelations).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(utils.EXCLUDE_RELATION))) &&
 		utils.NewIncludeSet(backupConfig.ExcludeSchemas).Equals(utils.NewIncludeSet(MustGetFlagStringSlice(utils.EXCLUDE_SCHEMA)))

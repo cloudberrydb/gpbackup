@@ -485,22 +485,24 @@ GRANT ALL ON shamwow.shazam TO testrole;`,
 			_ = cmdFlags.Set(utils.INCLUDE_RELATION, "")
 			backup.ExpandIncludeRelations(testTables)
 
-			Expect(backup.MustGetFlagStringSlice(utils.INCLUDE_RELATION)).To(BeEmpty())
+			Expect(backup.MustGetFlagStringArray(utils.INCLUDE_RELATION)).To(BeEmpty())
 		})
 		It("returns original include list if the new tables list is equivalent to existing list", func() {
-			_ = cmdFlags.Set(utils.INCLUDE_RELATION, "testschema.foo1,testschema.foo2")
+			_ = cmdFlags.Set(utils.INCLUDE_RELATION, "testschema.foo1")
+			_ = cmdFlags.Set(utils.INCLUDE_RELATION, "testschema.foo2")
 			backup.ExpandIncludeRelations(testTables)
 
-			Expect(backup.MustGetFlagStringSlice(utils.INCLUDE_RELATION)).To(HaveLen(2))
-			Expect(backup.MustGetFlagStringSlice(utils.INCLUDE_RELATION)).
+			Expect(backup.MustGetFlagStringArray(utils.INCLUDE_RELATION)).To(HaveLen(2))
+			Expect(backup.MustGetFlagStringArray(utils.INCLUDE_RELATION)).
 				To(ConsistOf([]string{"testschema.foo1", "testschema.foo2"}))
 		})
 		It("returns expanded include list if there are new tables to add", func() {
-			_ = cmdFlags.Set(utils.INCLUDE_RELATION, "testschema.foo2,testschema.foo3")
+			_ = cmdFlags.Set(utils.INCLUDE_RELATION, "testschema.foo2")
+			_ = cmdFlags.Set(utils.INCLUDE_RELATION, "testschema.foo3")
 			backup.ExpandIncludeRelations(testTables)
 
-			Expect(backup.MustGetFlagStringSlice(utils.INCLUDE_RELATION)).To(HaveLen(3))
-			Expect(backup.MustGetFlagStringSlice(utils.INCLUDE_RELATION)).
+			Expect(backup.MustGetFlagStringArray(utils.INCLUDE_RELATION)).To(HaveLen(3))
+			Expect(backup.MustGetFlagStringArray(utils.INCLUDE_RELATION)).
 				To(ConsistOf([]string{"testschema.foo1", "testschema.foo2", "testschema.foo3"}))
 		})
 	})

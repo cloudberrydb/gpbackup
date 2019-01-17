@@ -102,3 +102,7 @@ func MustGetFlagBool(flagName string) bool {
 func MustGetFlagStringSlice(flagName string) []string {
 	return utils.MustGetFlagStringSlice(cmdFlags, flagName)
 }
+
+func MustGetFlagStringArray(flagName string) []string {
+	return utils.MustGetFlagStringArray(cmdFlags, flagName)
+}

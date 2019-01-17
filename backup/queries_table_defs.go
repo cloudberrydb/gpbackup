@@ -468,7 +468,7 @@ type Dependency struct {
 
 func GetTableInheritance(connectionPool *dbconn.DBConn, tables []Relation) map[uint32][]string {
 	tableFilterStr := ""
-	if len(MustGetFlagStringSlice(utils.INCLUDE_RELATION)) > 0 {
+	if len(MustGetFlagStringArray(utils.INCLUDE_RELATION)) > 0 {
 		tableOidList := make([]string, len(tables))
 		for i, table := range tables {
 			tableOidList[i] = fmt.Sprintf("%d", table.Oid)

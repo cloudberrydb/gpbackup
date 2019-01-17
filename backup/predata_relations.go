@@ -76,7 +76,7 @@ func AppendExtPartSuffix(name string) string {
 }
 
 func ExpandIncludeRelations(tables []Relation) {
-	includeRelations := MustGetFlagStringSlice(utils.INCLUDE_RELATION)
+	includeRelations := MustGetFlagStringArray(utils.INCLUDE_RELATION)
 
 	if len(includeRelations) == 0 {
 		return

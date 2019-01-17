@@ -101,3 +101,9 @@ func MustGetFlagStringSlice(cmdFlags *pflag.FlagSet, flagName string) []string {
 	gplog.FatalOnError(err)
 	return value
 }
+
+func MustGetFlagStringArray(cmdFlags *pflag.FlagSet, flagName string) []string {
+	value, err := cmdFlags.GetStringArray(flagName)
+	gplog.FatalOnError(err)
+	return value
+}
