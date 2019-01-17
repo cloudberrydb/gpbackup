@@ -44,7 +44,7 @@ integration :
 
 test : lint unit integration
 
-end_to_end :
+end_to_end : build
 		ginkgo -r -randomizeSuites -slowSpecThreshold=10 -noisySkippings=false -randomizeAllSpecs end_to_end -- --custom_backup_dir $(CUSTOM_BACKUP_DIR) 2>&1
 
 coverage :
