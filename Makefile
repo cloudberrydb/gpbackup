@@ -34,7 +34,7 @@ format :
 
 lint :
 		! goimports -l backup/ restore/ utils/ helper/ testutils/ integration/ end_to_end/ | read
-		gometalinter --config=gometalinter.config -s vendor ./...
+		gometalinter --config=gometalinter.config -s vendor ./... --deadline=120s
 
 unit :
 		ginkgo -r -keepGoing -randomizeSuites -noisySkippings=false -randomizeAllSpecs backup restore utils backup_history backup_filepath testutils options 2>&1
