@@ -48,10 +48,13 @@ func ValidateFilterTables(connectionPool *dbconn.DBConn, tableList []string, exc
 		return
 	}
 	utils.ValidateFQNs(tableList)
-	DBValidate(tableList, connectionPool, excludeSet)
+	DBValidate(connectionPool, tableList, excludeSet)
 }
 
-func DBValidate(tableList []string, pool *dbconn.DBConn, excludeSet bool) {
+func DBValidate(pool *dbconn.DBConn, tableList []string, excludeSet bool) {
+	if len(tableList) == 0 {
+		return
+	}
 	quotedTablesStr := utils.SliceToQuotedString(tableList)
 	query := fmt.Sprintf(`
 	SELECT

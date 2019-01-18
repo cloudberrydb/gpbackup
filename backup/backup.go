@@ -7,8 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/greenplum-db/gp-common-go-libs/dbconn"
-
 	"github.com/greenplum-db/gpbackup/options"
 
 	"github.com/greenplum-db/gp-common-go-libs/cluster"
@@ -83,15 +81,8 @@ func DoSetup() {
 	gplog.Info("Starting backup of database %s", MustGetFlagString(utils.DBNAME))
 	InitializeConnectionPool()
 
-	validator := InDatabaseValidator{}
-	opts, err := options.NewOptions(cmdFlags, connectionPool, validator)
+	opts, err := options.NewOptions(cmdFlags)
 	gplog.FatalOnError(err)
-
-	// todo remove these when EXCLUDE_RELATION* flags are handled by options object
-	InitializeFilterLists()
-	validateFilterLists()
-
-	// todo remove this reset of global storage when local storage is used for all options
 	if MustGetFlagString(utils.INCLUDE_RELATION_FILE) != "" {
 		// copy any values for flag INCLUDE_RELATION_FILE into global flag for INCLUDE_RELATION
 		for _, fqn := range opts.GetIncludedTables() {
@@ -99,6 +90,16 @@ func DoSetup() {
 			gplog.FatalOnError(err)
 		}
 	}
+
+	quotedList, err := options.QuoteTableNames(connectionPool, opts.GetIncludedTables())
+	gplog.FatalOnError(err)
+	// todo perhaps store quoted list in a new global flag??
+
+	DBValidate(connectionPool, quotedList, false)
+
+	// todo remove these when EXCLUDE_RELATION* flags are handled by options object
+	InitializeFilterLists()
+	validateFilterLists()
 
 	segConfig := cluster.MustGetSegmentConfiguration(connectionPool)
 	globalCluster = cluster.NewCluster(segConfig)
@@ -481,14 +482,4 @@ func DoCleanup() {
 
 func GetVersion() string {
 	return version
-}
-
-// todo: move implementation to Options package
-type InDatabaseValidator struct{}
-
-func (d InDatabaseValidator) ValidateInDatabase(tableList []string, conn *dbconn.DBConn) {
-	if len(tableList) == 0 {
-		return
-	}
-	DBValidate(tableList, conn, false)
 }
