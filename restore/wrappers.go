@@ -240,7 +240,6 @@ func RestoreSchemas(schemaStatements []utils.StatementWithType, progressBar util
 	for _, schema := range schemaStatements {
 		_, err := connectionPool.Exec(schema.Statement, 0)
 		if err != nil {
-			fmt.Println()
 			if strings.Contains(err.Error(), "already exists") {
 				gplog.Warn("Schema %s already exists", schema.Name)
 			} else {
