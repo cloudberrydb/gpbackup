@@ -36,43 +36,35 @@ var _ = Describe("options creation", func() {
 			})
 			It("returns the include tables when one table in flag", func() {
 				err := myflags.Set(utils.INCLUDE_RELATION, "foo.bar")
-				if err != nil {
-					Fail("cannot set relation")
-				}
+				Expect(err).ToNot(HaveOccurred())
 
 				subject, err := options.NewOptions(myflags)
 				Expect(err).To(Not(HaveOccurred()))
 
 				includedTables := subject.GetIncludedTables()
-				Expect(len(includedTables)).To(Equal(1))
+				Expect(includedTables).To(HaveLen(1))
 				Expect(includedTables[0]).To(Equal("foo.bar"))
 			})
 			It("returns an include with special characters besides quote, dot and comma", func() {
 				err := myflags.Set(utils.INCLUDE_RELATION, `foo '~#$%^&*()_-+[]{}><\|;:/?!\t\n.bar`)
-				if err != nil {
-					Fail("cannot set relation")
-				}
+				Expect(err).ToNot(HaveOccurred())
 				subject, err := options.NewOptions(myflags)
 				Expect(err).To(Not(HaveOccurred()))
 
 				includedTables := subject.GetIncludedTables()
-				Expect(len(includedTables)).To(Equal(1))
+				Expect(includedTables).To(HaveLen(1))
 				Expect(includedTables[0]).To(Equal(`foo '~#$%^&*()_-+[]{}><\|;:/?!\t\n.bar`))
 			})
 			It("returns all included tables when multiple individual flags provided", func() {
 				err := myflags.Set(utils.INCLUDE_RELATION, "foo.bar")
-				if err != nil {
-					Fail("cannot set relation flag")
-				}
+				Expect(err).ToNot(HaveOccurred())
 				err = myflags.Set(utils.INCLUDE_RELATION, "bar.baz")
-				if err != nil {
-					Fail("cannot set relation flag")
-				}
+				Expect(err).ToNot(HaveOccurred())
 				subject, err := options.NewOptions(myflags)
 				Expect(err).To(Not(HaveOccurred()))
 
 				includedTables := subject.GetIncludedTables()
-				Expect(len(includedTables)).To(Equal(2))
+				Expect(includedTables).To(HaveLen(2))
 				Expect(includedTables[0]).To(Equal("foo.bar"))
 				Expect(includedTables[1]).To(Equal("bar.baz"))
 			})
@@ -90,22 +82,18 @@ var _ = Describe("options creation", func() {
 				Expect(err).To(Not(HaveOccurred()))
 
 				err = myflags.Set(utils.INCLUDE_RELATION_FILE, file.Name())
-				if err != nil {
-					Fail("cannot set relations file flag")
-				}
+				Expect(err).ToNot(HaveOccurred())
 				subject, err := options.NewOptions(myflags)
 				Expect(err).To(Not(HaveOccurred()))
 
 				includedTables := subject.GetIncludedTables()
-				Expect(len(includedTables)).To(Equal(2))
+				Expect(includedTables).To(HaveLen(2))
 				Expect(includedTables[0]).To(Equal("myschema.mytable"))
 				Expect(includedTables[1]).To(Equal("myschema.mytable2"))
 			})
 			It("returns an error upon invalid inclusions", func() {
 				err := myflags.Set(utils.INCLUDE_RELATION, "foo")
-				if err != nil {
-					Fail("cannot set relation")
-				}
+				Expect(err).ToNot(HaveOccurred())
 				_, err = options.NewOptions(myflags)
 				Expect(err).To(HaveOccurred())
 			})
