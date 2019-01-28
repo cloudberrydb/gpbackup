@@ -426,6 +426,26 @@ AS $$ BEGIN RAISE EXCEPTION 'exception'; END; $$;`)
 				resultMetadata := resultMetadataMap[uniqueID]
 				structmatcher.ExpectStructsToMatch(&eventTriggerMetadata, &resultMetadata)
 			})
+			It("returns ACL information for a newly declared TYPE_TYPE object", func() {
+				testutils.SkipIfBefore6(connectionPool)
+				testhelper.AssertQueryRuns(connectionPool, `CREATE TYPE public.my_type AS (i int)`)
+				defer testhelper.AssertQueryRuns(connectionPool, "DROP TYPE public.my_type")
+				testhelper.AssertQueryRuns(connectionPool, `GRANT USAGE ON TYPE public.my_type TO testrole`)
+				defer testhelper.AssertQueryRuns(connectionPool, "REVOKE usage on type public.my_type from testrole")
+				// public usage creates an entry in the ACL with GRANTEE="" . We revoke this for ease of testing.
+				testhelper.AssertQueryRuns(connectionPool, "REVOKE usage on type public.my_type from public")
+
+				resultMetadataMap := backup.GetMetadataForObjectType(connectionPool, backup.TYPE_TYPE)
+				uniqueID := testutils.UniqueIDFromObjectName(connectionPool, "public", "my_type", backup.TYPE_TYPE)
+				resultMetadata := resultMetadataMap[uniqueID]
+
+				// (1) the 'my_type' obj   ...  (2) the implicit 'i INT' type, created when instantiating 'my_type'
+				Expect(resultMetadataMap).To(HaveLen(2))
+
+				expectedMetadata := testutils.DefaultMetadata("TYPE", true, true, false, false)
+				expectedMetadata.Privileges[0].Usage = true
+				Expect(&resultMetadata).To(Equal(&expectedMetadata))
+			})
 		})
 		Context("metadata for objects in a specific schema", func() {
 			It("returns a slice of default metadata for a table in a specific schema", func() {

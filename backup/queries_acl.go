@@ -100,6 +100,9 @@ func InitializeMetadataParams(connectionPool *dbconn.DBConn) {
 	TYPE_TSTEMPLATE = MetadataQueryParams{NameField: "tmplname", OidField: "oid", SchemaField: "tmplnamespace", CatalogTable: "pg_ts_template"}
 	TYPE_TRIGGER = MetadataQueryParams{NameField: "tgname", OidField: "oid", CatalogTable: "pg_trigger"}
 	TYPE_TYPE = MetadataQueryParams{NameField: "typname", SchemaField: "typnamespace", OwnerField: "typowner", CatalogTable: "pg_type"}
+	if connectionPool.Version.AtLeast("6") {
+		TYPE_TYPE.ACLField = "typacl"
+	}
 }
 
 type MetadataQueryStruct struct {
@@ -176,6 +179,7 @@ ORDER BY o.oid;
 	results := make([]MetadataQueryStruct, 0)
 	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
+
 	return ConstructMetadataMap(results)
 }
 
