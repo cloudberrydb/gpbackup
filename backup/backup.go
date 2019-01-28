@@ -65,6 +65,7 @@ func DoInit(cmd *cobra.Command) {
 	gplog.InitializeLogging("gpbackup", "")
 	initializeFlags(cmd)
 	utils.InitializeSignalHandler(DoCleanup, "backup process", &wasTerminated)
+	objectCounts = make(map[string]int, 0)
 }
 
 func DoFlagValidation(cmd *cobra.Command) {
@@ -144,8 +145,6 @@ func DoBackup() {
 			pluginConfig.MustRestoreFile(targetBackupFPInfo.GetTOCFilePath())
 		}
 	}
-
-	objectCounts = make(map[string]int, 0)
 
 	gplog.Info("Gathering table state information")
 	metadataTables, dataTables := RetrieveAndProcessTables()
