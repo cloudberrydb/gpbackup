@@ -38,6 +38,7 @@ var _ = Describe("backup integration tests", func() {
 			It("returns parent and external leaf partition table if the filter includes a leaf table and leaf-partition-data is set", func() {
 				backupCmdFlags.Set(utils.LEAF_PARTITION_DATA, "true")
 				backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.partition_table_1_prt_boys")
+				backupCmdFlags.Set("INCLUDE_RELATION_QUOTED", "public.partition_table_1_prt_boys")
 				testhelper.AssertQueryRuns(connectionPool, `CREATE TABLE public.partition_table (id int, gender char(1))
 DISTRIBUTED BY (id)
 PARTITION BY LIST (gender)
@@ -66,6 +67,8 @@ FORMAT 'csv';`)
 			It("returns external partition tables for an included parent table if the filter includes a parent partition table", func() {
 				backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.partition_table1")
 				backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.partition_table2_1_prt_other")
+				backupCmdFlags.Set("INCLUDE_RELATION_QUOTED", "public.partition_table1")
+				backupCmdFlags.Set("INCLUDE_RELATION_QUOTED", "public.partition_table2_1_prt_other")
 				testhelper.AssertQueryRuns(connectionPool, `CREATE TABLE public.partition_table1 (id int, gender char(1))
 DISTRIBUTED BY (id)
 PARTITION BY LIST (gender)
@@ -161,6 +164,7 @@ PARTITION BY LIST (gender)
 			})
 			It("returns parent and included child partition table if the filter includes a leaf table; with and without leaf-partition-data", func() {
 				backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.rank_1_prt_girls")
+				backupCmdFlags.Set("INCLUDE_RELATION_QUOTED", "public.rank_1_prt_girls")
 				createStmt := `CREATE TABLE public.rank (id int, rank int, year int, gender
 char(1), count int )
 DISTRIBUTED BY (id)
@@ -197,6 +201,7 @@ PARTITION BY LIST (gender)
 			It("returns child partition tables for an included parent table if the leaf-partition-data flag is set and the filter includes a parent partition table", func() {
 				backupCmdFlags.Set(utils.LEAF_PARTITION_DATA, "true")
 				backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.rank")
+				backupCmdFlags.Set("INCLUDE_RELATION_QUOTED", "public.rank")
 				createStmt := `CREATE TABLE public.rank (id int, rank int, year int, gender
 char(1), count int )
 DISTRIBUTED BY (id)
@@ -247,6 +252,7 @@ PARTITION BY LIST (gender)
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLE testschema.foo")
 
 			backupCmdFlags.Set(utils.INCLUDE_RELATION, "testschema.foo")
+			backupCmdFlags.Set("INCLUDE_RELATION_QUOTED", "testschema.foo")
 			tables := backup.GetIncludedUserTableRelations(connectionPool)
 
 			tableFoo := backup.Relation{Schema: "testschema", Name: "foo"}
@@ -342,6 +348,7 @@ PARTITION BY LIST (gender)
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLE public.seq_table")
 			testhelper.AssertQueryRuns(connectionPool, "ALTER SEQUENCE public.my_sequence OWNED BY public.seq_table.i")
 			backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.seq_table")
+			backupCmdFlags.Set("INCLUDE_RELATION_QUOTED", "public.seq_table")
 
 			sequences := backup.GetAllSequenceRelations(connectionPool)
 
@@ -383,6 +390,7 @@ PARTITION BY LIST (gender)
 
 			sequence1 := backup.Relation{Schema: "public", Name: "sequence1"}
 			backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.sequence1")
+			backupCmdFlags.Set("INCLUDE_RELATION_QUOTED", "public.sequence1")
 
 			sequences := backup.GetAllSequenceRelations(connectionPool)
 
@@ -468,6 +476,8 @@ PARTITION BY LIST (gender)
 
 			backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.my_sequence")
 			backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.my_table")
+			backupCmdFlags.Set("INCLUDE_RELATION_QUOTED", "public.my_sequence")
+			backupCmdFlags.Set("INCLUDE_RELATION_QUOTED", "public.my_table")
 			sequenceOwnerTables, sequenceOwnerColumns := backup.GetSequenceColumnOwnerMap(connectionPool)
 			Expect(sequenceOwnerTables).To(HaveLen(1))
 			Expect(sequenceOwnerColumns).To(HaveLen(1))
@@ -479,6 +489,7 @@ PARTITION BY LIST (gender)
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP SEQUENCE public.my_sequence")
 
 			backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.my_table")
+			backupCmdFlags.Set("INCLUDE_RELATION_QUOTED", "pubilc.my_table")
 			sequenceOwnerTables, sequenceOwnerColumns := backup.GetSequenceColumnOwnerMap(connectionPool)
 			Expect(sequenceOwnerTables).To(HaveLen(1))
 			Expect(sequenceOwnerColumns).To(HaveLen(1))

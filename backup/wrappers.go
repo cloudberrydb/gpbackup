@@ -155,7 +155,6 @@ func RetrieveAndProcessTables() ([]Table, []Table) {
 	 * We expand the includeRelations list to include parent and leaf partitions that may not have been
 	 * specified by the user but are used in the backup for metadata or data.
 	 */
-	userPassedIncludeRelations := MustGetFlagStringArray(utils.INCLUDE_RELATION)
 	ExpandIncludeRelations(tableRelations)
 
 	if connectionPool.Version.AtLeast("6") {
@@ -163,6 +162,8 @@ func RetrieveAndProcessTables() ([]Table, []Table) {
 	}
 
 	tables := ConstructDefinitionsForTables(connectionPool, tableRelations)
+
+	userPassedIncludeRelations := MustGetFlagStringArray("INCLUDE_RELATION_QUOTED")
 	metadataTables, dataTables := SplitTablesByPartitionType(tables, userPassedIncludeRelations)
 	objectCounts["Tables"] = len(metadataTables)
 

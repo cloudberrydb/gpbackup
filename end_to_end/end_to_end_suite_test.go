@@ -212,6 +212,11 @@ func TestEndToEnd(t *testing.T) {
 
 var _ = Describe("backup end to end integration tests", func() {
 
+	const (
+		TOTAL_RELATIONS               = 37
+		TOTAL_RELATIONS_AFTER_EXCLUDE = 21
+	)
+
 	var backupConn, restoreConn *dbconn.DBConn
 	var gpbackupPath, backupHelperPath, restoreHelperPath, gprestorePath, pluginConfigPath string
 
@@ -312,7 +317,7 @@ var _ = Describe("backup end to end integration tests", func() {
 				timestamp := gpbackup(gpbackupPath, backupHelperPath, "--include-schema", "public", "--compression-level", "2")
 				gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb")
 
-				assertRelationsCreated(restoreConn, 19)
+				assertRelationsCreated(restoreConn, 20)
 				assertDataRestored(restoreConn, publicSchemaTupleCounts)
 				assertArtifactsCleaned(restoreConn, timestamp)
 			})
@@ -393,7 +398,7 @@ var _ = Describe("backup end to end integration tests", func() {
 				timestamp := gpbackup(gpbackupPath, backupHelperPath, "--exclude-table", "schema2.foo2", "--exclude-table", "schema2.returns", "--exclude-table", "public.myseq2", "--exclude-table", "public.myview2")
 				gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb")
 
-				assertRelationsCreated(restoreConn, 20)
+				assertRelationsCreated(restoreConn, TOTAL_RELATIONS_AFTER_EXCLUDE)
 				assertDataRestored(restoreConn, map[string]int{"schema2.foo3": 100, "public.foo": 40000, "public.holds": 50000, "public.sales": 13})
 
 				os.Remove("/tmp/exclude-tables.txt")
@@ -405,7 +410,7 @@ var _ = Describe("backup end to end integration tests", func() {
 				timestamp := gpbackup(gpbackupPath, backupHelperPath, "--exclude-table-file", "/tmp/exclude-tables.txt")
 				gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb")
 
-				assertRelationsCreated(restoreConn, 7)
+				assertRelationsCreated(restoreConn, 8)
 				assertDataRestored(restoreConn, map[string]int{"schema2.foo3": 100, "public.foo": 40000, "public.holds": 50000})
 
 				os.Remove("/tmp/exclude-tables.txt")
@@ -423,7 +428,7 @@ var _ = Describe("backup end to end integration tests", func() {
 				timestamp := gpbackup(gpbackupPath, backupHelperPath)
 				gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--exclude-table", "schema2.foo2", "--exclude-table", "schema2.returns", "--exclude-table", "public.myseq2", "--exclude-table", "public.myview2")
 
-				assertRelationsCreated(restoreConn, 20)
+				assertRelationsCreated(restoreConn, TOTAL_RELATIONS_AFTER_EXCLUDE)
 				assertDataRestored(restoreConn, map[string]int{"schema2.foo3": 100, "public.foo": 40000, "public.holds": 50000, "public.sales": 13})
 
 				os.Remove("/tmp/exclude-tables.txt")
@@ -435,7 +440,7 @@ var _ = Describe("backup end to end integration tests", func() {
 				timestamp := gpbackup(gpbackupPath, backupHelperPath, "--backup-dir", backupdir)
 				gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--backup-dir", backupdir, "--exclude-table-file", "/tmp/exclude-tables.txt")
 
-				assertRelationsCreated(restoreConn, 20)
+				assertRelationsCreated(restoreConn, TOTAL_RELATIONS_AFTER_EXCLUDE)
 				assertDataRestored(restoreConn, map[string]int{"public.sales": 13, "public.foo": 40000})
 
 				os.RemoveAll(backupdir)
@@ -448,7 +453,7 @@ var _ = Describe("backup end to end integration tests", func() {
 				timestamp := gpbackup(gpbackupPath, backupHelperPath, "--single-data-file", "--backup-dir", backupdir)
 				gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--backup-dir", backupdir)
 
-				assertRelationsCreated(restoreConn, 36)
+				assertRelationsCreated(restoreConn, TOTAL_RELATIONS)
 				assertDataRestored(restoreConn, publicSchemaTupleCounts)
 				assertDataRestored(restoreConn, schema2TupleCounts)
 				assertArtifactsCleaned(restoreConn, timestamp)
@@ -460,7 +465,7 @@ var _ = Describe("backup end to end integration tests", func() {
 				timestamp := gpbackup(gpbackupPath, backupHelperPath, "--single-data-file", "--backup-dir", backupdir, "--no-compression")
 				gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--backup-dir", backupdir)
 
-				assertRelationsCreated(restoreConn, 36)
+				assertRelationsCreated(restoreConn, TOTAL_RELATIONS)
 				assertDataRestored(restoreConn, publicSchemaTupleCounts)
 				assertDataRestored(restoreConn, schema2TupleCounts)
 				assertArtifactsCleaned(restoreConn, timestamp)
@@ -535,7 +540,7 @@ var _ = Describe("backup end to end integration tests", func() {
 
 					gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--plugin-config", pluginConfigPath)
 
-					assertRelationsCreated(restoreConn, 36)
+					assertRelationsCreated(restoreConn, TOTAL_RELATIONS)
 					assertDataRestored(restoreConn, publicSchemaTupleCounts)
 					assertDataRestored(restoreConn, schema2TupleCounts)
 					assertArtifactsCleaned(restoreConn, timestamp)
@@ -552,7 +557,7 @@ var _ = Describe("backup end to end integration tests", func() {
 
 					gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--plugin-config", pluginConfigPath)
 
-					assertRelationsCreated(restoreConn, 36)
+					assertRelationsCreated(restoreConn, TOTAL_RELATIONS)
 					assertDataRestored(restoreConn, publicSchemaTupleCounts)
 					assertDataRestored(restoreConn, schema2TupleCounts)
 					assertArtifactsCleaned(restoreConn, timestamp)
@@ -569,7 +574,7 @@ var _ = Describe("backup end to end integration tests", func() {
 
 					gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--plugin-config", pluginConfigPath)
 
-					assertRelationsCreated(restoreConn, 36)
+					assertRelationsCreated(restoreConn, TOTAL_RELATIONS)
 					assertArtifactsCleaned(restoreConn, timestamp)
 
 					os.RemoveAll(pluginDir)
@@ -592,7 +597,7 @@ var _ = Describe("backup end to end integration tests", func() {
 
 				gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--plugin-config", pluginConfigPath)
 
-				assertRelationsCreated(restoreConn, 36)
+				assertRelationsCreated(restoreConn, TOTAL_RELATIONS)
 				assertDataRestored(restoreConn, publicSchemaTupleCounts)
 				assertDataRestored(restoreConn, schema2TupleCounts)
 
@@ -613,7 +618,7 @@ var _ = Describe("backup end to end integration tests", func() {
 
 				gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--plugin-config", pluginConfigPath)
 
-				assertRelationsCreated(restoreConn, 36)
+				assertRelationsCreated(restoreConn, TOTAL_RELATIONS)
 				assertDataRestored(restoreConn, publicSchemaTupleCounts)
 				assertDataRestored(restoreConn, schema2TupleCounts)
 
@@ -639,7 +644,7 @@ var _ = Describe("backup end to end integration tests", func() {
 
 				gprestore(gprestorePath, restoreHelperPath, incremental2Timestamp, "--redirect-db", "restoredb")
 
-				assertRelationsCreated(restoreConn, 36)
+				assertRelationsCreated(restoreConn, TOTAL_RELATIONS)
 				assertDataRestored(restoreConn, publicSchemaTupleCounts)
 				schema2TupleCounts["schema2.ao1"] = 1002
 				assertDataRestored(restoreConn, schema2TupleCounts)
@@ -661,7 +666,7 @@ var _ = Describe("backup end to end integration tests", func() {
 
 					gprestore(gprestorePath, restoreHelperPath, incremental2Timestamp, "--redirect-db", "restoredb", "--backup-dir", backupdir)
 
-					assertRelationsCreated(restoreConn, 36)
+					assertRelationsCreated(restoreConn, TOTAL_RELATIONS)
 					assertDataRestored(restoreConn, publicSchemaTupleCounts)
 					schema2TupleCounts["schema2.ao1"] = 1002
 					assertDataRestored(restoreConn, schema2TupleCounts)
@@ -726,7 +731,7 @@ var _ = Describe("backup end to end integration tests", func() {
 
 						gprestore(gprestorePath, restoreHelperPath, incremental2Timestamp, "--redirect-db", "restoredb")
 
-						assertRelationsCreated(restoreConn, 36)
+						assertRelationsCreated(restoreConn, TOTAL_RELATIONS)
 						assertDataRestored(restoreConn, publicSchemaTupleCounts)
 						schema2TupleCounts["schema2.ao1"] = 1002
 						assertDataRestored(restoreConn, schema2TupleCounts)
@@ -769,7 +774,7 @@ var _ = Describe("backup end to end integration tests", func() {
 					gprestore(gprestorePath, restoreHelperPath, incremental2Timestamp,
 						"--redirect-db", "restoredb", "--plugin-config", pluginConfigPath)
 
-					assertRelationsCreated(restoreConn, 36)
+					assertRelationsCreated(restoreConn, TOTAL_RELATIONS)
 					assertDataRestored(restoreConn, publicSchemaTupleCounts)
 					schema2TupleCounts["schema2.ao1"] = 1002
 					assertDataRestored(restoreConn, schema2TupleCounts)
@@ -829,7 +834,7 @@ var _ = Describe("backup end to end integration tests", func() {
 			timestamp2 := gpbackup(gpbackupPath, backupHelperPath, "--data-only")
 			gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb")
 			assertDataRestored(restoreConn, map[string]int{"public.foo": 0, "schema2.foo3": 0})
-			assertRelationsCreated(restoreConn, 36)
+			assertRelationsCreated(restoreConn, TOTAL_RELATIONS)
 			gprestore(gprestorePath, restoreHelperPath, timestamp2, "--redirect-db", "restoredb")
 
 			assertDataRestored(restoreConn, publicSchemaTupleCounts)
@@ -840,7 +845,7 @@ var _ = Describe("backup end to end integration tests", func() {
 			gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb")
 
 			assertDataRestored(restoreConn, map[string]int{"public.foo": 0, "schema2.foo3": 0})
-			assertRelationsCreated(restoreConn, 36)
+			assertRelationsCreated(restoreConn, TOTAL_RELATIONS)
 		})
 		It("runs gpbackup and gprestore with data-only backup flag", func() {
 			testutils.ExecuteSQLFile(restoreConn, "test_tables_ddl.sql")
@@ -865,13 +870,13 @@ var _ = Describe("backup end to end integration tests", func() {
 			gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--metadata-only")
 
 			assertDataRestored(restoreConn, map[string]int{"public.foo": 0, "schema2.foo3": 0})
-			assertRelationsCreated(restoreConn, 36)
+			assertRelationsCreated(restoreConn, TOTAL_RELATIONS)
 		})
 		It("runs gpbackup and gprestore with leaf-partition-data and backupdir flags", func() {
 			backupdir := filepath.Join(custom_backup_dir, "leaf_partition_data") // Must be unique
 			timestamp := gpbackup(gpbackupPath, backupHelperPath, "--leaf-partition-data", "--backup-dir", backupdir)
 			output := gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--backup-dir", backupdir)
-			Expect(string(output)).To(ContainSubstring("table 30 of 30"))
+			Expect(string(output)).To(ContainSubstring("table 31 of 31"))
 
 			assertDataRestored(restoreConn, publicSchemaTupleCounts)
 			assertDataRestored(restoreConn, schema2TupleCounts)
@@ -886,7 +891,7 @@ var _ = Describe("backup end to end integration tests", func() {
 			contents, _ := ioutil.ReadFile(configFile[0])
 
 			Expect(string(contents)).To(ContainSubstring("compressed: false"))
-			assertRelationsCreated(restoreConn, 36)
+			assertRelationsCreated(restoreConn, TOTAL_RELATIONS)
 			assertDataRestored(restoreConn, publicSchemaTupleCounts)
 			assertDataRestored(restoreConn, schema2TupleCounts)
 
@@ -912,7 +917,7 @@ var _ = Describe("backup end to end integration tests", func() {
 			timestamp := gpbackup(gpbackupPath, backupHelperPath, "--backup-dir", backupdir, "--jobs", "4")
 			gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--backup-dir", backupdir, "--jobs", "4")
 
-			assertRelationsCreated(restoreConn, 36)
+			assertRelationsCreated(restoreConn, TOTAL_RELATIONS)
 			assertDataRestored(restoreConn, schema2TupleCounts)
 			assertDataRestored(restoreConn, publicSchemaTupleCounts)
 
@@ -997,6 +1002,20 @@ var _ = Describe("backup end to end integration tests", func() {
 			command := exec.Command(gprestorePath, "--version")
 			output := mustRunCommand(command)
 			Expect(string(output)).To(MatchRegexp(`gprestore version \w+`))
+		})
+
+		It("runs gpbackup with --include-table flag with special characters", func() {
+			backupdir := filepath.Join(custom_backup_dir, "includes") // Must be unique
+			timestamp := gpbackup(gpbackupPath, backupHelperPath, "--backup-dir", backupdir, "--dbname", "testdb", "--include-table", `public.FOObar`)
+			gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--backup-dir", backupdir)
+
+			assertRelationsCreated(restoreConn, 1)
+
+			localSchemaTupleCounts := map[string]int{
+				`public."FOObar"`: 1,
+			}
+			assertDataRestored(restoreConn, localSchemaTupleCounts)
+			assertArtifactsCleaned(restoreConn, timestamp)
 		})
 
 	})

@@ -1,6 +1,8 @@
 package integration
 
 import (
+	"github.com/greenplum-db/gp-common-go-libs/testhelper"
+	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/options"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -68,6 +70,52 @@ var _ = Describe("Options Integration", func() {
 			resultFQNs, err := options.QuoteTableNames(connectionPool, tableList)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(expected).To(Equal(resultFQNs))
+		})
+	})
+	Describe("ValidateFilterTables", func() {
+		It("validates special chars", func() {
+			createSpecialCharacterTables := `
+-- special chars
+CREATE TABLE public."FOObar" (i int);
+CREATE TABLE public."BAR" (i int);
+CREATE SCHEMA "CAPschema";
+CREATE TABLE "CAPschema"."BAR" (i int);
+CREATE TABLE "CAPschema".baz (i int);
+CREATE TABLE public.foo_bar (i int);
+CREATE TABLE public."foo ~#$%^&*()_-+[]{}><\|;:/?!bar" (i int);
+-- special chars: embedded tab char
+CREATE TABLE public."tab	bar" (i int);
+-- special chars: embedded newline char
+CREATE TABLE public."newline
+bar" (i int);
+`
+			dropSpecialCharacterTables := `
+-- special chars
+DROP TABLE public."FOObar";
+DROP TABLE public."BAR";
+DROP SCHEMA "CAPschema" cascade;
+DROP TABLE public.foo_bar;
+DROP TABLE public."foo ~#$%^&*()_-+[]{}><\|;:/?!bar";
+-- special chars: embedded tab char
+DROP TABLE public."tab	bar";
+-- special chars: embedded newline char
+DROP TABLE public."newline
+bar";
+`
+			testhelper.AssertQueryRuns(connectionPool, createSpecialCharacterTables)
+			defer testhelper.AssertQueryRuns(connectionPool, dropSpecialCharacterTables)
+
+			tableList := []string{
+				`public.BAR`,
+				`CAPschema.BAR`,
+				`CAPschema.baz`,
+				`public.foo_bar`,
+				`public.foo ~#$%^&*()_-+[]{}><\|;:/?!bar`,
+				"public.tab\tbar",     // important to use double quotes to allow \t to become tab
+				"public.newline\nbar", // important to use double quotes to allow \n to become newline
+			}
+
+			backup.DBValidate(connectionPool, tableList, false)
 		})
 	})
 })

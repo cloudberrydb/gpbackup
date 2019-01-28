@@ -58,9 +58,11 @@ var _ = Describe("backup/validate tests", func() {
 		})
 	})
 	Describe("ValidateFilterTables", func() {
-		var tableRows, partitionTables *sqlmock.Rows
+		var tableRows, partitionTables, schemaAndTable, schemaAndTable2 *sqlmock.Rows
 		BeforeEach(func() {
 			tableRows = sqlmock.NewRows([]string{"oid", "name"})
+			schemaAndTable = sqlmock.NewRows([]string{"schemaname", "tablename"})
+			schemaAndTable2 = sqlmock.NewRows([]string{"schemaname", "tablename"})
 			partitionTables = sqlmock.NewRows([]string{"oid", "level", "rootname"})
 		})
 		Context("Non-partition tables", func() {
@@ -68,6 +70,10 @@ var _ = Describe("backup/validate tests", func() {
 				backup.ValidateFilterTables(connectionPool, filterList, false)
 			})
 			It("passes if single table is present in database", func() {
+				// Added to handle call to `quote_ident`
+				schemaAndTable.AddRow("public", "table1")
+				mock.ExpectQuery("SELECT (.*)").WillReturnRows(schemaAndTable)
+				//
 				tableRows.AddRow("1", "public.table1")
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(tableRows)
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(partitionTables)
@@ -75,6 +81,12 @@ var _ = Describe("backup/validate tests", func() {
 				backup.ValidateFilterTables(connectionPool, filterList, false)
 			})
 			It("passes if multiple tables are present in database", func() {
+				// Added to handle call to `quote_ident`
+				schemaAndTable.AddRow("public", "table1")
+				schemaAndTable2.AddRow("public", "table2")
+				mock.ExpectQuery("SELECT (.*)").WillReturnRows(schemaAndTable)
+				mock.ExpectQuery("SELECT (.*)").WillReturnRows(schemaAndTable2)
+				//
 				tableRows.AddRow("1", "public.table1").AddRow("2", "public.table2")
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(tableRows)
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(partitionTables)
@@ -82,6 +94,12 @@ var _ = Describe("backup/validate tests", func() {
 				backup.ValidateFilterTables(connectionPool, filterList, false)
 			})
 			It("panics if table is not present in database", func() {
+				// Added to handle call to `quote_ident`
+				schemaAndTable.AddRow("public", "table1")
+				schemaAndTable2.AddRow("public", "table2")
+				mock.ExpectQuery("SELECT (.*)").WillReturnRows(schemaAndTable)
+				mock.ExpectQuery("SELECT (.*)").WillReturnRows(schemaAndTable2)
+				//
 				tableRows.AddRow("1", "public.table1")
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(tableRows)
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(partitionTables)
@@ -90,6 +108,12 @@ var _ = Describe("backup/validate tests", func() {
 				backup.ValidateFilterTables(connectionPool, filterList, false)
 			})
 			It("does not panic if table is not present in database and noFatal is true", func() {
+				// Added to handle call to `quote_ident`
+				schemaAndTable.AddRow("public", "table1")
+				schemaAndTable2.AddRow("public", "table2")
+				mock.ExpectQuery("SELECT (.*)").WillReturnRows(schemaAndTable)
+				mock.ExpectQuery("SELECT (.*)").WillReturnRows(schemaAndTable2)
+				//
 				_, _, logfile = testhelper.SetupTestLogger()
 				tableRows.AddRow("1", "public.table1")
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(tableRows)
@@ -101,6 +125,10 @@ var _ = Describe("backup/validate tests", func() {
 		})
 		Context("Partition tables", func() {
 			It("passes if given a parent partition table", func() {
+				// Added to handle call to `quote_ident`
+				schemaAndTable.AddRow("public", "table1")
+				mock.ExpectQuery("SELECT (.*)").WillReturnRows(schemaAndTable)
+				//
 				tableRows.AddRow("1", "public.table1")
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(tableRows)
 				partitionTables.AddRow("1", "p", "")
@@ -109,6 +137,10 @@ var _ = Describe("backup/validate tests", func() {
 				backup.ValidateFilterTables(connectionPool, filterList, false)
 			})
 			It("passes if given a leaf partition table", func() {
+				// Added to handle call to `quote_ident`
+				schemaAndTable.AddRow("public", "table1")
+				mock.ExpectQuery("SELECT (.*)").WillReturnRows(schemaAndTable)
+				//
 				tableRows.AddRow("1", "public.table1")
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(tableRows)
 				partitionTables.AddRow("1", "l", "root")
@@ -117,6 +149,10 @@ var _ = Describe("backup/validate tests", func() {
 				backup.ValidateFilterTables(connectionPool, filterList, false)
 			})
 			It("panics if given an intermediate partition table and --leaf-partition-data is set", func() {
+				// Added to handle call to `quote_ident`
+				schemaAndTable.AddRow("public", "table1")
+				mock.ExpectQuery("SELECT (.*)").WillReturnRows(schemaAndTable)
+				//
 				cmdFlags.Set(utils.LEAF_PARTITION_DATA, "true")
 				tableRows.AddRow("1", "public.table1")
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(tableRows)
@@ -127,6 +163,10 @@ var _ = Describe("backup/validate tests", func() {
 				backup.ValidateFilterTables(connectionPool, filterList, false)
 			})
 			It("panics if given an intermediate partition table and --leaf-partition-data is not set", func() {
+				// Added to handle call to `quote_ident`
+				schemaAndTable.AddRow("public", "table1")
+				mock.ExpectQuery("SELECT (.*)").WillReturnRows(schemaAndTable)
+				//
 				tableRows.AddRow("1", "public.table1")
 				mock.ExpectQuery("SELECT (.*)").WillReturnRows(tableRows)
 				partitionTables.AddRow("1", "i", "root")

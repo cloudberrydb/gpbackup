@@ -103,7 +103,7 @@ ORDER BY c.oid;`, relationAndSchemaFilterClause(), childPartitionFilter, Extensi
 }
 
 func GetUserTableRelationsWithIncludeFiltering(connectionPool *dbconn.DBConn) []Relation {
-	includeOids := GetOidsFromRelationList(connectionPool, MustGetFlagStringArray(utils.INCLUDE_RELATION))
+	includeOids := GetOidsFromRelationList(connectionPool, MustGetFlagStringArray("INCLUDE_RELATION_QUOTED"))
 	oidStr := strings.Join(includeOids, ", ")
 	childPartitionFilter := ""
 	if MustGetFlagBool(utils.LEAF_PARTITION_DATA) {

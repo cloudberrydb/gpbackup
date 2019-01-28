@@ -3,6 +3,8 @@ package backup
 import (
 	"fmt"
 
+	"github.com/greenplum-db/gpbackup/options"
+
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpbackup/backup_filepath"
@@ -43,19 +45,23 @@ func ValidateFilterSchemas(connectionPool *dbconn.DBConn, schemaList []string, e
 	}
 }
 
-func ValidateFilterTables(connectionPool *dbconn.DBConn, tableList []string, excludeSet bool) {
+func ValidateFilterTables(conn *dbconn.DBConn, tableList []string, excludeSet bool) {
 	if len(tableList) == 0 {
 		return
 	}
 	utils.ValidateFQNs(tableList)
-	DBValidate(connectionPool, tableList, excludeSet)
+	DBValidate(conn, tableList, excludeSet)
 }
 
-func DBValidate(pool *dbconn.DBConn, tableList []string, excludeSet bool) {
+func DBValidate(conn *dbconn.DBConn, tableList []string, excludeSet bool) {
 	if len(tableList) == 0 {
 		return
 	}
-	quotedTablesStr := utils.SliceToQuotedString(tableList)
+	quotedList, err := options.QuoteTableNames(connectionPool, tableList)
+	gplog.FatalOnError(err)
+	// todo perhaps store quoted list in options??
+
+	quotedTablesStr := utils.SliceToQuotedString(quotedList)
 	query := fmt.Sprintf(`
 	SELECT
 		c.oid,
@@ -67,14 +73,14 @@ func DBValidate(pool *dbconn.DBConn, tableList []string, excludeSet bool) {
 		Oid  uint32
 		Name string
 	}, 0)
-	err := pool.Select(&resultTables, query)
+	err = conn.Select(&resultTables, query)
 	gplog.FatalOnError(err, fmt.Sprintf("Query was: %s", query))
 	tableMap := make(map[string]uint32)
 	for _, table := range resultTables {
 		tableMap[table.Name] = table.Oid
 	}
 
-	partTableMap := GetPartitionTableMap(pool)
+	partTableMap := GetPartitionTableMap(conn)
 	for _, table := range tableList {
 		tableOid := tableMap[table]
 		if tableOid == 0 {

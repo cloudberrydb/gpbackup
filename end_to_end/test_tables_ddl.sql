@@ -128,6 +128,8 @@ CREATE TABLE ao2 (
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
 GRANT ALL ON SCHEMA public TO PUBLIC;
 
+CREATE TABLE public."FOObar" (i int);
+insert into public."FOObar" values (1);
 
 --
 -- Greenplum Database database dump complete

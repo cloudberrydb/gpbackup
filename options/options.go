@@ -55,6 +55,9 @@ type FqnStruct struct {
 const QuoteIdent = `SELECT quote_ident('%s') AS schemaname, quote_ident('%s') AS tablename`
 
 func QuoteTableNames(conn *dbconn.DBConn, tableNames []string) ([]string, error) {
+	if len(tableNames) == 0 {
+		return []string{}, nil
+	}
 	fqnSlice, err := SeparateSchemaAndTable(tableNames)
 	if err != nil {
 		return nil, err

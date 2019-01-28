@@ -45,6 +45,8 @@ func SetFlagDefaults(flagSet *pflag.FlagSet) {
 	flagSet.StringSlice(utils.INCLUDE_SCHEMA, []string{}, "Back up only the specified schema(s). --include-schema can be specified multiple times.")
 	flagSet.StringArray(utils.INCLUDE_RELATION, []string{}, "Back up only the specified table(s). --include-table can be specified multiple times.")
 	flagSet.String(utils.INCLUDE_RELATION_FILE, "", "A file containing a list of fully-qualified tables to be included in the backup")
+	// this is not a user flag but a temporary holding place for quoted FQNs
+	flagSet.StringArray("INCLUDE_RELATION_QUOTED", []string{}, "global storage for a pre-quoted list of table names")
 	flagSet.Bool(utils.INCREMENTAL, false, "Only back up data for AO tables that have been modified since the last backup")
 	flagSet.Int(utils.JOBS, 1, "The number of parallel connections to use when backing up data")
 	flagSet.Bool(utils.LEAF_PARTITION_DATA, false, "For partition tables, create one data file per leaf partition instead of one data file for the whole table")
@@ -84,6 +86,7 @@ func DoSetup() {
 
 	opts, err := options.NewOptions(cmdFlags)
 	gplog.FatalOnError(err)
+	// set utils.INCLUDE_RELATION if a --include-relation-file flag is passed
 	if MustGetFlagString(utils.INCLUDE_RELATION_FILE) != "" {
 		// copy any values for flag INCLUDE_RELATION_FILE into global flag for INCLUDE_RELATION
 		for _, fqn := range opts.GetIncludedTables() {
@@ -92,11 +95,15 @@ func DoSetup() {
 		}
 	}
 
-	quotedList, err := options.QuoteTableNames(connectionPool, opts.GetIncludedTables())
+	// set our cutom global, INCLUDE_RELATION_QUOTED
+	quotedList, err := options.QuoteTableNames(connectionPool, MustGetFlagStringArray(utils.INCLUDE_RELATION))
 	gplog.FatalOnError(err)
-	// todo perhaps store quoted list in a new global flag??
+	for _, table := range quotedList {
+		err = cmdFlags.Set("INCLUDE_RELATION_QUOTED", table)
+		gplog.FatalOnError(err, "Cannot store list of quoted table names in a flag")
+	}
 
-	DBValidate(connectionPool, quotedList, false)
+	DBValidate(connectionPool, opts.GetIncludedTables(), false)
 
 	// todo remove these when EXCLUDE_RELATION* flags are handled by options object
 	InitializeFilterLists()

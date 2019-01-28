@@ -75,7 +75,11 @@ func AppendExtPartSuffix(name string) string {
 	return name + SUFFIX
 }
 
+//Put tables passed in that are not table INCLUDE_RELATION into INCLUDE_RELATION?
+// todo reimplement this as a sensible set manipulation which already guarantees uniqueness!
 func ExpandIncludeRelations(tables []Relation) {
+	//includeSet := utils.NewSet(MustGetFlagStringArray(utils.INCLUDE_RELATION))
+	//includeSet.AppendAll(tables)
 	includeRelations := MustGetFlagStringArray(utils.INCLUDE_RELATION)
 
 	if len(includeRelations) == 0 {
