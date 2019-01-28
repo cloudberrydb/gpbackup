@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/greenplum-db/gpbackup/options"
+
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpbackup/utils"
@@ -23,14 +25,17 @@ func relationAndSchemaFilterClause() string {
 		}
 	}
 	if len(MustGetFlagStringArray(utils.INCLUDE_RELATION)) > 0 {
-		includeOids := GetOidsFromRelationList(connectionPool, MustGetFlagStringArray(utils.INCLUDE_RELATION))
+		includeRelationsQuoted, err := options.QuoteTableNames(connectionPool, MustGetFlagStringArray(utils.INCLUDE_RELATION))
+		gplog.FatalOnError(err)
+
+		includeOids := GetOidsFromRelationList(connectionPool, includeRelationsQuoted)
 		filterClause += fmt.Sprintf("\nAND c.oid IN (%s)", strings.Join(includeOids, ", "))
 	}
 	return filterClause
 }
 
-func GetOidsFromRelationList(connectionPool *dbconn.DBConn, relationNames []string) []string {
-	relList := utils.SliceToQuotedString(relationNames)
+func GetOidsFromRelationList(connectionPool *dbconn.DBConn, quotedRelationNames []string) []string {
+	relList := utils.SliceToQuotedString(quotedRelationNames)
 	query := fmt.Sprintf(`
 SELECT
 	c.oid AS string
@@ -40,9 +45,9 @@ WHERE quote_ident(n.nspname) || '.' || quote_ident(c.relname) IN (%s)`, relList)
 	return dbconn.MustSelectStringSlice(connectionPool, query)
 }
 
-func GetIncludedUserTableRelations(connectionPool *dbconn.DBConn) []Relation {
+func GetIncludedUserTableRelations(connectionPool *dbconn.DBConn, includedRelationsQuoted []string) []Relation {
 	if len(MustGetFlagStringArray(utils.INCLUDE_RELATION)) > 0 {
-		return GetUserTableRelationsWithIncludeFiltering(connectionPool)
+		return GetUserTableRelationsWithIncludeFiltering(connectionPool, includedRelationsQuoted)
 	}
 	return GetUserTableRelations(connectionPool)
 }
@@ -102,8 +107,9 @@ ORDER BY c.oid;`, relationAndSchemaFilterClause(), childPartitionFilter, Extensi
 	return results
 }
 
-func GetUserTableRelationsWithIncludeFiltering(connectionPool *dbconn.DBConn) []Relation {
-	includeOids := GetOidsFromRelationList(connectionPool, MustGetFlagStringArray("INCLUDE_RELATION_QUOTED"))
+func GetUserTableRelationsWithIncludeFiltering(connectionPool *dbconn.DBConn, includedRelationsQuoted []string) []Relation {
+	includeOids := GetOidsFromRelationList(connectionPool, includedRelationsQuoted)
+
 	oidStr := strings.Join(includeOids, ", ")
 	childPartitionFilter := ""
 	if MustGetFlagBool(utils.LEAF_PARTITION_DATA) {

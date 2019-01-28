@@ -3,6 +3,8 @@ package integration
 import (
 	"sort"
 
+	"github.com/greenplum-db/gpbackup/options"
+
 	"github.com/greenplum-db/gp-common-go-libs/structmatcher"
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpbackup/backup"
@@ -23,8 +25,10 @@ var _ = Describe("backup integration tests", func() {
 			testhelper.AssertQueryRuns(connectionPool, "CREATE SCHEMA testschema")
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP SCHEMA testschema CASCADE")
 			testhelper.AssertQueryRuns(connectionPool, "CREATE TABLE testschema.testtable(t text)")
+			includeRelationsQuoted, err := options.QuoteTableNames(connectionPool, backup.MustGetFlagStringArray(utils.INCLUDE_RELATION))
+			Expect(err).NotTo(HaveOccurred())
 
-			tables := backup.GetIncludedUserTableRelations(connectionPool)
+			tables := backup.GetIncludedUserTableRelations(connectionPool, includeRelationsQuoted)
 
 			tableFoo := backup.Relation{Schema: "public", Name: "foo"}
 
@@ -38,7 +42,8 @@ var _ = Describe("backup integration tests", func() {
 			It("returns parent and external leaf partition table if the filter includes a leaf table and leaf-partition-data is set", func() {
 				backupCmdFlags.Set(utils.LEAF_PARTITION_DATA, "true")
 				backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.partition_table_1_prt_boys")
-				backupCmdFlags.Set("INCLUDE_RELATION_QUOTED", "public.partition_table_1_prt_boys")
+				includeRelationsQuoted, err := options.QuoteTableNames(connectionPool, backup.MustGetFlagStringArray(utils.INCLUDE_RELATION))
+				Expect(err).NotTo(HaveOccurred())
 				testhelper.AssertQueryRuns(connectionPool, `CREATE TABLE public.partition_table (id int, gender char(1))
 DISTRIBUTED BY (id)
 PARTITION BY LIST (gender)
@@ -52,7 +57,7 @@ FORMAT 'csv';`)
 				defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLE public.partition_table")
 				defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLE public.partition_table_ext_part_")
 
-				tables := backup.GetIncludedUserTableRelations(connectionPool)
+				tables := backup.GetIncludedUserTableRelations(connectionPool, includeRelationsQuoted)
 
 				expectedTableNames := []string{"public.partition_table", "public.partition_table_1_prt_boys", "public.partition_table_1_prt_girls"}
 				tableNames := make([]string, 0)
@@ -67,8 +72,9 @@ FORMAT 'csv';`)
 			It("returns external partition tables for an included parent table if the filter includes a parent partition table", func() {
 				backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.partition_table1")
 				backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.partition_table2_1_prt_other")
-				backupCmdFlags.Set("INCLUDE_RELATION_QUOTED", "public.partition_table1")
-				backupCmdFlags.Set("INCLUDE_RELATION_QUOTED", "public.partition_table2_1_prt_other")
+				includeRelationsQuoted, err := options.QuoteTableNames(connectionPool, backup.MustGetFlagStringArray(utils.INCLUDE_RELATION))
+				Expect(err).NotTo(HaveOccurred())
+
 				testhelper.AssertQueryRuns(connectionPool, `CREATE TABLE public.partition_table1 (id int, gender char(1))
 DISTRIBUTED BY (id)
 PARTITION BY LIST (gender)
@@ -106,7 +112,7 @@ FORMAT 'csv';`)
 				defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLE public.partition_table3")
 				defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLE public.partition_table3_ext_part_")
 
-				tables := backup.GetIncludedUserTableRelations(connectionPool)
+				tables := backup.GetIncludedUserTableRelations(connectionPool, includeRelationsQuoted)
 
 				expectedTableNames := []string{"public.partition_table1", "public.partition_table1_1_prt_boys", "public.partition_table2", "public.partition_table2_1_prt_girls", "public.partition_table2_1_prt_other"}
 				tableNames := make([]string, 0)
@@ -131,7 +137,7 @@ PARTITION BY LIST (gender)
 				testhelper.AssertQueryRuns(connectionPool, createStmt)
 				defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLE public.rank")
 
-				tables := backup.GetIncludedUserTableRelations(connectionPool)
+				tables := backup.GetIncludedUserTableRelations(connectionPool, []string{})
 
 				tableRank := backup.Relation{Schema: "public", Name: "rank"}
 
@@ -150,7 +156,7 @@ PARTITION BY LIST (gender)
 				testhelper.AssertQueryRuns(connectionPool, createStmt)
 				defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLE public.rank")
 
-				tables := backup.GetIncludedUserTableRelations(connectionPool)
+				tables := backup.GetIncludedUserTableRelations(connectionPool, []string{})
 
 				expectedTableNames := []string{"public.rank", "public.rank_1_prt_boys", "public.rank_1_prt_girls", "public.rank_1_prt_other"}
 				tableNames := make([]string, 0)
@@ -164,7 +170,9 @@ PARTITION BY LIST (gender)
 			})
 			It("returns parent and included child partition table if the filter includes a leaf table; with and without leaf-partition-data", func() {
 				backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.rank_1_prt_girls")
-				backupCmdFlags.Set("INCLUDE_RELATION_QUOTED", "public.rank_1_prt_girls")
+				includeRelationsQuoted, err := options.QuoteTableNames(connectionPool, backup.MustGetFlagStringArray(utils.INCLUDE_RELATION))
+				Expect(err).NotTo(HaveOccurred())
+
 				createStmt := `CREATE TABLE public.rank (id int, rank int, year int, gender
 char(1), count int )
 DISTRIBUTED BY (id)
@@ -177,7 +185,7 @@ PARTITION BY LIST (gender)
 
 				expectedTableNames := []string{"public.rank", "public.rank_1_prt_girls"}
 
-				tables := backup.GetIncludedUserTableRelations(connectionPool)
+				tables := backup.GetIncludedUserTableRelations(connectionPool, includeRelationsQuoted)
 				tableNames := make([]string, 0)
 				for _, table := range tables {
 					tableNames = append(tableNames, table.FQN())
@@ -188,7 +196,7 @@ PARTITION BY LIST (gender)
 				Expect(tableNames).To(Equal(expectedTableNames))
 
 				backupCmdFlags.Set(utils.LEAF_PARTITION_DATA, "true")
-				tables = backup.GetIncludedUserTableRelations(connectionPool)
+				tables = backup.GetIncludedUserTableRelations(connectionPool, includeRelationsQuoted)
 				tableNames = make([]string, 0)
 				for _, table := range tables {
 					tableNames = append(tableNames, table.FQN())
@@ -201,7 +209,9 @@ PARTITION BY LIST (gender)
 			It("returns child partition tables for an included parent table if the leaf-partition-data flag is set and the filter includes a parent partition table", func() {
 				backupCmdFlags.Set(utils.LEAF_PARTITION_DATA, "true")
 				backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.rank")
-				backupCmdFlags.Set("INCLUDE_RELATION_QUOTED", "public.rank")
+				includeRelationsQuoted, err := options.QuoteTableNames(connectionPool, backup.MustGetFlagStringArray(utils.INCLUDE_RELATION))
+				Expect(err).NotTo(HaveOccurred())
+
 				createStmt := `CREATE TABLE public.rank (id int, rank int, year int, gender
 char(1), count int )
 DISTRIBUTED BY (id)
@@ -214,7 +224,7 @@ PARTITION BY LIST (gender)
 				testhelper.AssertQueryRuns(connectionPool, "CREATE TABLE public.test_table(i int)")
 				defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLE public.test_table")
 
-				tables := backup.GetIncludedUserTableRelations(connectionPool)
+				tables := backup.GetIncludedUserTableRelations(connectionPool, includeRelationsQuoted)
 
 				expectedTableNames := []string{"public.rank", "public.rank_1_prt_boys", "public.rank_1_prt_girls", "public.rank_1_prt_other"}
 				tableNames := make([]string, 0)
@@ -236,7 +246,7 @@ PARTITION BY LIST (gender)
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLE testschema.foo")
 
 			backupCmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
-			tables := backup.GetIncludedUserTableRelations(connectionPool)
+			tables := backup.GetIncludedUserTableRelations(connectionPool, []string{})
 
 			tableFoo := backup.Relation{Schema: "testschema", Name: "foo"}
 
@@ -252,8 +262,9 @@ PARTITION BY LIST (gender)
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLE testschema.foo")
 
 			backupCmdFlags.Set(utils.INCLUDE_RELATION, "testschema.foo")
-			backupCmdFlags.Set("INCLUDE_RELATION_QUOTED", "testschema.foo")
-			tables := backup.GetIncludedUserTableRelations(connectionPool)
+			includeRelationsQuoted, err := options.QuoteTableNames(connectionPool, backup.MustGetFlagStringArray(utils.INCLUDE_RELATION))
+			Expect(err).NotTo(HaveOccurred())
+			tables := backup.GetIncludedUserTableRelations(connectionPool, includeRelationsQuoted)
 
 			tableFoo := backup.Relation{Schema: "testschema", Name: "foo"}
 
@@ -269,7 +280,7 @@ PARTITION BY LIST (gender)
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLE testschema.foo")
 
 			backupCmdFlags.Set(utils.EXCLUDE_RELATION, "testschema.foo")
-			tables := backup.GetIncludedUserTableRelations(connectionPool)
+			tables := backup.GetIncludedUserTableRelations(connectionPool, []string{})
 
 			tableFoo := backup.Relation{Schema: "public", Name: "foo"}
 
@@ -288,18 +299,18 @@ PARTITION BY LIST (gender)
 
 			backupCmdFlags.Set(utils.INCLUDE_SCHEMA, "testschema")
 			backupCmdFlags.Set(utils.EXCLUDE_RELATION, "testschema.foo")
-			tables := backup.GetIncludedUserTableRelations(connectionPool)
+			tables := backup.GetIncludedUserTableRelations(connectionPool, []string{})
 
 			tableFoo := backup.Relation{Schema: "testschema", Name: "bar"}
 			Expect(tables).To(HaveLen(1))
 			structmatcher.ExpectStructsToMatchExcluding(&tableFoo, &tables[0], "SchemaOid", "Oid")
 		})
-		It("returns user table information for tables even with an non existant excludeTable", func() {
+		It("returns user table information for tables even with an non existent excludeTable", func() {
 			testhelper.AssertQueryRuns(connectionPool, "CREATE TABLE public.foo(i int)")
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLE public.foo")
 
 			backupCmdFlags.Set(utils.EXCLUDE_RELATION, "testschema.nonexistant")
-			tables := backup.GetIncludedUserTableRelations(connectionPool)
+			tables := backup.GetIncludedUserTableRelations(connectionPool, []string{})
 
 			tableFoo := backup.Relation{Schema: "public", Name: "foo"}
 
@@ -348,7 +359,6 @@ PARTITION BY LIST (gender)
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLE public.seq_table")
 			testhelper.AssertQueryRuns(connectionPool, "ALTER SEQUENCE public.my_sequence OWNED BY public.seq_table.i")
 			backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.seq_table")
-			backupCmdFlags.Set("INCLUDE_RELATION_QUOTED", "public.seq_table")
 
 			sequences := backup.GetAllSequenceRelations(connectionPool)
 
@@ -390,7 +400,6 @@ PARTITION BY LIST (gender)
 
 			sequence1 := backup.Relation{Schema: "public", Name: "sequence1"}
 			backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.sequence1")
-			backupCmdFlags.Set("INCLUDE_RELATION_QUOTED", "public.sequence1")
 
 			sequences := backup.GetAllSequenceRelations(connectionPool)
 
@@ -476,8 +485,6 @@ PARTITION BY LIST (gender)
 
 			backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.my_sequence")
 			backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.my_table")
-			backupCmdFlags.Set("INCLUDE_RELATION_QUOTED", "public.my_sequence")
-			backupCmdFlags.Set("INCLUDE_RELATION_QUOTED", "public.my_table")
 			sequenceOwnerTables, sequenceOwnerColumns := backup.GetSequenceColumnOwnerMap(connectionPool)
 			Expect(sequenceOwnerTables).To(HaveLen(1))
 			Expect(sequenceOwnerColumns).To(HaveLen(1))
@@ -489,7 +496,6 @@ PARTITION BY LIST (gender)
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP SEQUENCE public.my_sequence")
 
 			backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.my_table")
-			backupCmdFlags.Set("INCLUDE_RELATION_QUOTED", "pubilc.my_table")
 			sequenceOwnerTables, sequenceOwnerColumns := backup.GetSequenceColumnOwnerMap(connectionPool)
 			Expect(sequenceOwnerTables).To(HaveLen(1))
 			Expect(sequenceOwnerColumns).To(HaveLen(1))

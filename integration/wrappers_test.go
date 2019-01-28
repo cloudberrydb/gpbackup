@@ -12,7 +12,7 @@ import (
 
 var _ = Describe("Wrappers Integration", func() {
 	Describe("RetrieveAndProcessTables", func() {
-		FIt("returns the single data table that has data to be backed up", func() {
+		It("returns the single data table that has data to be backed up", func() {
 			var rootCmd = &cobra.Command{}
 			backup.DoInit(rootCmd)             // initialize the ObjectCount
 			gplog.SetVerbosity(gplog.LOGERROR) // turn off progress bar in the lock-table routine
@@ -26,9 +26,7 @@ var _ = Describe("Wrappers Integration", func() {
 			defer connectionPool.MustCommit(0)
 
 			_ = backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.foo")
-			_ = backupCmdFlags.Set("INCLUDE_RELATION_QUOTED", `public.foo`)
 			_ = backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.BAR")
-			_ = backupCmdFlags.Set("INCLUDE_RELATION_QUOTED", `public."BAR"`)
 
 			_, dataTables := backup.RetrieveAndProcessTables()
 			Expect(len(dataTables)).To(Equal(2))

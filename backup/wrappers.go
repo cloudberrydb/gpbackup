@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/greenplum-db/gpbackup/options"
+
 	"github.com/greenplum-db/gp-common-go-libs/cluster"
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
@@ -148,12 +150,17 @@ func CreateBackupDirectoriesOnAllHosts() {
  */
 
 func RetrieveAndProcessTables() ([]Table, []Table) {
-	tableRelations := GetIncludedUserTableRelations(connectionPool)
+	quotedIncludes, err := options.QuoteTableNames(connectionPool, MustGetFlagStringArray(utils.INCLUDE_RELATION))
+	gplog.FatalOnError(err)
+
+	tableRelations := GetIncludedUserTableRelations(connectionPool, quotedIncludes)
 	LockTables(connectionPool, tableRelations)
 
 	/*
 	 * We expand the includeRelations list to include parent and leaf partitions that may not have been
 	 * specified by the user but are used in the backup for metadata or data.
+	 *
+	 *	THIS CAN CHANGE the contents of MustGetFlagStringArray(utils.INCLUDE_RELATION)
 	 */
 	ExpandIncludeRelations(tableRelations)
 
@@ -163,8 +170,10 @@ func RetrieveAndProcessTables() ([]Table, []Table) {
 
 	tables := ConstructDefinitionsForTables(connectionPool, tableRelations)
 
-	userPassedIncludeRelations := MustGetFlagStringArray("INCLUDE_RELATION_QUOTED")
-	metadataTables, dataTables := SplitTablesByPartitionType(tables, userPassedIncludeRelations)
+	// This can be removed after ExpandIncludeRelations no longer changes the underlying util.INCLUDE_RELATION set
+	quotedIncludes, err = options.QuoteTableNames(connectionPool, MustGetFlagStringArray(utils.INCLUDE_RELATION))
+
+	metadataTables, dataTables := SplitTablesByPartitionType(tables, quotedIncludes)
 	objectCounts["Tables"] = len(metadataTables)
 
 	return metadataTables, dataTables
