@@ -7,6 +7,7 @@ package backup
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/greenplum-db/gpbackup/options"
@@ -65,6 +66,19 @@ func (r Relation) FQN() string {
 
 func (r Relation) GetUniqueID() UniqueID {
 	return UniqueID{ClassID: PG_CLASS_OID, Oid: r.Oid}
+}
+
+func (r Relation) Unquoted() Relation {
+	regExpNoQuotes, _ := regexp.Compile(`"(.*)"`)
+	schemaUnquoted := regExpNoQuotes.ReplaceAllString(r.Schema, `$1`)
+	nameUnquoted := regExpNoQuotes.ReplaceAllString(r.Name, `$1`)
+
+	return Relation{
+		SchemaOid: r.SchemaOid,
+		Oid:       r.Oid,
+		Schema:    schemaUnquoted,
+		Name:      nameUnquoted,
+	}
 }
 
 /*

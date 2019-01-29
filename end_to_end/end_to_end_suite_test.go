@@ -1018,5 +1018,33 @@ var _ = Describe("backup end to end integration tests", func() {
 			assertArtifactsCleaned(restoreConn, timestamp)
 		})
 
+		It("returns parent and child of a partition table with special chars", func() {
+			backupdir := filepath.Join(custom_backup_dir, "partitions_special_char") // Must be unique
+			testhelper.AssertQueryRuns(backupConn, `CREATE TABLE public."CAPparent" (id int, rank int, year int, gender
+char(1), count int )
+DISTRIBUTED BY (id)
+PARTITION BY LIST (gender)
+( PARTITION girls VALUES ('F'),
+  PARTITION boys VALUES ('M'),
+  DEFAULT PARTITION other );
+			`)
+			defer testhelper.AssertQueryRuns(backupConn, `DROP TABLE public."CAPparent"`)
+
+			testhelper.AssertQueryRuns(backupConn, `insert into public."CAPparent" values (1,1,1,'M',1)`)
+			testhelper.AssertQueryRuns(backupConn, `insert into public."CAPparent" values (0,0,0,'F',1)`)
+
+			timestamp := gpbackup(gpbackupPath, backupHelperPath, "--backup-dir", backupdir, "--dbname", "testdb", "--include-table", `public.CAPparent_1_prt_girls`)
+			gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--backup-dir", backupdir)
+
+			assertRelationsCreated(restoreConn, 4)
+
+			localSchemaTupleCounts := map[string]int{
+				`public."CAPparent_1_prt_girls"`: 2, // 1
+				`public."CAPparent"`:             3, // 2 - unsure where this expected number comes from @lah sez "help!"
+			}
+			assertDataRestored(restoreConn, localSchemaTupleCounts)
+			assertArtifactsCleaned(restoreConn, timestamp)
+		})
+
 	})
 })

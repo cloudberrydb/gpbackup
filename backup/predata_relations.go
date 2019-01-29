@@ -93,7 +93,9 @@ func ExpandIncludeRelations(tables []Relation) {
 
 	for _, table := range tables {
 		if _, ok := includeMap[table.FQN()]; !ok {
-			err := cmdFlags.Set(utils.INCLUDE_RELATION, table.FQN()) //This appends to the slice underlying the flag.
+			// Note that `cmdFlags.Set()` appends to the slice underlying the flag. Furthermore, INCLUDE_RELATIONS is an unquoted list as received from the command line, so we add to it in unquoted fashion
+			gplog.Debug("adding relation to includes: %s\n", table.FQN())
+			err := cmdFlags.Set(utils.INCLUDE_RELATION, table.Unquoted().FQN())
 			gplog.FatalOnError(err)
 		}
 	}
