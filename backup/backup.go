@@ -84,14 +84,6 @@ func DoSetup() {
 
 	opts, err := options.NewOptions(cmdFlags)
 	gplog.FatalOnError(err)
-	// set utils.INCLUDE_RELATION if a --include-relation-file flag is passed
-	if MustGetFlagString(utils.INCLUDE_RELATION_FILE) != "" {
-		// copy any values for flag INCLUDE_RELATION_FILE into global flag for INCLUDE_RELATION
-		for _, fqn := range opts.GetIncludedTables() {
-			err := cmdFlags.Set(utils.INCLUDE_RELATION, fqn) //This appends to the slice underlying the flag.
-			gplog.FatalOnError(err)
-		}
-	}
 
 	DBValidate(connectionPool, opts.GetIncludedTables(), false)
 

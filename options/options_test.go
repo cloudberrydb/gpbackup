@@ -91,6 +91,30 @@ var _ = Describe("options creation", func() {
 				Expect(includedTables[0]).To(Equal("myschema.mytable"))
 				Expect(includedTables[1]).To(Equal("myschema.mytable2"))
 			})
+			It("sets the INCLUDE_RELATIONS flag from file", func() {
+				file, err := ioutil.TempFile("/tmp", "gpbackup_test_options*.txt")
+				Expect(err).To(Not(HaveOccurred()))
+				defer func() {
+					_ = os.Remove(file.Name())
+				}()
+				_, err = file.WriteString("myschema.mytable\n")
+				Expect(err).To(Not(HaveOccurred()))
+				_, err = file.WriteString("myschema.mytable2\n")
+				Expect(err).To(Not(HaveOccurred()))
+				err = file.Close()
+				Expect(err).To(Not(HaveOccurred()))
+
+				err = myflags.Set(utils.INCLUDE_RELATION_FILE, file.Name())
+				Expect(err).ToNot(HaveOccurred())
+				_, err = options.NewOptions(myflags)
+				Expect(err).To(Not(HaveOccurred()))
+
+				includedTables, err := myflags.GetStringArray(utils.INCLUDE_RELATION)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(includedTables).To(HaveLen(2))
+				Expect(includedTables[0]).To(Equal("myschema.mytable"))
+				Expect(includedTables[1]).To(Equal("myschema.mytable2"))
+			})
 			It("returns an error upon invalid inclusions", func() {
 				err := myflags.Set(utils.INCLUDE_RELATION, "foo")
 				Expect(err).ToNot(HaveOccurred())

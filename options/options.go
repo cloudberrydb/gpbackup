@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/greenplum-db/gp-common-go-libs/gplog"
+
 	"github.com/spf13/pflag"
 
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
@@ -35,6 +37,11 @@ func NewOptions(initialFlags *pflag.FlagSet) (*Options, error) {
 	}
 	if filename != "" {
 		tableNames = iohelper.MustReadLinesFromFile(filename)
+		// copy any values for flag INCLUDE_RELATION_FILE into global flag for INCLUDE_RELATION
+		for _, fqn := range tableNames {
+			err := initialFlags.Set(utils.INCLUDE_RELATION, fqn) //This appends to the slice underlying the flag.
+			gplog.FatalOnError(err)
+		}
 	}
 
 	err = ValidateCharacters(tableNames)
