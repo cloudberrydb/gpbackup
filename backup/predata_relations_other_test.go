@@ -479,43 +479,6 @@ GRANT ALL ON shamwow.shazam TO testrole;`,
 			Expect(suffixName).To(Equal(expectedName))
 		})
 	})
-	Describe("ExpandIncludeRelations", func() {
-		testTables := []backup.Relation{{Schema: "testschema", Name: "foo1"}, {Schema: "testschema", Name: "foo2"}}
-		It("returns an empty slice if no includeRelations were specified", func() {
-			_ = cmdFlags.Set(utils.INCLUDE_RELATION, "")
-			backup.ExpandIncludeRelations(testTables)
-
-			Expect(backup.MustGetFlagStringArray(utils.INCLUDE_RELATION)).To(BeEmpty())
-		})
-		It("returns original list when includes list is equivalent to existing list", func() {
-			_ = cmdFlags.Set(utils.INCLUDE_RELATION, "testschema.foo1")
-			_ = cmdFlags.Set(utils.INCLUDE_RELATION, "testschema.foo2")
-			backup.ExpandIncludeRelations(testTables)
-
-			Expect(backup.MustGetFlagStringArray(utils.INCLUDE_RELATION)).To(HaveLen(2))
-			Expect(backup.MustGetFlagStringArray(utils.INCLUDE_RELATION)).
-				To(ConsistOf([]string{"testschema.foo1", "testschema.foo2"}))
-		})
-		It("returns expanded list if there are new tables to add", func() {
-			_ = cmdFlags.Set(utils.INCLUDE_RELATION, "testschema.foo2")
-			_ = cmdFlags.Set(utils.INCLUDE_RELATION, "testschema.foo3")
-			backup.ExpandIncludeRelations(testTables)
-
-			Expect(backup.MustGetFlagStringArray(utils.INCLUDE_RELATION)).To(HaveLen(3))
-			Expect(backup.MustGetFlagStringArray(utils.INCLUDE_RELATION)).
-				To(ConsistOf([]string{"testschema.foo1", "testschema.foo2", "testschema.foo3"}))
-		})
-		It("returns expanded list with new tables with unquoted special characters", func() {
-			testTables = []backup.Relation{{Schema: "testschema", Name: `"FOObar"`}, {Schema: `"TESTschema"`, Name: "foo2"}, {Schema: `"TESTschema"`, Name: `"FOO3"`}}
-			_ = cmdFlags.Set(utils.INCLUDE_RELATION, "testschema.CAPS")
-			_ = cmdFlags.Set(utils.INCLUDE_RELATION, "CAPSschema.foo5")
-			backup.ExpandIncludeRelations(testTables)
-
-			Expect(backup.MustGetFlagStringArray(utils.INCLUDE_RELATION)).To(HaveLen(5))
-			Expect(backup.MustGetFlagStringArray(utils.INCLUDE_RELATION)).
-				To(ConsistOf([]string{"testschema.CAPS", "CAPSschema.foo5", "testschema.FOObar", "TESTschema.foo2", "TESTschema.FOO3"}))
-		})
-	})
 	Describe("ConstructColumnPrivilegesMap", func() {
 		expectedACL := []backup.ACL{{Grantee: "gpadmin", Select: true}}
 		colI := backup.ColumnPrivilegesQueryStruct{TableOid: 1, Name: "i", Privileges: sql.NullString{String: "gpadmin=r/gpadmin", Valid: true}, Kind: ""}

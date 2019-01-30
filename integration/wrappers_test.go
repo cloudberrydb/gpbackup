@@ -36,56 +36,5 @@ var _ = Describe("Wrappers Integration", func() {
 			Expect(dataTables[0].Name).To(Equal("foo"))
 			Expect(dataTables[1].Name).To(Equal(`"BAR"`))
 		})
-		It("returns parent and child of a partition table with special chars", func() {
-			_ = backupCmdFlags.Set(utils.INCLUDE_RELATION, `public.CAPpart_1_prt_girls`)
-
-			testhelper.AssertQueryRuns(connectionPool, `CREATE TABLE public."CAPpart" (id int, rank int, year int, gender
-char(1), count int )
-DISTRIBUTED BY (id)
-PARTITION BY LIST (gender)
-( PARTITION girls VALUES ('F'),
-  PARTITION boys VALUES ('M'),
-  DEFAULT PARTITION other );
-			`)
-			defer testhelper.AssertQueryRuns(connectionPool, `DROP TABLE public."CAPpart"`)
-			testhelper.AssertQueryRuns(connectionPool, `insert into public."CAPpart" values (1,1,1,'M', 1)`)
-			testhelper.AssertQueryRuns(connectionPool, `insert into public."CAPpart" values (1,1,1,'F', 1)`)
-
-			// every backup occurs in a transaction; we are testing a small part of that backup
-			connectionPool.MustBegin(0)
-			defer connectionPool.MustCommit(0)
-
-			_, dataTables := backup.RetrieveAndProcessTables()
-			Expect(len(dataTables)).To(Equal(2))
-			Expect(dataTables[0].Name).To(Equal(`"CAPpart"`))
-			Expect(dataTables[1].Name).To(Equal(`"CAPpart_1_prt_girls"`))
-		})
-		It("returns leaf partition tables with special chars", func() {
-			_ = backupCmdFlags.Set(utils.LEAF_PARTITION_DATA, "true")
-			_ = backupCmdFlags.Set(utils.INCLUDE_RELATION, `public.CAPpart`)
-
-			testhelper.AssertQueryRuns(connectionPool, `CREATE TABLE public."CAPpart" (id int, rank int, year int, gender
-char(1), count int )
-DISTRIBUTED BY (id)
-PARTITION BY LIST (gender)
-( PARTITION girls VALUES ('F'),
-  PARTITION boys VALUES ('M'),
-  DEFAULT PARTITION other );
-			`)
-			defer testhelper.AssertQueryRuns(connectionPool, `DROP TABLE public."CAPpart"`)
-			testhelper.AssertQueryRuns(connectionPool, `insert into public."CAPpart" values (1,1,1,'M', 1)`)
-			testhelper.AssertQueryRuns(connectionPool, `insert into public."CAPpart" values (1,1,1,'F', 1)`)
-
-			// every backup occurs in a transaction; we are testing a small part of that backup
-			connectionPool.MustBegin(0)
-			defer connectionPool.MustCommit(0)
-
-			_, dataTables := backup.RetrieveAndProcessTables()
-			Expect(len(dataTables)).To(Equal(3))
-			Expect(dataTables[0].Name).To(Equal(`"CAPpart_1_prt_girls"`))
-			Expect(dataTables[1].Name).To(Equal(`"CAPpart_1_prt_boys"`))
-			Expect(dataTables[2].Name).To(Equal(`"CAPpart_1_prt_other"`))
-		})
 	})
-
 })

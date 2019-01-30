@@ -75,32 +75,6 @@ func AppendExtPartSuffix(name string) string {
 	return name + SUFFIX
 }
 
-//Put tables passed in that are not table INCLUDE_RELATION into INCLUDE_RELATION?
-// todo reimplement this as a sensible set manipulation which already guarantees uniqueness!
-func ExpandIncludeRelations(tables []Relation) {
-	//includeSet := utils.NewSet(MustGetFlagStringArray(utils.INCLUDE_RELATION))
-	//includeSet.AppendAll(tables)
-	includeRelations := MustGetFlagStringArray(utils.INCLUDE_RELATION)
-
-	if len(includeRelations) == 0 {
-		return
-	}
-
-	includeMap := make(map[string]bool, 0)
-	for _, relation := range includeRelations {
-		includeMap[relation] = true
-	}
-
-	for _, table := range tables {
-		if _, ok := includeMap[table.FQN()]; !ok {
-			// Note that `cmdFlags.Set()` appends to the slice underlying the flag. Furthermore, INCLUDE_RELATIONS is an unquoted list as received from the command line, so we add to it in unquoted fashion
-			gplog.Debug("adding relation to includes: %s\n", table.FQN())
-			err := cmdFlags.Set(utils.INCLUDE_RELATION, table.Unquoted().FQN())
-			gplog.FatalOnError(err)
-		}
-	}
-}
-
 func ConstructColumnPrivilegesMap(results []ColumnPrivilegesQueryStruct) map[uint32]map[string][]ACL {
 	metadataMap := make(map[uint32]map[string][]ACL)
 	var tableMetadata map[string][]ACL

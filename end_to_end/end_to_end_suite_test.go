@@ -1004,7 +1004,7 @@ var _ = Describe("backup end to end integration tests", func() {
 			Expect(string(output)).To(MatchRegexp(`gprestore version \w+`))
 		})
 
-		It("runs gpbackup with --include-table flag with special characters", func() {
+		It("runs gpbackup with --include-table flag with CAPS special characters", func() {
 			backupdir := filepath.Join(custom_backup_dir, "includes") // Must be unique
 			timestamp := gpbackup(gpbackupPath, backupHelperPath, "--backup-dir", backupdir, "--dbname", "testdb", "--include-table", `public.FOObar`)
 			gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--backup-dir", backupdir)
@@ -1018,7 +1018,7 @@ var _ = Describe("backup end to end integration tests", func() {
 			assertArtifactsCleaned(restoreConn, timestamp)
 		})
 
-		It("returns parent and child of a partition table with special chars", func() {
+		It("runs gpbackup with --include-table flag with partitions with special chars", func() {
 			backupdir := filepath.Join(custom_backup_dir, "partitions_special_char") // Must be unique
 			testhelper.AssertQueryRuns(backupConn, `CREATE TABLE public."CAPparent" (id int, rank int, year int, gender
 char(1), count int )

@@ -156,22 +156,11 @@ func RetrieveAndProcessTables() ([]Table, []Table) {
 	tableRelations := GetIncludedUserTableRelations(connectionPool, quotedIncludes)
 	LockTables(connectionPool, tableRelations)
 
-	/*
-	 * We expand the includeRelations list to include parent and leaf partitions that may not have been
-	 * specified by the user but are used in the backup for metadata or data.
-	 *
-	 *	THIS CAN CHANGE the contents of MustGetFlagStringArray(utils.INCLUDE_RELATION)
-	 */
-	ExpandIncludeRelations(tableRelations)
-
 	if connectionPool.Version.AtLeast("6") {
 		tableRelations = append(tableRelations, GetForeignTableRelations(connectionPool)...)
 	}
 
 	tables := ConstructDefinitionsForTables(connectionPool, tableRelations)
-
-	// This can be removed after ExpandIncludeRelations no longer changes the underlying util.INCLUDE_RELATION set
-	quotedIncludes, err = options.QuoteTableNames(connectionPool, MustGetFlagStringArray(utils.INCLUDE_RELATION))
 
 	metadataTables, dataTables := SplitTablesByPartitionType(tables, quotedIncludes)
 	objectCounts["Tables"] = len(metadataTables)

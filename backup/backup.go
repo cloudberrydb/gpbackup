@@ -86,6 +86,8 @@ func DoSetup() {
 	gplog.FatalOnError(err)
 
 	DBValidate(connectionPool, opts.GetIncludedTables(), false)
+	err = opts.SupplementPartitionIncludes(connectionPool, cmdFlags)
+	gplog.FatalOnError(err)
 
 	// todo remove these when EXCLUDE_RELATION* flags are handled by options object
 	InitializeFilterLists()

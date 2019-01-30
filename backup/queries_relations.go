@@ -7,7 +7,6 @@ package backup
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/greenplum-db/gpbackup/options"
@@ -68,19 +67,6 @@ func (r Relation) GetUniqueID() UniqueID {
 	return UniqueID{ClassID: PG_CLASS_OID, Oid: r.Oid}
 }
 
-func (r Relation) Unquoted() Relation {
-	regExpNoQuotes, _ := regexp.Compile(`"(.*)"`)
-	schemaUnquoted := regExpNoQuotes.ReplaceAllString(r.Schema, `$1`)
-	nameUnquoted := regExpNoQuotes.ReplaceAllString(r.Name, `$1`)
-
-	return Relation{
-		SchemaOid: r.SchemaOid,
-		Oid:       r.Oid,
-		Schema:    schemaUnquoted,
-		Name:      nameUnquoted,
-	}
-}
-
 /*
  * This function also handles exclude table filtering since the way we do
  * it is currently much simpler than the include case.
@@ -125,30 +111,6 @@ func GetUserTableRelationsWithIncludeFiltering(connectionPool *dbconn.DBConn, in
 	includeOids := GetOidsFromRelationList(connectionPool, includedRelationsQuoted)
 
 	oidStr := strings.Join(includeOids, ", ")
-	childPartitionFilter := ""
-	if MustGetFlagBool(utils.LEAF_PARTITION_DATA) {
-		//Get all leaf partition tables whose parents are in the include list
-		childPartitionFilter = fmt.Sprintf(`
-	OR c.oid IN (
-		SELECT
-			r.parchildrelid
-		FROM pg_partition p
-		JOIN pg_partition_rule r ON p.oid = r.paroid
-		WHERE p.paristemplate = false
-		AND p.parrelid IN (%s))`, oidStr)
-	} else {
-		//Get only external partition tables whose parents are in the include list
-		childPartitionFilter = fmt.Sprintf(`
-	OR c.oid IN (
-		SELECT
-			r.parchildrelid
-		FROM pg_partition p
-		JOIN pg_partition_rule r ON p.oid = r.paroid
-		JOIN pg_exttable e ON r.parchildrelid = e.reloid
-		WHERE p.paristemplate = false
-		AND e.reloid IS NOT NULL
-		AND p.parrelid IN (%s))`, oidStr)
-	}
 
 	query := fmt.Sprintf(`
 SELECT
@@ -160,36 +122,10 @@ FROM pg_class c
 JOIN pg_namespace n
 	ON c.relnamespace = n.oid
 WHERE %s
-AND (
-	-- Get tables in the include list
-	c.oid IN (%s)
-	-- Get parent partition tables whose children are in the include list
-	OR c.oid IN (
-		SELECT
-			p.parrelid
-		FROM pg_partition p
-		JOIN pg_partition_rule r ON p.oid = r.paroid
-		WHERE p.paristemplate = false
-		AND r.parchildrelid IN (%s)
-	)
-	-- Get external partition tables whose siblings are in the include list
-	OR c.oid IN (
-		SELECT
-			r.parchildrelid
-		FROM pg_partition_rule r
-		JOIN pg_exttable e ON r.parchildrelid = e.reloid
-		WHERE r.paroid IN (
-			SELECT
-				pr.paroid
-			FROM pg_partition_rule pr
-			WHERE pr.parchildrelid IN (%s)
-		)
-	)
-	%s
-)
+AND (c.oid IN (%s))
 AND (relkind = 'r')
 AND %s
-ORDER BY c.oid;`, SchemaFilterClause("n"), oidStr, oidStr, oidStr, childPartitionFilter, ExtensionFilterClause("c"))
+ORDER BY c.oid;`, SchemaFilterClause("n"), oidStr, ExtensionFilterClause("c"))
 
 	results := make([]Relation, 0)
 	err := connectionPool.Select(&results, query)
