@@ -57,11 +57,11 @@ func DBValidate(conn *dbconn.DBConn, tableList []string, excludeSet bool) {
 	if len(tableList) == 0 {
 		return
 	}
-	quotedList, err := options.QuoteTableNames(connectionPool, tableList)
+	quotedIncludeRelations, err := options.QuoteTableNames(connectionPool, tableList)
 	gplog.FatalOnError(err)
 	// todo perhaps store quoted list in options??
 
-	quotedTablesStr := utils.SliceToQuotedString(quotedList)
+	quotedTablesStr := utils.SliceToQuotedString(quotedIncludeRelations)
 	query := fmt.Sprintf(`
 	SELECT
 		c.oid,

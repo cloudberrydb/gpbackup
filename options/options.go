@@ -177,12 +177,12 @@ func (o *Options) SupplementPartitionIncludes(conn *dbconn.DBConn, flags *pflag.
 		return nil
 	}
 
-	quoted, err := QuoteTableNames(conn, o.GetIncludedTables())
+	quotedIncludeRelations, err := QuoteTableNames(conn, o.GetIncludedTables())
 	if err != nil {
 		return err
 	}
 
-	allFqnStructs, err := o.getUserTableRelationsWithIncludeFiltering(conn, quoted)
+	allFqnStructs, err := o.getUserTableRelationsWithIncludeFiltering(conn, quotedIncludeRelations)
 	if err != nil {
 		return err
 	}

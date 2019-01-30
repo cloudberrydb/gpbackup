@@ -25,17 +25,17 @@ func relationAndSchemaFilterClause() string {
 		}
 	}
 	if len(MustGetFlagStringArray(utils.INCLUDE_RELATION)) > 0 {
-		includeRelationsQuoted, err := options.QuoteTableNames(connectionPool, MustGetFlagStringArray(utils.INCLUDE_RELATION))
+		quotedIncludeRelations, err := options.QuoteTableNames(connectionPool, MustGetFlagStringArray(utils.INCLUDE_RELATION))
 		gplog.FatalOnError(err)
 
-		includeOids := GetOidsFromRelationList(connectionPool, includeRelationsQuoted)
+		includeOids := GetOidsFromRelationList(connectionPool, quotedIncludeRelations)
 		filterClause += fmt.Sprintf("\nAND c.oid IN (%s)", strings.Join(includeOids, ", "))
 	}
 	return filterClause
 }
 
-func GetOidsFromRelationList(connectionPool *dbconn.DBConn, quotedRelationNames []string) []string {
-	relList := utils.SliceToQuotedString(quotedRelationNames)
+func GetOidsFromRelationList(connectionPool *dbconn.DBConn, quotedIncludeRelations []string) []string {
+	relList := utils.SliceToQuotedString(quotedIncludeRelations)
 	query := fmt.Sprintf(`
 SELECT
 	c.oid AS string
