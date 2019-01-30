@@ -121,7 +121,7 @@ bar";
 			backup.DBValidate(connectionPool, tableList, false)
 		})
 	})
-	Describe("SupplementPartitionIncludes", func() {
+	Describe("ExpandIncludesForPartitions", func() {
 		BeforeEach(func() {
 			testhelper.AssertQueryRuns(connectionPool, `CREATE TABLE public."CAPpart"
 				(id int, rank int, year int, gender char(1), count int )
@@ -145,7 +145,7 @@ bar";
 			Expect(subject.GetIncludedTables()).To(ContainElement("public.CAPpart_1_prt_girls"))
 			Expect(subject.GetIncludedTables()).To(HaveLen(1))
 
-			err = subject.SupplementPartitionIncludes(connectionPool, backupCmdFlags)
+			err = subject.ExpandIncludesForPartitions(connectionPool, backupCmdFlags)
 			Expect(err).To(Not(HaveOccurred()))
 			Expect(subject.GetIncludedTables()).To(HaveLen(2))
 			Expect(backupCmdFlags.GetStringArray(utils.INCLUDE_RELATION)).To(HaveLen(2))
@@ -170,7 +170,7 @@ bar";
 			Expect(subject.GetIncludedTables()).To(ContainElement(`public."hasquote"_1_prt_girls`))
 			Expect(subject.GetIncludedTables()).To(HaveLen(1))
 
-			err = subject.SupplementPartitionIncludes(connectionPool, backupCmdFlags)
+			err = subject.ExpandIncludesForPartitions(connectionPool, backupCmdFlags)
 			Expect(err).To(Not(HaveOccurred()))
 			Expect(subject.GetIncludedTables()).To(HaveLen(2))
 			Expect(backupCmdFlags.GetStringArray(utils.INCLUDE_RELATION)).To(HaveLen(2))
@@ -196,7 +196,7 @@ PARTITION BY LIST (gender)
 			subject, err := options.NewOptions(backupCmdFlags)
 			Expect(err).To(Not(HaveOccurred()))
 
-			err = subject.SupplementPartitionIncludes(connectionPool, backupCmdFlags)
+			err = subject.ExpandIncludesForPartitions(connectionPool, backupCmdFlags)
 			Expect(err).To(Not(HaveOccurred()))
 
 			expectedTableNames := []string{
@@ -230,7 +230,7 @@ FORMAT 'csv';`)
 			subject, err := options.NewOptions(backupCmdFlags)
 			Expect(err).To(Not(HaveOccurred()))
 
-			err = subject.SupplementPartitionIncludes(connectionPool, backupCmdFlags)
+			err = subject.ExpandIncludesForPartitions(connectionPool, backupCmdFlags)
 			Expect(err).To(Not(HaveOccurred()))
 
 			expectedTableNames := []string{
@@ -288,7 +288,7 @@ FORMAT 'csv';`)
 			subject, err := options.NewOptions(backupCmdFlags)
 			Expect(err).To(Not(HaveOccurred()))
 
-			err = subject.SupplementPartitionIncludes(connectionPool, backupCmdFlags)
+			err = subject.ExpandIncludesForPartitions(connectionPool, backupCmdFlags)
 			Expect(err).To(Not(HaveOccurred()))
 
 			expectedTableNames := []string{

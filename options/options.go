@@ -172,7 +172,7 @@ func ValidateCharacters(tableList []string) error {
 	return nil
 }
 
-func (o *Options) SupplementPartitionIncludes(conn *dbconn.DBConn, flags *pflag.FlagSet) error {
+func (o *Options) ExpandIncludesForPartitions(conn *dbconn.DBConn, flags *pflag.FlagSet) error {
 	if len(o.GetIncludedTables()) == 0 {
 		return nil
 	}
