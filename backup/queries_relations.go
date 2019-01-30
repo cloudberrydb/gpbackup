@@ -121,11 +121,9 @@ SELECT
 FROM pg_class c
 JOIN pg_namespace n
 	ON c.relnamespace = n.oid
-WHERE %s
-AND (c.oid IN (%s))
+WHERE c.oid IN (%s)
 AND (relkind = 'r')
-AND %s
-ORDER BY c.oid;`, SchemaFilterClause("n"), oidStr, ExtensionFilterClause("c"))
+ORDER BY c.oid;`, oidStr)
 
 	results := make([]Relation, 0)
 	err := connectionPool.Select(&results, query)
