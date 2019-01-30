@@ -649,6 +649,31 @@ var _ = Describe("backup end to end integration tests", func() {
 				schema2TupleCounts["schema2.ao1"] = 1002
 				assertDataRestored(restoreConn, schema2TupleCounts)
 			})
+			It("can restore from an old backup with an incremental taken from new binaries with --include-table", func() {
+				if !useOldBackupVersion {
+					Skip("This test is only needed for old backup versions")
+				}
+				_ = gpbackup(gpbackupPath, backupHelperPath, "--leaf-partition-data", "--include-table=public.sales")
+				testhelper.AssertQueryRuns(backupConn, "INSERT into sales values(1, '2017-01-01', 99.99)")
+				defer testhelper.AssertQueryRuns(backupConn, "DELETE from sales where amt=99.99")
+				_ = gpbackup(gpbackupPath, backupHelperPath,
+					"--incremental", "--leaf-partition-data", "--include-table=public.sales")
+
+				gpbackupPath, backupHelperPath, _ = buildAndInstallBinaries()
+
+				testhelper.AssertQueryRuns(backupConn, "INSERT into sales values(2, '2017-02-01', 88.88)")
+				defer testhelper.AssertQueryRuns(backupConn, "DELETE from sales where amt=88.88")
+				incremental2Timestamp := gpbackup(gpbackupPath, backupHelperPath,
+					"--incremental", "--leaf-partition-data", "--include-table=public.sales")
+
+				gprestore(gprestorePath, restoreHelperPath, incremental2Timestamp, "--redirect-db", "restoredb")
+
+				localTupleCounts := map[string]int{
+					"public.sales": 15,
+				}
+				assertRelationsCreated(restoreConn, 13)
+				assertDataRestored(restoreConn, localTupleCounts)
+			})
 			Context("Without a timestamp", func() {
 				It("restores from a incremental backup specified with a backup directory", func() {
 					backupdir := filepath.Join(custom_backup_dir, "test_incremental") // Must be unique
@@ -710,7 +735,7 @@ var _ = Describe("backup end to end integration tests", func() {
 					})
 				})
 				Context("old binaries", func() {
-					It("can restore from a backup that has new incremental information", func() {
+					It("can restore from a backup with an incremental taken from new binaries", func() {
 						if !useOldBackupVersion {
 							Skip("This test is only needed for old backup versions")
 						}
@@ -1005,6 +1030,7 @@ var _ = Describe("backup end to end integration tests", func() {
 		})
 
 		It("runs gpbackup with --include-table flag with CAPS special characters", func() {
+			skipIfOldBackupVersionBefore("1.9.1")
 			backupdir := filepath.Join(custom_backup_dir, "includes") // Must be unique
 			timestamp := gpbackup(gpbackupPath, backupHelperPath, "--backup-dir", backupdir, "--dbname", "testdb", "--include-table", `public.FOObar`)
 			gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--backup-dir", backupdir)
@@ -1017,8 +1043,35 @@ var _ = Describe("backup end to end integration tests", func() {
 			assertDataRestored(restoreConn, localSchemaTupleCounts)
 			assertArtifactsCleaned(restoreConn, timestamp)
 		})
+		It("runs gpbackup with --include-table flag with partitions (non-special chars)", func() {
+			backupdir := filepath.Join(custom_backup_dir, "partitions_test") // Must be unique
+			testhelper.AssertQueryRuns(backupConn, `CREATE TABLE public.testparent (id int, rank int, year int, gender
+char(1), count int )
+DISTRIBUTED BY (id)
+PARTITION BY LIST (gender)
+( PARTITION girls VALUES ('F'),
+  PARTITION boys VALUES ('M'),
+  DEFAULT PARTITION other );
+			`)
+			defer testhelper.AssertQueryRuns(backupConn, `DROP TABLE public.testparent`)
 
+			testhelper.AssertQueryRuns(backupConn, `insert into public.testparent values (1,1,1,'M',1)`)
+			testhelper.AssertQueryRuns(backupConn, `insert into public.testparent values (0,0,0,'F',1)`)
+
+			timestamp := gpbackup(gpbackupPath, backupHelperPath, "--backup-dir", backupdir, "--dbname", "testdb", "--include-table", `public.testparent_1_prt_girls`, "--leaf-partition-data")
+			gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--backup-dir", backupdir)
+
+			assertRelationsCreated(restoreConn, 4)
+
+			localSchemaTupleCounts := map[string]int{
+				`public.testparent_1_prt_girls`: 1,
+				`public.testparent`:             1,
+			}
+			assertDataRestored(restoreConn, localSchemaTupleCounts)
+			assertArtifactsCleaned(restoreConn, timestamp)
+		})
 		It("runs gpbackup with --include-table flag with partitions with special chars", func() {
+			skipIfOldBackupVersionBefore("1.9.1")
 			backupdir := filepath.Join(custom_backup_dir, "partitions_special_char") // Must be unique
 			testhelper.AssertQueryRuns(backupConn, `CREATE TABLE public."CAPparent" (id int, rank int, year int, gender
 char(1), count int )
@@ -1033,14 +1086,14 @@ PARTITION BY LIST (gender)
 			testhelper.AssertQueryRuns(backupConn, `insert into public."CAPparent" values (1,1,1,'M',1)`)
 			testhelper.AssertQueryRuns(backupConn, `insert into public."CAPparent" values (0,0,0,'F',1)`)
 
-			timestamp := gpbackup(gpbackupPath, backupHelperPath, "--backup-dir", backupdir, "--dbname", "testdb", "--include-table", `public.CAPparent_1_prt_girls`)
+			timestamp := gpbackup(gpbackupPath, backupHelperPath, "--backup-dir", backupdir, "--dbname", "testdb", "--include-table", `public.CAPparent_1_prt_girls`, "--leaf-partition-data")
 			gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--backup-dir", backupdir)
 
 			assertRelationsCreated(restoreConn, 4)
 
 			localSchemaTupleCounts := map[string]int{
-				`public."CAPparent_1_prt_girls"`: 2, // 1
-				`public."CAPparent"`:             3, // 2 - unsure where this expected number comes from @lah sez "help!"
+				`public."CAPparent_1_prt_girls"`: 1,
+				`public."CAPparent"`:             1,
 			}
 			assertDataRestored(restoreConn, localSchemaTupleCounts)
 			assertArtifactsCleaned(restoreConn, timestamp)

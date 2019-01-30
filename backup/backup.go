@@ -86,8 +86,6 @@ func DoSetup() {
 	gplog.FatalOnError(err)
 
 	DBValidate(connectionPool, opts.GetIncludedTables(), false)
-	err = opts.ExpandIncludesForPartitions(connectionPool, cmdFlags)
-	gplog.FatalOnError(err)
 
 	// todo remove these when EXCLUDE_RELATION* flags are handled by options object
 	InitializeFilterLists()
@@ -111,6 +109,13 @@ func DoSetup() {
 	}
 
 	InitializeBackupReport()
+
+	// Expanding to include relavant parent partitions and child partitions
+	// must happen after the Backup Report is initialized to keep incremental
+	// backup working. This is so the expanded list of includes is not recorded
+	// in the backup report.
+	err = opts.ExpandIncludesForPartitions(connectionPool, cmdFlags)
+	gplog.FatalOnError(err)
 
 	if pluginConfigFlag != "" {
 		pluginConfig.CheckPluginExistsOnAllHosts(globalCluster)
