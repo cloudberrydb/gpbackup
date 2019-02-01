@@ -1098,6 +1098,26 @@ PARTITION BY LIST (gender)
 			assertDataRestored(restoreConn, localSchemaTupleCounts)
 			assertArtifactsCleaned(restoreConn, timestamp)
 		})
+		Describe("support special characters", func() {
+			It(`runs with table name including ~#$%^&*()_-+[]{}><|;:/?!\tC`, func() {
+				var err error
+				all_chars := []rune{' ', '`', '~', '#', '$', '%', '^', '&', '*', '(', ')', '-', '+', '[', ']', '{', '}', '>', '<', '\\', '|', ';', ':', '/', '?', ',', '!', 'C'}
+				includeTableArgs := []string{}
+				includeTableArgs = append(includeTableArgs, "--dbname")
+				includeTableArgs = append(includeTableArgs, "testdb")
+				for _, char := range all_chars {
+					tableName := fmt.Sprintf(`foo%sbar`, string(char))
+					testhelper.AssertQueryRuns(backupConn, fmt.Sprintf(`CREATE TABLE public."%s" ();`, tableName))
+					defer testhelper.AssertQueryRuns(backupConn, fmt.Sprintf(`DROP TABLE public."%s";`, tableName))
 
+					includeTableArgs = append(includeTableArgs, "--include-table")
+					includeTableArgs = append(includeTableArgs, fmt.Sprintf(`public.%s`, tableName))
+				}
+
+				cmd := exec.Command("gpbackup", includeTableArgs...)
+				_, err = cmd.CombinedOutput()
+				Expect(err).ToNot(HaveOccurred())
+			})
+		})
 	})
 })
