@@ -354,8 +354,8 @@ func GetDistributionPolicies(connectionPool *dbconn.DBConn) map[uint32]string {
 				row_number() over () as index
 			 FROM
 			 (select localoid, policytype,
-			  	CASE WHEN attrnums is NULL THEN NULL
-			  	ELSE unnest(attrnums)
+				CASE WHEN distkey = '' THEN NULL
+				ELSE unnest(distkey)
 				END AS attnum
 			  FROM gp_distribution_policy) x
 			 ) as p
