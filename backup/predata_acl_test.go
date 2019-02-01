@@ -185,7 +185,7 @@ ALTER VIEW public.viewname OWNER TO testrole;`)
 		})
 	})
 	Describe("PrintDefaultPrivilegeStatements", func() {
-		privs := []backup.ACL{backup.ACL{Grantee: "", Usage: true}}
+		privs := []backup.ACL{{Grantee: "", Usage: true}}
 		It("prints ALTER DEFAULT PRIVILEGES statement for relation", func() {
 			defaultPrivileges := []backup.DefaultPrivileges{{Owner: "testrole", Schema: "", Privileges: privs, ObjectType: "r"}}
 			backup.PrintDefaultPrivilegesStatements(backupfile, toc, defaultPrivileges)
@@ -223,7 +223,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE testrole GRANT ALL ON TYPES TO PUBLIC;
 `)
 		})
 		It("prints ALTER DEFAULT PRIVILEGES statement for role", func() {
-			localPrivs := []backup.ACL{backup.ACL{Grantee: "somerole", Usage: true}}
+			localPrivs := []backup.ACL{{Grantee: "somerole", Usage: true}}
 			defaultPrivileges := []backup.DefaultPrivileges{{Schema: "", Owner: "somerole", Privileges: localPrivs, ObjectType: "r"}}
 			backup.PrintDefaultPrivilegesStatements(backupfile, toc, defaultPrivileges)
 			testhelper.ExpectRegexp(buffer, `
@@ -242,7 +242,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE testrole IN SCHEMA myschema GRANT USAGE ON TAB
 `)
 		})
 		It("prints ALTER DEFAULT PRIVILEGES statement for role in schema", func() {
-			localPrivs := []backup.ACL{backup.ACL{Grantee: "somerole", Usage: true}}
+			localPrivs := []backup.ACL{{Grantee: "somerole", Usage: true}}
 			defaultPrivileges := []backup.DefaultPrivileges{{Schema: "myschema", Owner: "somerole", Privileges: localPrivs, ObjectType: "r"}}
 			backup.PrintDefaultPrivilegesStatements(backupfile, toc, defaultPrivileges)
 			testhelper.ExpectRegexp(buffer, `
@@ -252,7 +252,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE somerole IN SCHEMA myschema GRANT USAGE ON TAB
 `)
 		})
 		It("prints ALTER DEFAULT PRIVILEGES statement with grant option", func() {
-			localPrivs := []backup.ACL{backup.ACL{Grantee: "somerole", Usage: true, UsageWithGrant: true}}
+			localPrivs := []backup.ACL{{Grantee: "somerole", Usage: true, UsageWithGrant: true}}
 			defaultPrivileges := []backup.DefaultPrivileges{{Owner: "testrole", Schema: "", Privileges: localPrivs, ObjectType: "r"}}
 			backup.PrintDefaultPrivilegesStatements(backupfile, toc, defaultPrivileges)
 			testhelper.ExpectRegexp(buffer, `
