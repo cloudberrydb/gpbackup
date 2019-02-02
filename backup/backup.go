@@ -110,7 +110,7 @@ func DoSetup() {
 
 	InitializeBackupReport()
 
-	// Expanding to include relavant parent partitions and child partitions
+	// Expanding to include relevant parent partitions and child partitions
 	// must happen after the Backup Report is initialized to keep incremental
 	// backup working. This is so the expanded list of includes is not recorded
 	// in the backup report.

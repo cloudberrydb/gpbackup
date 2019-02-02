@@ -55,6 +55,7 @@ func SetSessionGUCs(connNum int) {
 	connectionPool.MustExec("SET search_path TO pg_catalog", connNum)
 	connectionPool.MustExec("SET statement_timeout = 0", connNum)
 	connectionPool.MustExec("SET DATESTYLE = ISO", connNum)
+	connectionPool.MustExec("SET standard_conforming_strings = 1", connNum) // Needed for 4.3, default on in 5+
 	if connectionPool.Version.AtLeast("5") {
 		connectionPool.MustExec("SET synchronize_seqscans TO off", connNum)
 	}
