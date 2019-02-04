@@ -91,6 +91,9 @@ func DoSetup() {
 	InitializeFilterLists()
 	validateFilterLists()
 
+	err = opts.ExpandIncludesForPartitions(connectionPool, cmdFlags)
+	gplog.FatalOnError(err)
+
 	segConfig := cluster.MustGetSegmentConfiguration(connectionPool)
 	globalCluster = cluster.NewCluster(segConfig)
 	segPrefix := backup_filepath.GetSegPrefix(connectionPool)
@@ -109,13 +112,6 @@ func DoSetup() {
 	}
 
 	InitializeBackupReport(*opts)
-
-	// Expanding to include relevant parent partitions and child partitions
-	// must happen after the Backup Report is initialized to keep incremental
-	// backup working. This is so the expanded list of includes is not recorded
-	// in the backup report.
-	err = opts.ExpandIncludesForPartitions(connectionPool, cmdFlags)
-	gplog.FatalOnError(err)
 
 	if pluginConfigFlag != "" {
 		pluginConfig.CheckPluginExistsOnAllHosts(globalCluster)
