@@ -105,6 +105,10 @@ func (o Options) GetExcludedSchemas() []string {
 	return o.excludedSchemas
 }
 
+func (o *Options) AddIncludedRelation(relation string) {
+	o.includedRelations = append(o.includedRelations, relation)
+}
+
 type FqnStruct struct {
 	SchemaName string
 	TableName  string
@@ -218,7 +222,7 @@ func (o *Options) ExpandIncludesForPartitions(conn *dbconn.DBConn, flags *pflag.
 		if err != nil {
 			return err
 		}
-		o.includedRelations = append(o.includedRelations, fqn)
+		o.AddIncludedRelation(fqn)
 	}
 
 	return nil

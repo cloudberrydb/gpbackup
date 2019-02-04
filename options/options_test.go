@@ -140,6 +140,15 @@ var _ = Describe("options", func() {
 			_, err = options.NewOptions(myflags)
 			Expect(err).To(HaveOccurred())
 		})
+		Describe("AddIncludeRelation", func() {
+			It("it adds a relation", func() {
+				subject, err := options.NewOptions(myflags)
+				Expect(err).To(Not(HaveOccurred()))
+				subject.AddIncludedRelation("public.foobar")
+				Expect(subject.GetIncludedTables()).To(Equal([]string{"public.foobar"}))
+				Expect(subject.GetOriginalIncludedTables()).To(BeEmpty())
+			})
+		})
 	})
 	Describe("character validation", func() {
 		It("succeeds if characters are valid", func() {
