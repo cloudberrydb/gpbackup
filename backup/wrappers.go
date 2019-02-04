@@ -65,7 +65,7 @@ func SetSessionGUCs(connNum int) {
 	}
 }
 
-func NewBackupConfig(dbName string, dbVersion string, backupVersion string, plugin string, timestamp string) *backup_history.BackupConfig {
+func NewBackupConfig(dbName string, dbVersion string, backupVersion string, plugin string, timestamp string, opts options.Options) *backup_history.BackupConfig {
 	backupConfig := backup_history.BackupConfig{
 		BackupDir:             MustGetFlagString(utils.BACKUP_DIR),
 		BackupVersion:         backupVersion,
@@ -77,7 +77,7 @@ func NewBackupConfig(dbName string, dbVersion string, backupVersion string, plug
 		ExcludeSchemaFiltered: len(MustGetFlagStringSlice(utils.EXCLUDE_SCHEMA)) > 0,
 		ExcludeSchemas:        MustGetFlagStringSlice(utils.EXCLUDE_SCHEMA),
 		ExcludeTableFiltered:  len(MustGetFlagStringSlice(utils.EXCLUDE_RELATION)) > 0,
-		IncludeRelations:      MustGetFlagStringArray(utils.INCLUDE_RELATION),
+		IncludeRelations:      opts.GetOriginalIncludedTables(),
 		IncludeSchemaFiltered: len(MustGetFlagStringSlice(utils.INCLUDE_SCHEMA)) > 0,
 		IncludeSchemas:        MustGetFlagStringSlice(utils.INCLUDE_SCHEMA),
 		IncludeTableFiltered:  len(MustGetFlagStringArray(utils.INCLUDE_RELATION)) > 0,
@@ -93,14 +93,14 @@ func NewBackupConfig(dbName string, dbVersion string, backupVersion string, plug
 	return &backupConfig
 }
 
-func InitializeBackupReport() {
+func InitializeBackupReport(opts options.Options) {
 	escapedDBName := dbconn.MustSelectString(connectionPool, fmt.Sprintf("select quote_ident(datname) AS string FROM pg_database where datname='%s'", utils.EscapeSingleQuotes(connectionPool.DBName)))
 	plugin := ""
 	if pluginConfig != nil {
 		plugin = pluginConfig.ExecutablePath
 	}
 	config := NewBackupConfig(escapedDBName, connectionPool.Version.VersionString, version,
-		plugin, globalFPInfo.Timestamp)
+		plugin, globalFPInfo.Timestamp, opts)
 
 	isFilteredBackup := config.IncludeTableFiltered || config.IncludeSchemaFiltered ||
 		config.ExcludeTableFiltered || config.ExcludeSchemaFiltered

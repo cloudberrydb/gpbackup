@@ -7,6 +7,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/greenplum-db/gpbackup/options"
+
 	"github.com/blang/semver"
 	"github.com/greenplum-db/gp-common-go-libs/cluster"
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
@@ -247,20 +249,29 @@ Restore Status: Success but non-fatal errors occurred. See log file .+ for detai
 			backupCmdFlags := pflag.NewFlagSet("gpbackup", pflag.ExitOnError)
 			backup.SetFlagDefaults(backupCmdFlags)
 			backup.SetCmdFlags(backupCmdFlags)
+			err := backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.foobar")
+			Expect(err).ToNot(HaveOccurred())
+			opts, err := options.NewOptions(backupCmdFlags)
+			Expect(err).ToNot(HaveOccurred())
+			opts.AddIncludedRelation("public.baz")
+			err = backupCmdFlags.Set(utils.INCLUDE_RELATION, "public.baz")
+			Expect(err).ToNot(HaveOccurred())
+
 			backupConfig := backup.NewBackupConfig("testdb",
 				"5.0.0 build test", "0.1.0",
-				"/tmp/plugin.sh", "timestamp1")
+				"/tmp/plugin.sh", "timestamp1", *opts)
 			structmatcher.ExpectStructsToMatch(backup_history.BackupConfig{
-				BackupVersion:    "0.1.0",
-				Compressed:       true,
-				DatabaseName:     "testdb",
-				DatabaseVersion:  "5.0.0 build test",
-				IncludeSchemas:   []string{},
-				IncludeRelations: []string{},
-				ExcludeSchemas:   []string{},
-				ExcludeRelations: []string{},
-				Plugin:           "/tmp/plugin.sh",
-				Timestamp:        "timestamp1",
+				BackupVersion:        "0.1.0",
+				Compressed:           true,
+				DatabaseName:         "testdb",
+				DatabaseVersion:      "5.0.0 build test",
+				IncludeSchemas:       []string{},
+				IncludeRelations:     []string{"public.foobar"},
+				ExcludeSchemas:       []string{},
+				ExcludeRelations:     []string{},
+				Plugin:               "/tmp/plugin.sh",
+				Timestamp:            "timestamp1",
+				IncludeTableFiltered: true,
 			}, backupConfig)
 		})
 	})

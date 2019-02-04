@@ -108,7 +108,7 @@ func DoSetup() {
 		gplog.FatalOnError(err)
 	}
 
-	InitializeBackupReport()
+	InitializeBackupReport(*opts)
 
 	// Expanding to include relevant parent partitions and child partitions
 	// must happen after the Backup Report is initialized to keep incremental
