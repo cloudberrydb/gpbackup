@@ -151,6 +151,11 @@ bar";
 			Expect(backupCmdFlags.GetStringArray(utils.INCLUDE_RELATION)).To(HaveLen(2))
 			Expect(subject.GetIncludedTables()).To(ContainElement("public.CAPpart_1_prt_girls"))
 			Expect(subject.GetIncludedTables()).To(ContainElement("public.CAPpart"))
+
+			// ensure that ExpandIncludesForPartitions does not disturb the original value
+			// that the user typed in, which is used by InitializeBackupReport() and
+			// is important for incremental backups which must exactly match all flag input
+			Expect(subject.GetOriginalIncludedTables()).To(Equal([]string{`public.CAPpart_1_prt_girls`}))
 		})
 		It("adds parent table when child partition with embedded quote character is included", func() {
 			testhelper.AssertQueryRuns(connectionPool, `CREATE TABLE public."""hasquote"""

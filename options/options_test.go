@@ -32,6 +32,8 @@ var _ = Describe("options", func() {
 
 			includedTables := subject.GetIncludedTables()
 			Expect(includedTables).To(BeEmpty())
+			originalIncludedTables := subject.GetOriginalIncludedTables()
+			Expect(originalIncludedTables).To(BeEmpty())
 		})
 		It("returns the include tables when one table in flag", func() {
 			err := myflags.Set(utils.INCLUDE_RELATION, "foo.bar")
@@ -43,6 +45,8 @@ var _ = Describe("options", func() {
 			includedTables := subject.GetIncludedTables()
 			Expect(includedTables).To(HaveLen(1))
 			Expect(includedTables[0]).To(Equal("foo.bar"))
+			originalIncludedTables := subject.GetOriginalIncludedTables()
+			Expect(originalIncludedTables[0]).To(Equal("foo.bar"))
 		})
 		It("returns an include with special characters besides quote, dot and comma", func() {
 			err := myflags.Set(utils.INCLUDE_RELATION, `foo '~#$%^&*()_-+[]{}><\|;:/?!\t\n.bar`)

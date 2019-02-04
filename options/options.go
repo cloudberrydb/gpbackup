@@ -14,10 +14,11 @@ import (
 )
 
 type Options struct {
-	includedRelations   []string
-	isLeafPartitionData bool
-	excludedSchemas     []string
-	includedSchemas     []string
+	includedRelations         []string
+	isLeafPartitionData       bool
+	excludedSchemas           []string
+	includedSchemas           []string
+	originalIncludedRelations []string
 }
 
 func NewOptions(initialFlags *pflag.FlagSet) (*Options, error) {
@@ -60,10 +61,11 @@ func NewOptions(initialFlags *pflag.FlagSet) (*Options, error) {
 	}
 
 	return &Options{
-		includedRelations:   includes,
-		includedSchemas:     includedSchemas,
-		excludedSchemas:     excludedSchemas,
-		isLeafPartitionData: leafPartitionData,
+		includedRelations:         includes,
+		includedSchemas:           includedSchemas,
+		excludedSchemas:           excludedSchemas,
+		isLeafPartitionData:       leafPartitionData,
+		originalIncludedRelations: includes,
 	}, nil
 }
 
@@ -85,6 +87,10 @@ func setIncludesFromFile(filename string, initialFlags *pflag.FlagSet) ([]string
 
 func (o Options) GetIncludedTables() []string {
 	return o.includedRelations
+}
+
+func (o Options) GetOriginalIncludedTables() []string {
+	return o.originalIncludedRelations
 }
 
 func (o Options) IsLeafPartitionData() bool {
