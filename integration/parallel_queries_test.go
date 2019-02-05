@@ -64,7 +64,7 @@ var _ = Describe("backup, utils, and restore integration tests related to parall
 		BeforeEach(func() {
 			tempConn = dbconn.NewDBConnFromEnvironment("testdb")
 			restore.SetConnection(tempConn)
-			tempConn.MustConnect(3)
+			tempConn.MustConnect(4)
 			testhelper.AssertQueryRuns(tempConn, "SET ROLE testrole")
 
 		})
