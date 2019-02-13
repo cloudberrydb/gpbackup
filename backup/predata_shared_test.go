@@ -44,61 +44,61 @@ var _ = Describe("backup/predata_shared tests", func() {
 				constraints := []backup.Constraint{uniqueOne}
 				constraintMetadataMap := testutils.DefaultMetadataMap("CONSTRAINT", false, false, true, false)
 				backup.PrintConstraintStatements(backupfile, toc, constraints, constraintMetadataMap)
-				testutils.ExpectEntry(toc.PredataEntries, 0, "", "public.tablename", "tablename_i_key", "CONSTRAINT")
-				testutils.AssertBufferContents(toc.PredataEntries, buffer, "ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_key UNIQUE (i);", "COMMENT ON CONSTRAINT tablename_i_key ON public.tablename IS 'This is a constraint comment.';")
+				testutils.ExpectEntry(toc.PostdataEntries, 0, "", "public.tablename", "tablename_i_key", "CONSTRAINT")
+				testutils.AssertBufferContents(toc.PostdataEntries, buffer, "ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_key UNIQUE (i);", "COMMENT ON CONSTRAINT tablename_i_key ON public.tablename IS 'This is a constraint comment.';")
 			})
 			It("prints an ADD CONSTRAINT statement for one UNIQUE constraint", func() {
 				constraints := []backup.Constraint{uniqueOne}
 				backup.PrintConstraintStatements(backupfile, toc, constraints, emptyMetadataMap)
-				testutils.AssertBufferContents(toc.PredataEntries, buffer, `ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_key UNIQUE (i);`)
+				testutils.AssertBufferContents(toc.PostdataEntries, buffer, `ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_key UNIQUE (i);`)
 			})
 			It("prints ADD CONSTRAINT statements for two UNIQUE constraints", func() {
 				constraints := []backup.Constraint{uniqueOne, uniqueTwo}
 				backup.PrintConstraintStatements(backupfile, toc, constraints, emptyMetadataMap)
-				testutils.AssertBufferContents(toc.PredataEntries, buffer,
+				testutils.AssertBufferContents(toc.PostdataEntries, buffer,
 					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_key UNIQUE (i);`,
 					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_j_key UNIQUE (j);`)
 			})
 			It("prints an ADD CONSTRAINT statement for one PRIMARY KEY constraint on one column", func() {
 				constraints := []backup.Constraint{primarySingle}
 				backup.PrintConstraintStatements(backupfile, toc, constraints, emptyMetadataMap)
-				testutils.AssertBufferContents(toc.PredataEntries, buffer, `ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_pkey PRIMARY KEY (i);`)
+				testutils.AssertBufferContents(toc.PostdataEntries, buffer, `ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_pkey PRIMARY KEY (i);`)
 			})
 			It("prints an ADD CONSTRAINT statement for one composite PRIMARY KEY constraint on two columns", func() {
 				constraints := []backup.Constraint{primaryComposite}
 				backup.PrintConstraintStatements(backupfile, toc, constraints, emptyMetadataMap)
-				testutils.AssertBufferContents(toc.PredataEntries, buffer, `ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_pkey PRIMARY KEY (i, j);`)
+				testutils.AssertBufferContents(toc.PostdataEntries, buffer, `ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_pkey PRIMARY KEY (i, j);`)
 			})
 			It("prints an ADD CONSTRAINT statement for one FOREIGN KEY constraint", func() {
 				constraints := []backup.Constraint{foreignOne}
 				backup.PrintConstraintStatements(backupfile, toc, constraints, emptyMetadataMap)
-				testutils.AssertBufferContents(toc.PredataEntries, buffer, `ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_fkey FOREIGN KEY (i) REFERENCES other_tablename(a);`)
+				testutils.AssertBufferContents(toc.PostdataEntries, buffer, `ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_fkey FOREIGN KEY (i) REFERENCES other_tablename(a);`)
 			})
 			It("prints ADD CONSTRAINT statements for two FOREIGN KEY constraints", func() {
 				constraints := []backup.Constraint{foreignOne, foreignTwo}
 				backup.PrintConstraintStatements(backupfile, toc, constraints, emptyMetadataMap)
-				testutils.AssertBufferContents(toc.PredataEntries, buffer,
+				testutils.AssertBufferContents(toc.PostdataEntries, buffer,
 					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_fkey FOREIGN KEY (i) REFERENCES other_tablename(a);`,
 					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_j_fkey FOREIGN KEY (j) REFERENCES other_tablename(b);`)
 			})
 			It("prints ADD CONSTRAINT statements for one UNIQUE constraint and one FOREIGN KEY constraint", func() {
 				constraints := []backup.Constraint{foreignTwo, uniqueOne}
 				backup.PrintConstraintStatements(backupfile, toc, constraints, emptyMetadataMap)
-				testutils.AssertBufferContents(toc.PredataEntries, buffer,
+				testutils.AssertBufferContents(toc.PostdataEntries, buffer,
 					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_key UNIQUE (i);`,
 					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_j_fkey FOREIGN KEY (j) REFERENCES other_tablename(b);`)
 			})
 			It("prints ADD CONSTRAINT statements for one PRIMARY KEY constraint and one FOREIGN KEY constraint", func() {
 				constraints := []backup.Constraint{foreignTwo, primarySingle}
 				backup.PrintConstraintStatements(backupfile, toc, constraints, emptyMetadataMap)
-				testutils.AssertBufferContents(toc.PredataEntries, buffer,
+				testutils.AssertBufferContents(toc.PostdataEntries, buffer,
 					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_pkey PRIMARY KEY (i);`,
 					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_j_fkey FOREIGN KEY (j) REFERENCES other_tablename(b);`)
 			})
 			It("prints ADD CONSTRAINT statements for one two-column composite PRIMARY KEY constraint and one FOREIGN KEY constraint", func() {
 				constraints := []backup.Constraint{foreignTwo, primaryComposite}
 				backup.PrintConstraintStatements(backupfile, toc, constraints, emptyMetadataMap)
-				testutils.AssertBufferContents(toc.PredataEntries, buffer,
+				testutils.AssertBufferContents(toc.PostdataEntries, buffer,
 					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_pkey PRIMARY KEY (i, j);`,
 					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_j_fkey FOREIGN KEY (j) REFERENCES other_tablename(b);`)
 			})
@@ -107,21 +107,21 @@ var _ = Describe("backup/predata_shared tests", func() {
 			It("prints ADD CONSTRAINT statements for one UNIQUE constraint and one FOREIGN KEY constraint", func() {
 				constraints := []backup.Constraint{foreignOne, uniqueOne}
 				backup.PrintConstraintStatements(backupfile, toc, constraints, emptyMetadataMap)
-				testutils.AssertBufferContents(toc.PredataEntries, buffer,
+				testutils.AssertBufferContents(toc.PostdataEntries, buffer,
 					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_key UNIQUE (i);`,
 					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_fkey FOREIGN KEY (i) REFERENCES other_tablename(a);`)
 			})
 			It("prints ADD CONSTRAINT statements for one PRIMARY KEY constraint and one FOREIGN KEY constraint", func() {
 				constraints := []backup.Constraint{foreignOne, primarySingle}
 				backup.PrintConstraintStatements(backupfile, toc, constraints, emptyMetadataMap)
-				testutils.AssertBufferContents(toc.PredataEntries, buffer,
+				testutils.AssertBufferContents(toc.PostdataEntries, buffer,
 					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_pkey PRIMARY KEY (i);`,
 					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_fkey FOREIGN KEY (i) REFERENCES other_tablename(a);`)
 			})
 			It("prints ADD CONSTRAINT statements for a two-column composite PRIMARY KEY constraint and one FOREIGN KEY constraint", func() {
 				constraints := []backup.Constraint{foreignOne, primaryComposite}
 				backup.PrintConstraintStatements(backupfile, toc, constraints, emptyMetadataMap)
-				testutils.AssertBufferContents(toc.PredataEntries, buffer,
+				testutils.AssertBufferContents(toc.PostdataEntries, buffer,
 					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_pkey PRIMARY KEY (i, j);`,
 					`ALTER TABLE ONLY public.tablename ADD CONSTRAINT tablename_i_fkey FOREIGN KEY (i) REFERENCES other_tablename(a);`)
 			})
@@ -135,7 +135,7 @@ var _ = Describe("backup/predata_shared tests", func() {
 				uniqueOne.IsPartitionParent = true
 				constraints := []backup.Constraint{uniqueOne}
 				backup.PrintConstraintStatements(backupfile, toc, constraints, emptyMetadataMap)
-				testutils.AssertBufferContents(toc.PredataEntries, buffer, `ALTER TABLE public.tablename ADD CONSTRAINT tablename_i_key UNIQUE (i);`)
+				testutils.AssertBufferContents(toc.PostdataEntries, buffer, `ALTER TABLE public.tablename ADD CONSTRAINT tablename_i_key UNIQUE (i);`)
 			})
 		})
 	})

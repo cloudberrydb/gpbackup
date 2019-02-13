@@ -85,7 +85,7 @@ type Constraint struct {
 }
 
 func (c Constraint) GetMetadataEntry() (string, utils.MetadataEntry) {
-	return "predata",
+	return "postdata",
 		utils.MetadataEntry{
 			Schema:          c.Schema,
 			Name:            c.Name,
