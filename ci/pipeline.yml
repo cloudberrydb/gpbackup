@@ -87,8 +87,8 @@ resources:
 - name: bin_gpdb_5x_stable
   type: s3
   source:
-      bucket: gpdb5-release-builds
-      versioned_file: bin_gpdb_centos6/bin_gpdb.tar.gz
+      bucket: gpdb-stable-concourse-builds
+      versioned_file: release_candidates/bin_gpdb_centos6/gpdb5/bin_gpdb.tar.gz
       region_name: us-west-2
       access_key_id: {{bucket-access-key-id}}
       secret_access_key: {{bucket-secret-access-key}}
@@ -96,8 +96,8 @@ resources:
 - name: bin_gpdb_5x_stable_centos7
   type: s3
   source:
-      bucket: gpdb5-release-builds
-      versioned_file: bin_gpdb_centos7/bin_gpdb.tar.gz
+      bucket: gpdb-stable-concourse-builds
+      versioned_file: release_candidates/bin_gpdb_centos7/gpdb5/bin_gpdb.tar.gz
       region_name: us-west-2
       access_key_id: {{bucket-access-key-id}}
       secret_access_key: {{bucket-secret-access-key}}
@@ -105,8 +105,8 @@ resources:
 - name: bin_gpdb_43_stable
   type: s3
   source:
-      bucket: gpdb-4.3-release
-      versioned_file: bin_gpdb_centos5/bin_gpdb.tar.gz
+      bucket: gpdb-4.3-stable-concourse
+      versioned_file: bin_gpdb_centos/bin_gpdb.tar.gz
       region_name: us-west-2
       access_key_id: {{gpdb4-bucket-access-key-id}}
       secret_access_key: {{gpdb4-bucket-secret-access-key}}
