@@ -169,7 +169,13 @@ LANGUAGE SQL`)
 				// just the 2 default "REVOKE" and no additional grant because all booleans false.
 				Expect(resultMetadata.Privileges).To(HaveLen(1))
 
-				expectedMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "GRANTEE"}}, Owner: "testrole", SecurityLabel: "unclassified", SecurityLabelProvider: "dummy"}
+				slabel := ""
+				slabelProvider := ""
+				if connectionPool.Version.AtLeast("6.0.0") {
+					slabel = "unclassified"
+					slabelProvider = "dummy"
+				}
+				expectedMetadata := backup.ObjectMetadata{Privileges: []backup.ACL{{Grantee: "GRANTEE"}}, Owner: "testrole", SecurityLabel: slabel, SecurityLabelProvider: slabelProvider}
 				structmatcher.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 			})
 			It("returns metadata for a function with a grant and revoke", func() {
