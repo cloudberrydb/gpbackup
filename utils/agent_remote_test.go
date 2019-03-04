@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/greenplum-db/gpbackup/utils"
 
@@ -55,13 +56,13 @@ var _ = Describe("agent remote", func() {
 		It("generates the correct command to copy the OID list", func() {
 			utils.WriteOidListToSegments(oidList, testCluster, filePath)
 
-			tempDir := os.TempDir()
+			tempDir := strings.TrimSuffix(os.TempDir(), "/")
 
 			// one command per segment
 			Expect(testExecutor.LocalCommands).To(HaveLen(2))
-			expectedCommand := fmt.Sprintf(`^scp %sgpbackup-oids\d+ localhost:/data/gpseg0/gpbackup_0_20190102030405_oid_\d+$`, tempDir)
+			expectedCommand := fmt.Sprintf(`^scp %s/gpbackup-oids\d+ localhost:/data/gpseg0/gpbackup_0_20190102030405_oid_\d+$`, tempDir)
 			Expect(testExecutor.LocalCommands[0]).To(MatchRegexp(expectedCommand))
-			expectedCommand = fmt.Sprintf(`^scp %sgpbackup-oids\d+ remotehost1:/data/gpseg1/gpbackup_1_20190102030405_oid_\d+$`, tempDir)
+			expectedCommand = fmt.Sprintf(`^scp %s/gpbackup-oids\d+ remotehost1:/data/gpseg1/gpbackup_1_20190102030405_oid_\d+$`, tempDir)
 			Expect(testExecutor.LocalCommands[1]).To(MatchRegexp(expectedCommand))
 		})
 		It("panics and prints when command execution fails", func() {
