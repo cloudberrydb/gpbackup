@@ -1,6 +1,7 @@
 package utils_test
 
 import (
+	"fmt"
 	"io"
 	"os"
 
@@ -54,10 +55,14 @@ var _ = Describe("agent remote", func() {
 		It("generates the correct command to copy the OID list", func() {
 			utils.WriteOidListToSegments(oidList, testCluster, filePath)
 
+			tempDir := os.TempDir()
+
 			// one command per segment
 			Expect(testExecutor.LocalCommands).To(HaveLen(2))
-			Expect(testExecutor.LocalCommands[0]).To(MatchRegexp(`^scp /tmp/gpbackup-oids\d+ localhost:/data/gpseg0/gpbackup_0_20190102030405_oid_\d+$`))
-			Expect(testExecutor.LocalCommands[1]).To(MatchRegexp(`^scp /tmp/gpbackup-oids\d+ remotehost1:/data/gpseg1/gpbackup_1_20190102030405_oid_\d+$`))
+			expectedCommand := fmt.Sprintf(`^scp %sgpbackup-oids\d+ localhost:/data/gpseg0/gpbackup_0_20190102030405_oid_\d+$`, tempDir)
+			Expect(testExecutor.LocalCommands[0]).To(MatchRegexp(expectedCommand))
+			expectedCommand = fmt.Sprintf(`^scp %sgpbackup-oids\d+ remotehost1:/data/gpseg1/gpbackup_1_20190102030405_oid_\d+$`, tempDir)
+			Expect(testExecutor.LocalCommands[1]).To(MatchRegexp(expectedCommand))
 		})
 		It("panics and prints when command execution fails", func() {
 			failingExecutor := &testhelper.TestExecutor{
