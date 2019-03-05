@@ -240,6 +240,7 @@ CREATE TABLE public.test_tsvector (
 			Expect(distPolicies).To(Equal("DISTRIBUTED BY (a, b)"))
 		})
 		It("returns distribution policy info for a table DISTRIBUTED BY a custom operator", func() {
+			testutils.SkipIfBefore6(connectionPool)
 			testhelper.AssertQueryRuns(connectionPool, `
 				CREATE OPERATOR FAMILY public.abs_int_hash_ops USING hash;
 
