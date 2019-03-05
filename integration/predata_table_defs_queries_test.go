@@ -239,6 +239,61 @@ CREATE TABLE public.test_tsvector (
 
 			Expect(distPolicies).To(Equal("DISTRIBUTED BY (a, b)"))
 		})
+		It("returns distribution policy info for a table DISTRIBUTED BY a custom operator", func() {
+			testhelper.AssertQueryRuns(connectionPool, `
+				CREATE OPERATOR FAMILY public.abs_int_hash_ops USING hash;
+
+				CREATE FUNCTION public.abseq(integer, integer) RETURNS boolean
+				    LANGUAGE plpgsql IMMUTABLE STRICT NO SQL
+				    AS $_$
+				  begin return abs($1) = abs($2); end;
+				$_$;
+
+				CREATE OPERATOR public.|=| (
+				    PROCEDURE = public.abseq,
+				    LEFTARG = integer,
+				    RIGHTARG = integer,
+				    COMMUTATOR = OPERATOR(public.|=|),
+				    MERGES,
+				    HASHES
+				);
+				CREATE FUNCTION public.abshashfunc(integer) RETURNS integer
+				    LANGUAGE plpgsql IMMUTABLE STRICT NO SQL
+				    AS $_$
+				  begin return abs($1); end;
+				$_$;
+
+
+				-- operator class dec
+				CREATE OPERATOR CLASS public.abs_int_hash_ops
+				    FOR TYPE integer USING hash FAMILY public.abs_int_hash_ops AS
+				    OPERATOR 1 public.|=|(integer,integer) ,
+				    FUNCTION 1 (integer, integer) public.abshashfunc(integer);
+
+
+				-- table ft object
+				CREATE TABLE public.abs_opclass_test (
+				    i integer,
+				    t text,
+				    j integer
+				) DISTRIBUTED BY (i public.abs_int_hash_ops, t, j public.abs_int_hash_ops);
+			`)
+
+			defer testhelper.AssertQueryRuns(connectionPool, `
+				DROP TABLE IF EXISTS public.abs_opclass_test;
+				DROP OPERATOR CLASS IF EXISTS public.abs_int_hash_ops USING hash;
+				DROP FUNCTION IF EXISTS public.abshashfunc(integer);
+				DROP OPERATOR IF EXISTS public.|=|(integer, integer);
+				DROP FUNCTION IF EXISTS public.abseq(integer, integer);
+				DROP OPERATOR FAMILY IF EXISTS public.abs_int_hash_ops USING hash;
+			`)
+
+			oid := testutils.OidFromObjectName(connectionPool, "public", "abs_opclass_test", backup.TYPE_RELATION)
+
+			distPolicies := backup.GetDistributionPolicies(connectionPool)[oid]
+
+			Expect(distPolicies).To(Equal("DISTRIBUTED BY (i public.abs_int_hash_ops, t, j public.abs_int_hash_ops)"))
+		})
 		It("returns distribution policy info for a table DISTRIBUTED BY column name as keyword", func() {
 			testhelper.AssertQueryRuns(connectionPool, `CREATE TABLE public.dist_one(a int, "group" text) DISTRIBUTED BY ("group")`)
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLE public.dist_one")

@@ -319,9 +319,9 @@ ORDER BY a.attrelid, a.attname;
 }
 
 func GetDistributionPolicies(connectionPool *dbconn.DBConn) map[uint32]string {
-	// This query is adapted from the addDistributedBy() function in pg_dump.c.
 	var query string
 	if connectionPool.Version.Before("6") {
+		// This query is adapted from the addDistributedBy() function in pg_dump.c.
 		query = `
 		SELECT
 			p.localoid as oid,
@@ -344,7 +344,7 @@ func GetDistributionPolicies(connectionPool *dbconn.DBConn) map[uint32]string {
 			p.localoid as oid,
 			CASE WHEN p.policytype = 'r' THEN 'DISTRIBUTED REPLICATED'
 				 WHEN count(p.attnum) = 0 THEN 'DISTRIBUTED RANDOMLY'
-				 ELSE 'DISTRIBUTED BY (' || array_to_string(array_agg(quote_ident(a.attname) order by index), ', ') || ')'
+				 ELSE pg_catalog.pg_get_table_distributedby(p.localoid)
 			END AS value	
 		FROM
 			(
