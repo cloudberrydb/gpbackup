@@ -59,3 +59,22 @@ CREATE TYPE public.textrange AS RANGE (
 	SUBTYPE = pg_catalog.text,
 	COLLATION = public.some_coll
 );
+
+CREATE TYPE public.colors AS ENUM (
+    'red',
+    'green',
+    'blue'
+);
+CREATE TABLE public.legacy_enum (
+    color public.colors
+) DISTRIBUTED BY (color cdbhash_enum_ops);
+
+CREATE TABLE aa (
+    a integer NOT NULL,
+    b integer NOT NULL,
+    c integer
+) DISTRIBUTED BY (a, b);
+ALTER TABLE ONLY aa REPLICA IDENTITY FULL;
+
+CREATE TABLE t (a int, b text);
+SECURITY LABEL ON TABLE t IS 'classified';
