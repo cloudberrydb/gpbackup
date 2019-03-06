@@ -40,12 +40,10 @@ var _ = Describe("agent remote", func() {
 				})
 			}()
 
-			// Ensure: command did not fail to execute
 			testCluster.CheckClusterError(remoteOutput, "Could not cat oid file", func(contentID int) string {
 				return "Could not cat oid file"
 			})
 
-			// Ensure: proper contents were written to STDOUT
 			for _, stdout := range remoteOutput.Stdouts {
 				Expect(stdout).To(Equal("1\n2\n3\n"))
 			}

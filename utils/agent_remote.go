@@ -3,7 +3,6 @@ package utils
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"path/filepath"
 	"strings"
 
@@ -31,8 +30,8 @@ func CreateFirstSegmentPipeOnAllHosts(oid string, c *cluster.Cluster, fpInfo bac
 	})
 }
 
-func WriteOidListToSegments(oidList []string, c *cluster.Cluster, dest backup_filepath.FilePathInfo) {
-	localOidFile, err := ioutil.TempFile("", "gpbackup-oids")
+func WriteOidListToSegments(oidList []string, c *cluster.Cluster, fpInfo backup_filepath.FilePathInfo) {
+	localOidFile, err := operating.System.TempFile("", "gpbackup-oids")
 	gplog.FatalOnError(err, "Cannot open temporary file to write oids")
 	defer func() {
 		err = operating.System.Remove(localOidFile.Name())
@@ -43,19 +42,20 @@ func WriteOidListToSegments(oidList []string, c *cluster.Cluster, dest backup_fi
 
 	WriteOidsToFile(localOidFile.Name(), oidList)
 
-	ScpFileToSegments(localOidFile.Name(), c, dest)
-}
+	generateScpCmd := func(contentID int) string {
+		sourceFile := localOidFile.Name()
+		hostname := c.GetHostForContent(contentID)
+		dest := fpInfo.GetSegmentHelperFilePath(contentID, "oid")
 
-func ScpFileToSegments(filename string, c *cluster.Cluster, fpi backup_filepath.FilePathInfo) {
-	for _, contentID := range c.ContentIDs {
-		if contentID == -1 {
-			continue // skip writing from master to master
-		}
-		remoteOidFile := fpi.GetSegmentHelperFilePath(contentID, "oid")
-		cmd := fmt.Sprintf(`scp %s %s:%s`, filename, c.GetHostForContent(contentID), remoteOidFile)
-		_, err := c.ExecuteLocalCommand(cmd)
-		gplog.FatalOnError(err, fmt.Sprintf("Unable to write oid list to segments via command: %s", cmd))
+		return fmt.Sprintf(`scp %s %s:%s`, sourceFile, hostname, dest)
 	}
+	remoteOutput := c.GenerateAndExecuteCommand("Scp oid file to segments", generateScpCmd, cluster.ON_MASTER_TO_SEGMENTS)
+
+	errMsg := "Failed to scp oid file"
+	errFunc := func(contentID int) string {
+		return "Failed to run scp"
+	}
+	c.CheckClusterError(remoteOutput, errMsg, errFunc, false)
 }
 
 func WriteOidsToFile(filename string, oidList []string) {

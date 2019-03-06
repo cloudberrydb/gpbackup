@@ -1,10 +1,8 @@
 package utils_test
 
 import (
-	"fmt"
 	"io"
 	"os"
-	"strings"
 
 	"github.com/greenplum-db/gpbackup/utils"
 
@@ -26,61 +24,56 @@ var _ = Describe("agent remote", func() {
 		operating.System.OpenFileWrite = func(name string, flag int, perm os.FileMode) (io.WriteCloser, error) {
 			return buffer, nil
 		}
-		operating.System.Remove = func(name string) error {
-			return nil
-		}
 	})
+	// note: technically the file system is written to during the call `operating.System.TempFile`
+	//			this file is not used throughout the unit tests below, and it is cleaned up with the method: `operating.System.Remove`
 	Describe("WriteOidListToSegments()", func() {
 		var (
-			filePath     backup_filepath.FilePathInfo
+			fpInfo       backup_filepath.FilePathInfo
 			testCluster  *cluster.Cluster
 			testExecutor *testhelper.TestExecutor
+			remoteOutput *cluster.RemoteOutput
 		)
 		BeforeEach(func() {
 			masterSeg := cluster.SegConfig{ContentID: -1, Hostname: "localhost", DataDir: "/data/gpseg-1"}
 			localSegOne := cluster.SegConfig{ContentID: 0, Hostname: "localhost", DataDir: "/data/gpseg0"}
 			remoteSegOne := cluster.SegConfig{ContentID: 1, Hostname: "remotehost1", DataDir: "/data/gpseg1"}
 
-			testExecutor = &testhelper.TestExecutor{
-				ErrorOnExecNum: -1,
-			}
+			testExecutor = &testhelper.TestExecutor{}
+			remoteOutput = &cluster.RemoteOutput{}
+			testExecutor.ClusterOutput = remoteOutput
+
 			testCluster = cluster.NewCluster([]cluster.SegConfig{masterSeg, localSegOne, remoteSegOne})
 			testCluster.Executor = testExecutor
-			filePath = backup_filepath.NewFilePathInfo(testCluster, "my_dir", "20190102030405", "my_user_seg_prefix")
+
+			fpInfo = backup_filepath.NewFilePathInfo(testCluster, "", "11112233445566", "")
 		})
-		It("writes oid list, delimited by newline characters, to temp file", func() {
-			utils.WriteOidListToSegments(oidList, testCluster, filePath)
+		It("generates the correct scp commands to copy oid file to segments", func() {
+			utils.WriteOidListToSegments(oidList, testCluster, fpInfo)
 
-			Expect(string(buffer.Contents())).To(Equal("1\n2\n3\n"))
+			Expect(testExecutor.NumExecutions).To(Equal(1))
+			cc := testExecutor.ClusterCommands[0]
+			Expect(len(cc)).To(Equal(2))
+			Expect(cc[0][2]).To(MatchRegexp("scp /tmp/gpbackup-oids.* localhost:/data/gpseg0/gpbackup_0_11112233445566_oid_.*"))
+			Expect(cc[1][2]).To(MatchRegexp("scp /tmp/gpbackup-oids.* remotehost1:/data/gpseg1/gpbackup_1_11112233445566_oid_.*"))
 		})
-		It("generates the correct command to copy the OID list", func() {
-			utils.WriteOidListToSegments(oidList, testCluster, filePath)
+		It("panics if any scp commands fail and outputs correct err messages", func() {
+			testExecutor.ErrorOnExecNum = 1
+			remoteOutput.NumErrors = 1
+			remoteOutput.Scope = cluster.ON_MASTER_TO_SEGMENTS
+			remoteOutput.Errors = make(map[int]error, 0)
+			remoteOutput.Errors[1] = errors.New("test error 1")
+			remoteOutput.Stderrs = make(map[int]string, 0)
+			remoteOutput.Stderrs[1] = "stderr content 1"
+			remoteOutput.CmdStrs = make(map[int]string, 0)
+			remoteOutput.CmdStrs[1] = "scp fake_master fake_host"
 
-			tempDir := strings.TrimSuffix(os.TempDir(), "/")
+			Expect(func() { utils.WriteOidListToSegments(oidList, testCluster, fpInfo) }).To(Panic())
 
-			// one command per segment
-			Expect(testExecutor.LocalCommands).To(HaveLen(2))
-			expectedCommand := fmt.Sprintf(`^scp %s/gpbackup-oids\d+ localhost:/data/gpseg0/gpbackup_0_20190102030405_oid_\d+$`, tempDir)
-			Expect(testExecutor.LocalCommands[0]).To(MatchRegexp(expectedCommand))
-			expectedCommand = fmt.Sprintf(`^scp %s/gpbackup-oids\d+ remotehost1:/data/gpseg1/gpbackup_1_20190102030405_oid_\d+$`, tempDir)
-			Expect(testExecutor.LocalCommands[1]).To(MatchRegexp(expectedCommand))
-		})
-		It("panics and prints when command execution fails", func() {
-			failingExecutor := &testhelper.TestExecutor{
-				LocalError: errors.New("command execution error"),
-			}
-			testCluster.Executor = failingExecutor
-
-			Expect(func() { utils.WriteOidListToSegments(oidList, testCluster, filePath) }).To(Panic())
-			Expect(string(logfile.Contents())).To(MatchRegexp(`.*command execution error.*`))
-		})
-		It("logs a warning when temp file cannot be removed", func() {
-			operating.System.Remove = func(name string) error {
-				return errors.New("failed to remove oid temp file")
-			}
-
-			utils.WriteOidListToSegments(oidList, testCluster, filePath)
-			Expect(string(logfile.Contents())).To(MatchRegexp(`.*\[WARNING\]:-.*failed to remove oid temp file.*`))
+			Expect(testExecutor.NumExecutions).To(Equal(1))
+			Expect(string(logfile.Contents())).To(ContainSubstring(`[CRITICAL]:-Failed to scp oid file on master for 1 segment. See gbytes.Buffer for a complete list of errors.`))
+			Expect(string(logfile.Contents())).To(ContainSubstring(`[DEBUG]:-Failed to run scp on master for segment 1 on host remotehost1 with error test error 1: stderr content 1`))
+			Expect(string(logfile.Contents())).To(ContainSubstring(`[DEBUG]:-Command was: scp fake_master fake_host`))
 		})
 	})
 	Describe("WriteOidsToFile()", func() {
