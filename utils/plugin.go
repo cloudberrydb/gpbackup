@@ -207,9 +207,11 @@ func (plugin *PluginConfig) buildHookErrorMsgAndFunc(command string,
 /*---------------------------------------------------------------------------------------------------*/
 
 func (plugin *PluginConfig) CopyPluginConfigToAllHosts(c *cluster.Cluster, configPath string) {
-	remoteOutput := c.GenerateAndExecuteCommand("Copying plugin config to all hosts", func(contentID int) string {
-		return fmt.Sprintf("rsync %s:%s /tmp/.", c.GetHostForContent(-1), configPath)
-	}, cluster.ON_HOSTS_AND_MASTER)
+	remoteOutput := c.GenerateAndExecuteCommand("Copying plugin config to all hosts",
+		func(contentID int) string {
+			return fmt.Sprintf("scp %s %s:/tmp/.", configPath, c.GetHostForContent(contentID))
+		},
+		cluster.ON_MASTER_TO_HOSTS)
 	c.CheckClusterError(remoteOutput, "Unable to copy plugin config", func(contentID int) string {
 		return "Unable to copy plugin config"
 	})

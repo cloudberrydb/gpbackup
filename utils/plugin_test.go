@@ -58,6 +58,16 @@ var _ = Describe("utils/plugin tests", func() {
 			}
 		})
 	})
+	Describe("plugin config", func() {
+		It("successfully copies to all hosts", func() {
+			testConfigPath := "/tmp/my_plugin_config.yml"
+			subject.CopyPluginConfigToAllHosts(testCluster, testConfigPath)
+
+			cc := executor.ClusterCommands[0] // only one set of commands was issued
+			Expect(cc[0][2]).To(Equal("scp /tmp/my_plugin_config.yml segment1:/tmp/."))
+			Expect(cc[1][2]).To(Equal("scp /tmp/my_plugin_config.yml segment2:/tmp/."))
+		})
+	})
 	Describe("version validation", func() {
 		When("version is equal to requirement", func() {
 			It("succeeds", func() {
