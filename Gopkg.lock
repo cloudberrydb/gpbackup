@@ -11,7 +11,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:d9509205ededc8c81a68c1332f97a7009ed45d7649b6a0d838628ea91ba3e9e8"
+  digest = "1:5bc0be0a9cf52810182b54d745db9d91a5027ac81a1e33ba93d35b434e5fe152"
   name = "github.com/greenplum-db/gp-common-go-libs"
   packages = [
     "cluster",
@@ -23,7 +23,7 @@
     "testhelper",
   ]
   pruneopts = "NUT"
-  revision = "4580a3f68ffe89bcd3ed5ff87ba27d3df6d47bd3"
+  revision = "afc498a415c4e67b08b3bd26fbaeef8e52f239a0"
 
 [[projects]]
   digest = "1:41933d387bfa3eaa6a82647914ed7044f7b8355764c24fb920892bc8c03ef0c3"
@@ -102,7 +102,7 @@
   revision = "0ad87eef1443f64d3d8c50da647e2b1552851124"
 
 [[projects]]
-  digest = "1:6a1d3cc0142cdd2dde5080e8c25a89aeebac3a15424012bb610441d1959fda1b"
+  digest = "1:dbc24dd0591271d269786adff7458f2c1437305091e41979c5495efe3df09ab8"
   name = "github.com/onsi/ginkgo"
   packages = [
     ".",
@@ -133,8 +133,8 @@
     "types",
   ]
   pruneopts = "NUT"
-  revision = "2e1be8f7d90e9d3e3e58b0ce470f2f14d075406f"
-  version = "v1.7.0"
+  revision = "eea6ad008b96acdaa524f5b409513bf062b500ad"
+  version = "v1.8.0"
 
 [[projects]]
   digest = "1:c9385d498108298283c3f3685667d8c87bf86a94d129fd49f8fd4485f1903e14"
@@ -201,15 +201,15 @@
     "html/charset",
   ]
   pruneopts = "NUT"
-  revision = "92fc7df08ae7536330f5a21328292abfa70520a8"
+  revision = "16b79f2e4e95ea23b2bf9903c9809ff7b013ce85"
 
 [[projects]]
   branch = "master"
-  digest = "1:0fe83e0566880bb72802c5cb87f5b5049d495f3f34132cae075d6b98a040a6fe"
+  digest = "1:e482ae9014dcf45ffb110e47d8da101c63a430e2ac6efa5133d4adebe4a459dd"
   name = "golang.org/x/sys"
   packages = ["unix"]
   pruneopts = "NUT"
-  revision = "a34e9553db1e492c9a76e60db2296ae7e5fbb772"
+  revision = "584f3b12f43e1e55248c90e84804777009eed0a4"
 
 [[projects]]
   digest = "1:7c61a813b250ba8bb02bebb0382e6c3d00e04da2b577dc58985b86312fb89ffd"
@@ -257,15 +257,15 @@
     "internal/semver",
   ]
   pruneopts = "NUT"
-  revision = "589c23e65e65055d47b9ad4a99723bc389136265"
+  revision = "00c44ba9c14f88ffdd4fb5bfae57fe8dd6d6afb1"
 
 [[projects]]
-  digest = "1:df28176ae6eed6b64b667963455f4b60c17ecb2594e6ffa72f149b911ea15fa4"
+  digest = "1:26e56bf1243a3675608f918a1574bf0005d5263b67b84a24a5fb0946ad7a75e3"
   name = "gopkg.in/DATA-DOG/go-sqlmock.v1"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "472e287dbafe67e526a3797165b64cb14f34705a"
-  version = "v1.3.2"
+  revision = "3f9954f6f6697845b082ca57995849ddf614f450"
+  version = "v1.3.3"
 
 [[projects]]
   digest = "1:21562b59c496f4cbd7a40beaa257ac6761002dd3e36259f532216082abace8b1"
