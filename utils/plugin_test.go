@@ -63,7 +63,10 @@ var _ = Describe("utils/plugin tests", func() {
 			testConfigPath := "/tmp/my_plugin_config.yml"
 			subject.CopyPluginConfigToAllHosts(testCluster, testConfigPath)
 
-			cc := executor.ClusterCommands[0] // only one set of commands was issued
+			Expect(executor.NumExecutions).To(Equal(1))
+			cc := executor.ClusterCommands[0]
+			Expect(len(cc)).To(Equal(3))
+			Expect(cc[-1][2]).To(Equal("scp /tmp/my_plugin_config.yml master:/tmp/."))
 			Expect(cc[0][2]).To(Equal("scp /tmp/my_plugin_config.yml segment1:/tmp/."))
 			Expect(cc[1][2]).To(Equal("scp /tmp/my_plugin_config.yml segment2:/tmp/."))
 		})
