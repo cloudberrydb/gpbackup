@@ -211,7 +211,7 @@ func (plugin *PluginConfig) CopyPluginConfigToAllHosts(c *cluster.Cluster, confi
 		func(contentID int) string {
 			return fmt.Sprintf("scp %s %s:/tmp/.", configPath, c.GetHostForContent(contentID))
 		},
-		cluster.ON_MASTER_TO_HOSTS)
+		cluster.ON_MASTER_TO_HOSTS_AND_MASTER)
 	c.CheckClusterError(remoteOutput, "Unable to copy plugin config", func(contentID int) string {
 		return "Unable to copy plugin config"
 	})
