@@ -7,11 +7,14 @@ image_resource:
     tag: '6-gcc6.2-llvm3.7'
 
 inputs:
-- name: component_gpbackup
+- name: github_release_components
 - name: gpbackup_tagged_src
   path: gpbackup
 - name: ccp_src
 - name: cluster_env_files
+
+outputs:
+- name: gppkgs
 
 run:
   path: bash
@@ -22,25 +25,32 @@ run:
 
     ccp_src/scripts/setup_ssh_to_cluster.sh
     ssh -t centos@mdw "sudo yum -y install rpm-build"
-    GPBACKUP_VERSION=$(cat component_gpbackup/version)
+    GPBACKUP_VERSION=$(cat github_release_components/version)
 
     cat <<SCRIPT > /tmp/build_gppkg.bash
     set -ex
     source env.sh
 
-    ./gpbackup/ci/scripts/gpbackup_rpm.sh $GPBACKUP_VERSION component_gpbackup/bin_gpbackup.tar.gz
-    ./gpbackup/ci/scripts/gpbackup_gppkg.sh $GPBACKUP_VERSION 4 rhel5
-    ./gpbackup/ci/scripts/gpbackup_gppkg.sh $GPBACKUP_VERSION 4 sles11
-    ./gpbackup/ci/scripts/gpbackup_gppkg.sh $GPBACKUP_VERSION 5 rhel6
-    ./gpbackup/ci/scripts/gpbackup_gppkg.sh $GPBACKUP_VERSION 5 rhel7
-    ./gpbackup/ci/scripts/gpbackup_gppkg.sh $GPBACKUP_VERSION 5 sles11
-    ./gpbackup/ci/scripts/gpbackup_gppkg.sh $GPBACKUP_VERSION 5 sles12
+    ./gpbackup/ci/scripts/gpbackup_rpm.sh $GPBACKUP_VERSION github_release_components/bin_gpbackup.tar.gz
+    # ./gpbackup/ci/scripts/gpbackup_gppkg.sh $GPBACKUP_VERSION 4 rhel5
+    # ./gpbackup/ci/scripts/gpbackup_gppkg.sh $GPBACKUP_VERSION 4 sles11
+    # ./gpbackup/ci/scripts/gpbackup_gppkg.sh $GPBACKUP_VERSION 5 rhel6
+    # ./gpbackup/ci/scripts/gpbackup_gppkg.sh $GPBACKUP_VERSION 5 rhel7
+    # ./gpbackup/ci/scripts/gpbackup_gppkg.sh $GPBACKUP_VERSION 5 sles11
+    # ./gpbackup/ci/scripts/gpbackup_gppkg.sh $GPBACKUP_VERSION 5 sles12
+    ./gpbackup/ci/scripts/gpbackup_gppkg.sh $GPBACKUP_VERSION 6 rhel6
+    ./gpbackup/ci/scripts/gpbackup_gppkg.sh $GPBACKUP_VERSION 6 rhel7
 
     SCRIPT
 
-    scp -r component_gpbackup mdw:/home/gpadmin/.
+    scp -r github_release_components mdw:/home/gpadmin/.
     scp -r gpbackup mdw:/home/gpadmin/.
     chmod +x /tmp/build_gppkg.bash
     scp /tmp/build_gppkg.bash mdw:/home/gpadmin/build_gppkg.bash
     ssh -t mdw "bash /home/gpadmin/build_gppkg.bash"
-    scp -r mdw:/home/gpadmin/gpbackup_gppkg .
+    scp -r mdw:/home/gpadmin/gpbackup_gppkg/* gppkgs/.
+
+    cp github_release_components/version gppkgs/
+    pushd gppkgs
+      tar cvfz gpbackup-gppkgs.tar.gz *.gppkg version
+    popd
