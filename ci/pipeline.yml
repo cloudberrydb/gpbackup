@@ -922,6 +922,7 @@ jobs:
        - integrations-GPDB4.3
        - integrations-GPDB5-sles
        - integrations-GPDB5-oracle7
+       - integrations-master
        - integrations-backward-compatibility
        - s3_plugin_tests
        - ddboost_plugin_and_boostfs_tests
