@@ -310,18 +310,17 @@ jobs:
           scp -r go/src/github.com/greenplum-db/gpbackup-s3-plugin mdw:/home/gpadmin/go/src/github.com/greenplum-db/gpbackup-s3-plugin
 
           cat <<SCRIPT > /tmp/run_tests.bash
-          set -ex
-          source env.sh
+            set -ex
+            source env.sh
 
+            cd \$GOPATH/src/github.com/greenplum-db
+            pushd gpbackup-s3-plugin
+              make depend
+              make unit
+              make build
+            popd
 
-          cd \$GOPATH/src/github.com/greenplum-db
-          pushd gpbackup-s3-plugin
-          make depend
-          make unit
-          make build
-          popd
-
-              cat << CONFIG > \$HOME/s3_config.yaml
+            cat << CONFIG > \$HOME/s3_config.yaml
               executablepath: \$GPHOME/bin/gpbackup_s3_plugin
               options:
                 region: us-west-2
@@ -329,10 +328,10 @@ jobs:
                 aws_secret_access_key: {{bucket-secret-access-key}}
                 bucket: {{gpbackup-s3-plugin-test-bucket}}
                 folder: test/backup
-          CONFIG
+            CONFIG
 
-          pushd gpbackup/plugins
-          ./plugin_test_bench.sh \$GOPATH/bin/gpbackup_s3_plugin \$HOME/s3_config.yaml
+            pushd gpbackup/plugins
+            ./plugin_test_bench.sh \$GOPATH/bin/gpbackup_s3_plugin \$HOME/s3_config.yaml
           SCRIPT
 
           chmod +x /tmp/run_tests.bash
@@ -978,56 +977,56 @@ jobs:
 
           # Build gpbackup
           pushd $GOPATH/src/github.com/greenplum-db/gpbackup
-          make depend
+            make depend
 
-          make build
-          version=`git describe --tags | perl -pe 's/(.*)-([0-9]*)-(g[0-9a-f]*)/\1+dev.\2.\3/'`
+            make build
+            version=`git describe --tags | perl -pe 's/(.*)-([0-9]*)-(g[0-9a-f]*)/\1+dev.\2.\3/'`
           popd
           echo ${version} > gpbackup_version/version
 
           # Build s3 plugin
           pushd $GOPATH/src/github.com/greenplum-db/gpbackup-s3-plugin
-          make depend
-          make build
+            make depend
+            make build
           popd
 
           # Install dependencies and build ddboost plugin
           pushd gpbackup_ddboost_plugin_tagged_src
-          curl -u{{ivyrepo_user}}:{{ivyrepo_passwd}} -O "https://{{ivyrepo_host}}/gpdb-ext-release-local/third-party/ext/gpdb5_ext-3.3/targzs/rhel6_x86_64-gpdb5_ext-3.3.targz"
-          curl -u{{ivyrepo_user}}:{{ivyrepo_passwd}} -O "https://{{ivyrepo_host}}/gpdb-ext-release-local/emc/DDBoostSDK/3.3.0.4-550644/targzs/DDBoostSDK-rhel5_x86_64-3.3.0.4-550644.targz"
-          tar -xf rhel6_x86_64-gpdb5_ext-3.3.targz
-          tar -xf DDBoostSDK-rhel5_x86_64-3.3.0.4-550644.targz
-          sudo cp rhel6_x86_64/include/yaml.h /usr/local/include/yaml.h
-          sudo cp rhel5_x86_64/include/* /usr/local/include/.
-          sudo cp rhel6_x86_64/lib/libyaml*so* /usr/lib64/.
-          sudo cp rhel5_x86_64/lib/libDDBoost.so /usr/lib64/.
+            curl -u{{ivyrepo_user}}:{{ivyrepo_passwd}} -O "https://{{ivyrepo_host}}/gpdb-ext-release-local/third-party/ext/gpdb5_ext-3.3/targzs/rhel6_x86_64-gpdb5_ext-3.3.targz"
+            curl -u{{ivyrepo_user}}:{{ivyrepo_passwd}} -O "https://{{ivyrepo_host}}/gpdb-ext-release-local/emc/DDBoostSDK/3.3.0.4-550644/targzs/DDBoostSDK-rhel5_x86_64-3.3.0.4-550644.targz"
+            tar -xf rhel6_x86_64-gpdb5_ext-3.3.targz
+            tar -xf DDBoostSDK-rhel5_x86_64-3.3.0.4-550644.targz
+            sudo cp rhel6_x86_64/include/yaml.h /usr/local/include/yaml.h
+            sudo cp rhel5_x86_64/include/* /usr/local/include/.
+            sudo cp rhel6_x86_64/lib/libyaml*so* /usr/lib64/.
+            sudo cp rhel5_x86_64/lib/libDDBoost.so /usr/lib64/.
 
-          make build
+            make build
           popd
 
           pushd component_gpbackup
-          # Create install script
-          printf "#!/bin/sh\nset -x\ntar -xzvf bin_gpbackup.tar.gz -C \$GPHOME" > install_gpdb_component
-          chmod +x install_gpdb_component
+            # Create install script
+            printf "#!/bin/sh\nset -x\ntar -xzvf bin_gpbackup.tar.gz -C \$GPHOME" > install_gpdb_component
+            chmod +x install_gpdb_component
 
-          # Create test script
-          cp ../gpbackup_version/version .
-          cp $GOPATH/src/github.com/greenplum-db/gpbackup/ci/scripts/smoke_test_component_gpbackup.sh smoke_test_gpdb_component
-          # Assemble binaries
-          mkdir -p bin
-          cp $GOPATH/bin/gpbackup bin/
-          cp $GOPATH/bin/gpbackup_helper bin/
-          cp $GOPATH/bin/gprestore bin/
-          cp $GOPATH/bin/gpbackup_s3_plugin bin/
-          cp ../gpbackup_ddboost_plugin_tagged_src/gpbackup_ddboost_plugin bin/
+            # Create test script
+            cp ../gpbackup_version/version .
+            cp $GOPATH/src/github.com/greenplum-db/gpbackup/ci/scripts/smoke_test_component_gpbackup.sh smoke_test_gpdb_component
+            # Assemble binaries
+            mkdir -p bin
+            cp $GOPATH/bin/gpbackup bin/
+            cp $GOPATH/bin/gpbackup_helper bin/
+            cp $GOPATH/bin/gprestore bin/
+            cp $GOPATH/bin/gpbackup_s3_plugin bin/
+            cp ../gpbackup_ddboost_plugin_tagged_src/gpbackup_ddboost_plugin bin/
 
-          # Test package
-          export PATH=$PATH:`pwd`/bin
-          ./smoke_test_gpdb_component
+            # Test package
+            export PATH=$PATH:`pwd`/bin
+            ./smoke_test_gpdb_component
 
-          tar -czvf bin_gpbackup.tar.gz bin/
+            tar -czvf bin_gpbackup.tar.gz bin/
 
-          tar -czvf "gpbackup-${version}.tar.gz" bin_gpbackup.tar.gz install_gpdb_component smoke_test_gpdb_component version
+            tar -czvf "gpbackup-${version}.tar.gz" bin_gpbackup.tar.gz install_gpdb_component smoke_test_gpdb_component version
           popd
     on_failure:
       *slack_alert
