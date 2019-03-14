@@ -11,6 +11,11 @@ resource_types:
     repository: cfcommunity/slack-notification-resource
     tag: latest
 
+- name: gcs
+  type: docker-image
+  source:
+    repository: frodenas/gcs-resource
+
 resources:
 - name: nightly-trigger
   type: time
@@ -68,14 +73,12 @@ resources:
     branch: 5X_STABLE
     tag_filter: 5.*
 
-- name: bin_gpdb_master
-  type: s3
+- name: bin_gpdb6
+  type: gcs
   source:
-      bucket: gpdb-stable-concourse-builds
-      versioned_file: release_candidates/bin_gpdb_centos6/gpdb6/debug/bin_gpdb.tar.gz
-      region_name: us-west-2
-      access_key_id: {{bucket-access-key-id}}
-      secret_access_key: {{bucket-secret-access-key}}
+      bucket: ((gcs-bucket))
+      json_key: ((concourse-gcs-resources-service-account-key))
+      regexp: server/published/gpdb6/server-rc-(.*)-rhel6_x86_64((rc-build-type-gcs)).tar.gz
 
 - name: gpbackup-dependencies
   type: s3
@@ -631,7 +634,7 @@ jobs:
   - aggregate:
     - get: gpbackup
       trigger: true
-    - get: bin_gpdb_master
+    - get: bin_gpdb6
     - get: ccp_src
     - get: gpdb_src
     - get: dummy_seclabel
@@ -650,7 +653,7 @@ jobs:
     params:
       <<: *ccp_gen_cluster_default_params
     input_mapping:
-      gpdb_binary: bin_gpdb_master
+      gpdb_binary: bin_gpdb6
       gpdb_src: gpdb_src
   - task: gpinitsystem
     file: ccp_src/ci/tasks/gpinitsystem.yml
@@ -790,7 +793,7 @@ jobs:
   - aggregate:
     - get: gpbackup
       trigger: true
-    - get: bin_gpdb_master
+    - get: bin_gpdb6
     - get: ccp_src
     - get: gpdb_src
     - get: scale_schema
@@ -811,7 +814,7 @@ jobs:
       <<: *ccp_gen_cluster_default_params
     file: ccp_src/ci/tasks/gen_cluster.yml
     input_mapping:
-      gpdb_binary: bin_gpdb_master
+      gpdb_binary: bin_gpdb6
       gpdb_src: gpdb_src
   - task: gpinitsystem
     file: ccp_src/ci/tasks/gpinitsystem.yml
