@@ -79,9 +79,11 @@ install_helper :
 				echo 'Successfully copied gpbackup_helper to $(GPHOME) on all segments'; \
 			else \
 				echo 'Failed to copy gpbackup_helper to $(GPHOME)'; \
+				exit 1;	 \
 			fi; \
 		else \
 			echo 'Database is not running, please start the database and run this make target again'; \
+				exit 1;	 \
 		fi; \
 		rm /tmp/seg_hosts
 
