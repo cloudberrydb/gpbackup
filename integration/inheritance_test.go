@@ -19,25 +19,24 @@ var _ = Describe("inheritance", func() {
 			However, it does cause "diffs" in the output of `pg_dump` when compared with gpbackup.
 		*/
 		testhelper.AssertQueryRuns(connectionPool, `
-CREATE TABLE parent (
+CREATE TABLE public.parent_inh_test (
     a integer NOT NULL,
     b integer NOT NULL
 ) DISTRIBUTED BY (a, b);
 
-CREATE TABLE child (
+CREATE TABLE public.child_inh_test (
     a integer NOT NULL,
-    b integer NOT NULL,
-    c integer NOT NULL
+    b integer NOT NULL
 ) 
-INHERITS (parent) DISTRIBUTED BY (a, b, c);
+INHERITS (public.parent_inh_test) DISTRIBUTED BY (a, b);
 
-INSERT into child values(1,1,1);
-INSERT into child values(2,2,2);
+INSERT into public.child_inh_test values(1,1);
+INSERT into public.child_inh_test values(2,2);
 `)
-		defer testhelper.AssertQueryRuns(connectionPool, "DROP table parent")
-		defer testhelper.AssertQueryRuns(connectionPool, "DROP table child")
+		defer testhelper.AssertQueryRuns(connectionPool, "DROP table public.parent_inh_test")
+		defer testhelper.AssertQueryRuns(connectionPool, "DROP table public.child_inh_test")
 
-		sum := dbconn.MustSelectString(connectionPool, fmt.Sprintf("SELECT sum(a) FROM parent"))
+		sum := dbconn.MustSelectString(connectionPool, fmt.Sprintf("SELECT sum(a) FROM public.parent_inh_test"))
 		Expect(sum).To(Equal("3"))
 	})
 })
