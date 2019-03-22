@@ -58,15 +58,22 @@ run:
       # ./gpbackup/ci/scripts/gpbackup_gppkg.sh \$GPBACKUP_VERSION 5 sles12
       ./gpbackup/ci/scripts/gpbackup_gppkg.sh \$GPBACKUP_VERSION 6 rhel6
       ./gpbackup/ci/scripts/gpbackup_gppkg.sh \$GPBACKUP_VERSION 6 rhel7
+
+      DDBOOST_VERSION=\$(cat github_release_components/ddboost_version)
+      ./gpbackup/ci/scripts/ddboost_rpm.sh \$DDBOOST_VERSION github_release_components/bin_gpbackup.tar.gz
+      ./gpbackup/ci/scripts/ddboost_gppkg.sh \$DDBOOST_VERSION 6 rhel6
+      ./gpbackup/ci/scripts/ddboost_gppkg.sh \$DDBOOST_VERSION 6 rhel7
+
     EOF
     chown gpadmin:gpadmin .
     chmod +x gpadmin_cmds.sh
     su gpadmin -c ./gpadmin_cmds.sh
 
     mv gpbackup_gppkg/* gppkgs/
+    mv ddboost_gppkg/* gppkgs/
 
-    # TODO: make sure plugin versions are passed
     cp github_release_components/gpbackup_version gppkgs/
+    cp github_release_components/ddboost_version gppkgs/
     pushd gppkgs
       tar cvfz gpbackup-gppkgs.tar.gz *.gppkg gpbackup_version
     popd

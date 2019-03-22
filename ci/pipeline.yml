@@ -1157,6 +1157,9 @@ jobs:
               GPBAR_VERSION=$(echo workspace/files-to-upload/gpbackup-osl-v*.txt | sed -n 's#workspace/files-to-upload/gpbackup-osl-v\(.*\)\.txt#\1#p')
               sed -i "s/<GPBAR_VERSION>/${GPBAR_VERSION}/g" workspace/metadata.yml
 
+              DDBOOST_PLUGIN_VERSION=$(cat workspace/files-to-upload/ddboost_version)
+              sed -i "s/<DDBOOST_VERSION>/${DDBOOST_PLUGIN_VERSION}/g" workspace/metadata.yml
+
               cat workspace/metadata.yml
 
               ls -l workspace/files-to-upload
