@@ -990,7 +990,6 @@ jobs:
       outputs:
       - name: gppkgs
       - name: github_release_components
-      - name: gpbackup_version
       run:
         path: "sh"
         args:
@@ -1009,7 +1008,7 @@ jobs:
             make build
             version=`git describe --tags | perl -pe 's/(.*)-([0-9]*)-(g[0-9a-f]*)/\1+dev.\2.\3/'`
           popd
-          echo ${version} > gpbackup_version/version
+          echo ${version} > gpbackup_version
 
           # Build s3 plugin
           pushd $GOPATH/src/github.com/greenplum-db/gpbackup-s3-plugin
@@ -1029,7 +1028,9 @@ jobs:
             sudo cp rhel5_x86_64/lib/libDDBoost.so /usr/lib64/.
 
             make build
+            ddboost_version=`git describe --tags | perl -pe 's/(.*)-([0-9]*)-(g[0-9a-f]*)/\1+dev.\2.\3/'`
           popd
+          echo ${ddboost_version} > ddboost_version
 
           # prepare github release; also, the bin_gpbackup.tar.gz file is used in the next build_gppkg task
           pushd github_release_components
@@ -1038,7 +1039,8 @@ jobs:
             chmod +x install_gpdb_component
 
             # Create test script
-            cp ../gpbackup_version/version .
+            cp ../gpbackup_version .
+            cp ../ddboost_version .
             cp $GOPATH/src/github.com/greenplum-db/gpbackup/ci/scripts/smoke_test_component_gpbackup.sh smoke_test_gpdb_component
             # Assemble binaries
             mkdir -p bin
@@ -1054,7 +1056,7 @@ jobs:
 
             tar -czvf bin_gpbackup.tar.gz bin/
 
-            tar -czvf "gpbackup-${version}.tar.gz" bin_gpbackup.tar.gz install_gpdb_component smoke_test_gpdb_component version
+            tar -czvf "gpbackup-${gpbackup_version}.tar.gz" bin_gpbackup.tar.gz install_gpdb_component smoke_test_gpdb_component gpbackup_version ddboost_version
           popd
     on_failure:
       *slack_alert
@@ -1102,8 +1104,8 @@ jobs:
 
   - put: gpbackup_github_release
     params:
-      name: github_release_components_untarred/version
-      tag: github_release_components_untarred/version
+      name: github_release_components_untarred/gpbackup_version
+      tag: github_release_components_untarred/gpbackup_version
       globs:
       - github_release_components_untarred/bin/gpbackup
       - github_release_components_untarred/bin/gprestore
@@ -1141,7 +1143,7 @@ jobs:
 
               tar xzf gppkgs/gpbackup-gppkgs.tar.gz -C workspace/files-to-upload/
 
-              RELEASE_VERSION=$(cat workspace/files-to-upload/version)
+              RELEASE_VERSION=$(cat workspace/files-to-upload/gpbackup_version)
 
               if [ ! -f gpbackup-release-license/gpbackup-osl-v${RELEASE_VERSION}.txt ] ; then
                 echo "License file gpbackup-osl-v${RELEASE_VERSION}.txt does not exist in resource.\n Ensure the OSL is properly uploaded to the GCS bucket prior to pushing to pivnet." 1>&2
@@ -1149,6 +1151,7 @@ jobs:
               fi
               cp gpbackup-release-license/gpbackup-osl-v${RELEASE_VERSION}.txt workspace/files-to-upload/
 
+            # TODO: currently, <VERSION> corresponds only with the tile release version. This poses an issue when we have a unique version upgrade for a plugin (which is included in this tile), but gpbackup remains the same. The division of releases and versioning is a product decision.
               sed -i "s/<VERSION>/${RELEASE_VERSION}/g" workspace/metadata.yml
 
               GPBAR_VERSION=$(echo workspace/files-to-upload/gpbackup-osl-v*.txt | sed -n 's#workspace/files-to-upload/gpbackup-osl-v\(.*\)\.txt#\1#p')
