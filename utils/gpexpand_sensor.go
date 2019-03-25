@@ -1,8 +1,10 @@
-package backup
+package utils
 
 import (
 	"os"
 	"path/filepath"
+
+	"github.com/greenplum-db/gp-common-go-libs/gplog"
 
 	"github.com/pkg/errors"
 
@@ -10,14 +12,36 @@ import (
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 )
 
-const MasterDataDirQuery = `select datadir from gp_segment_configuration where content=-1 and role='p'`
-const GpexpandTemporaryTableStatusQuery = `SELECT status FROM gpexpand.status LIMIT 1`
+const (
+	BackupPreventedByGpexpandMessage GpexpandFailureMessage = `Greenplum expansion currently in process, please re-run gpbackup when the expansion has completed`
 
-const GpexpandStatusFilename = "gpexpand.status"
+	RestorePreventedByGpexpandMessage GpexpandFailureMessage = `Greenplum expansion currently in process.  Once expansion is complete, it will be possible to restart gprestore, but please note existing backup sets taken with a different cluster configuration may no longer be compatible with the newly expanded cluster configuration`
+
+	MasterDataDirQuery                = `select datadir from gp_segment_configuration where content=-1 and role='p'`
+	GpexpandTemporaryTableStatusQuery = `SELECT status FROM gpexpand.status LIMIT 1`
+
+	GpexpandStatusFilename = "gpexpand.status"
+)
 
 type GpexpandSensor struct {
 	fs           vfs.Filesystem
 	postgresConn *dbconn.DBConn
+}
+
+type GpexpandFailureMessage string
+
+func CheckGpexpandRunning(message GpexpandFailureMessage) {
+	postgresConn := dbconn.NewDBConnFromEnvironment("postgres")
+	postgresConn.MustConnect(1)
+	defer postgresConn.Close()
+	if postgresConn.Version.AtLeast("6") {
+		gpexpandSensor := NewGpexpandSensor(vfs.OS(), postgresConn)
+		isGpexpandRunning, err := gpexpandSensor.IsGpexpandRunning()
+		gplog.FatalOnError(err)
+		if isGpexpandRunning {
+			gplog.Fatal(errors.New(string(message)), "")
+		}
+	}
 }
 
 func NewGpexpandSensor(myfs vfs.Filesystem, conn *dbconn.DBConn) GpexpandSensor {
