@@ -791,7 +791,6 @@ jobs:
   plan:
   - aggregate:
     - get: gpbackup
-      trigger: true
     - get: bin_gpdb6
     - get: ccp_src
     - get: gpdb_src
@@ -832,7 +831,6 @@ jobs:
   plan:
   - aggregate:
     - get: gpbackup
-      trigger: true
     - get: bin_gpdb_5x_stable
     - get: ccp_src
     - get: gpdb_src
@@ -872,7 +870,6 @@ jobs:
   plan:
   - aggregate:
     - get: gpbackup
-      trigger: true
     - get: bin_gpdb_43_stable
     - get: ccp_src
     - get: gpdb_src
