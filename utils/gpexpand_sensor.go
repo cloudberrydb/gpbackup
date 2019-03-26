@@ -18,7 +18,8 @@ const (
 	RestorePreventedByGpexpandMessage GpexpandFailureMessage = `Greenplum expansion currently in process.  Once expansion is complete, it will be possible to restart gprestore, but please note existing backup sets taken with a different cluster configuration may no longer be compatible with the newly expanded cluster configuration`
 
 	MasterDataDirQuery                = `select datadir from gp_segment_configuration where content=-1 and role='p'`
-	GpexpandTemporaryTableStatusQuery = `SELECT status FROM gpexpand.status LIMIT 1`
+	GpexpandTemporaryTableStatusQuery = `SELECT status FROM gpexpand.status ORDER BY updated DESC LIMIT 1`
+	GpexpandStatusTableExistsQuery    = `select relname from pg_class JOIN pg_namespace on (pg_class.relnamespace = pg_namespace.oid)  where relname = 'status' and pg_namespace.nspname = 'gpexpand'`
 
 	GpexpandStatusFilename = "gpexpand.status"
 )
@@ -71,12 +72,29 @@ func (sensor GpexpandSensor) IsGpexpandRunning() (bool, error) {
 		// file not present means gpexpand is not in "phase 1".
 		// now check whether the postgres database has evidence of a "phase 2" status for gpexpand,
 		// by querying a temporary status table
-		_, err = dbconn.SelectString(sensor.postgresConn, GpexpandTemporaryTableStatusQuery)
+		var tableName string
+		tableName, err = dbconn.SelectString(sensor.postgresConn, GpexpandStatusTableExistsQuery)
 		if err != nil {
-			// Important: not a real error, just means that gpexpand is not in phase 2
+			return false, err
+		}
+		if len(tableName) <= 0 {
+			// table does not exist
 			return false, nil
 		}
-		// if there is ANY successful return from this temporary table, it means gpexpand is running
+
+		var status string
+		status, err = dbconn.SelectString(sensor.postgresConn, GpexpandTemporaryTableStatusQuery)
+		if err != nil {
+			return false, err
+		}
+
+		// gpexpand should indicate being finished with either of 3 possible status messages:
+		if status == "EXPANSION STOPPED" || // error case
+			status == "EXPANSION COMPLETE" || // success case
+			status == "SETUP DONE" { // only one phase completed case
+			return false, nil
+		}
+
 		return true, nil
 	} else {
 		// Stat command returned a "real" error

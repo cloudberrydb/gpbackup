@@ -52,7 +52,8 @@ var _ = Describe("gpexpand_sensor", func() {
 
 		testhelper.AssertQueryRuns(postgresConn, "CREATE SCHEMA gpexpand")
 		defer testhelper.AssertQueryRuns(postgresConn, "DROP SCHEMA gpexpand CASCADE")
-		testhelper.AssertQueryRuns(postgresConn, "CREATE TABLE gpexpand.status (status int)")
+		testhelper.AssertQueryRuns(postgresConn, "CREATE TABLE gpexpand.status (status text, updated timestamp)")
+		testhelper.AssertQueryRuns(postgresConn, "INSERT INTO gpexpand.status VALUES ('IN PROGRESS', now())")
 
 		defer testhelper.ShouldPanicWithMessage(`[CRITICAL]:-Greenplum expansion currently in process.  Once expansion is complete, it will be possible to restart gprestore, but please note existing backup sets taken with a different cluster configuration may no longer be compatible with the newly expanded cluster configuration`)
 		restore.DoSetup()
@@ -86,7 +87,8 @@ var _ = Describe("gpexpand_sensor", func() {
 
 		testhelper.AssertQueryRuns(postgresConn, "CREATE SCHEMA gpexpand")
 		defer testhelper.AssertQueryRuns(postgresConn, "DROP SCHEMA gpexpand CASCADE")
-		testhelper.AssertQueryRuns(postgresConn, "CREATE TABLE gpexpand.status (status int)")
+		testhelper.AssertQueryRuns(postgresConn, "CREATE TABLE gpexpand.status (status text, updated timestamp)")
+		testhelper.AssertQueryRuns(postgresConn, "INSERT INTO gpexpand.status VALUES ('IN PROGRESS', now())")
 
 		defer testhelper.ShouldPanicWithMessage(`[CRITICAL]:-Greenplum expansion currently in process, please re-run gpbackup when the expansion has completed`)
 		backup.DoSetup()

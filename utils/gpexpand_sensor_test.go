@@ -2,6 +2,7 @@ package utils_test
 
 import (
 	"path/filepath"
+	"regexp"
 
 	"github.com/greenplum-db/gpbackup/utils"
 
@@ -19,13 +20,15 @@ import (
 var _ = Describe("gpexpand_sensor", func() {
 	const sampleMasterDataDir = "/my_fake_database/demoDataDir-1"
 	var (
-		memoryfs   vfs.Filesystem
-		mddPathRow *sqlmock.Rows
+		memoryfs       vfs.Filesystem
+		mddPathRow     *sqlmock.Rows
+		tableExistsRow *sqlmock.Rows
 	)
 
 	BeforeEach(func() {
 		memoryfs = memfs.Create()
 		mddPathRow = sqlmock.NewRows([]string{"datadir"}).AddRow(sampleMasterDataDir)
+		tableExistsRow = sqlmock.NewRows([]string{"relname"}).AddRow("some table name")
 		// simulate that database connection is to postgres database, with Greenplum 6+
 		connectionPool.DBName = "postgres"
 		testhelper.SetDBVersion(connectionPool, "6.0.0")
@@ -46,7 +49,9 @@ var _ = Describe("gpexpand_sensor", func() {
 			})
 			It("senses gpexpand is in phase 2, as determined by database query to postgres database for gpexpand's temporary table", func() {
 				mock.ExpectQuery(utils.MasterDataDirQuery).WillReturnRows(mddPathRow)
-				hasGpexpandPhase2StatusRow := sqlmock.NewRows([]string{"status"}).AddRow("some gpexpand status")
+
+				mock.ExpectQuery(regexp.QuoteMeta(utils.GpexpandStatusTableExistsQuery)).WillReturnRows(tableExistsRow)
+				hasGpexpandPhase2StatusRow := sqlmock.NewRows([]string{"status"}).AddRow("some gpexpand status that is not finished")
 				mock.ExpectQuery(utils.GpexpandTemporaryTableStatusQuery).WillReturnRows(hasGpexpandPhase2StatusRow)
 				gpexpandSensor := utils.NewGpexpandSensor(memoryfs, connectionPool)
 
@@ -55,9 +60,47 @@ var _ = Describe("gpexpand_sensor", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(result).To(BeTrue())
 			})
-			It("senses when all indications are that gpexpand is not running", func() {
+			It("senses when all indications are that gpexpand status does not exist", func() {
 				mock.ExpectQuery(utils.MasterDataDirQuery).WillReturnRows(mddPathRow)
-				mock.ExpectQuery(utils.GpexpandTemporaryTableStatusQuery).WillReturnError(errors.New("gpexpand cannot be queried error"))
+				tableDoesNotExistsRow := sqlmock.NewRows([]string{"relname"}).AddRow("")
+
+				mock.ExpectQuery(regexp.QuoteMeta(utils.GpexpandStatusTableExistsQuery)).WillReturnRows(tableDoesNotExistsRow)
+				gpexpandSensor := utils.NewGpexpandSensor(memoryfs, connectionPool)
+
+				result, err := gpexpandSensor.IsGpexpandRunning()
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(BeFalse())
+			})
+			It("senses when gpexpand status indicates stoppage", func() {
+				mock.ExpectQuery(utils.MasterDataDirQuery).WillReturnRows(mddPathRow)
+				mock.ExpectQuery(regexp.QuoteMeta(utils.GpexpandStatusTableExistsQuery)).WillReturnRows(tableExistsRow)
+				finishedGpexpandPhase2StatusRow := sqlmock.NewRows([]string{"status"}).AddRow("EXPANSION STOPPED")
+				mock.ExpectQuery(utils.GpexpandTemporaryTableStatusQuery).WillReturnRows(finishedGpexpandPhase2StatusRow)
+				gpexpandSensor := utils.NewGpexpandSensor(memoryfs, connectionPool)
+
+				result, err := gpexpandSensor.IsGpexpandRunning()
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(BeFalse())
+			})
+			It("senses when gpexpand status indicates completion", func() {
+				mock.ExpectQuery(utils.MasterDataDirQuery).WillReturnRows(mddPathRow)
+				mock.ExpectQuery(regexp.QuoteMeta(utils.GpexpandStatusTableExistsQuery)).WillReturnRows(tableExistsRow)
+				finishedGpexpandPhase2StatusRow := sqlmock.NewRows([]string{"status"}).AddRow("EXPANSION COMPLETE")
+				mock.ExpectQuery(utils.GpexpandTemporaryTableStatusQuery).WillReturnRows(finishedGpexpandPhase2StatusRow)
+				gpexpandSensor := utils.NewGpexpandSensor(memoryfs, connectionPool)
+
+				result, err := gpexpandSensor.IsGpexpandRunning()
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(BeFalse())
+			})
+			It("senses when gpexpand status indicates completion", func() {
+				mock.ExpectQuery(utils.MasterDataDirQuery).WillReturnRows(mddPathRow)
+				mock.ExpectQuery(regexp.QuoteMeta(utils.GpexpandStatusTableExistsQuery)).WillReturnRows(tableExistsRow)
+				finishedGpexpandPhase2StatusRow := sqlmock.NewRows([]string{"status"}).AddRow("SETUP DONE")
+				mock.ExpectQuery(utils.GpexpandTemporaryTableStatusQuery).WillReturnRows(finishedGpexpandPhase2StatusRow)
 				gpexpandSensor := utils.NewGpexpandSensor(memoryfs, connectionPool)
 
 				result, err := gpexpandSensor.IsGpexpandRunning()
