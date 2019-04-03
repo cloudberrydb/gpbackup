@@ -11,7 +11,8 @@ setup_plugin_for_backup(){
     then echo "setup_plugin_for_backup was called for scope = segment" >> /tmp/plugin_out.txt
   fi
   timestamp_dir=`basename "$2"`
-  mkdir -p /tmp/plugin_dest/$timestamp_dir
+  timestamp_day_dir=${timestamp_dir%??????}
+  mkdir -p /tmp/plugin_dest/$timestamp_day_dir/$timestamp_dir
 }
 
 setup_plugin_for_restore(){
@@ -51,33 +52,41 @@ restore_file() {
   echo "restore_file $1 $2" >> /tmp/plugin_out.txt
   filename=`basename "$2"`
   timestamp_dir=`basename $(dirname "$2")`
-	cat /tmp/plugin_dest/$timestamp_dir/$filename > $2
+  timestamp_day_dir=${timestamp_dir%??????}
+	cat /tmp/plugin_dest/$timestamp_day_dir/$timestamp_dir/$filename > $2
 }
 
 backup_file() {
   echo "backup_file $1 $2" >> /tmp/plugin_out.txt
   filename=`basename "$2"`
   timestamp_dir=`basename $(dirname "$2")`
-	cat $2 > /tmp/plugin_dest/$timestamp_dir/$filename
+  timestamp_day_dir=${timestamp_dir%??????}
+	cat $2 > /tmp/plugin_dest/$timestamp_day_dir/$timestamp_dir/$filename
 }
 
 backup_data() {
   echo "backup_data $1 $2" >> /tmp/plugin_out.txt
   filename=`basename "$2"`
   timestamp_dir=`basename $(dirname "$2")`
-	cat - > /tmp/plugin_dest/$timestamp_dir/$filename
+  timestamp_day_dir=${timestamp_dir%??????}
+	cat - > /tmp/plugin_dest/$timestamp_day_dir/$timestamp_dir/$filename
 }
 
 restore_data() {
   echo "restore_data $1 $2" >> /tmp/plugin_out.txt
   filename=`basename "$2"`
   timestamp_dir=`basename $(dirname "$2")`
-	cat /tmp/plugin_dest/$timestamp_dir/$filename
+  timestamp_day_dir=${timestamp_dir%??????}
+	cat /tmp/plugin_dest/$timestamp_day_dir/$timestamp_dir/$filename
 }
 
 delete_backup() {
   echo "delete_backup $1 $2" >> /tmp/plugin_out.txt
-  rm -rf /tmp/plugin_dest/$2
+  timestamp_day_dir=${2%??????}
+  rm -rf /tmp/plugin_dest/$timestamp_day_dir/$2
+  if [ -z "$(ls -A /tmp/plugin_dest/$timestamp_day_dir/)" ] ; then
+    rm -rf /tmp/plugin_dest/$timestamp_day_dir
+  fi
 
 }
 
@@ -87,8 +96,8 @@ plugin_api_version(){
 }
 
 --version(){
-  echo "example_plugin version 1.0.0"
-  echo "example_plugin version 1.0.0" >> /tmp/plugin_out.txt
+  echo "example_plugin version 1.1.0"
+  echo "example_plugin version 1.1.0" >> /tmp/plugin_out.txt
 }
 
 "$@"

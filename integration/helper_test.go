@@ -19,8 +19,8 @@ import (
 )
 
 var (
-	testDir          = "/tmp/helper_test/20180101010101"
-	pluginDir        = "/tmp/plugin_dest/20180101010101"
+	testDir          = "/tmp/helper_test/20180101/20180101010101"
+	pluginDir        = "/tmp/plugin_dest/20180101/20180101010101"
 	tocFile          = fmt.Sprintf("%s/test_toc.yaml", testDir)
 	oidFile          = fmt.Sprintf("%s/test_oids", testDir)
 	pipeFile         = fmt.Sprintf("%s/test_pipe", testDir)
@@ -58,14 +58,14 @@ func gpbackupHelper(helperPath string, args ...string) *exec.Cmd {
 }
 
 func buildAndInstallBinaries() string {
-	os.Chdir("..")
+	_ = os.Chdir("..")
 	command := exec.Command("make", "build")
 	output, err := command.CombinedOutput()
 	if err != nil {
 		fmt.Printf("%s", output)
 		Fail(fmt.Sprintf("%v", err))
 	}
-	os.Chdir("integration")
+	_ = os.Chdir("integration")
 	binDir := fmt.Sprintf("%s/go/bin", operating.System.Getenv("HOME"))
 	return fmt.Sprintf("%s/gpbackup_helper", binDir)
 }
@@ -89,7 +89,7 @@ var _ = Describe("gpbackup_helper end to end integration tests", func() {
 	Context("backup tests", func() {
 		BeforeEach(func() {
 			f, _ := os.Create(oidFile)
-			f.WriteString("1\n2\n3\n")
+			_, _ = f.WriteString("1\n2\n3\n")
 		})
 		It("runs backup gpbackup_helper without compression", func() {
 			helperCmd := gpbackupHelper(gpbackupHelperPath, "--backup-agent", "--compression-level", "0", "--data-file", dataFileFullPath)
@@ -205,19 +205,19 @@ func setupRestoreFiles(withCompression bool, withPlugin bool) {
 		dataFile = pluginBackupPath
 	}
 	f, _ := os.Create(oidFile)
-	f.WriteString("1\n3\n")
+	_, _ = f.WriteString("1\n3\n")
 	if withCompression {
 		f, _ := os.Create(dataFile + ".gz")
 		gzipf := gzip.NewWriter(f)
 		defer gzipf.Close()
-		gzipf.Write([]byte(expectedData))
+		_, _ = gzipf.Write([]byte(expectedData))
 	} else {
 		f, _ := os.Create(dataFile)
-		f.WriteString(expectedData)
+		_, _ = f.WriteString(expectedData)
 	}
 
 	f, _ = os.Create(tocFile)
-	f.WriteString(expectedTOC)
+	_, _ = f.WriteString(expectedTOC)
 }
 
 func assertNoErrors() {
@@ -276,10 +276,10 @@ func writeToPipes(data string) {
 			Fail(fmt.Sprintf("%v", err))
 		}
 		f, _ := os.Create("/tmp/tmpdata.txt")
-		f.WriteString(data)
+		_, _ = f.WriteString(data)
 		output, err := exec.Command("bash", "-c", fmt.Sprintf("cat %s > %s", "/tmp/tmpdata.txt", currentPipe)).CombinedOutput()
-		f.Close()
-		os.Remove("/tmp/tmpdata.txt")
+		_ = f.Close()
+		_ = os.Remove("/tmp/tmpdata.txt")
 		if err != nil {
 			fmt.Printf("%s", output)
 			Fail(fmt.Sprintf("%v", err))
