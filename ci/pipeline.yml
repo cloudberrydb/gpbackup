@@ -378,10 +378,10 @@ jobs:
           chmod +x /tmp/run_tests.bash
           scp /tmp/run_tests.bash mdw:/home/gpadmin/run_tests.bash
           ssh -t mdw "bash /home/gpadmin/run_tests.bash"
-    on_success:
-      <<: *ccp_destroy
-    on_failure:
-      *slack_alert
+  on_success:
+    <<: *ccp_destroy
+  on_failure:
+    *slack_alert
   ensure:
     <<: *set_failed
 
@@ -615,10 +615,10 @@ jobs:
     file: ccp_src/ci/tasks/gpinitsystem.yml
   - task: integration-tests
     file: gpbackup/ci/tasks/sles-tests.yml
-    on_success:
-      <<: *ccp_destroy
-    on_failure:
-      *slack_alert
+  on_success:
+    <<: *ccp_destroy
+  on_failure:
+    *slack_alert
   ensure:
     <<: *set_failed
 
@@ -662,10 +662,10 @@ jobs:
   - task: integration-tests
     tags: ['aws']
     file: gpbackup/ci/tasks/integration-tests.yml
-    on_success:
-      <<: *ccp_destroy_aws
-    on_failure:
-      *slack_alert
+  on_success:
+    <<: *ccp_destroy_aws
+  on_failure:
+    *slack_alert
   ensure:
     <<: *set_failed_aws
 
@@ -701,10 +701,10 @@ jobs:
     file: gpbackup/ci/tasks/setup-centos-env-gpdb6.yml
   - task: integration-tests
     file: gpbackup/ci/tasks/integration-tests.yml
-    on_success:
-      <<: *ccp_destroy
-    on_failure:
-      *slack_alert
+  on_success:
+    <<: *ccp_destroy
+  on_failure:
+    *slack_alert
   ensure:
     <<: *set_failed
 
@@ -739,10 +739,10 @@ jobs:
     file: gpbackup/ci/tasks/setup-centos-env.yml
   - task: integration-tests
     file: gpbackup/ci/tasks/integration-tests.yml
-    on_success:
-      <<: *ccp_destroy
-    on_failure:
-      *slack_alert
+  on_success:
+    <<: *ccp_destroy
+  on_failure:
+    *slack_alert
   ensure:
     <<: *set_failed
 
@@ -777,10 +777,10 @@ jobs:
     file: gpbackup/ci/tasks/setup-centos-env.yml
   - task: integration-tests
     file: gpbackup/ci/tasks/integration-tests.yml
-    on_success:
-      <<: *ccp_destroy
-    on_failure:
-      *slack_alert
+  on_success:
+    <<: *ccp_destroy
+  on_failure:
+    *slack_alert
   ensure:
     <<: *set_failed
 
@@ -821,10 +821,10 @@ jobs:
     file: gpbackup/ci/tasks/integration-tests.yml
     params:
       GPBACKUP_VERSION: "1.7.1"
-    on_success:
-      <<: *ccp_destroy
-    on_failure:
-      *slack_alert
+  on_success:
+    <<: *ccp_destroy
+  on_failure:
+    *slack_alert
   ensure:
     <<: *set_failed
 
@@ -861,10 +861,10 @@ jobs:
     file: gpbackup/ci/tasks/setup-centos-env.yml
   - task: scale-tests
     file: gpbackup/ci/tasks/scale-tests.yml
-    on_success:
-      <<: *ccp_destroy_nvme
-    on_failure:
-      *slack_alert
+  on_success:
+    <<: *ccp_destroy_nvme
+  on_failure:
+    *slack_alert
   ensure:
     <<: *set_failed
 
@@ -900,10 +900,10 @@ jobs:
     file: gpbackup/ci/tasks/setup-centos-env.yml
   - task: scale-tests
     file: gpbackup/ci/tasks/scale-tests.yml
-    on_success:
-      <<: *ccp_destroy_nvme
-    on_failure:
-      *slack_alert
+  on_success:
+    <<: *ccp_destroy_nvme
+  on_failure:
+    *slack_alert
   ensure:
     <<: *set_failed
 
@@ -939,10 +939,10 @@ jobs:
     file: gpbackup/ci/tasks/setup-centos-env.yml
   - task: scale-tests
     file: gpbackup/ci/tasks/scale-tests.yml
-    on_success:
-      <<: *ccp_destroy_nvme
-    on_failure:
-      *slack_alert
+  on_success:
+    <<: *ccp_destroy_nvme
+  on_failure:
+    *slack_alert
   ensure:
     <<: *set_failed
 
