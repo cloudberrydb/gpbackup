@@ -18,6 +18,11 @@ if [ $# -lt 2 ] || [ $# -gt 3 ]
     exit 1
 fi
 
+if [[ "$plugin_config" != /* ]] ; then
+    echo "Must provide an absolute path to the plugin config"
+    exit 1
+fi
+
 time_second=$(date +"%Y%m%d%H%M%S")
 current_date=$(echo $time_second | cut -c 1-8)
 testdir="/tmp/testseg/backups/$current_date/$time_second"
@@ -202,13 +207,13 @@ else
     echo "Failed to delete backup data from local server using plugin"
     exit 1
   fi
-  output_file_restore=$($plugin restore_file $plugin_config $testfile_for_del 2>/dev/null)
+  $plugin restore_file $plugin_config $testfile_for_del 2>/dev/null
   retval_file_restore=$(echo $?)
-  if [ "${output_file_restore}" = "${data}"  ] || [ "$retval_file_restore" = "0" ] ; then
+  if [ "$retval_file_restore" = "0" ] ; then
     echo "Failed to delete backup file from local server using plugin"
     exit 1
   fi
-  
+
   # test deletion from remote server
   if [ -n "$secondary_plugin_config" ]; then
     output_data_restore=$($plugin restore_data $secondary_plugin_config $testdata_for_del 2>/dev/null)
@@ -217,9 +222,9 @@ else
       echo "Failed to delete backup data from remote server using plugin"
       exit 1
     fi
-    output_file_restore=$($plugin restore_file $secondary_plugin_config $testfile_for_del 2>/dev/null)
+    $plugin restore_file $secondary_plugin_config $testfile_for_del 2>/dev/null
     retval_file_restore=$(echo $?)
-    if [ "${output_file_restore}" = "${data}"  ] || [ "$retval_file_restore" = "0" ] ; then
+    if [ "$retval_file_restore" = "0" ] ; then
       echo "Failed to delete backup file from remote server using plugin"
       exit 1
     fi
@@ -245,6 +250,7 @@ test_backup_and_restore_with_plugin() {
     createdb $test_db
     psql -d $test_db -qc "CREATE TABLE test_table(i int) DISTRIBUTED RANDOMLY; INSERT INTO test_table select generate_series(1,50000)"
 
+    set +e
     echo "[RUNNING] gpbackup with test database (using ${flags})"
     gpbackup --dbname $test_db --plugin-config $plugin_config $flags > $log_file
     if [ ! $? -eq 0 ]; then
@@ -280,6 +286,7 @@ test_backup_and_restore_with_plugin() {
           exit 1
         fi
     fi
+    set -e
     echo "[PASSED] gpbackup and gprestore (using ${flags})"
 }
 
