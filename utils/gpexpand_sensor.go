@@ -96,10 +96,10 @@ func (sensor GpexpandSensor) IsGpexpandRunning() (bool, error) {
 		}
 
 		return true, nil
-	} else {
-		// Stat command returned a "real" error
-		return false, err
 	}
+
+	// Stat command returned a "real" error
+	return false, err
 }
 
 func validateConnection(conn *dbconn.DBConn) error {
