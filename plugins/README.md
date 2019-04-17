@@ -110,7 +110,7 @@ Called at the start of the backup process on the master and each segment host.
 
 [contentID](#contentID)
 
-**Return Value:** None
+**Stdout** None
 
 **Example:**
 ```
@@ -138,7 +138,7 @@ Called at the start of the restore process on the master and each segment host.
 
 [contentID](#contentID)
 
-**Return Value:** None
+**Stdout** None
 
 **Example:**
 ```
@@ -166,7 +166,7 @@ Called during the backup teardown phase on the master and each segment host. Thi
 
 [contentID](#contentID)
 
-**Return Value:** None
+**Stdout** None
 
 **Example:**
 ```
@@ -194,7 +194,7 @@ Called during the restore teardown phase on the master and each segment host. Th
 
 [contentID](#contentID)
 
-**Return Value:** None
+**Stdout** None
 
 **Example:**
 ```
@@ -218,7 +218,7 @@ Called once for each file created by gpbackup after the files have been written 
 
 [filepath_to_back_up](#filepath)
 
-**Return Value:** None
+**Stdout** None
 
 **Example:**
 ```
@@ -239,7 +239,7 @@ Called once for each file created by gpbackup to restore them to local disk so g
 
 [filepath_to_restore](#filepath)
 
-**Return Value:** None
+**Stdout** None
 
 **Example:**
 ```
@@ -252,7 +252,7 @@ This command should read a potentially large stream of data from stdin and proce
 
 **Usage within gpbackup:**
 
-Called by the gpbackup_helper agent process to stream all table data for a segment to the remote system. This is a single continuous stream per segment, and can be either compressed or uncompressed depending on flags provided to gpbackup.
+Called by the gpbackup_helper agent process to stream all table data for a segment from the postgres process' stdout to the plugin's stdin. This is a single continuous stream per segment, and can be either compressed or uncompressed depending on flags provided to gpbackup.
 
 **Arguments:**
 
@@ -260,7 +260,9 @@ Called by the gpbackup_helper agent process to stream all table data for a segme
 
 [data_filekey](#data_filekey)
 
-**Return Value:** None
+**Stdout** None
+
+**Stdin** Expecting stream of data
 
 **Example:**
 ```
@@ -281,7 +283,7 @@ Called by the gpbackup_helper agent process to stream all table data for a segme
 
 [data_filekey](#data_filekey)
 
-**Return Value:** None
+**Stdout** Stream of data from the remote source
 
 **Example:**
 ```
@@ -299,7 +301,7 @@ Called to verify the plugin is using a version of the gpbackup plugin API that i
 
 None
 
-**Return Value:** X.Y.Z
+**Stdout** X.Y.Z
 
 **Example:**
 ```
@@ -316,7 +318,7 @@ This command should delete the directory specified by the given backup timestamp
 
 [timestamp](#timestamp)
 
-**Return Value:** None
+**Stdout** None
 
 **Example:**
 ```
