@@ -144,7 +144,7 @@ func RecoverMetadataFilesUsingPlugin() {
 	gplog.FatalOnError(err)
 	pluginConfig.CheckPluginExistsOnAllHosts(globalCluster)
 
-	pluginConfig.CopyPluginConfigToAllHosts(globalCluster, MustGetFlagString(utils.PLUGIN_CONFIG))
+	pluginConfig.CopyPluginConfigToAllHosts(globalCluster)
 	pluginConfig.SetupPluginForRestore(globalCluster, globalFPInfo)
 
 	metadataFiles := []string{globalFPInfo.GetConfigFilePath(), globalFPInfo.GetMetadataFilePath(),
