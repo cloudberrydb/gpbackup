@@ -2,12 +2,12 @@
 
 
 [[projects]]
-  digest = "1:aba270497eb2d49f5cba6f4162d524b9a1195a24cbce8be20bf56a0051f47deb"
+  digest = "1:45c41cd27a8d986998680bfc86da0bbff5fa4f90d0f446c00636c8b099028ffe"
   name = "github.com/blang/semver"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "2ee87856327ba09384cabd113bc6b5d174e9ec0f"
-  version = "v3.5.1"
+  revision = "ba2c2ddd89069b46a7011d4106f6868f17ee1705"
+  version = "v3.6.1"
 
 [[projects]]
   branch = "master"
@@ -23,7 +23,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:5bc0be0a9cf52810182b54d745db9d91a5027ac81a1e33ba93d35b434e5fe152"
+  digest = "1:03ad4d58e1c75162d55b009ceb227332f4bc2359dc7901b01c3a07abbcfc0369"
   name = "github.com/greenplum-db/gp-common-go-libs"
   packages = [
     "cluster",
@@ -35,7 +35,7 @@
     "testhelper",
   ]
   pruneopts = "NUT"
-  revision = "afc498a415c4e67b08b3bd26fbaeef8e52f239a0"
+  revision = "af9b9ccfb5023361967a789a306fedc1cc02055f"
 
 [[projects]]
   digest = "1:41933d387bfa3eaa6a82647914ed7044f7b8355764c24fb920892bc8c03ef0c3"
@@ -88,14 +88,15 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:784d05a21c37defeaba624c1b0a55cb2c6488dbc9f456df16aab1af4928618c6"
+  digest = "1:d6be1611bcb7591f47e55f0844c1b998db628940726efa1d643a09584c5bcdb7"
   name = "github.com/lib/pq"
   packages = [
     ".",
     "oid",
+    "scram",
   ]
   pruneopts = "NUT"
-  revision = "9eb73efc1fcc404148b56765b0d3f61d9a5ef8ee"
+  revision = "51e2106eed1cea199c802d2a49e91e2491b02056"
 
 [[projects]]
   digest = "1:70ef8268170621826f8c111ac1674afe75136f526f449453b4a6631c6dba1946"
@@ -149,7 +150,7 @@
   version = "v1.8.0"
 
 [[projects]]
-  digest = "1:c9385d498108298283c3f3685667d8c87bf86a94d129fd49f8fd4485f1903e14"
+  digest = "1:01797bb0a7bd98751c65dff3461b9f948e3be09c443d179468781720326b09fe"
   name = "github.com/onsi/gomega"
   packages = [
     ".",
@@ -168,8 +169,8 @@
     "types",
   ]
   pruneopts = "NUT"
-  revision = "65fb64232476ad9046e57c26cd0bff3d3a8dc6cd"
-  version = "v1.4.3"
+  revision = "90e289841c1ed79b7a598a7cd9959750cb5e89e2"
+  version = "v1.5.0"
 
 [[projects]]
   digest = "1:14715f705ff5dfe0ffd6571d7d201dd8e921030f8070321a79380d8ca4ec1a24"
@@ -205,7 +206,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:03a8ff54c1a62710fe21a08ad9ccd554ac90232c4fd34c2731f65dd47e1f2077"
+  digest = "1:d5d8006ff2f825ddeac50550bbe002464b1f85810666e700a68459e91e2f875f"
   name = "golang.org/x/net"
   packages = [
     "html",
@@ -213,15 +214,15 @@
     "html/charset",
   ]
   pruneopts = "NUT"
-  revision = "16b79f2e4e95ea23b2bf9903c9809ff7b013ce85"
+  revision = "1f3472d942ba824034fb77cab6a6cfc1bc8a2c3c"
 
 [[projects]]
   branch = "master"
-  digest = "1:e482ae9014dcf45ffb110e47d8da101c63a430e2ac6efa5133d4adebe4a459dd"
+  digest = "1:f632c225ef300cb47bb7363bc1006ca57601af35f03b8fe41d03ed67b581c4fc"
   name = "golang.org/x/sys"
   packages = ["unix"]
   pruneopts = "NUT"
-  revision = "584f3b12f43e1e55248c90e84804777009eed0a4"
+  revision = "e8e3143a4f4a00f1fafef0dd82ba78223281b01b"
 
 [[projects]]
   digest = "1:7c61a813b250ba8bb02bebb0382e6c3d00e04da2b577dc58985b86312fb89ffd"
@@ -251,13 +252,12 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:7ddcb389cead44e26b0a4570d464cddd3c463c787725e1b781f4fe6d4fbea0dd"
+  digest = "1:d2338a2a5dc0b7f3bb801fef781991cd0170de0d94c7f0415289d47cf1f4c921"
   name = "golang.org/x/tools"
   packages = [
     "cmd/goimports",
     "go/ast/astutil",
     "go/gcexportdata",
-    "go/internal/cgo",
     "go/internal/gcimporter",
     "go/internal/packagesdriver",
     "go/packages",
@@ -269,7 +269,7 @@
     "internal/semver",
   ]
   pruneopts = "NUT"
-  revision = "00c44ba9c14f88ffdd4fb5bfae57fe8dd6d6afb1"
+  revision = "c39e7748f6ebfccd12b373374b6d14018827ea9c"
 
 [[projects]]
   digest = "1:26e56bf1243a3675608f918a1574bf0005d5263b67b84a24a5fb0946ad7a75e3"
@@ -306,11 +306,11 @@
 
 [[projects]]
   branch = "v2"
-  digest = "1:18108594151654e9e696b27b181b953f9a90b16bf14d253dd1b397b025a1487f"
+  digest = "1:1d7dce90c23a254fb19aeff938f84b86db5ae412c1246d6a15e0b210744524d4"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "51d6538a90f86fe93ac480b35f37b2be17fef232"
+  revision = "7b8349ac747c6a24702b762d2c4fd9266cf4f1d6"
 
 [solve-meta]
   analyzer-name = "dep"
