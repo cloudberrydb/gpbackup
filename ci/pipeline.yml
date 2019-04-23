@@ -362,14 +362,14 @@ jobs:
             popd
 
             cat << CONFIG > \$HOME/s3_config.yaml
-              executablepath: \$GPHOME/bin/gpbackup_s3_plugin
-              options:
-                region: us-west-2
-                aws_access_key_id: {{bucket-access-key-id}}
-                aws_secret_access_key: {{bucket-secret-access-key}}
-                bucket: {{gpbackup-s3-plugin-test-bucket}}
-                folder: test/backup
-            CONFIG
+          executablepath: \$GPHOME/bin/gpbackup_s3_plugin
+          options:
+            region: us-west-2
+            aws_access_key_id: {{bucket-access-key-id}}
+            aws_secret_access_key: {{bucket-secret-access-key}}
+            bucket: {{gpbackup-s3-plugin-test-bucket}}
+            folder: test/backup
+          CONFIG
 
             pushd gpbackup/plugins
             ./plugin_test_bench.sh \$GOPATH/bin/gpbackup_s3_plugin \$HOME/s3_config.yaml
