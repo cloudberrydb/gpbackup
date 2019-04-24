@@ -473,6 +473,7 @@ jobs:
           chmod +x /tmp/install_dependencies.bash
           scp /tmp/install_dependencies.bash centos@mdw:/tmp/install_dependencies.bash
           ssh -t centos@mdw "bash /tmp/install_dependencies.bash"
+          ssh -t gpadmin@mdw "source env.sh; psql -d postgres -f \$GPHOME/share/postgresql/contrib/pgcrypto.sql"
     on_failure:
       do:
       - *slack_alert
