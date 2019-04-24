@@ -456,8 +456,23 @@ jobs:
 
           scp -r gpbackup_ddboost_plugin mdw:/home/gpadmin/gpbackup_ddboost_plugin
 
-          ssh -t centos@mdw "sudo yum install -y autoconf automake libtool"
-          ssh -t gpadmin@mdw "source env.sh; psql -d postgres -f \$GPHOME/share/postgresql/contrib/pgcrypto.sql"
+          cat <<SCRIPT > /tmp/install_dependencies.bash
+          set -ex
+
+          pushd /tmp
+            curl -u{{ivyrepo_user}}:{{ivyrepo_passwd}} -O "https://{{ivyrepo_host}}/gpdb-ext-release-local/emc/DDBoostSDK/3.3.0.4-550644/targzs/DDBoostSDK-rhel5_x86_64-3.3.0.4-550644.targz"
+            tar -xf DDBoostSDK-rhel5_x86_64-3.3.0.4-550644.targz
+            # we must run as root to install libDDBoost.so
+            sudo cp rhel5_x86_64/lib/libDDBoost.so /usr/local/lib64/.
+            sudo cp -R rhel5_x86_64 /home/gpadmin/gpbackup_ddboost_plugin/
+            sudo chown -R gpadmin /home/gpadmin/gpbackup_ddboost_plugin
+            sudo yum install -y autoconf automake libtool
+          popd
+          SCRIPT
+
+          chmod +x /tmp/install_dependencies.bash
+          scp /tmp/install_dependencies.bash centos@mdw:/tmp/install_dependencies.bash
+          ssh -t centos@mdw "bash /tmp/install_dependencies.bash"
     on_failure:
       do:
       - *slack_alert
@@ -524,36 +539,30 @@ jobs:
           make build
           make install
 
-          # important: whitespace of yaml below is critical, do not change it
-          cat << CONFIG > \$HOME/ddboost_config_replication.yaml
-          executablepath: \$GPHOME/bin/gpbackup_ddboost_plugin
-          options:
-            hostname: {{datadomain_source_host}}
-            username: {{datadomain_user}}
-            password: {{encrypted_datadomain_password}}
-            password_encryption: on
-            storage_unit: GPDB
-            directory: gpbackup_tests
-            replication: on
-            pgport: 5432
-            remote_hostname: {{datadomain_dest_host}}
-            remote_username: {{datadomain_user}}
-            remote_password: {{encrypted_datadomain_password}}
-            remote_password_encryption: on
-            remote_storage_unit: GPDB
-            remote_directory: gpbackup_tests
+              cat << CONFIG > \$HOME/ddboost_config_replication.yaml
+              executablepath: \$GPHOME/bin/gpbackup_ddboost_plugin
+              options:
+                hostname: {{datadomain_source_host}}
+                username: {{datadomain_user}}
+                password: {{datadomain_password}}
+                storage_unit: GPDB
+                directory: gpbackup_tests
+                replication: on
+                remote_hostname: {{datadomain_dest_host}}
+                remote_username: {{datadomain_user}}
+                remote_password: {{datadomain_password}}
+                remote_storage_unit: GPDB
+                remote_directory: gpbackup_tests
           CONFIG
 
-          # important: whitespace of yaml below is critical, do not change it
-          cat << CONFIG > \$HOME/ddboost_config_replication_restore.yaml
-          executablepath: \$GPHOME/bin/gpbackup_ddboost_plugin
-          options:
-            hostname: {{datadomain_dest_host}}
-            username: {{datadomain_user}}
-            password: {{datadomain_password}}
-            storage_unit: GPDB
-            directory: gpbackup_tests
-            pgport: 5432
+              cat << CONFIG > \$HOME/ddboost_config_replication_restore.yaml
+              executablepath: \$GPHOME/bin/gpbackup_ddboost_plugin
+              options:
+                hostname: {{datadomain_dest_host}}
+                username: {{datadomain_user}}
+                password: {{datadomain_password}}
+                storage_unit: GPDB
+                directory: gpbackup_tests
           CONFIG
 
           pushd \$GOPATH/src/github.com/greenplum-db/gpbackup/plugins
