@@ -116,7 +116,7 @@ func DoSetup() {
 	if pluginConfigFlag != "" {
 		pluginConfig.CheckPluginExistsOnAllHosts(globalCluster)
 
-		pluginConfig.CopyPluginConfigToAllHosts(globalCluster)
+		pluginConfig.CopyPluginConfigToAllHosts(globalCluster, pluginConfigFlag)
 		pluginConfig.SetupPluginForBackup(globalCluster, globalFPInfo)
 	}
 }

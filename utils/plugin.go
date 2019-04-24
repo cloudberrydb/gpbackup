@@ -5,10 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
-
-	"github.com/greenplum-db/gp-common-go-libs/iohelper"
 
 	"github.com/blang/semver"
 	"github.com/greenplum-db/gp-common-go-libs/cluster"
@@ -21,9 +18,9 @@ import (
 const RequiredPluginVersion = "0.3.0"
 
 type PluginConfig struct {
-	ExecutablePath string            `yaml:"executablepath"`
-	ConfigPath     string            `yaml:"-"`
-	Options        map[string]string `yaml:"options"`
+	ExecutablePath string
+	ConfigPath     string
+	Options        map[string]string
 }
 
 type PluginScope string
@@ -49,7 +46,7 @@ func ReadPluginConfig(configFile string) (*PluginConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	configFilename := filepath.Base(configFile)
+	_, configFilename := filepath.Split(configFile)
 	config.ConfigPath = filepath.Join("/tmp", configFilename)
 	return config, nil
 }
@@ -209,44 +206,15 @@ func (plugin *PluginConfig) buildHookErrorMsgAndFunc(command string,
 
 /*---------------------------------------------------------------------------------------------------*/
 
-func (plugin *PluginConfig) CopyPluginConfigToAllHosts(c *cluster.Cluster) {
-	// create a unique config file per segment in order to convey the PGPORT for the segment
-	// to the plugin.  At some point in the future, the plugin MAY be able to get PGPORT as
-	// an environmental var, at which time the code to write *specific* config files per segment
-	// can be removed
-	remoteOutput := c.GenerateAndExecuteCommand(
-		"Copying plugin config to all hosts",
-		func(contentIDForSegmentOnHost int) string {
-			hostConfigFile := plugin.createHostPluginConfig(contentIDForSegmentOnHost, c)
-
-			return fmt.Sprintf("scp %[1]s %s:%s; rm %[1]s", hostConfigFile, c.GetHostForContent(contentIDForSegmentOnHost), plugin.ConfigPath)
-		},
-		cluster.ON_MASTER_TO_HOSTS_AND_MASTER,
-	)
-
-	c.CheckClusterError(
-		remoteOutput,
-		"Unable to copy plugin config",
+func (plugin *PluginConfig) CopyPluginConfigToAllHosts(c *cluster.Cluster, configPath string) {
+	remoteOutput := c.GenerateAndExecuteCommand("Copying plugin config to all hosts",
 		func(contentID int) string {
-			return "Unable to copy plugin config"
+			return fmt.Sprintf("scp %s %s:/tmp/.", configPath, c.GetHostForContent(contentID))
 		},
-	)
-}
-
-func (plugin *PluginConfig) createHostPluginConfig(contentIDForSegmentOnHost int, c *cluster.Cluster) (segmentSpecificConfigFilepath string) {
-	// copy "general" config file to temp, and add segment-specific PGPORT value
-	segmentSpecificConfigFile := plugin.ConfigPath + "_" + strconv.Itoa(contentIDForSegmentOnHost)
-	file := iohelper.MustOpenFileForWriting(segmentSpecificConfigFile)
-
-	// add current pgport as attribute
-	plugin.Options["pgport"] = strconv.Itoa(c.GetPortForContent(contentIDForSegmentOnHost))
-	bytes, err := yaml.Marshal(plugin)
-	gplog.FatalOnError(err)
-	_, err = file.Write(bytes)
-	gplog.FatalOnError(err)
-	err = file.Close()
-	gplog.FatalOnError(err)
-	return segmentSpecificConfigFile
+		cluster.ON_MASTER_TO_HOSTS_AND_MASTER)
+	c.CheckClusterError(remoteOutput, "Unable to copy plugin config", func(contentID int) string {
+		return "Unable to copy plugin config"
+	})
 }
 
 func (plugin *PluginConfig) BackupSegmentTOCs(c *cluster.Cluster, fpInfo backup_filepath.FilePathInfo) {

@@ -2,11 +2,6 @@ package utils_test
 
 import (
 	"strconv"
-	"strings"
-
-	"github.com/greenplum-db/gp-common-go-libs/gplog"
-
-	"github.com/greenplum-db/gp-common-go-libs/iohelper"
 
 	"github.com/blang/semver"
 	"github.com/greenplum-db/gp-common-go-libs/cluster"
@@ -27,7 +22,6 @@ var _ = Describe("utils/plugin tests", func() {
 	BeforeEach(func() {
 		subject = utils.PluginConfig{
 			ExecutablePath: "myPlugin",
-			ConfigPath:     "/tmp/my_plugin_config.yaml",
 		}
 		executor = testhelper.TestExecutor{
 			ClusterOutput: &cluster.RemoteOutput{
@@ -39,9 +33,9 @@ var _ = Describe("utils/plugin tests", func() {
 			ContentIDs: []int{-1, 0, 1},
 			Executor:   &executor,
 			Segments: map[int]cluster.SegConfig{
-				-1: {DataDir: "/data/gpseg-1", Hostname: "master", Port: 100},
-				0:  {DataDir: "/data/gpseg0", Hostname: "segment1", Port: 101},
-				1:  {DataDir: "/data/gpseg1", Hostname: "segment2", Port: 102},
+				-1: {DataDir: "/data/gpseg-1", Hostname: "master"},
+				0:  {DataDir: "/data/gpseg0", Hostname: "segment1"},
+				1:  {DataDir: "/data/gpseg1", Hostname: "segment2"},
 			},
 		}
 	})
@@ -66,36 +60,15 @@ var _ = Describe("utils/plugin tests", func() {
 	})
 	Describe("plugin config", func() {
 		It("successfully copies to all hosts", func() {
-			testConfigPath := "/tmp/my_plugin_config.yaml"
-			testConfigContents := `
-executablepath: /tmp/fake_path
-options:
-    field1: 12
-    field2: hello
-    field3: 567
-`
-			file := iohelper.MustOpenFileForWriting(testConfigPath)
-			_, err := file.Write([]byte(testConfigContents))
-			gplog.FatalOnError(err)
-			myconfig, err := utils.ReadPluginConfig(testConfigPath)
-			subject.Options = myconfig.Options // hack to get options set up in test situation
-
-			subject.CopyPluginConfigToAllHosts(testCluster)
+			testConfigPath := "/tmp/my_plugin_config.yml"
+			subject.CopyPluginConfigToAllHosts(testCluster, testConfigPath)
 
 			Expect(executor.NumExecutions).To(Equal(1))
 			cc := executor.ClusterCommands[0]
 			Expect(len(cc)).To(Equal(3))
-			Expect(cc[-1][2]).To(Equal("scp /tmp/my_plugin_config.yaml_-1 master:/tmp/my_plugin_config.yaml; rm /tmp/my_plugin_config.yaml_-1"))
-			Expect(cc[0][2]).To(Equal("scp /tmp/my_plugin_config.yaml_0 segment1:/tmp/my_plugin_config.yaml; rm /tmp/my_plugin_config.yaml_0"))
-			Expect(cc[1][2]).To(Equal("scp /tmp/my_plugin_config.yaml_1 segment2:/tmp/my_plugin_config.yaml; rm /tmp/my_plugin_config.yaml_1"))
-
-			// check contents
-			contents := strings.Join(iohelper.MustReadLinesFromFile("/tmp/my_plugin_config.yaml_-1"), "\n")
-			Expect(contents).To(ContainSubstring("\n  pgport: \"100\""))
-			contents = strings.Join(iohelper.MustReadLinesFromFile("/tmp/my_plugin_config.yaml_0"), "\n")
-			Expect(contents).To(ContainSubstring("\n  pgport: \"101\""))
-			contents = strings.Join(iohelper.MustReadLinesFromFile("/tmp/my_plugin_config.yaml_1"), "\n")
-			Expect(contents).To(ContainSubstring("\n  pgport: \"102\""))
+			Expect(cc[-1][2]).To(Equal("scp /tmp/my_plugin_config.yml master:/tmp/."))
+			Expect(cc[0][2]).To(Equal("scp /tmp/my_plugin_config.yml segment1:/tmp/."))
+			Expect(cc[1][2]).To(Equal("scp /tmp/my_plugin_config.yml segment2:/tmp/."))
 		})
 	})
 	Describe("version validation", func() {
