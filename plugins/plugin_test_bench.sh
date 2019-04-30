@@ -283,6 +283,12 @@ test_backup_and_restore_with_plugin() {
     psql -d $test_db -qc "CREATE TABLE test_table(i int) DISTRIBUTED RANDOMLY; INSERT INTO test_table select generate_series(1,50000)"
 
     set +e
+    # save the encrypt key file, if it exists
+    if [ -f "$MASTER_DATA_DIRECTORY/.encrypt" ] ; then
+        mv $MASTER_DATA_DIRECTORY/.encrypt /tmp/.encrypt_saved
+    fi
+    echo "gpbackup_ddboost_plugin: 66706c6c6e677a6965796f68343365303133336f6c73366b316868326764" > $MASTER_DATA_DIRECTORY/.encrypt
+
     echo "[RUNNING] gpbackup with test database (using ${flags})"
     gpbackup --dbname $test_db --plugin-config $plugin_config $flags > $log_file
     if [ ! $? -eq 0 ]; then
@@ -317,6 +323,10 @@ test_backup_and_restore_with_plugin() {
           echo "Expected to restore 50000 rows, got $num_rows"
           exit 1
         fi
+    fi
+    # replace the encrypt key file to its proper location
+    if [ -f "/tmp/.encrypt_saved" ] ; then
+        mv /tmp/.encrypt_saved $MASTER_DATA_DIRECTORY/.encrypt
     fi
     set -e
     echo "[PASSED] gpbackup and gprestore (using ${flags})"

@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"github.com/greenplum-db/gp-common-go-libs/iohelper"
 
 	"github.com/blang/semver"
@@ -19,6 +21,7 @@ import (
 )
 
 const RequiredPluginVersion = "0.3.0"
+const SecretKeyFile = ".encrypt"
 
 type PluginConfig struct {
 	ExecutablePath string            `yaml:"executablepath"`
@@ -233,6 +236,30 @@ func (plugin *PluginConfig) CopyPluginConfigToAllHosts(c *cluster.Cluster) {
 	)
 }
 
+func (plugin *PluginConfig) DeletePluginConfigWhenEncrypting(c *cluster.Cluster) {
+	if !plugin.UsesEncryption() {
+		return
+	}
+
+	remoteOutput := c.GenerateAndExecuteCommand(
+		"Removing plugin config from all hosts",
+		func(contentIDForSegmentOnHost int) string {
+			//hostConfigFile := plugin.createHostPluginConfig(contentIDForSegmentOnHost, c)
+			return fmt.Sprintf("rm -f %s", plugin.ConfigPath)
+		},
+		cluster.ON_MASTER_TO_HOSTS_AND_MASTER,
+	)
+
+	c.CheckClusterError(
+		remoteOutput,
+		"Unable to remove plugin config",
+		func(contentID int) string {
+			return "Unable to remove plugin config"
+		},
+		true,
+	)
+}
+
 func (plugin *PluginConfig) createHostPluginConfig(contentIDForSegmentOnHost int, c *cluster.Cluster) (segmentSpecificConfigFilepath string) {
 	// copy "general" config file to temp, and add segment-specific PGPORT value
 	segmentSpecificConfigFile := plugin.ConfigPath + "_" + strconv.Itoa(contentIDForSegmentOnHost)
@@ -240,6 +267,20 @@ func (plugin *PluginConfig) createHostPluginConfig(contentIDForSegmentOnHost int
 
 	// add current pgport as attribute
 	plugin.Options["pgport"] = strconv.Itoa(c.GetPortForContent(contentIDForSegmentOnHost))
+	if plugin.UsesEncryption() {
+		pluginName, err := plugin.GetPluginName(c)
+		if err != nil {
+			_, _ = fmt.Fprintf(operating.System.Stdout, err.Error())
+			gplog.Fatal(nil, err.Error())
+		}
+
+		secret, err := GetSecretKey(pluginName, c.GetDirForContent(-1))
+		if err != nil {
+			_, _ = fmt.Fprintf(operating.System.Stdout, err.Error())
+			gplog.Fatal(nil, err.Error())
+		}
+		plugin.Options[pluginName] = secret
+	}
 	bytes, err := yaml.Marshal(plugin)
 	gplog.FatalOnError(err)
 	_, err = file.Write(bytes)
@@ -247,6 +288,24 @@ func (plugin *PluginConfig) createHostPluginConfig(contentIDForSegmentOnHost int
 	err = file.Close()
 	gplog.FatalOnError(err)
 	return segmentSpecificConfigFile
+}
+
+func GetSecretKey(pluginName string, mdd string) (string, error) {
+	secretFilePath := filepath.Join(mdd, SecretKeyFile)
+	contents, err := operating.System.ReadFile(secretFilePath)
+
+	errMsg := fmt.Sprintf("Cannot find encryption key for plugin %s. Please re-encrypt password(s) so that key becomes available.", pluginName)
+	if err != nil {
+		return "", errors.New(errMsg)
+	}
+	keys := make(map[string]string, 0)
+	_ = yaml.Unmarshal(contents, keys) // if error happens, we catch it because no keys exist
+	key, exists := keys[pluginName]
+	if !exists {
+		return "", errors.New(errMsg)
+	}
+	return key, nil
+
 }
 
 func (plugin *PluginConfig) BackupSegmentTOCs(c *cluster.Cluster, fpInfo backup_filepath.FilePathInfo) {
@@ -276,4 +335,24 @@ func (plugin *PluginConfig) RestoreSegmentTOCs(c *cluster.Cluster, fpInfo backup
 	c.CheckClusterError(remoteOutput, "Unable to process segment TOC files using plugin", func(contentID int) string {
 		return fmt.Sprintf("Unable to process segment TOC files using plugin")
 	})
+}
+
+func (plugin *PluginConfig) UsesEncryption() bool {
+	return plugin.Options["password_encryption"] == "on" || (plugin.Options["replication"] == "on" && plugin.Options["remote_password_encryption"] == "on")
+}
+
+func (plugin *PluginConfig) GetPluginName(c *cluster.Cluster) (pluginName string, err error) {
+	pluginCall := fmt.Sprintf("%s --version", plugin.ExecutablePath)
+	output, err := c.ExecuteLocalCommand(pluginCall)
+	if err != nil {
+		return "", fmt.Errorf(`Failed to get plugin name. Failed with error: %s`, err.Error())
+	}
+
+	// expects the output to be in "[plugin_name] version [git_version]"
+	s := strings.Split(output, " ")
+	if len(s) != 3 {
+		return "", fmt.Errorf("Unexpected plugin version format: \"%s\"\nExpected: \"[plugin_name] version [git_version]\"", strings.Join(s, " "))
+	}
+
+	return s[0], nil
 }

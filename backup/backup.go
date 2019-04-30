@@ -438,6 +438,7 @@ func DoTeardown() {
 		}
 		if pluginConfig != nil {
 			pluginConfig.CleanupPluginForBackup(globalCluster, globalFPInfo)
+			pluginConfig.DeletePluginConfigWhenEncrypting(globalCluster)
 		}
 	}
 }

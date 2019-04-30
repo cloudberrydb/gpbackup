@@ -457,6 +457,7 @@ jobs:
           scp -r gpbackup_ddboost_plugin mdw:/home/gpadmin/gpbackup_ddboost_plugin
 
           ssh -t centos@mdw "sudo yum install -y autoconf automake libtool"
+          # TODO: this needs different logic for different version of GPDB
           ssh -t gpadmin@mdw "source env.sh; psql -d postgres -f \$GPHOME/share/postgresql/contrib/pgcrypto.sql"
     on_failure:
       do:
@@ -530,18 +531,19 @@ jobs:
           options:
             hostname: {{datadomain_source_host}}
             username: {{datadomain_user}}
-            password: {{encrypted_datadomain_password}}
-            password_encryption: on
             storage_unit: GPDB
             directory: gpbackup_tests
             replication: on
             pgport: 5432
             remote_hostname: {{datadomain_dest_host}}
             remote_username: {{datadomain_user}}
-            remote_password: {{encrypted_datadomain_password}}
-            remote_password_encryption: on
             remote_storage_unit: GPDB
             remote_directory: gpbackup_tests
+            password: {{encrypted_datadomain_password}}
+            password_encryption: "on"
+            remote_password: {{encrypted_datadomain_password}}
+            remote_password_encryption: "on"
+            gpbackup_ddboost_plugin: 66706c6c6e677a6965796f68343365303133336f6c73366b316868326764
           CONFIG
 
           # important: whitespace of yaml below is critical, do not change it
@@ -557,6 +559,7 @@ jobs:
           CONFIG
 
           pushd \$GOPATH/src/github.com/greenplum-db/gpbackup/plugins
+
           ./plugin_test_bench.sh \$GPHOME/bin/gpbackup_ddboost_plugin \$HOME/ddboost_config_replication.yaml \$HOME/ddboost_config_replication_restore.yaml
 
           # exercise boostfs, which is mounted at /data/gpdata/dd_dir

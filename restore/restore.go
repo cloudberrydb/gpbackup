@@ -323,6 +323,7 @@ func DoTeardown() {
 		utils.EmailReport(globalCluster, globalFPInfo.Timestamp, reportFilename, "gprestore")
 		if pluginConfig != nil {
 			pluginConfig.CleanupPluginForRestore(globalCluster, globalFPInfo)
+			pluginConfig.DeletePluginConfigWhenEncrypting(globalCluster)
 		}
 	}
 }
