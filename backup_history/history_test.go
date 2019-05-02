@@ -18,7 +18,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var _ bool = Describe("backup/history tests", func() {
+var _ = Describe("backup/history tests", func() {
 	var testConfig1, testConfig2, testConfig3 backup_history.BackupConfig
 	var historyFilePath = "/tmp/history_file.yaml"
 
@@ -57,7 +57,7 @@ var _ bool = Describe("backup/history tests", func() {
 			BackupConfigs: []backup_history.BackupConfig{testConfig1, testConfig2},
 		}
 		AfterEach(func() {
-			os.Remove(historyFilePath)
+			_ = os.Remove(historyFilePath)
 		})
 		It("makes the file readonly after it is written", func() {
 			err := historyWithEntries.WriteToFileAndMakeReadOnly(historyFilePath)
@@ -68,7 +68,7 @@ var _ bool = Describe("backup/history tests", func() {
 			Expect(fileInfo.Mode().Perm()).To(Equal(os.FileMode(0444)))
 		})
 		It("writes file when file does not exist", func() {
-			os.Remove(historyFilePath)
+			_ = os.Remove(historyFilePath)
 
 			err := historyWithEntries.WriteToFileAndMakeReadOnly(historyFilePath)
 			Expect(err).ToNot(HaveOccurred())
@@ -106,8 +106,8 @@ var _ bool = Describe("backup/history tests", func() {
 			}
 			historyFileContents, _ := yaml.Marshal(historyWithEntries)
 			fileHandle := iohelper.MustOpenFileForWriting(historyFilePath)
-			fileHandle.Write(historyFileContents)
-			fileHandle.Close()
+			_, _ = fileHandle.Write(historyFileContents)
+			_ = fileHandle.Close()
 			defer os.Remove(historyFilePath)
 
 			resultHistory, err := backup_history.NewHistory(historyFilePath)
@@ -164,7 +164,7 @@ var _ bool = Describe("backup/history tests", func() {
 	})
 	Describe("WriteBackupHistory", func() {
 		AfterEach(func() {
-			os.Remove(historyFilePath)
+			_ = os.Remove(historyFilePath)
 		})
 		It("appends new config when file exists", func() {
 			historyWithEntries := backup_history.History{
@@ -172,8 +172,8 @@ var _ bool = Describe("backup/history tests", func() {
 			}
 			historyFileContents, _ := yaml.Marshal(historyWithEntries)
 			fileHandle := iohelper.MustOpenFileForWriting(historyFilePath)
-			fileHandle.Write(historyFileContents)
-			fileHandle.Close()
+			_, _ = fileHandle.Write(historyFileContents)
+			_ = fileHandle.Close()
 
 			err := backup_history.WriteBackupHistory(historyFilePath, &testConfig3)
 			Expect(err).ToNot(HaveOccurred())
@@ -186,7 +186,7 @@ var _ bool = Describe("backup/history tests", func() {
 			structmatcher.ExpectStructsToMatch(&expectedHistory, resultHistory)
 		})
 		It("writes file with new config when file does not exist", func() {
-			os.Remove(historyFilePath)
+			_ = os.Remove(historyFilePath)
 			err := backup_history.WriteBackupHistory(historyFilePath, &testConfig3)
 			Expect(err).ToNot(HaveOccurred())
 

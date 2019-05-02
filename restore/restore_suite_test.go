@@ -6,7 +6,6 @@ package restore_test
  */
 
 import (
-	"os/exec"
 	"testing"
 
 	"gopkg.in/DATA-DOG/go-sqlmock.v1"
@@ -18,7 +17,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
-	"github.com/onsi/gomega/gexec"
 	"github.com/spf13/pflag"
 )
 
@@ -29,19 +27,7 @@ var (
 	stderr         *gbytes.Buffer
 	logfile        *gbytes.Buffer
 	buffer         *gbytes.Buffer
-	gprestorePath  = ""
 )
-
-/* This function is a helper function to execute gprestore and return a session
- * to allow checking its output.
- */
-func gprestore() *gexec.Session {
-	command := exec.Command(gprestorePath, "-timestamp", "20170101010101")
-	session, err := gexec.Start(command, GinkgoWriter, GinkgoWriter)
-	Expect(err).ShouldNot(HaveOccurred())
-	<-session.Exited
-	return session
-}
 
 func TestRestore(t *testing.T) {
 	RegisterFailHandler(Fail)

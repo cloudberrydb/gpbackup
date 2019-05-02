@@ -333,7 +333,7 @@ GRANT ALL ON shamwow.shazam TO testrole;`,
 		Context("leafPartitionData and includeTables", func() {
 			It("gets only parent partitions of included tables for metadata and only child partitions for data", func() {
 				includeList = []string{"public.part_parent1", "public.part_parent2_child1", "public.part_parent2_child2", "public.test_table"}
-				cmdFlags.Set(utils.LEAF_PARTITION_DATA, "true")
+				_ = cmdFlags.Set(utils.LEAF_PARTITION_DATA, "true")
 
 				metadataTables, dataTables := backup.SplitTablesByPartitionType(tables, includeList)
 
@@ -352,7 +352,7 @@ GRANT ALL ON shamwow.shazam TO testrole;`,
 		})
 		Context("leafPartitionData only", func() {
 			It("gets only parent partitions for metadata and only child partitions in data", func() {
-				cmdFlags.Set(utils.LEAF_PARTITION_DATA, "true")
+				_ = cmdFlags.Set(utils.LEAF_PARTITION_DATA, "true")
 				includeList = []string{}
 				metadataTables, dataTables := backup.SplitTablesByPartitionType(tables, includeList)
 
@@ -371,7 +371,7 @@ GRANT ALL ON shamwow.shazam TO testrole;`,
 		})
 		Context("includeTables only", func() {
 			It("gets only parent partitions of included tables for metadata and only included tables for data", func() {
-				cmdFlags.Set(utils.LEAF_PARTITION_DATA, "false")
+				_ = cmdFlags.Set(utils.LEAF_PARTITION_DATA, "false")
 				includeList = []string{"public.part_parent1", "public.part_parent2_child1", "public.part_parent2_child2", "public.test_table"}
 				metadataTables, dataTables := backup.SplitTablesByPartitionType(tables, includeList)
 
@@ -405,8 +405,8 @@ GRANT ALL ON shamwow.shazam TO testrole;`,
 						TableDefinition: backup.TableDefinition{PartitionLevelInfo: backup.PartitionLevelInfo{Level: "n"}},
 					},
 				}
-				cmdFlags.Set(utils.LEAF_PARTITION_DATA, "false")
-				cmdFlags.Set(utils.INCLUDE_RELATION, "")
+				_ = cmdFlags.Set(utils.LEAF_PARTITION_DATA, "false")
+				_ = cmdFlags.Set(utils.INCLUDE_RELATION, "")
 				metadataTables, dataTables := backup.SplitTablesByPartitionType(tables, includeList)
 
 				Expect(metadataTables).To(Equal(expectedMetadataTables))
@@ -433,8 +433,8 @@ GRANT ALL ON shamwow.shazam TO testrole;`,
 						TableDefinition: backup.TableDefinition{PartitionLevelInfo: backup.PartitionLevelInfo{Level: "l"}, IsExternal: true},
 					},
 				}
-				cmdFlags.Set(utils.LEAF_PARTITION_DATA, "false")
-				cmdFlags.Set(utils.INCLUDE_RELATION, "")
+				_ = cmdFlags.Set(utils.LEAF_PARTITION_DATA, "false")
+				_ = cmdFlags.Set(utils.INCLUDE_RELATION, "")
 				metadataTables, _ := backup.SplitTablesByPartitionType(tables, includeList)
 
 				expectedTables := []backup.Table{
