@@ -69,6 +69,10 @@ See [Release Notes](#Release_Notes) for command modification history.
 
 [plugin_api_version](#plugin_api_version)
 
+[delete_backup](#delete_backup)
+
+[--version](#--version)
+
 ## Command Arguments
 
 These arguments are passed to the plugin by gpbackup/gprestore.
@@ -110,7 +114,7 @@ Called at the start of the backup process on the master and each segment host.
 
 [contentID](#contentID)
 
-**Stdout** None
+**Stdout:** None
 
 **Example:**
 ```
@@ -138,7 +142,7 @@ Called at the start of the restore process on the master and each segment host.
 
 [contentID](#contentID)
 
-**Stdout** None
+**Stdout:** None
 
 **Example:**
 ```
@@ -166,7 +170,7 @@ Called during the backup teardown phase on the master and each segment host. Thi
 
 [contentID](#contentID)
 
-**Stdout** None
+**Stdout:** None
 
 **Example:**
 ```
@@ -194,7 +198,7 @@ Called during the restore teardown phase on the master and each segment host. Th
 
 [contentID](#contentID)
 
-**Stdout** None
+**Stdout:** None
 
 **Example:**
 ```
@@ -218,7 +222,7 @@ Called once for each file created by gpbackup after the files have been written 
 
 [filepath_to_back_up](#filepath)
 
-**Stdout** None
+**Stdout:** None
 
 **Example:**
 ```
@@ -239,7 +243,7 @@ Called once for each file created by gpbackup to restore them to local disk so g
 
 [filepath_to_restore](#filepath)
 
-**Stdout** None
+**Stdout:** None
 
 **Example:**
 ```
@@ -260,7 +264,7 @@ Called by the gpbackup_helper agent process to stream all table data for a segme
 
 [data_filekey](#data_filekey)
 
-**Stdout** None
+**Stdout:** None
 
 **Stdin** Expecting stream of data
 
@@ -283,7 +287,7 @@ Called by the gpbackup_helper agent process to stream all table data for a segme
 
 [data_filekey](#data_filekey)
 
-**Stdout** Stream of data from the remote source
+**Stdout:** Stream of data from the remote source
 
 **Example:**
 ```
@@ -301,7 +305,7 @@ Called to verify the plugin is using a version of the gpbackup plugin API that i
 
 None
 
-**Stdout** X.Y.Z
+**Stdout:** X.Y.Z
 
 **Example:**
 ```
@@ -318,12 +322,29 @@ This command should delete the directory specified by the given backup timestamp
 
 [timestamp](#timestamp)
 
-**Stdout** None
+**Stdout:** None
 
 **Example:**
 ```
 test_plugin delete_backup /home/test_plugin_config.yaml 20180108130802
 ```
+
+### [--version](#--version)
+
+This command should display the version of the plugin itself (not the api version).
+
+**Arguments:** None
+
+**Stdout:**
+[plugin_name] version [git_version]
+
+_e.g.:_ gpbackup_s3_plugin version 1.1.0+dev.2.g16b18a1
+
+**Example:**
+```
+test_plugin --version
+```
+
 
 ## Plugin flow within gpbackup and gprestore
 ### Backup Plugin Flow
