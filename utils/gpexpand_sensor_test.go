@@ -37,7 +37,7 @@ var _ = Describe("gpexpand_sensor", func() {
 		Describe("happy path", func() {
 			It("senses when gpexpand is in phase 1, as determined by existence of a file 'gpexpand.status' in master data directory", func() {
 				mock.ExpectQuery(utils.MasterDataDirQuery).WillReturnRows(mddPathRow)
-				Expect(vfs.MkdirAll(memoryfs, sampleMasterDataDir, 755)).To(Succeed())
+				Expect(vfs.MkdirAll(memoryfs, sampleMasterDataDir, 0755)).To(Succeed())
 				path := filepath.Join(sampleMasterDataDir, utils.GpexpandStatusFilename)
 				Expect(vfs.WriteFile(memoryfs, path, []byte{0}, 0400)).To(Succeed())
 				gpexpandSensor := utils.NewGpexpandSensor(memoryfs, connectionPool)
