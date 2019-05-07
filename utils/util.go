@@ -15,7 +15,6 @@ import (
 
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
-	"github.com/greenplum-db/gp-common-go-libs/operating"
 	"github.com/greenplum-db/gpbackup/backup_filepath"
 	"github.com/pkg/errors"
 )
@@ -26,10 +25,6 @@ const MINIMUM_GPDB5_VERSION = "5.1.0"
 /*
  * General helper functions
  */
-
-func CurrentTimestamp() string {
-	return operating.System.Now().Format("20060102150405")
-}
 
 // Dollar-quoting logic is based on appendStringLiteralDQ() in pg_dump.
 func DollarQuoteString(literal string) string {

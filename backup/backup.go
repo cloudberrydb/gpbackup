@@ -77,7 +77,7 @@ func DoFlagValidation(cmd *cobra.Command) {
 func DoSetup() {
 	SetLoggerVerbosity()
 	utils.CheckGpexpandRunning(utils.BackupPreventedByGpexpandMessage)
-	timestamp := utils.CurrentTimestamp()
+	timestamp := backup_history.CurrentTimestamp()
 	CreateBackupLockFile(timestamp)
 	InitializeConnectionPool()
 

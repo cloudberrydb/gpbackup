@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"os"
+	"time"
 
 	"github.com/greenplum-db/gp-common-go-libs/iohelper"
 	"github.com/greenplum-db/gp-common-go-libs/operating"
@@ -22,40 +23,51 @@ var _ = Describe("backup/history tests", func() {
 	var testConfig1, testConfig2, testConfig3 backup_history.BackupConfig
 	var historyFilePath = "/tmp/history_file.yaml"
 
-	testConfig1 = backup_history.BackupConfig{
-		DatabaseName:     "testdb1",
-		ExcludeRelations: []string{},
-		ExcludeSchemas:   []string{},
-		IncludeRelations: []string{"testschema.testtable1", "testschema.testtable2"},
-		IncludeSchemas:   []string{},
-		RestorePlan:      []backup_history.RestorePlanEntry{},
-		Timestamp:        "timestamp1",
-	}
-	testConfig2 = backup_history.BackupConfig{
-		DatabaseName:     "testdb2",
-		ExcludeRelations: []string{},
-		ExcludeSchemas:   []string{"public"},
-		IncludeRelations: []string{},
-		IncludeSchemas:   []string{},
-		RestorePlan:      []backup_history.RestorePlanEntry{},
-		Timestamp:        "timestamp2",
-	}
-	testConfig3 = backup_history.BackupConfig{
-		DatabaseName:     "testdb3",
-		ExcludeRelations: []string{},
-		ExcludeSchemas:   []string{"public"},
-		IncludeRelations: []string{},
-		IncludeSchemas:   []string{},
-		RestorePlan:      []backup_history.RestorePlanEntry{},
-		Timestamp:        "timestamp3",
-	}
-
+	BeforeEach(func() {
+		testConfig1 = backup_history.BackupConfig{
+			DatabaseName:     "testdb1",
+			ExcludeRelations: []string{},
+			ExcludeSchemas:   []string{},
+			IncludeRelations: []string{"testschema.testtable1", "testschema.testtable2"},
+			IncludeSchemas:   []string{},
+			RestorePlan:      []backup_history.RestorePlanEntry{},
+			Timestamp:        "timestamp1",
+		}
+		testConfig2 = backup_history.BackupConfig{
+			DatabaseName:     "testdb2",
+			ExcludeRelations: []string{},
+			ExcludeSchemas:   []string{"public"},
+			IncludeRelations: []string{},
+			IncludeSchemas:   []string{},
+			RestorePlan:      []backup_history.RestorePlanEntry{},
+			Timestamp:        "timestamp2",
+		}
+		testConfig3 = backup_history.BackupConfig{
+			DatabaseName:     "testdb3",
+			ExcludeRelations: []string{},
+			ExcludeSchemas:   []string{"public"},
+			IncludeRelations: []string{},
+			IncludeSchemas:   []string{},
+			RestorePlan:      []backup_history.RestorePlanEntry{},
+			Timestamp:        "timestamp3",
+		}
+	})
+	Describe("CurrentTimestamp", func() {
+		It("returns the current timestamp", func() {
+			operating.System.Now = func() time.Time { return time.Date(2017, time.January, 1, 1, 1, 1, 1, time.Local) }
+			expected := "20170101010101"
+			actual := backup_history.CurrentTimestamp()
+			Expect(actual).To(Equal(expected))
+		})
+	})
 	Describe("WriteToFileAndMakeReadOnly", func() {
 		var fileInfo os.FileInfo
-
-		historyWithEntries := backup_history.History{
-			BackupConfigs: []backup_history.BackupConfig{testConfig1, testConfig2},
-		}
+		var historyWithEntries backup_history.History
+		BeforeEach(func() {
+			historyWithEntries = backup_history.History{
+				BackupConfigs: []backup_history.BackupConfig{testConfig1, testConfig2},
+			}
+		})
 		AfterEach(func() {
 			_ = os.Remove(historyFilePath)
 		})
@@ -163,10 +175,20 @@ var _ = Describe("backup/history tests", func() {
 		})
 	})
 	Describe("WriteBackupHistory", func() {
+		BeforeEach(func() {
+			_ = os.Remove(historyFilePath)
+			operating.System = operating.InitializeSystemFunctions()
+		})
 		AfterEach(func() {
 			_ = os.Remove(historyFilePath)
+			operating.System = operating.InitializeSystemFunctions()
 		})
 		It("appends new config when file exists", func() {
+			Expect(testConfig3.EndTime).To(BeEmpty())
+			simulatedEndTime := time.Now()
+			operating.System.Now = func() time.Time {
+				return simulatedEndTime
+			}
 			historyWithEntries := backup_history.History{
 				BackupConfigs: []backup_history.BackupConfig{testConfig2, testConfig1},
 			}
@@ -180,13 +202,18 @@ var _ = Describe("backup/history tests", func() {
 
 			resultHistory, err := backup_history.NewHistory(historyFilePath)
 			Expect(err).ToNot(HaveOccurred())
+			testConfig3.EndTime = simulatedEndTime.Format("20060102150405")
 			expectedHistory := backup_history.History{
 				BackupConfigs: []backup_history.BackupConfig{testConfig3, testConfig2, testConfig1},
 			}
 			structmatcher.ExpectStructsToMatch(&expectedHistory, resultHistory)
 		})
 		It("writes file with new config when file does not exist", func() {
-			_ = os.Remove(historyFilePath)
+			Expect(testConfig3.EndTime).To(BeEmpty())
+			simulatedEndTime := time.Now()
+			operating.System.Now = func() time.Time {
+				return simulatedEndTime
+			}
 			err := backup_history.WriteBackupHistory(historyFilePath, &testConfig3)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -195,6 +222,7 @@ var _ = Describe("backup/history tests", func() {
 			expectedHistory := backup_history.History{BackupConfigs: []backup_history.BackupConfig{testConfig3}}
 			structmatcher.ExpectStructsToMatch(&expectedHistory, resultHistory)
 			Expect(testLogfile).To(gbytes.Say("No existing backups found. Creating new backup history file."))
+			Expect(testConfig3.EndTime).To(Equal(simulatedEndTime.Format("20060102150405")))
 		})
 	})
 })

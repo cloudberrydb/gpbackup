@@ -9,6 +9,7 @@ import (
 	"github.com/greenplum-db/gp-common-go-libs/cluster"
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpbackup/backup_filepath"
+	"github.com/greenplum-db/gpbackup/backup_history"
 	"github.com/greenplum-db/gpbackup/utils"
 	"github.com/spf13/cobra"
 
@@ -80,7 +81,7 @@ func DoValidation(cmd *cobra.Command) {
 func DoSetup() {
 	SetLoggerVerbosity()
 	utils.CheckGpexpandRunning(utils.RestorePreventedByGpexpandMessage)
-	restoreStartTime = utils.CurrentTimestamp()
+	restoreStartTime = backup_history.CurrentTimestamp()
 	gplog.Info("Restore Key = %s", MustGetFlagString(utils.TIMESTAMP))
 
 	InitializeConnectionPool("postgres")

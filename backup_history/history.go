@@ -41,6 +41,7 @@ type BackupConfig struct {
 	RestorePlan           []RestorePlanEntry
 	SingleDataFile        bool
 	Timestamp             string
+	EndTime               string
 	WithStatistics        bool
 }
 
@@ -87,6 +88,10 @@ func (history *History) AddBackupConfig(backupConfig *BackupConfig) {
 	})
 }
 
+func CurrentTimestamp() string {
+	return operating.System.Now().Format("20060102150405")
+}
+
 func WriteBackupHistory(historyFilePath string, currentBackupConfig *BackupConfig) error {
 	lock := lockHistoryFile()
 	defer func() {
@@ -107,6 +112,9 @@ func WriteBackupHistory(historyFilePath string, currentBackupConfig *BackupConfi
 	if len(history.BackupConfigs) == 0 {
 		gplog.Verbose("No existing backups found. Creating new backup history file.")
 	}
+
+	currentBackupConfig.EndTime = CurrentTimestamp()
+
 	history.AddBackupConfig(currentBackupConfig)
 	return history.WriteToFileAndMakeReadOnly(historyFilePath)
 }

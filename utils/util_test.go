@@ -1,9 +1,6 @@
 package utils_test
 
 import (
-	"time"
-
-	"github.com/greenplum-db/gp-common-go-libs/operating"
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpbackup/utils"
 
@@ -12,14 +9,6 @@ import (
 )
 
 var _ = Describe("utils/util tests", func() {
-	Context("CurrentTimestamp", func() {
-		It("returns the current timestamp", func() {
-			operating.System.Now = func() time.Time { return time.Date(2017, time.January, 1, 1, 1, 1, 1, time.Local) }
-			expected := "20170101010101"
-			actual := utils.CurrentTimestamp()
-			Expect(actual).To(Equal(expected))
-		})
-	})
 	Context("DollarQuoteString", func() {
 		It("uses $$ if the string contains no dollar signs", func() {
 			testStr := "message"
