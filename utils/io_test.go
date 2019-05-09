@@ -137,7 +137,9 @@ var _ = Describe("utils/io tests", func() {
 			Expect(contents).To(Equal([]byte{1, 2, 3, 4}))
 		})
 		It("returns an err when cannot read source file", func() {
-			_ = ioutil.WriteFile(sourceFilePath, []byte{1, 2, 3, 4}, 0000)
+			operating.System.Stat = func(f string) (os.FileInfo, error) {
+				return nil, nil
+			}
 
 			err := utils.CopyFile(sourceFilePath, destFilePath)
 
