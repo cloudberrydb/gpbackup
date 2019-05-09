@@ -8,6 +8,7 @@ package utils
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"strings"
 
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
@@ -128,4 +129,19 @@ func (file *FileWithByteCount) MustPrint(s string) {
 	bytesWritten, err := fmt.Fprint(file.writer, s)
 	gplog.FatalOnError(err, "Unable to write to file")
 	file.ByteCount += uint64(bytesWritten)
+}
+
+func CopyFile(src, dest string) error {
+	info, err := operating.System.Stat(src)
+	if err == nil {
+		var content []byte
+		content, err = ioutil.ReadFile(src)
+		if err != nil {
+			return err
+		}
+
+		return ioutil.WriteFile(dest, content, info.Mode())
+	}
+
+	return err
 }

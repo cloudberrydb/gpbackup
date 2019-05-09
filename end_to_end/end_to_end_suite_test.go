@@ -38,6 +38,8 @@ var useOldBackupVersion bool
 var oldBackupSemVer semver.Version
 
 var backupCluster *cluster.Cluster
+var historyFilePath string
+var saveHistoryFilePath = "/tmp/end_to_end_save_history_file.yaml"
 
 // This function is run automatically by ginkgo before any tests are run.
 func init() {
@@ -221,7 +223,6 @@ var _ = Describe("backup end to end integration tests", func() {
 	var gpbackupPath, backupHelperPath, restoreHelperPath, gprestorePath, pluginConfigPath string
 
 	BeforeSuite(func() {
-
 		// This is used to run tests from an older gpbackup version to gprestore latest
 		useOldBackupVersion = os.Getenv("OLD_BACKUP_VERSION") != ""
 		pluginConfigPath =
@@ -265,8 +266,12 @@ var _ = Describe("backup end to end integration tests", func() {
 				Fail("Could not create filespace test directory on 1 or more hosts")
 			}
 		}
+
+		saveHistory(backupCluster)
 	})
 	AfterSuite(func() {
+		_ = utils.CopyFile(saveHistoryFilePath, historyFilePath)
+
 		if backupConn.Version.Before("6") {
 			testutils.DestroyTestFilespace(backupConn)
 		} else {
@@ -311,6 +316,10 @@ var _ = Describe("backup end to end integration tests", func() {
 				"schema2.ao1":     1000,
 				"schema2.ao2":     1000,
 			}
+
+			// note that BeforeSuite has saved off history file, in case of running on workstation where we want to retain normal (non-test?) history
+			// we remove in order to work around an old common-library bug in closing a file after writing, and truncating when opening to write, both of which manifest as a broken history file in old code
+			_ = os.Remove(historyFilePath)
 		})
 		Describe("Backup include filtering", func() {
 			It("runs gpbackup and gprestore with include-schema backup flag and compression level", func() {
@@ -1121,3 +1130,11 @@ PARTITION BY LIST (gender)
 		})
 	})
 })
+
+func saveHistory(myCluster *cluster.Cluster) {
+	// move history file out of the way, and replace in "after". This is because the history file might have newer backups, with more attributes, and thus the newer history could be a longer file than when read and rewritten by the old history code (the history code reads in history, inserts a new config at top, and writes the entire file). We have known bugs in the underlying common library about closing a file after reading, and also a bug with not using OS_TRUNC when opening a file for writing.
+
+	mdd := myCluster.GetDirForContent(-1)
+	historyFilePath = filepath.Join(mdd, "gpbackup_history.yaml")
+	_ = utils.CopyFile(historyFilePath, saveHistoryFilePath)
+}

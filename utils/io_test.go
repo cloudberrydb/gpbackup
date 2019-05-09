@@ -2,6 +2,7 @@ package utils_test
 
 import (
 	"io"
+	"io/ioutil"
 	"os"
 
 	"github.com/greenplum-db/gp-common-go-libs/operating"
@@ -112,6 +113,40 @@ var _ = Describe("utils/io tests", func() {
 			Expect(wasCalled).To(BeTrue())
 			defer testhelper.ShouldPanicWithMessage("invalid memory address or nil pointer dereference")
 			file.MustPrintf("message")
+		})
+	})
+	Describe("CopyFile", func() {
+		var sourceFilePath = "/tmp/test_file.txt"
+		var destFilePath = "/tmp/dest_test_file.txt"
+
+		BeforeEach(func() {
+			_ = os.Remove(sourceFilePath)
+			_ = os.Remove(destFilePath)
+		})
+		AfterEach(func() {
+			_ = os.Remove(sourceFilePath)
+			_ = os.Remove(destFilePath)
+		})
+		It("copies source file to dest file", func() {
+			_ = ioutil.WriteFile(sourceFilePath, []byte{1, 2, 3, 4}, 0777)
+
+			err := utils.CopyFile(sourceFilePath, destFilePath)
+
+			Expect(err).ToNot(HaveOccurred())
+			contents, _ := ioutil.ReadFile(destFilePath)
+			Expect(contents).To(Equal([]byte{1, 2, 3, 4}))
+		})
+		It("returns an err when cannot read source file", func() {
+			_ = ioutil.WriteFile(sourceFilePath, []byte{1, 2, 3, 4}, 0000)
+
+			err := utils.CopyFile(sourceFilePath, destFilePath)
+
+			Expect(err).To(HaveOccurred())
+		})
+		It("returns an error when no source file exists", func() {
+			err := utils.CopyFile(sourceFilePath, destFilePath)
+
+			Expect(err).To(HaveOccurred())
 		})
 	})
 })
