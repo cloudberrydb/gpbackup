@@ -78,7 +78,7 @@ echo "[PASSED] plugin_api_version"
 
 echo "[RUNNING] --version"
 native_version=`$plugin --version`
-echo "$native_version" | grep --regexp '.* version .*' 2>&1 > /dev/null
+echo "$native_version" | grep --regexp '.* version .*' > /dev/null 2>&1
 if [[ ! $? -eq 0 ]]; then
   echo "Plugin --version is not in expected format of <plugin name> version <version>"
   exit 1
@@ -116,6 +116,18 @@ if [ "$output" != "$text" ]; then
   echo "Failed to backup and restore file using plugin"
   exit 1
 fi
+
+echo "[RUNNING] attempting to restore_file of non-existent file should fail"
+set +e
+$plugin restore_file $plugin_config "$testdir/there_is_no_file_to_restore" > /dev/null 2>&1
+nonexist_file_restore=$(echo $?)
+set -e
+if [ "$nonexist_file_restore" == "0" ]; then
+  echo "Failed, when trying to restore a file that does not exist, should have error"
+  exit 1
+fi
+
+
 if [ -n "$secondary_plugin_config" ]; then
   rm $testfile
   echo "[RUNNING] restore_file (from secondary destination)"
