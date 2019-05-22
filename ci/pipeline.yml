@@ -1,4 +1,53 @@
 ---
+groups:
+- name: All
+  jobs:
+  - GPDB4.3
+  - GPDB5
+  - GPDB5-oracle7
+  - GPDB5-sles11
+  - GPDB6
+  - master
+  - s3_plugin_tests
+  - backward-compatibility
+  - ddboost_plugin_and_boostfs_tests
+  - scale-43
+  - scale-5x
+  - scale-6x
+  - scale-master
+  - build_dependencies
+  - push-to-github
+  - package_gpbackup_for_release
+  - push-to-pivnet-gpbackup
+- name: GPDB4.3
+  jobs:
+  - GPDB4.3
+- name: GPDB5
+  jobs:
+  - GPDB5
+  - GPDB5-oracle7
+  - GPDB5-sles11
+  - s3_plugin_tests
+  - ddboost_plugin_and_boostfs_tests
+  - backward-compatibility
+- name: GPDB6
+  jobs:
+  - GPDB6
+- name: Master
+  jobs:
+  - master
+- name: Scale
+  jobs:
+  - scale-43
+  - scale-5x
+  - scale-6x
+  - scale-master
+- name: Packaging and Release
+  jobs:
+  - push-to-github
+  - package_gpbackup_for_release
+  - push-to-pivnet-gpbackup
+
 resource_types:
 - name: terraform
   type: docker-image
@@ -609,7 +658,7 @@ jobs:
   ensure:
       <<: *ddboost_ccp_destroy
 
-- name: GPDB5-sles
+- name: GPDB5-sles11
   plan:
   - aggregate:
     - get: gpbackup
@@ -687,7 +736,7 @@ jobs:
     file: gpbackup/ci/tasks/setup-oracle-env.yml
   - task: integration-tests
     tags: ['aws']
-    file: gpbackup/ci/tasks/integration-tests.yml
+    file: gpbackup/ci/tasks/all-tests.yml
   on_success:
     <<: *ccp_destroy_aws
   on_failure:
@@ -763,7 +812,7 @@ jobs:
   - task: setup-centos-env
     file: gpbackup/ci/tasks/setup-centos-env.yml
   - task: integration-tests
-    file: gpbackup/ci/tasks/integration-tests.yml
+    file: gpbackup/ci/tasks/all-tests.yml
   on_success:
     <<: *ccp_destroy
   on_failure:
@@ -801,7 +850,7 @@ jobs:
   - task: setup-centos-env
     file: gpbackup/ci/tasks/setup-centos-env.yml
   - task: integration-tests
-    file: gpbackup/ci/tasks/integration-tests.yml
+    file: gpbackup/ci/tasks/all-tests.yml
   on_success:
     <<: *ccp_destroy
   on_failure:
@@ -877,11 +926,11 @@ jobs:
   - task: setup-centos-env
     file: gpbackup/ci/tasks/setup-centos-env.yml
   - task: backup-1.0.0-restore-latest
-    file: gpbackup/ci/tasks/integration-tests.yml
+    file: gpbackup/ci/tasks/all-tests.yml
     params:
       GPBACKUP_VERSION: "1.0.0"
   - task: backup-1.7.1-restore-latest
-    file: gpbackup/ci/tasks/integration-tests.yml
+    file: gpbackup/ci/tasks/all-tests.yml
     params:
       GPBACKUP_VERSION: "1.7.1"
   on_success:
@@ -1062,7 +1111,7 @@ jobs:
       passed:
         - GPDB5
         - GPDB4.3
-        - GPDB5-sles
+        - GPDB5-sles11
         - GPDB5-oracle7
         - master
         - backward-compatibility
