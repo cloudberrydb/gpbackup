@@ -1110,6 +1110,7 @@ jobs:
     - get: gpbackup
       passed:
         - GPDB5
+        - GPDB6
         - GPDB4.3
         - GPDB5-sles11
         - GPDB5-oracle7
