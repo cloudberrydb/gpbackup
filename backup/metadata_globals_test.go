@@ -187,6 +187,8 @@ GRANT TEMPORARY,CONNECT ON DATABASE testdb TO testrole;`,
 				`CREATE RESOURCE GROUP some_group2 WITH (CPUSET='0-3', MEMORY_AUDITOR=vmtracker, MEMORY_LIMIT=30, MEMORY_SHARED_QUOTA=35, MEMORY_SPILL_RATIO=10, CONCURRENCY=25);`)
 		})
 		It("prints memory_spill_ratio resource groups in new syntax", func() {
+			testhelper.SetDBVersion(connectionPool, backup.GPDB_TAG_WITH_RES_GROUP_CHANGE)
+
 			default_group := backup.ResourceGroup{Oid: 1, Name: "default_group", CPURateLimit: "10", MemoryLimit: "20", Concurrency: "15", MemorySharedQuota: "25", MemorySpillRatio: "30 MB"}
 			admin_group := backup.ResourceGroup{Oid: 2, Name: "admin_group", CPURateLimit: "10", MemoryLimit: "20", Concurrency: "15", MemorySharedQuota: "25", MemorySpillRatio: "30"}
 			someGroup := backup.ResourceGroup{Oid: 3, Name: "some_group", CPURateLimit: "20", MemoryLimit: "30", Concurrency: "25", MemorySharedQuota: "35", MemorySpillRatio: "40 MB"}

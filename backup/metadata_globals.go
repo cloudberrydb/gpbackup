@@ -15,6 +15,9 @@ import (
  * such as roles and database configuration.
  */
 
+// todo need to change this to 5.20.0 when that tag ships!
+const GPDB_TAG_WITH_RES_GROUP_CHANGE = "5.19.0"
+
 func PrintSessionGUCs(metadataFile *utils.FileWithByteCount, toc *utils.TOC, gucs SessionGUCs) {
 	start := metadataFile.ByteCount
 	metadataFile.MustPrintf(`
