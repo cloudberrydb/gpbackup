@@ -305,7 +305,7 @@ ORDER BY amopstrategy
 	}
 	gplog.FatalOnError(err)
 
-	operators := make(map[uint32][]OperatorClassOperator, 0)
+	operators := make(map[uint32][]OperatorClassOperator)
 	for _, result := range results {
 		operators[result.ClassOid] = append(operators[result.ClassOid], result)
 	}
@@ -353,7 +353,7 @@ ORDER BY amprocnum
 	}
 	gplog.FatalOnError(err)
 
-	functions := make(map[uint32][]OperatorClassFunction, 0)
+	functions := make(map[uint32][]OperatorClassFunction)
 	for _, result := range results {
 		functions[result.ClassOid] = append(functions[result.ClassOid], result)
 	}

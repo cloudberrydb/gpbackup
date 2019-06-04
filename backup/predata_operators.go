@@ -17,8 +17,8 @@ import (
 func PrintCreateOperatorStatement(metadataFile *utils.FileWithByteCount, toc *utils.TOC, operator Operator, operatorMetadata ObjectMetadata) {
 	start := metadataFile.ByteCount
 	optionalFields := make([]string, 0)
-	leftArg := "NONE"
-	rightArg := "NONE"
+	var leftArg string
+	var rightArg string
 	if operator.LeftArgType != "-" {
 		leftArg = operator.LeftArgType
 		optionalFields = append(optionalFields, fmt.Sprintf("LEFTARG = %s", leftArg))

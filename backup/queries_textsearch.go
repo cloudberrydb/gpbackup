@@ -232,7 +232,7 @@ ORDER BY cfgname;`, SchemaFilterClause("cfg_ns"), ExtensionFilterClause("c"))
 		config.Schema = row.Schema
 		config.Name = row.Name
 		config.Parser = row.ParserFQN
-		config.TokenToDicts = make(map[string][]string, 0)
+		config.TokenToDicts = make(map[string][]string)
 		for _, mapping := range typeMappings[row.ConfigOid] {
 			tokenName := parserTokens.TokenName(connectionPool, row.ParserOid, mapping.TokenType)
 			config.TokenToDicts[tokenName] = append(config.TokenToDicts[tokenName], mapping.Dictionary)
@@ -297,7 +297,7 @@ FROM pg_ts_config_map m`
 	err := connectionPool.Select(&rows, query)
 	gplog.FatalOnError(err)
 
-	mapping := make(map[uint32][]TypeMapping, 0)
+	mapping := make(map[uint32][]TypeMapping)
 	for _, row := range rows {
 		mapping[row.MapCfg] = append(mapping[row.MapCfg], TypeMapping{
 			row.MapCfg,

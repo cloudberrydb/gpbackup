@@ -483,7 +483,7 @@ GRANT ALL ON PROTOCOL s3 TO testrole;`}
 			{Relation: backup.Relation{Oid: 1, Schema: "public", Name: "partition_table_ext_part_"}},
 			{Relation: backup.Relation{Oid: 2, Schema: "public", Name: "partition_table"}},
 		}
-		emptyPartInfoMap := make(map[uint32]backup.PartitionInfo, 0)
+		emptyPartInfoMap := make(map[uint32]backup.PartitionInfo)
 		It("writes an alter statement for a named partition", func() {
 			externalPartition := backup.PartitionInfo{
 				PartitionRuleOid:       1,

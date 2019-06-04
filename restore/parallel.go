@@ -86,7 +86,7 @@ func ExecuteStatementsAndCreateProgressBar(statements []utils.StatementWithType,
  *   each table has at least one index, there is no more risk of deadlock.
  */
 func BatchPostdataStatements(statements []utils.StatementWithType) ([]utils.StatementWithType, []utils.StatementWithType) {
-	indexMap := make(map[string]bool, 0)
+	indexMap := make(map[string]bool)
 	firstBatch := make([]utils.StatementWithType, 0)
 	secondBatch := make([]utils.StatementWithType, 0)
 	for _, statement := range statements {

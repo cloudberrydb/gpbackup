@@ -158,7 +158,7 @@ WHERE r.parchildrelid != 0;
 	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 
-	resultMap := make(map[uint32]PartitionLevelInfo, 0)
+	resultMap := make(map[uint32]PartitionLevelInfo)
 	for _, result := range results {
 		resultMap[result.Oid] = result
 	}
@@ -263,7 +263,7 @@ ORDER BY a.attrelid, a.attnum;`, relationAndSchemaFilterClause())
 	}
 
 	gplog.FatalOnError(err)
-	resultMap := make(map[uint32][]ColumnDefinition, 0)
+	resultMap := make(map[uint32][]ColumnDefinition)
 	for _, result := range results {
 		result.StorageType = storageTypeCodes[result.StorageType]
 		if connectionPool.Version.Before("6") {
@@ -404,7 +404,7 @@ func GetUnloggedTables(connectionPool *dbconn.DBConn) map[uint32]bool {
 	}
 	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
-	resultMap := make(map[uint32]bool, 0)
+	resultMap := make(map[uint32]bool)
 	for _, result := range results {
 		resultMap[result.Oid] = true
 	}
@@ -472,7 +472,7 @@ WHERE %s%s
 ORDER BY i.inhrelid, i.inhseqno`, ExtensionFilterClause("p"), tableFilterStr)
 
 	results := make([]Dependency, 0)
-	inheritanceMap := make(map[uint32][]string, 0)
+	inheritanceMap := make(map[uint32][]string)
 	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	for _, dependency := range results {
@@ -488,7 +488,7 @@ func selectAsOidToStringMap(connectionPool *dbconn.DBConn, query string) map[uin
 	}
 	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
-	resultMap := make(map[uint32]string, 0)
+	resultMap := make(map[uint32]string)
 	for _, result := range results {
 		resultMap[result.Oid] = result.Value
 	}

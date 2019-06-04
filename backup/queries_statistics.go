@@ -105,7 +105,7 @@ ORDER BY n.nspname, c.relname, a.attnum;`, inheritClause, statSlotClause, Schema
 	results := make([]AttributeStatistic, 0)
 	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
-	stats := make(map[uint32][]AttributeStatistic, 0)
+	stats := make(map[uint32][]AttributeStatistic)
 	for _, stat := range results {
 		stats[stat.Oid] = append(stats[stat.Oid], stat)
 	}
@@ -141,7 +141,7 @@ ORDER BY n.nspname, c.relname;`, SchemaFilterClause("n"), utils.SliceToQuotedStr
 	results := make([]TupleStatistic, 0)
 	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
-	stats := make(map[uint32]TupleStatistic, 0)
+	stats := make(map[uint32]TupleStatistic)
 	for _, stat := range results {
 		stats[stat.Oid] = stat
 	}

@@ -141,7 +141,7 @@ var _ = Describe("backup/data tests", func() {
 				TableDefinition: backup.TableDefinition{IsExternal: false},
 			}
 			_ = cmdFlags.Set(utils.SINGLE_DATA_FILE, "false")
-			rowsCopiedMap = make(map[uint32]int64, 0)
+			rowsCopiedMap = make(map[uint32]int64)
 			counters = backup.BackupProgressCounters{NumRegTables: 0, TotalRegTables: 1}
 			counters.ProgressBar = utils.NewProgressBar(int(counters.TotalRegTables), "Tables backed up: ", utils.PB_INFO)
 			counters.ProgressBar.(*pb.ProgressBar).NotPrint = true

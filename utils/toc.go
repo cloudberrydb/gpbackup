@@ -116,7 +116,7 @@ func GetIncludedPartitionRoots(tocDataEntries []MasterDataEntry, includeRelation
 	}
 	rootPartitions := make([]string, 0)
 
-	FQNToPartitionRoot := make(map[string]string, 0)
+	FQNToPartitionRoot := make(map[string]string)
 	for _, entry := range tocDataEntries {
 		if entry.PartitionRoot != "" {
 			FQNToPartitionRoot[MakeFQN(entry.Schema, entry.Name)] = MakeFQN(entry.Schema, entry.PartitionRoot)

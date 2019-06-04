@@ -272,8 +272,8 @@ ON p.pronamespace = n.oid;`
 	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 
-	argMap := make(map[uint32]string, 0)
-	tableArgMap := make(map[uint32]string, 0)
+	argMap := make(map[uint32]string)
+	tableArgMap := make(map[uint32]string)
 	lastOid := uint32(0)
 	arguments := make([]string, 0)
 	tableArguments := make([]string, 0)
@@ -330,7 +330,7 @@ WHERE %s`, SchemaFilterClause("n"))
 	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 
-	returnMap := make(map[uint32]Function, 0)
+	returnMap := make(map[uint32]Function)
 	for _, result := range results {
 		returnMap[result.Oid] = result
 	}
@@ -541,7 +541,7 @@ LEFT JOIN pg_namespace n ON p.pronamespace = n.oid;
 		Name      string
 		Arguments string
 	}, 0)
-	funcMap := make(map[uint32]FunctionInfo, 0)
+	funcMap := make(map[uint32]FunctionInfo)
 	var err error
 	if connectionPool.Version.Before("5") {
 		err = connectionPool.Select(&results, version4query)

@@ -25,8 +25,7 @@ CUSTOM_BACKUP_DIR ?= "/tmp"
 .PHONY : coverage integration end_to_end
 
 dependencies :
-		go get github.com/alecthomas/gometalinter
-		gometalinter --install
+		ci/scripts/install_linter.bash
 		curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 		dep ensure -v
 		@cd vendor/golang.org/x/tools/cmd/goimports; go install .
@@ -37,7 +36,7 @@ format :
 
 lint :
 		! goimports -l $(SUBDIRS_ALL) | read
-		gometalinter --config=gometalinter.config -s vendor ./...  --deadline=120s
+		golangci-lint run --tests=false
 
 unit :
 		ginkgo -r -keepGoing -randomizeSuites -noisySkippings=false -randomizeAllSpecs $(SUBDIRS_HAS_UNIT) 2>&1

@@ -211,7 +211,7 @@ func PrintCreateExtensionStatements(metadataFile *utils.FileWithByteCount, toc *
  * together to resolve dependencies.
  */
 func ExtractLanguageFunctions(funcDefs []Function, procLangs []ProceduralLanguage) ([]Function, []Function) {
-	isLangFuncMap := make(map[uint32]bool, 0)
+	isLangFuncMap := make(map[uint32]bool)
 	for _, procLang := range procLangs {
 		for _, funcDef := range funcDefs {
 			isLangFuncMap[funcDef.Oid] = (isLangFuncMap[funcDef.Oid] || funcDef.Oid == procLang.Handler ||

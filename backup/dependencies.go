@@ -31,7 +31,7 @@ func AddProtocolDependenciesForGPDB4(depMap DependencyMap, tables []Table, proto
 			if protocolEntry, ok := protocolMap[protocolName]; ok {
 				tableEntry := table.GetUniqueID()
 				if _, ok := depMap[tableEntry]; !ok {
-					depMap[tableEntry] = make(map[UniqueID]bool, 0)
+					depMap[tableEntry] = make(map[UniqueID]bool)
 				}
 				depMap[tableEntry][protocolEntry] = true
 			}
@@ -74,7 +74,7 @@ var (
 )
 
 func ConstructDependentObjectMetadataMap(functions MetadataMap, types MetadataMap, tables MetadataMap, protocols MetadataMap, tsParsers MetadataMap, tsConfigs MetadataMap, tsTemplates MetadataMap, tsDicts MetadataMap) MetadataMap {
-	metadataMap := make(MetadataMap, 0)
+	metadataMap := make(MetadataMap)
 	for k, v := range functions {
 		metadataMap[k] = v
 	}
@@ -112,13 +112,13 @@ type Sortable interface {
 }
 
 func TopologicalSort(slice []Sortable, dependencies DependencyMap) []Sortable {
-	inDegrees := make(map[UniqueID]int, 0)
-	dependencyIndexes := make(map[UniqueID]int, 0)
-	isDependentOn := make(map[UniqueID][]UniqueID, 0)
+	inDegrees := make(map[UniqueID]int)
+	dependencyIndexes := make(map[UniqueID]int)
+	isDependentOn := make(map[UniqueID][]UniqueID)
 	queue := make([]Sortable, 0)
 	sorted := make([]Sortable, 0)
-	notVisited := make(map[UniqueID]bool, 0)
-	nameForUniqueID := make(map[UniqueID]string, 0)
+	notVisited := make(map[UniqueID]bool)
+	nameForUniqueID := make(map[UniqueID]string)
 	for i, item := range slice {
 		uniqueID := item.GetUniqueID()
 		nameForUniqueID[uniqueID] = item.FQN()
@@ -205,7 +205,7 @@ AND typelem != 0`)
 	err := connectionPool.Select(&pgDependDeps, query)
 	gplog.FatalOnError(err)
 
-	dependencyMap := make(DependencyMap, 0)
+	dependencyMap := make(DependencyMap)
 	for _, dep := range pgDependDeps {
 		object := UniqueID{
 			ClassID: dep.ClassID,
@@ -224,7 +224,7 @@ AND typelem != 0`)
 		}
 
 		if _, ok := dependencyMap[object]; !ok {
-			dependencyMap[object] = make(map[UniqueID]bool, 0)
+			dependencyMap[object] = make(map[UniqueID]bool)
 		}
 
 		dependencyMap[object][referenceObject] = true

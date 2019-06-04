@@ -295,7 +295,7 @@ func getCompositeTypeAttributes(connectionPool *dbconn.DBConn) map[uint32][]Attr
 	}
 	gplog.FatalOnError(err)
 
-	attributeMap := make(map[uint32][]Attribute, 0)
+	attributeMap := make(map[uint32][]Attribute)
 
 	for _, att := range results {
 		attributeMap[att.CompositeTypeOid] = append(attributeMap[att.CompositeTypeOid], att)

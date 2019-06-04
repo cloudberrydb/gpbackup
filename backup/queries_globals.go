@@ -433,7 +433,7 @@ FROM (
 	results := make([]RoleGUC, 0)
 	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
-	resultMap := make(map[string][]RoleGUC, 0)
+	resultMap := make(map[string][]RoleGUC)
 	for _, result := range results {
 		resultMap[result.RoleName] = append(resultMap[result.RoleName], result)
 	}
@@ -457,7 +457,7 @@ FROM
 	err := connectionPool.Select(&timeConstraints, query)
 	gplog.FatalOnError(err)
 
-	constraintsByRole := make(map[uint32][]TimeConstraint, 0)
+	constraintsByRole := make(map[uint32][]TimeConstraint)
 	for _, constraint := range timeConstraints {
 		roleConstraints, ok := constraintsByRole[constraint.Oid]
 		if !ok {

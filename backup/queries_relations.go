@@ -261,8 +261,8 @@ AND %s;`, relationAndSchemaFilterClause())
 		TableName  string
 		ColumnName string
 	}, 0)
-	sequenceOwnerTables := make(map[string]string, 0)
-	sequenceOwnerColumns := make(map[string]string, 0)
+	sequenceOwnerTables := make(map[string]string)
+	sequenceOwnerColumns := make(map[string]string)
 	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err, fmt.Sprintf("Failed on query: %s", query))
 	for _, seqOwner := range results {

@@ -477,7 +477,7 @@ func BackupCreateSequences(metadataFile *utils.FileWithByteCount, sequences []Se
 }
 
 func createBackupSet(objSlice []Sortable) (backupSet map[UniqueID]bool) {
-	backupSet = make(map[UniqueID]bool, 0)
+	backupSet = make(map[UniqueID]bool)
 	for _, obj := range objSlice {
 		backupSet[obj.GetUniqueID()] = true
 	}

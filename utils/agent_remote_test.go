@@ -61,11 +61,11 @@ var _ = Describe("agent remote", func() {
 			testExecutor.ErrorOnExecNum = 1
 			remoteOutput.NumErrors = 1
 			remoteOutput.Scope = cluster.ON_MASTER_TO_SEGMENTS
-			remoteOutput.Errors = make(map[int]error, 0)
+			remoteOutput.Errors = make(map[int]error, 1)
 			remoteOutput.Errors[1] = errors.New("test error 1")
-			remoteOutput.Stderrs = make(map[int]string, 0)
+			remoteOutput.Stderrs = make(map[int]string, 1)
 			remoteOutput.Stderrs[1] = "stderr content 1"
-			remoteOutput.CmdStrs = make(map[int]string, 0)
+			remoteOutput.CmdStrs = make(map[int]string, 1)
 			remoteOutput.CmdStrs[1] = "scp fake_master fake_host"
 
 			Expect(func() { utils.WriteOidListToSegments(oidList, testCluster, fpInfo) }).To(Panic())

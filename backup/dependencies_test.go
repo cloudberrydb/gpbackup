@@ -21,7 +21,7 @@ var _ = Describe("backup/dependencies tests", func() {
 		relation1 = backup.Relation{Schema: "public", Name: "relation1", Oid: 1}
 		relation2 = backup.Relation{Schema: "public", Name: "relation2", Oid: 2}
 		relation3 = backup.Relation{Schema: "public", Name: "relation3", Oid: 3}
-		depMap = make(map[backup.UniqueID]map[backup.UniqueID]bool, 0)
+		depMap = make(map[backup.UniqueID]map[backup.UniqueID]bool)
 		toc, backupfile = testutils.InitializeTestTOC(buffer, "predata")
 	})
 	Describe("TopologicalSort", func() {

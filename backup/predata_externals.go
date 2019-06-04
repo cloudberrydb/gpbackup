@@ -72,7 +72,7 @@ func PrintExternalTableCreateStatement(metadataFile *utils.FileWithByteCount, to
 
 func DetermineExternalTableCharacteristics(extTableDef ExternalTableDefinition) (int, int) {
 	isWritable := extTableDef.Writable
-	tableType := -1
+	var tableType int
 	tableProtocol := -1
 	if extTableDef.Location == "" { // EXTERNAL WEB tables may have EXECUTE instead of LOCATION
 		tableProtocol = HTTP

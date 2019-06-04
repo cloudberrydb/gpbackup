@@ -88,7 +88,7 @@ func ConstructColumnPrivilegesMap(results []ColumnPrivilegesQueryStruct) map[uin
 		 * All column metadata objects are stored in the result map as
 		 * a nested map indexed by table oid.
 		 */
-		tableMetadata = make(map[string][]ACL, 0)
+		tableMetadata = make(map[string][]ACL)
 		for _, result := range results {
 			privilegesStr := ""
 			if result.Kind == "Empty" {
@@ -101,7 +101,7 @@ func ConstructColumnPrivilegesMap(results []ColumnPrivilegesQueryStruct) map[uin
 					tableMetadata[currentColumn] = sortACLs(columnMetadata)
 					if result.TableOid != currentTable {
 						metadataMap[currentTable] = tableMetadata
-						tableMetadata = make(map[string][]ACL, 0)
+						tableMetadata = make(map[string][]ACL)
 					}
 				}
 				currentTable = result.TableOid
@@ -262,10 +262,8 @@ func PrintPostCreateTableStatements(metadataFile *utils.FileWithByteCount, toc *
 			break
 		case "n":
 			statements = append(statements, fmt.Sprintf("ALTER TABLE %s REPLICA IDENTITY NOTHING;", table.FQN()))
-			break
 		case "f":
 			statements = append(statements, fmt.Sprintf("ALTER TABLE %s REPLICA IDENTITY FULL;", table.FQN()))
-			break
 		}
 	}
 

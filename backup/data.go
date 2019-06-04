@@ -133,7 +133,7 @@ func BackupDataForAllTables(tables []Table) []map[uint32]int64 {
 	var workerPool sync.WaitGroup
 	var copyErr error
 	for connNum := 0; connNum < connectionPool.NumConns; connNum++ {
-		rowsCopiedMaps[connNum] = make(map[uint32]int64, 0)
+		rowsCopiedMaps[connNum] = make(map[uint32]int64)
 		workerPool.Add(1)
 		go func(whichConn int) {
 			defer workerPool.Done()

@@ -236,7 +236,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			{Relation: backup.Relation{Oid: 1, Schema: "public", Name: "part_tbl_ext_part_"}},
 			{Relation: backup.Relation{Oid: 2, Schema: "public", Name: "part_tbl"}},
 		}
-		emptyPartInfoMap := make(map[uint32]backup.PartitionInfo, 0)
+		emptyPartInfoMap := make(map[uint32]backup.PartitionInfo)
 		AfterEach(func() {
 			testhelper.AssertQueryRuns(connectionPool, "DROP TABLE public.part_tbl")
 		})

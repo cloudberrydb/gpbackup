@@ -229,7 +229,6 @@ singledatafile: true
 timestamp: "20180415154238"
 withstatistics: false
 `
-		//stdOutResults := make(map[int]string, 1)
 		var executor testutils.TestExecutorMultiple
 		var testConfigPath = "/tmp/unit_test_plugin_config.yml"
 		var oldWd string
@@ -248,7 +247,7 @@ withstatistics: false
 				ClusterOutputs: make([]*cluster.RemoteOutput, 2),
 			}
 			// set up fake command results
-			apiResponse := make(map[int]string, 1)
+			apiResponse := make(map[int]string, 3)
 			apiResponse[-1] = utils.RequiredPluginVersion // this is a successful result fpr API version
 			apiResponse[0] = utils.RequiredPluginVersion
 			apiResponse[1] = utils.RequiredPluginVersion
@@ -256,7 +255,7 @@ withstatistics: false
 				Stdouts: apiResponse,
 			}
 
-			nativeResponse := make(map[int]string, 1)
+			nativeResponse := make(map[int]string, 3)
 			nativeResponse[-1] = "myPlugin version 1.2.3" // this is a successful result for --version
 			nativeResponse[0] = "myPlugin version 1.2.3"
 			nativeResponse[1] = "myPlugin version 1.2.3"

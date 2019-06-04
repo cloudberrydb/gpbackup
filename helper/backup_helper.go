@@ -27,7 +27,7 @@ func doBackupAgent() error {
 		writeCmd    *exec.Cmd
 	)
 	toc := &utils.SegmentTOC{}
-	toc.DataEntries = make(map[uint]utils.SegmentDataEntry, 0)
+	toc.DataEntries = make(map[uint]utils.SegmentDataEntry)
 
 	oidList, err := getOidListFromFile()
 	if err != nil {

@@ -212,8 +212,7 @@ func (plugin *PluginConfig) executeHook(c *cluster.Cluster, verboseCommandMsg st
 	command string, fpInfo backup_filepath.FilePathInfo, noFatal bool) {
 	// Execute command once on master
 	scope := MASTER
-	hookFunc := plugin.buildHookFunc(command, fpInfo, scope)
-	verboseErrorMsg, errorMsgFunc := plugin.buildHookErrorMsgAndFunc(command, scope)
+	_, _ = plugin.buildHookErrorMsgAndFunc(command, scope)
 	masterContentID := -1
 	masterOutput, masterErr := c.ExecuteLocalCommand(plugin.buildHookString(command,
 		fpInfo, scope, masterContentID))
@@ -227,8 +226,8 @@ func (plugin *PluginConfig) executeHook(c *cluster.Cluster, verboseCommandMsg st
 
 	// Execute command once on each segment host
 	scope = SEGMENT_HOST
-	hookFunc = plugin.buildHookFunc(command, fpInfo, scope)
-	verboseErrorMsg, errorMsgFunc = plugin.buildHookErrorMsgAndFunc(command, scope)
+	hookFunc := plugin.buildHookFunc(command, fpInfo, scope)
+	verboseErrorMsg, errorMsgFunc := plugin.buildHookErrorMsgAndFunc(command, scope)
 	verboseCommandHostMasterMsg := fmt.Sprintf(verboseCommandMsg, "segment hosts")
 	remoteOutput := c.GenerateAndExecuteCommand(verboseCommandHostMasterMsg, hookFunc, cluster.ON_HOSTS)
 	c.CheckClusterError(remoteOutput, verboseErrorMsg, errorMsgFunc, noFatal)
@@ -360,7 +359,7 @@ func GetSecretKey(pluginName string, mdd string) (string, error) {
 	if err != nil {
 		return "", errors.New(errMsg)
 	}
-	keys := make(map[string]string, 0)
+	keys := make(map[string]string)
 	_ = yaml.Unmarshal(contents, keys) // if error happens, we catch it because no keys exist
 	key, exists := keys[pluginName]
 	if !exists {

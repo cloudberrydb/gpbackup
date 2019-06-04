@@ -255,7 +255,7 @@ GRANT ALL ON shamwow.shazam TO testrole;`,
 	Describe("PrintAlterSequenceStatements", func() {
 		baseSequence := backup.Relation{Schema: "public", Name: "seq_name"}
 		seqDefault := backup.Sequence{Relation: baseSequence, SequenceDefinition: backup.SequenceDefinition{LastVal: 7, Increment: 1, MaxVal: math.MaxInt64, MinVal: 1, CacheVal: 5, LogCnt: 42, IsCycled: false, IsCalled: true}}
-		emptyColumnOwnerMap := make(map[string]string, 0)
+		emptyColumnOwnerMap := make(map[string]string)
 		It("prints nothing for a sequence without an owning column", func() {
 			sequences := []backup.Sequence{seqDefault}
 			backup.PrintAlterSequenceStatements(backupfile, toc, sequences, emptyColumnOwnerMap)

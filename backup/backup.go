@@ -65,7 +65,7 @@ func DoInit(cmd *cobra.Command) {
 	gplog.InitializeLogging("gpbackup", "")
 	initializeFlags(cmd)
 	utils.InitializeSignalHandler(DoCleanup, "backup process", &wasTerminated)
-	objectCounts = make(map[string]int, 0)
+	objectCounts = make(map[string]int)
 }
 
 func DoFlagValidation(cmd *cobra.Command) {

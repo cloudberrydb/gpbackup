@@ -37,19 +37,19 @@ var _ = Describe("utils/plugin tests", func() {
 			ConfigPath:     "/tmp/my_plugin_config.yaml",
 			Options:        make(map[string]string),
 		}
-		subject.Options = make(map[string]string, 0)
+		subject.Options = make(map[string]string)
 		executor = testutils.TestExecutorMultiple{
 			ClusterOutputs: make([]*cluster.RemoteOutput, 2),
 		}
 		// set up fake command results
-		apiResponse := make(map[int]string, 1)
+		apiResponse := make(map[int]string, 3)
 		apiResponse[-1] = utils.RequiredPluginVersion // this is a successful result fpr API version
 		apiResponse[0] = utils.RequiredPluginVersion
 		apiResponse[1] = utils.RequiredPluginVersion
 		executor.ClusterOutputs[0] = &cluster.RemoteOutput{
 			Stdouts: apiResponse,
 		}
-		nativeResponse := make(map[int]string, 1)
+		nativeResponse := make(map[int]string, 3)
 		nativeResponse[-1] = "myPlugin version 1.2.3" // this is a successful result for --version
 		nativeResponse[0] = "myPlugin version 1.2.3"
 		nativeResponse[1] = "myPlugin version 1.2.3"
