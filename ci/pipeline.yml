@@ -53,6 +53,8 @@ resource_types:
   type: docker-image
   source:
     repository: ljfranklin/terraform-resource
+    # We fixed this version after v0.12.1 had a breaking change
+    tag: 0.11.14
 
 - name: slack-notification
   type: docker-image
