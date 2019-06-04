@@ -6,5 +6,6 @@ LINTER_VERSION=1.16.0
 set -eo pipefail
 
 if [[ "$LINTER" == "" ]] ; then
-    wget -O - -q https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s v${LINTER_VERSION}
+    curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh| sh -s -- -b $(go env GOPATH)/bin v${LINTER_VERSION}
+    golangci-lint --version
 fi
