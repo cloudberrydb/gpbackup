@@ -186,31 +186,6 @@ GRANT TEMPORARY,CONNECT ON DATABASE testdb TO testrole;`,
 				`CREATE RESOURCE GROUP some_group WITH (CPU_RATE_LIMIT=10, MEMORY_AUDITOR=vmtracker, MEMORY_LIMIT=20, MEMORY_SHARED_QUOTA=25, MEMORY_SPILL_RATIO=30, CONCURRENCY=15);`,
 				`CREATE RESOURCE GROUP some_group2 WITH (CPUSET='0-3', MEMORY_AUDITOR=vmtracker, MEMORY_LIMIT=30, MEMORY_SHARED_QUOTA=35, MEMORY_SPILL_RATIO=10, CONCURRENCY=25);`)
 		})
-		It("prints memory_spill_ratio resource groups in new syntax", func() {
-			testhelper.SetDBVersion(connectionPool, backup.GPDB_TAG_WITH_RES_GROUP_CHANGE)
-
-			default_group := backup.ResourceGroup{Oid: 1, Name: "default_group", CPURateLimit: "10", MemoryLimit: "20", Concurrency: "15", MemorySharedQuota: "25", MemorySpillRatio: "30 MB"}
-			admin_group := backup.ResourceGroup{Oid: 2, Name: "admin_group", CPURateLimit: "10", MemoryLimit: "20", Concurrency: "15", MemorySharedQuota: "25", MemorySpillRatio: "30"}
-			someGroup := backup.ResourceGroup{Oid: 3, Name: "some_group", CPURateLimit: "20", MemoryLimit: "30", Concurrency: "25", MemorySharedQuota: "35", MemorySpillRatio: "40 MB"}
-			someGroup2 := backup.ResourceGroup{Oid: 4, Name: "some_group2", CPURateLimit: "20", MemoryLimit: "30", Concurrency: "25", MemorySharedQuota: "35", MemorySpillRatio: "40"}
-			resGroups := []backup.ResourceGroup{default_group, admin_group, someGroup, someGroup2}
-
-			backup.PrintCreateResourceGroupStatements(backupfile, toc, resGroups, emptyResGroupMetadata)
-			testutils.ExpectEntry(toc.GlobalEntries, 0, "", "", "default_group", "RESOURCE GROUP")
-			testutils.AssertBufferContents(toc.GlobalEntries, buffer,
-				`ALTER RESOURCE GROUP default_group SET MEMORY_LIMIT 20;`,
-				`ALTER RESOURCE GROUP default_group SET MEMORY_SHARED_QUOTA 25;`,
-				`ALTER RESOURCE GROUP default_group SET MEMORY_SPILL_RATIO '30 MB';`,
-				`ALTER RESOURCE GROUP default_group SET CONCURRENCY 15;`,
-				`ALTER RESOURCE GROUP default_group SET CPU_RATE_LIMIT 10;`,
-				`ALTER RESOURCE GROUP admin_group SET MEMORY_LIMIT 20;`,
-				`ALTER RESOURCE GROUP admin_group SET MEMORY_SHARED_QUOTA 25;`,
-				`ALTER RESOURCE GROUP admin_group SET MEMORY_SPILL_RATIO 30;`,
-				`ALTER RESOURCE GROUP admin_group SET CONCURRENCY 15;`,
-				`ALTER RESOURCE GROUP admin_group SET CPU_RATE_LIMIT 10;`,
-				`CREATE RESOURCE GROUP some_group WITH (CPU_RATE_LIMIT=20, MEMORY_AUDITOR=vmtracker, MEMORY_LIMIT=30, MEMORY_SHARED_QUOTA=35, MEMORY_SPILL_RATIO='40 MB', CONCURRENCY=25);`,
-				`CREATE RESOURCE GROUP some_group2 WITH (CPU_RATE_LIMIT=20, MEMORY_AUDITOR=vmtracker, MEMORY_LIMIT=30, MEMORY_SHARED_QUOTA=35, MEMORY_SPILL_RATIO=40, CONCURRENCY=25);`)
-		})
 	})
 	Describe("PrintResetResourceGroupStatements", func() {
 		It("prints prepare resource groups", func() {

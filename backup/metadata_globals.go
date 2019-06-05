@@ -130,17 +130,6 @@ func PrintResetResourceGroupStatements(metadataFile *utils.FileWithByteCount, to
 func PrintCreateResourceGroupStatements(metadataFile *utils.FileWithByteCount, toc *utils.TOC, resGroups []ResourceGroup, resGroupMetadata MetadataMap) {
 	for _, resGroup := range resGroups {
 
-		/*
-		 * memory_spill_ratio can be set in absolute value format since 5.20,
-		 * such as '1 MB', it has to be set as a quoted string, otherwise set
-		 * it without quotes.
-		 */
-		memorySpillRatio := resGroup.MemorySpillRatio
-		if _, err := strconv.Atoi(memorySpillRatio); err != nil {
-			/* memory_spill_ratio is in absolute value format, set it with quotes */
-			memorySpillRatio = "'" + memorySpillRatio + "'"
-		}
-
 		var start uint64
 		section, entry := resGroup.GetMetadataEntry()
 		if resGroup.Name == "default_group" || resGroup.Name == "admin_group" {
@@ -150,7 +139,7 @@ func PrintCreateResourceGroupStatements(metadataFile *utils.FileWithByteCount, t
 			}{
 				{"MEMORY_LIMIT", resGroup.MemoryLimit},
 				{"MEMORY_SHARED_QUOTA", resGroup.MemorySharedQuota},
-				{"MEMORY_SPILL_RATIO", memorySpillRatio},
+				{"MEMORY_SPILL_RATIO", resGroup.MemorySpillRatio},
 				{"CONCURRENCY", resGroup.Concurrency},
 			}
 			for _, property := range resGroupList {
@@ -200,7 +189,7 @@ func PrintCreateResourceGroupStatements(metadataFile *utils.FileWithByteCount, t
 
 			attributes = append(attributes, fmt.Sprintf("MEMORY_LIMIT=%s", resGroup.MemoryLimit))
 			attributes = append(attributes, fmt.Sprintf("MEMORY_SHARED_QUOTA=%s", resGroup.MemorySharedQuota))
-			attributes = append(attributes, fmt.Sprintf("MEMORY_SPILL_RATIO=%s", memorySpillRatio))
+			attributes = append(attributes, fmt.Sprintf("MEMORY_SPILL_RATIO=%s", resGroup.MemorySpillRatio))
 			attributes = append(attributes, fmt.Sprintf("CONCURRENCY=%s", resGroup.Concurrency))
 			metadataFile.MustPrintf("\n\nCREATE RESOURCE GROUP %s WITH (%s);", resGroup.Name, strings.Join(attributes, ", "))
 
