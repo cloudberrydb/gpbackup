@@ -25,6 +25,8 @@ var _ = Describe("backup integration create statement tests", func() {
 	var includeSecurityLabels bool
 	BeforeEach(func() {
 		if connectionPool.Version.AtLeast("6") {
+			memSharedDefault = "80"
+			memSpillDefault = "0"
 			includeSecurityLabels = true
 		}
 		toc, backupfile = testutils.InitializeTestTOC(buffer, "predata")
