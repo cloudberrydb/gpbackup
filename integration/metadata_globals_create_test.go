@@ -15,8 +15,8 @@ import (
 
 var (
 	concurrencyDefault = "20"
-	memSharedDefault   = "20"
-	memSpillDefault    = "20"
+	memSharedDefault   = "80"
+	memSpillDefault    = "128 MB"
 	memAuditDefault    = "0"
 	cpuSetDefault      = "-1"
 )
@@ -25,8 +25,6 @@ var _ = Describe("backup integration create statement tests", func() {
 	var includeSecurityLabels bool
 	BeforeEach(func() {
 		if connectionPool.Version.AtLeast("6") {
-			memSharedDefault = "80"
-			memSpillDefault = "0"
 			includeSecurityLabels = true
 		}
 		toc, backupfile = testutils.InitializeTestTOC(buffer, "predata")
@@ -185,7 +183,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 		It("creates a resource group using old format for MemorySpillRatio", func() {
 			// temporarily special case for 5x resource groups #temp5xResGroup
-			if connectionPool.Version.Before(backup.GPDB_TAG_WITH_RES_GROUP_CHANGE) {
+			if connectionPool.Version.Before("5.20.0") {
 				Skip("Test only applicable to GPDB 5.20 and above")
 			}
 			expectedDefaults := backup.ResourceGroup{Oid: 1, Name: "some_group", CPURateLimit: "10", MemoryLimit: "20", Concurrency: concurrencyDefault, MemorySharedQuota: memSharedDefault, MemorySpillRatio: "19", MemoryAuditor: memAuditDefault, Cpuset: cpuSetDefault}
