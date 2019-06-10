@@ -15,8 +15,8 @@ import (
 
 var (
 	concurrencyDefault = "20"
-	memSharedDefault   = "80"
-	memSpillDefault    = "128 MB"
+	memSharedDefault   = "20"
+	memSpillDefault    = "20"
 	memAuditDefault    = "0"
 	cpuSetDefault      = "-1"
 )
