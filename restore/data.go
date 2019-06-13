@@ -141,9 +141,8 @@ func restoreDataFromTimestamp(fpInfo backup_filepath.FilePathInfo, dataEntries [
 	close(tasks)
 	workerPool.Wait()
 
-	var agentErr error
 	if backupConfig.SingleDataFile {
-		agentErr = utils.CheckAgentErrorsOnSegments(globalCluster, globalFPInfo)
+		agentErr := utils.CheckAgentErrorsOnSegments(globalCluster, globalFPInfo)
 		if agentErr != nil {
 			/*
 			 * if fatalErr is present, we only want to use gplog.Error here

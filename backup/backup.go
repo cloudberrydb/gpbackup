@@ -379,7 +379,7 @@ func DoTeardown() {
 
 	errStr := ""
 	if err := recover(); err != nil {
-		// Check if gplog.Fatal did not cause the panic
+		// gplog's Fatal will cause a panic with error code 2
 		if gplog.GetErrorCode() != 2 {
 			gplog.Error(fmt.Sprintf("%v: %s", err, debug.Stack()))
 			gplog.SetErrorCode(2)

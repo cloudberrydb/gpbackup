@@ -31,7 +31,7 @@ type GpexpandSensor struct {
 
 type GpexpandFailureMessage string
 
-func CheckGpexpandRunning(message GpexpandFailureMessage) {
+func CheckGpexpandRunning(errMsg GpexpandFailureMessage) {
 	postgresConn := dbconn.NewDBConnFromEnvironment("postgres")
 	postgresConn.MustConnect(1)
 	defer postgresConn.Close()
@@ -40,7 +40,7 @@ func CheckGpexpandRunning(message GpexpandFailureMessage) {
 		isGpexpandRunning, err := gpexpandSensor.IsGpexpandRunning()
 		gplog.FatalOnError(err)
 		if isGpexpandRunning {
-			gplog.Fatal(errors.New(string(message)), "")
+			gplog.Fatal(errors.New(string(errMsg)), "")
 		}
 	}
 }

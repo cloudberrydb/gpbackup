@@ -122,7 +122,7 @@ WHERE quote_ident(n.nspname) || '.' || quote_ident(c.relname) IN (%s)`, quotedTa
 	 * For non-data-only we check that the relations we are planning to restore
 	 * are not already in the database so we don't get duplicate data.
 	 */
-	errMsg := ""
+	var errMsg string
 	if backupConfig.DataOnly || MustGetFlagBool(utils.DATA_ONLY) {
 		if len(relationsInDB) < len(relationList) {
 			dbRelationsSet := utils.NewSet(relationsInDB)

@@ -115,9 +115,9 @@ func getRestorePipeReader() (*bufio.Reader, error) {
 		bufIoReader = bufio.NewReader(readHandle)
 	}
 	// Check that no error has occurred in plugin command
-	errString := strings.Trim(errBuf.String(), "\x00")
-	if len(errString) != 0 {
-		return nil, errors.New(errString)
+	errMsg := strings.Trim(errBuf.String(), "\x00")
+	if len(errMsg) != 0 {
+		return nil, errors.New(errMsg)
 	}
 	return bufIoReader, nil
 }
