@@ -98,3 +98,18 @@ clean :
 		# Code coverage files
 		rm -rf /tmp/cover*
 		rm -rf /tmp/unit*
+
+error-report:
+	@echo "Error messaging:"
+	@echo ""
+	@ag "gplog.Error|gplog.Fatal|ors.New|errors.Error|CheckClusterError|GpexpandFailureMessage =|errMsg :=" --ignore "*_test*" | grep -v "FatalOnError(err)" | grep -v ".Error()"
+
+warning-report:
+	@echo "Warning messaging:"
+	@echo ""
+	@ag "gplog.Warn" --ignore "*_test*"
+
+info-report:
+	@echo "Info and verbose messaging:"
+	@echo ""
+	@ag "gplog.Info|gplog.Verbose" --ignore "*_test*"
