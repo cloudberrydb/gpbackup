@@ -1,4 +1,15 @@
 ---
+groups:
+- name: 6-to-6
+  jobs:
+  - build_dependencies
+  - gpbackup-gpdb6-ICW-regression-DB
+  - gprestore-gpdb6-ICW-regression-DB
+- name: 4-to-6
+  jobs:
+  - build_dependencies
+  - gpbackup_gp43_icg_regression
+
 resource_types:
 - name: terraform
   type: docker-image
@@ -38,6 +49,15 @@ resources:
     region_name: {{aws-region}}
     versioned_file: gpdb6/icw_gporca_centos6/regression_dump.sql.xz
 
+- name: gpdb43_backup
+  type: s3
+  source:
+    access_key_id: {{bucket-access-key-id}}
+    bucket: {{test-data-bucket-name}}
+    secret_access_key: {{bucket-secret-access-key}}
+    region_name: {{aws-region}}
+    versioned_file: icg_gporca_centos6_dump/gpdb43_regression.tar.gz
+
 - name: backup_artifact_resource
   type: s3
   source:
@@ -46,6 +66,12 @@ resources:
     secret_access_key: {{bucket-secret-access-key}}
     region_name: {{aws-region}}
     versioned_file: gpdb6/icw_gporca_centos6/gpbackup_all.tar.gz
+
+- name: centos-gpdb-dev-5
+  type: docker-image
+  source:
+    repository: pivotaldata/centos-gpdb-dev
+    tag: '5'
 
 - name: gpbackup
   type: git
@@ -58,6 +84,40 @@ resources:
   source:
     uri: https://github.com/greenplum-db/gpdb
     branch: master
+
+- name: gpdb43_src
+  type: git
+  source:
+    branch: {{gpdb4-git-branch}}
+    private_key: {{gpdb4-git-key}}
+    uri: {{gpdb4-git-remote}}
+
+- name: sync_tools_gpdb_centos
+  type: s3
+  source:
+    access_key_id: {{gpdb4-bucket-access-key-id}}
+    bucket: {{gpdb4-bucket-name}}
+    region_name: {{aws-region}}
+    secret_access_key: {{gpdb4-bucket-secret-access-key}}
+    versioned_file: sync_tools_gpdb_centos/sync_tools_gpdb.tar.gz
+
+- name: bin_gpdb4_centos6
+  type: s3
+  source:
+    access_key_id: {{gpdb4-bucket-access-key-id}}
+    bucket: {{gpdb4-bucket-name}}
+    region_name: {{aws-region}}
+    secret_access_key: {{gpdb4-bucket-secret-access-key}}
+    versioned_file: bin_gpdb_centos/bin_gpdb.tar.gz
+
+- name: github_release_components
+  type: s3
+  source:
+    access_key_id: {{bucket-access-key-id}}
+    bucket: gpdb-stable-concourse-builds
+    region_name: {{aws-region}}
+    secret_access_key: {{bucket-secret-access-key}}
+    regexp: components/gpbackup/gpbackup-(.*).tar.gz
 
 - name: bin_gpdb6
   type: gcs
@@ -122,6 +182,41 @@ jobs:
   - put: gpbackup-dependencies
     params:
         file: output_deps/dependencies.tar.gz
+
+- name: gpbackup_gp43_icg_regression
+  plan:
+  - aggregate:
+      - get: gpbackup
+      - get: github_release_components
+      - get: gpdb_src
+        resource: gpdb43_src
+      - get: sync_tools_gpdb
+        resource: sync_tools_gpdb_centos
+      - get: bin_gpdb
+        resource: bin_gpdb4_centos6
+        trigger: true
+      - get: centos-gpdb-dev-5
+  - task: ic_gpdb4_backup
+    image: centos-gpdb-dev-5
+    config:
+      platform: linux
+      params:
+        MAKE_TEST_COMMAND: installcheck-good
+        BLDWRAP_POSTGRES_CONF_ADDONS: fsync=off optimizer=on
+        TEST_OS: centos
+      inputs:
+        - name: gpbackup
+        - name: github_release_components
+        - name: gpdb_src
+        - name: bin_gpdb
+        - name: sync_tools_gpdb
+      outputs:
+        - name: gpdb4_backup_artifacts
+      run:
+        path: gpbackup/ci/scripts/ic_gpdb4_backup.bash
+  - put: gpdb43_backup
+    params:
+      file: gpdb4_backup_artifacts/gpdb43_regression.tar.gz
 
 - name: gpbackup-gpdb6-ICW-regression-DB
   plan:
