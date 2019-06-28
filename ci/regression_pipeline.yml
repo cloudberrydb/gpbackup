@@ -9,6 +9,7 @@ groups:
   jobs:
   - build_dependencies
   - gpbackup_gp43_icg_regression
+  - restore_GPDB43_backup_to_GPDB6
 
 resource_types:
 - name: terraform
@@ -73,6 +74,12 @@ resources:
     repository: pivotaldata/centos-gpdb-dev
     tag: '5'
 
+- name: centos6-image
+  type: docker-image
+  source:
+    repository: pivotaldata/centos-gpdb-dev
+    tag: '6-gcc6.2-llvm3.7'
+
 - name: gpbackup
   type: git
   source:
@@ -84,6 +91,12 @@ resources:
   source:
     uri: https://github.com/greenplum-db/gpdb
     branch: master
+
+- name: gpdb6_src
+  type: git
+  source:
+    uri: https://github.com/greenplum-db/gpdb
+    branch: 6X_STABLE
 
 - name: gpdb43_src
   type: git
@@ -117,7 +130,11 @@ resources:
     bucket: gpdb-stable-concourse-builds
     region_name: {{aws-region}}
     secret_access_key: {{bucket-secret-access-key}}
-    regexp: components/gpbackup/gpbackup-(.*).tar.gz
+    versioned_file: components/gpbackup/gpbackup-1.12.1.tar.gz
+    # FIXME: Using versioned_file is a temporary hack because the latest matching
+    # concourse regexp is matching against a non existant dev version of gpbackup
+    # This needs to changed back once we push another release candidate
+    # regexp: components/gpbackup/gpbackup-(.*).tar.gz
 
 - name: bin_gpdb6
   type: gcs
@@ -217,6 +234,24 @@ jobs:
   - put: gpdb43_backup
     params:
       file: gpdb4_backup_artifacts/gpdb43_regression.tar.gz
+
+- name: restore_GPDB43_backup_to_GPDB6
+  plan:
+  - aggregate:
+    - get: centos6-image
+    - get: gpdb6_src
+    - get: gpbackup
+    - get: bin_gpdb6
+    - get: github_release_components
+    - get: gpdb43_backup
+      passed:
+      - gpbackup_gp43_icg_regression
+  - task: restore to GPDB6
+    image: centos6-image
+    file: gpbackup/ci/tasks/restore-to-GPDB6.yml
+    input_mapping:
+      bin_gpdb: bin_gpdb6
+      gpdb_src: gpdb6_src
 
 - name: gpbackup-gpdb6-ICW-regression-DB
   plan:

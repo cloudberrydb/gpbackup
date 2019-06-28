@@ -1,0 +1,17 @@
+PLATFORM: linux
+
+image_resource:
+  type: docker-image
+  source:
+    repository: pivotaldata/centos-gpdb-dev
+    tag: '6-gcc6.2-llvm3.7'
+
+inputs:
+- name: gpbackup
+- name: gpdb_src
+- name: github_release_components
+- name: bin_gpdb
+- name: gpdb43_backup
+
+run:
+  path: gpbackup/ci/scripts/restore-to-GPDB6.bash
