@@ -134,6 +134,10 @@ func (report *Report) WriteBackupReportFile(reportFilename string, timestamp str
 	)
 
 	err = AppendBackupParams(&reportInfo, report.BackupParamsString)
+	if err != nil {
+		gplog.Error(err.Error())
+		return
+	}
 
 	reportInfo = append(reportInfo,
 		LineInfo{},
@@ -145,11 +149,11 @@ func (report *Report) WriteBackupReportFile(reportFilename string, timestamp str
 		reportInfo = append(reportInfo,
 			LineInfo{},
 			LineInfo{Key: "backup status:", Value: "Failure"},
-			LineInfo{Key: "backup error:", Value: fmt.Sprintf("%s", errMsg)})
+			LineInfo{Key: "backup error:", Value: errMsg})
 	} else {
 		reportInfo = append(reportInfo,
 			LineInfo{},
-			LineInfo{Key: "backup status:", Value: fmt.Sprintf("%s", "Success")})
+			LineInfo{Key: "backup status:", Value: "Success"})
 	}
 	if report.DatabaseSize != "" {
 		reportInfo = append(reportInfo,
@@ -158,11 +162,6 @@ func (report *Report) WriteBackupReportFile(reportFilename string, timestamp str
 	}
 
 	_, err = fmt.Fprint(reportFile, "Greenplum Database Backup Report\n\n")
-	if err != nil {
-		gplog.Error("Unable to open backup report file %s", reportFilename)
-		return
-	}
-
 	if err != nil {
 		gplog.Error("Unable to write backup report file %s", reportFilename)
 		return
@@ -195,7 +194,7 @@ func WriteRestoreReportFile(reportFilename string, backupTimestamp string, start
 		LineInfo{Key: "command line:", Value: fmt.Sprintf("%s\n", gprestoreCommandLine)},
 		LineInfo{Key: "start time:", Value: start},
 		LineInfo{Key: "end time:", Value: end},
-		LineInfo{Key: "duration:", Value: fmt.Sprintf("%s", duration)},
+		LineInfo{Key: "duration:", Value: duration},
 	)
 
 	var restoreStatus string
