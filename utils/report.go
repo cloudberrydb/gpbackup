@@ -133,11 +133,7 @@ func (report *Report) WriteBackupReportFile(reportFilename string, timestamp str
 		LineInfo{Key: "command line:", Value: gpbackupCommandLine},
 	)
 
-	err = AppendBackupParams(&reportInfo, report.BackupParamsString)
-	if err != nil {
-		gplog.Error(err.Error())
-		return
-	}
+	AppendBackupParams(&reportInfo, report.BackupParamsString)
 
 	reportInfo = append(reportInfo,
 		LineInfo{},
@@ -392,18 +388,18 @@ func EmailReport(c *cluster.Cluster, timestamp string, reportFilePath string, ut
 	}
 }
 
-func AppendBackupParams(infoArr *[]LineInfo, paramsStr string) error {
+func AppendBackupParams(infoArr *[]LineInfo, paramsStr string) {
 	paramsStr = strings.Trim(paramsStr, "\n")
 	params := strings.Split(paramsStr, "\n")
 	for _, param := range params {
-		tup := strings.Split(param, ":")
-		k := strings.TrimSpace(tup[0])
-		v := strings.TrimSpace(tup[1])
-		if k == "" || v == "" {
-			return errors.New("Missing key or value in report params")
+		if strings.Contains(param, ":") {
+			tup := strings.Split(param, ":")
+			k := strings.TrimSpace(tup[0])
+			v := strings.TrimSpace(tup[1])
+			*infoArr = append(*infoArr, LineInfo{Key: k + ":", Value: v})
+		} else {
+			// timestamps following 'incremental backup set' do not have colons
+			*infoArr = append(*infoArr, LineInfo{Key: param, Value: ""})
 		}
-		*infoArr = append(*infoArr, LineInfo{Key: k + ":", Value: v})
 	}
-
-	return nil
 }

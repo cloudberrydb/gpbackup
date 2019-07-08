@@ -5,6 +5,7 @@ import (
     "io"
     "io/ioutil"
     "os"
+	"strings"
     "time"
 
     "github.com/greenplum-db/gpbackup/options"
@@ -167,25 +168,29 @@ data file format: exampleStr
 `
             lineInfoTest := make([]utils.LineInfo, 0)
 
-            err := utils.AppendBackupParams(&lineInfoTest, testParamsStr)
-            Expect(err).ToNot(HaveOccurred())
+			utils.AppendBackupParams(&lineInfoTest, testParamsStr)
             Expect(lineInfoTest[0].Key).To(Equal("compression:"))
             Expect(lineInfoTest[0].Value).To(Equal("exampleStr"))
             Expect(lineInfoTest[1].Key).To(Equal("data file format:"))
             Expect(lineInfoTest[1].Value).To(Equal("exampleStr"))
+		})
+		It("correctly parses a string with incremental info", func() {
+			backupTimestamps := []string{"1234", "5678"}
+			testParamsStr := fmt.Sprintf(`incremental: True
+incremental backup set:
+%s`, strings.Join(backupTimestamps, "\n"))
+			lineInfoTest := make([]utils.LineInfo, 0)
 
-        })
-        It("errors out if the string is malformed", func() {
-            lineInfoTest := make([]utils.LineInfo, 0)
-            // non-existant value
-            testParamsStr := `compression:
-data file format: exampleStr`
-            err := utils.AppendBackupParams(&lineInfoTest, testParamsStr)
-            Expect(err).To(HaveOccurred())
-            // non-existant key
-            testParamsStr = ` : fakeValue `
-            err = utils.AppendBackupParams(&lineInfoTest, testParamsStr)
-            Expect(err).To(HaveOccurred())
+			utils.AppendBackupParams(&lineInfoTest, testParamsStr)
+			Expect(lineInfoTest[0].Key).To(Equal("incremental:"))
+			Expect(lineInfoTest[0].Value).To(Equal("True"))
+			Expect(lineInfoTest[1].Key).To(Equal("incremental backup set:"))
+			Expect(lineInfoTest[1].Value).To(Equal(""))
+			Expect(lineInfoTest[2].Key).To(Equal("1234"))
+			Expect(lineInfoTest[2].Value).To(Equal(""))
+			Expect(lineInfoTest[3].Key).To(Equal("5678"))
+			Expect(lineInfoTest[3].Value).To(Equal(""))
+
         })
     })
     Describe("WriteRestoreReportFile", func() {
