@@ -152,7 +152,8 @@ resources:
     private_key: {{gp-backup-manager-remote-deploy-key}}
     uri: {{gp-backup-manager-git-remote}}
 {% if "gpbackup-release" == pipeline_name %}
-    tag_filter: 1.*
+# TODO: Re-add this filter once a GA version of gpbackup_manager is cut
+#     tag_filter: 1.*
 {% endif %}
 
 # NOTE: This tag filter must always be enabled in order to properly compile ddboost
@@ -347,11 +348,19 @@ resources:
     secret_access_key: {{gpdb4-bucket-secret-access-key}}
     versioned_file: DDBoostFS-1.1.0.1-565598.rhel.x86_64.rpm
 
+{% if "gpbackup-release" == pipeline_name %}
+- name: slack-alert-release
+  type: slack-notification
+  source:
+    url: {{dpm_webhook_url}}
+    disable: ((dpm_disable_slack_alert))
+{% else %}
 - name: slack-alert
   type: slack-notification
   source:
     url: {{dpm_webhook_url}}
     disable: ((dpm_disable_slack_alert))
+{% endif %}
 
 {% if "gpbackup-release" == pipeline_name %}
 - name: github_release_components
@@ -627,7 +636,11 @@ jobs:
       gpdb_src: gpdb6_src
       bin_gpdb: bin_gpdb_6x_stable_centos6
     on_failure:
+{% if "gpbackup-release" == pipeline_name %}
+      *slack_alert_release
+{% else %}
       *slack_alert
+{% endif %}
 
   - put: gppkgs
     params:
@@ -760,7 +773,11 @@ jobs:
   on_success:
     <<: *ccp_destroy
   on_failure:
+{% if "gpbackup-release" == pipeline_name %}
+    *slack_alert_release
+{% else %}
     *slack_alert
+{% endif %}
   ensure:
     <<: *set_failed
 
@@ -852,7 +869,11 @@ jobs:
           ssh -t gpadmin@mdw "source env.sh; psql -d postgres -f \$GPHOME/share/postgresql/contrib/pgcrypto.sql"
     on_failure:
       do:
+{% if "gpbackup-release" == pipeline_name %}
+      - *slack_alert_release
+{% else %}
       - *slack_alert
+{% endif %}
       - *ddboost_debug_sleep
   - task: boostfs_installation
     tags: ["ddboost"]
@@ -963,7 +984,11 @@ jobs:
           ssh -t mdw "bash /home/gpadmin/run_tests.bash"
     on_failure:
       do:
+{% if "gpbackup-release" == pipeline_name %}
+      - *slack_alert_release
+{% else %}
       - *slack_alert
+{% endif %}
       - *ddboost_debug_sleep
   ensure:
       <<: *ddboost_ccp_destroy
@@ -1053,7 +1078,11 @@ jobs:
           ssh -t gpadmin@mdw "source env.sh; psql -d postgres -f \$GPHOME/share/postgresql/contrib/pgcrypto.sql"
     on_failure:
       do:
+{% if "gpbackup-release" == pipeline_name %}
+      - *slack_alert_release
+{% else %}
       - *slack_alert
+{% endif %}
       - *ddboost_debug_sleep
   - task: boostfs_installation
     tags: ["ddboost"]
@@ -1164,7 +1193,11 @@ jobs:
           ssh -t mdw "bash /home/gpadmin/run_tests.bash"
     on_failure:
       do:
+{% if "gpbackup-release" == pipeline_name %}
+      - *slack_alert_release
+{% else %}
       - *slack_alert
+{% endif %}
       - *ddboost_debug_sleep
   ensure:
       <<: *ddboost_ccp_destroy
@@ -1213,7 +1246,11 @@ jobs:
   on_success:
     <<: *ccp_destroy
   on_failure:
+{% if "gpbackup-release" == pipeline_name %}
+    *slack_alert_release
+{% else %}
     *slack_alert
+{% endif %}
   ensure:
     <<: *set_failed
 
@@ -1268,7 +1305,11 @@ jobs:
   on_success:
     <<: *ccp_destroy_aws
   on_failure:
+{% if "gpbackup-release" == pipeline_name %}
+    *slack_alert_release
+{% else %}
     *slack_alert
+{% endif %}
   ensure:
     <<: *set_failed_aws
 
@@ -1315,7 +1356,11 @@ jobs:
         bin_gpdb: bin_gpdb_master_centos7
         dummy_seclabel: dummy_seclabel_linux_master
   on_failure:
+{% if "gpbackup-release" == pipeline_name %}
+    *slack_alert_release
+{% else %}
     *slack_alert
+{% endif %}
 {% endif %}
 
 - name: GPDB5
@@ -1360,7 +1405,11 @@ jobs:
   on_success:
     <<: *ccp_destroy
   on_failure:
+{% if "gpbackup-release" == pipeline_name %}
+    *slack_alert_release
+{% else %}
     *slack_alert
+{% endif %}
   ensure:
     <<: *set_failed
 
@@ -1406,7 +1455,11 @@ jobs:
   on_success:
     <<: *ccp_destroy
   on_failure:
+{% if "gpbackup-release" == pipeline_name %}
+    *slack_alert_release
+{% else %}
     *slack_alert
+{% endif %}
   ensure:
     <<: *set_failed
 
@@ -1454,7 +1507,11 @@ jobs:
         bin_gpdb: bin_gpdb_6x_stable_centos7
         dummy_seclabel: dummy_seclabel_linux_gpdb6
   on_failure:
+{% if "gpbackup-release" == pipeline_name %}
+    *slack_alert_release
+{% else %}
     *slack_alert
+{% endif %}
 
 - name: backward-compatibility
   plan:
@@ -1504,7 +1561,11 @@ jobs:
   on_success:
     <<: *ccp_destroy
   on_failure:
+{% if "gpbackup-release" == pipeline_name %}
+    *slack_alert_release
+{% else %}
     *slack_alert
+{% endif %}
   ensure:
     <<: *set_failed
 
@@ -1549,7 +1610,11 @@ jobs:
   on_success:
     <<: *ccp_destroy
   on_failure:
+{% if "gpbackup-release" == pipeline_name %}
+    *slack_alert_release
+{% else %}
     *slack_alert
+{% endif %}
   ensure:
     <<: *set_failed
 {% endif %}
@@ -1596,7 +1661,11 @@ jobs:
   on_success:
     <<: *ccp_destroy_nvme
   on_failure:
+{% if "gpbackup-release" == pipeline_name %}
+    *slack_alert_release
+{% else %}
     *slack_alert
+{% endif %}
   ensure:
     <<: *set_failed
 {% endif %}
@@ -1642,7 +1711,11 @@ jobs:
   on_success:
     <<: *ccp_destroy_nvme
   on_failure:
+{% if "gpbackup-release" == pipeline_name %}
+    *slack_alert_release
+{% else %}
     *slack_alert
+{% endif %}
   ensure:
     <<: *set_failed
 
@@ -1686,7 +1759,11 @@ jobs:
   on_success:
     <<: *ccp_destroy_nvme
   on_failure:
+{% if "gpbackup-release" == pipeline_name %}
+    *slack_alert_release
+{% else %}
     *slack_alert
+{% endif %}
   ensure:
     <<: *set_failed
 
@@ -1730,7 +1807,11 @@ jobs:
   on_success:
     <<: *ccp_destroy_nvme
   on_failure:
+{% if "gpbackup-release" == pipeline_name %}
+    *slack_alert_release
+{% else %}
     *slack_alert
+{% endif %}
   ensure:
     <<: *set_failed
 
@@ -2095,9 +2176,18 @@ set_failed_anchor_aws: &set_failed_aws
         BUCKET_PATH: clusters-aws/
         BUCKET_NAME: {{tf-bucket-name}}
 
+{% if "gpbackup-release" == pipeline_name %}
+slack_alert_anchor_release: &slack_alert_release
+  put: slack-alert-release
+  params:
+    text: |
+      [gpbackup-release/$BUILD_JOB_NAME] failed:
+      https://prod.ci.gpdb.pivotal.io/teams/main/pipelines/gpbackup-release/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME
+{% else %}
 slack_alert_anchor: &slack_alert
   put: slack-alert
   params:
     text: |
       [gpbackup/$BUILD_JOB_NAME] failed:
       https://prod.ci.gpdb.pivotal.io/teams/main/pipelines/gpbackup/jobs/$BUILD_JOB_NAME/builds/$BUILD_NAME
+{% endif %}
