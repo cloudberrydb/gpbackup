@@ -6,6 +6,9 @@ image_resource:
     repository: pivotaldata/centos-gpdb-dev
     tag: '6-gcc6.2-llvm3.7'
 
+params:
+  GPBACKUP_VERSION:
+
 inputs:
 - name: gpbackup
   path: go/src/github.com/greenplum-db/gpbackup
@@ -28,6 +31,12 @@ run:
     cd \$GOPATH/src/github.com/greenplum-db/gpbackup
 
     git checkout $GPBACKUP_VERSION
+
+    # NOTE: There was a change to constraint handling in GPDB5 that caused an update
+    # to our test suite. Rather than revv the version of gpbackup that we are packaging
+    # with gpdb5, we've decided to simply cherry-pick the commit prior to running tests.
+    git cherry-pick c149e8b7b671e931ca892f22c8cdef906512d591
+
     make build
 
     make integration
