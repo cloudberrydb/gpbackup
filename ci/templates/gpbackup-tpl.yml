@@ -772,7 +772,6 @@ jobs:
       trigger: true
     - get: gpbackup
       tags: ["ddboost"]
-      trigger: true
     - get: ccp_src
       tags: ["ddboost"]
     - get: gpdb5_src
