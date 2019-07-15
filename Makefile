@@ -1,4 +1,4 @@
-all: depend build test
+all: build
 
 SHELL := /bin/bash
 .DEFAULT_GOAL := all
@@ -16,6 +16,7 @@ HELPER_VERSION_STR="-X github.com/greenplum-db/gpbackup/helper.version=$(GIT_VER
 SUBDIRS_HAS_UNIT=backup/ backup_filepath/ backup_history/ helper/ options/ restore/ utils/ testutils/
 SUBDIRS_ALL=$(SUBDIRS_HAS_UNIT) integration/ end_to_end/
 GOLANG_LINTER=$(GOPATH)/bin/golangci-lint
+DEP=$(GOPATH)/bin/dep
 
 DEST = .
 
@@ -25,8 +26,7 @@ CUSTOM_BACKUP_DIR ?= "/tmp"
 
 .PHONY : coverage integration end_to_end
 
-dependencies : $(GOLANG_LINTER)
-		curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+depend : $(GOLANG_LINTER) $(DEP)
 		dep ensure -v
 		@cd vendor/golang.org/x/tools/cmd/goimports; go install .
 		@cd vendor/github.com/onsi/ginkgo/ginkgo; go install .
@@ -39,6 +39,10 @@ $(GOLANG_LINTER) :
 		mkdir -p $(GOPATH)/bin
 		curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOPATH)/bin v${LINTER_VERSION}
 
+$(DEP) :
+		mkdir -p $(GOPATH)/bin
+		curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+
 lint : $(GOLANG_LINTER)
 		golangci-lint run --tests=false
 
@@ -48,7 +52,7 @@ unit :
 integration :
 		ginkgo -r -randomizeSuites -noisySkippings=false -randomizeAllSpecs integration 2>&1
 
-test : lint unit integration
+test : unit integration
 
 end_to_end : build
 		ginkgo -r -randomizeSuites -slowSpecThreshold=10 -noisySkippings=false -randomizeAllSpecs end_to_end -- --custom_backup_dir $(CUSTOM_BACKUP_DIR) 2>&1
@@ -60,9 +64,7 @@ end_to_end_without_install :
 coverage :
 		@./show_coverage.sh
 
-depend : dependencies
-
-build :
+build : depend
 		go build -tags '$(BACKUP)' $(GOFLAGS) -o $(BIN_DIR)/$(BACKUP) -ldflags $(BACKUP_VERSION_STR)
 		go build -tags '$(RESTORE)' $(GOFLAGS) -o $(BIN_DIR)/$(RESTORE) -ldflags $(RESTORE_VERSION_STR)
 		go build -tags '$(HELPER)' $(GOFLAGS) -o $(BIN_DIR)/$(HELPER) -ldflags $(HELPER_VERSION_STR)
