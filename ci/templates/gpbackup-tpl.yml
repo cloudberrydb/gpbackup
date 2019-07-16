@@ -770,10 +770,6 @@ jobs:
 {% if "gpbackup-release" != pipeline_name %}
       trigger: true
 {% endif %}
-{% if nightly_trigger and "gpbackup-release" != pipeline_name %}
-    - get: nightly-trigger
-      trigger: true
-{% endif %}
     - get: gpbackup-dependencies
       passed:
        - build_dependencies
@@ -883,10 +879,6 @@ jobs:
       tags: ["ddboost"]
     - get: boostfs_installer
       tags: ["ddboost"]
-{% if nightly_trigger and "gpbackup-release" != pipeline_name %}
-    - get: nightly-trigger
-      trigger: true
-{% endif %}
     - get: gpbackup-dependencies
       tags: ["ddboost"]
       passed:
@@ -1100,10 +1092,6 @@ jobs:
       tags: ["ddboost"]
     - get: boostfs_installer
       tags: ["ddboost"]
-{% if nightly_trigger and "gpbackup-release" != pipeline_name %}
-    - get: nightly-trigger
-      trigger: true
-{% endif %}
     - get: gpbackup-dependencies
       tags: ["ddboost"]
       passed:
@@ -1305,10 +1293,6 @@ jobs:
 {% endif %}
     - get: ccp_src
     - get: gpdb5_src
-{% if nightly_trigger and "gpbackup-release" != pipeline_name %}
-    - get: nightly-trigger
-      trigger: true
-{% endif %}
     - get: gpbackup-dependencies
       passed:
       - build_dependencies
@@ -1357,10 +1341,6 @@ jobs:
 {% endif %}
     - get: ccp_src
     - get: gpdb5_src
-{% if nightly_trigger and "gpbackup-release" != pipeline_name %}
-    - get: nightly-trigger
-      trigger: true
-{% endif %}
     - get: gpbackup-dependencies
       passed:
        - build_dependencies
@@ -1420,10 +1400,6 @@ jobs:
       trigger: true
     - get: bin_gpdb_master_centos7
     - get: gpdb_master_src
-{% if nightly_trigger and "gpbackup-release" != pipeline_name %}
-    - get: nightly-trigger
-      trigger: true
-{% endif %}
     - get: dummy_seclabel_linux_master
     - get: gppkgs
       passed:
@@ -1466,10 +1442,6 @@ jobs:
 {% endif %}
     - get: ccp_src
     - get: gpdb5_src
-{% if nightly_trigger and "gpbackup-release" != pipeline_name %}
-    - get: nightly-trigger
-      trigger: true
-{% endif %}
     - get: gpbackup-dependencies
       passed:
        - build_dependencies
@@ -1516,10 +1488,6 @@ jobs:
 {% endif %}
     - get: ccp_src
     - get: gpdb5_src
-{% if nightly_trigger and "gpbackup-release" != pipeline_name %}
-    - get: nightly-trigger
-      trigger: true
-{% endif %}
     - get: gpbackup-dependencies
       passed:
        - build_dependencies
@@ -1571,10 +1539,6 @@ jobs:
 {% endif %}
     - get: bin_gpdb_6x_stable_centos7
     - get: gpdb6_src
-{% if nightly_trigger and "gpbackup-release" != pipeline_name %}
-    - get: nightly-trigger
-      trigger: true
-{% endif %}
     - get: dummy_seclabel_linux_gpdb6
     - get: gppkgs
       trigger: true
@@ -1616,10 +1580,6 @@ jobs:
 {% endif %}
     - get: ccp_src
     - get: gpdb5_src
-{% if nightly_trigger and "gpbackup-release" != pipeline_name %}
-    - get: nightly-trigger
-      trigger: true
-{% endif %}
     - get: gpbackup-dependencies
       passed:
        - build_dependencies
