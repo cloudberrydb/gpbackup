@@ -458,7 +458,7 @@ resources:
   source:
     bucket: gpbackup-release-licenses
     json_key: ((gcp_svc_acct_key))
-    regexp: gpbackup-osl-v(.*).txt
+    regexp: open_source_license_pivotal-gpdb-backup-(.*)-*.txt
 {% endif %}
 
 jobs:
@@ -2002,15 +2002,23 @@ jobs:
                 touch ../workspace/v-${TILE_RELEASE_VERSION}
               popd
 
-              if [ ! -f gpbackup-release-license/gpbackup-osl-v${GPBACKUP_VERSION}.txt ] ; then
-                echo "License file gpbackup-osl-v${GPBACKUP_VERSION}.txt does not exist in resource.\n Ensure the OSL is properly uploaded to the GCS bucket prior to pushing to pivnet." 1>&2
+              if [ ! -f gpbackup-release-license/open_source_license_pivotal-gpdb-backup-${GPBACKUP_VERSION}-*.txt ] ; then
+                echo "License file for gpbackup version ${GPBACKUP_VERSION} does not exist in resource.\n Ensure the OSL is properly uploaded to the GCS bucket prior to pushing to pivnet." 1>&2
                 exit 1
               fi
-              cp gpbackup-release-license/gpbackup-osl-v${GPBACKUP_VERSION}.txt workspace/files-to-upload/
+              cp gpbackup-release-license/open_source_license_pivotal-gpdb-backup-${GPBACKUP_VERSION}-*.txt workspace/files-to-upload/
 
               # NOTE: We must use the Pivnet Release Version (including the counter) because we cannot upload files with the same name in different tile releases
+              DDBOOST_PLUGIN_VERSION=$(cat workspace/files-to-upload/ddboost_plugin_version)
+              sed -i "s/<DDBOOST_PLUGIN_VERSION>/${DDBOOST_PLUGIN_VERSION}/g" workspace/metadata.yml
+              S3_PLUGIN_VERSION=$(cat workspace/files-to-upload/s3_plugin_version)
+              sed -i "s/<S3_PLUGIN_VERSION>/${S3_PLUGIN_VERSION}/g" workspace/metadata.yml
+              BMAN_VERSION=$(cat workspace/files-to-upload/gpbackup_manager_version)
+              sed -i "s/<BMAN_VERSION>/${BMAN_VERSION}/g" workspace/metadata.yml
               sed -i "s/<TILE_RELEASE_VERSION>/${TILE_RELEASE_VERSION}/g" workspace/metadata.yml
               sed -i "s/<GPBAR_VERSION>/${GPBACKUP_VERSION}/g" workspace/metadata.yml
+              OSL_FILENAME=$(basename -- gpbackup-release-license/open_source_license_pivotal-gpdb-backup-${GPBACKUP_VERSION}-*.txt)
+              sed -i "s/<OSL_FILENAME>/${OSL_FILENAME}/g" workspace/metadata.yml
 
               cat workspace/metadata.yml
               pushd workspace/files-to-upload
