@@ -10,7 +10,7 @@ release:
         - gpbackup_manager <BMAN_VERSION>
         - gpbackup_ddboost_plugin <DDBOOST_PLUGIN_VERSION>
         - gpbackup_s3_plugin <S3_PLUGIN_VERSION>
-  release_notes_url: http://gpdb.docs.pivotal.io/backup-restore/
+  release_notes_url: http://gpdb.docs.pivotal.io/backup-restore/<REL_NOTES_VERSION>/release-notes.html
   availability: Admins Only
   controlled: false
   eccn: EAR99
@@ -53,7 +53,7 @@ product_files:
 
 ########## License ##########
   - file: file://workspace/files-to-upload/<OSL_FILENAME>
-    upload_as: Open Source Licenses for Greenplum Backup and Restore <GPBAR_VERSION>
-    description: Open Source Licenses for Greenplum Backup and Restore <GPBAR_VERSION>
+    upload_as: Open Source Licenses for Pivotal Greenplum Backup and Restore <GPBAR_VERSION>
+    description: Open Source Licenses for Pivotal Greenplum Backup and Restore <GPBAR_VERSION>
     file_type: Open Source License
     file_version: <GPBAR_VERSION>

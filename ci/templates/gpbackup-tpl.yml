@@ -2019,6 +2019,9 @@ jobs:
               sed -i "s/<GPBAR_VERSION>/${GPBACKUP_VERSION}/g" workspace/metadata.yml
               OSL_FILENAME=$(basename -- gpbackup-release-license/open_source_license_pivotal-gpdb-backup-${GPBACKUP_VERSION}-*.txt)
               sed -i "s/<OSL_FILENAME>/${OSL_FILENAME}/g" workspace/metadata.yml
+              # The URL adjusts based on major/minor version
+              REL_NOTES_VERSION=$(echo ${GPBACKUP_VERSION//./-} | cut -d- -f1,2)
+              sed -i "s/<REL_NOTES_VERSION>/${REL_NOTES_VERSION}/g" workspace/metadata.yml
 
               cat workspace/metadata.yml
               pushd workspace/files-to-upload
