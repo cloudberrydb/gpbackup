@@ -1992,13 +1992,13 @@ jobs:
                 PRV_TILE_RELEASE_VERSION="v-${GPBACKUP_VERSION}*"
                 if [ -f $PRV_TILE_RELEASE_VERSION ]; then
                   # increment the counter if the expected release version has been used before
-                  COUNT=$(echo $PRV_TILE_RELEASE_VERSION | sed -n "s/v-${GPBACKUP_VERSION}_\([0-9]*\).*/\1/p")
+                  COUNT=$(echo $PRV_TILE_RELEASE_VERSION | sed -n "s/v-${GPBACKUP_VERSION}-\([0-9]*\).*/\1/p")
                   COUNT=$(($COUNT+1))
                 else
                   # reset the version count
                   COUNT=1
                 fi
-                TILE_RELEASE_VERSION=${GPBACKUP_VERSION}_${COUNT}
+                TILE_RELEASE_VERSION=${GPBACKUP_VERSION}-${COUNT}
                 touch ../workspace/v-${TILE_RELEASE_VERSION}
               popd
 
