@@ -408,6 +408,15 @@ resources:
     region_name: {{aws-region}}
     secret_access_key: {{bucket-secret-access-key}}
     regexp: components/gpbackup/gpbackup-(.*).tar.gz
+
+- name: gppkgs_rc
+  type: s3
+  source:
+    access_key_id: {{bucket-access-key-id}}
+    bucket: {{gpdb-stable-bucket-name}}
+    region_name: {{aws-region}}
+    secret_access_key: {{bucket-secret-access-key}}
+    versioned_file: gppkgs/gpbackup-gppkgs.tar.gz
 {% endif %}
 
 - name: gppkgs
@@ -417,7 +426,11 @@ resources:
     bucket: {{gpdb-stable-bucket-name}}
     region_name: {{aws-region}}
     secret_access_key: {{bucket-secret-access-key}}
-    versioned_file: gppkgs/gpbackup-gppkgs.tar.gz
+{% if "gpbackup-release" == pipeline_name %}
+    versioned_file: gppkgs/intermediates_release/gpbackup-gppkgs.tar.gz
+{% else %}
+    versioned_file: gppkgs/intermediates/gpbackup-gppkgs.tar.gz
+{% endif %}
 
 {% if "gpbackup-release" == pipeline_name %}
 - name: gpbackup_github_release
@@ -2028,7 +2041,7 @@ jobs:
         - ddboost_plugin_and_boostfs_tests_6x
     - get: gpbackup
   - aggregate:
-    - put: gppkgs
+    - put: gppkgs_rc
       params:
         file: gppkgs/gpbackup-gppkgs.tar.gz
     - put: github_release_components_rc
