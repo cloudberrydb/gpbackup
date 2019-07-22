@@ -202,7 +202,7 @@ time_second_for_del=$(date +"%Y%m%d%H%M%S")
 current_date_for_del=$(echo $time_second_for_del | cut -c 1-8)
 sleep 1
 time_second_for_del2=$(date +"%Y%m%d%H%M%S")
-current_date_for_del2=$(echo $time_second_for_del | cut -c 1-8)
+current_date_for_del2=$(echo $time_second_for_del2 | cut -c 1-8)
 
 testdir_for_del="${testdir_base}/testseg/backups/$current_date_for_del/$time_second_for_del"
 testdata_for_del="$testdir_for_del/testdata_$time_second_for_del.txt"
