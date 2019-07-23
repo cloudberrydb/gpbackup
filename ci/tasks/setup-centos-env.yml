@@ -39,7 +39,7 @@ run:
     source env.sh
     gpconfig --skipvalidation -c fsync -v off
     gpstop -u
-          
+
     tar -zxf gpbackup-dependencies/dependencies.tar.gz -C \$GOPATH/src/github.com/greenplum-db/gpbackup/
 
     pushd \$GOPATH/src/github.com/greenplum-db/gpbackup
@@ -48,7 +48,7 @@ run:
     popd
     SCRIPT
 
-    ssh -t centos@mdw "sudo yum -y install wget git && wget https://storage.googleapis.com/golang/go1.12.7.linux-amd64.tar.gz && tar -xzf go1.12.7.linux-amd64.tar.gz && sudo mv go /usr/local"
+    ssh -t centos@mdw "sudo yum -y install git && wget https://storage.googleapis.com/golang/go1.12.7.linux-amd64.tar.gz && tar -xzf go1.12.7.linux-amd64.tar.gz && sudo mv go /usr/local"
     chmod +x /tmp/setup_centos_env.bash
     rsync -a gpbackup-dependencies mdw:/home/gpadmin
     scp /tmp/setup_centos_env.bash mdw:/home/gpadmin/setup_centos_env.bash
