@@ -1135,6 +1135,9 @@ PARTITION BY LIST (gender)
 		})
 		Describe("precise backup of reals", func() {
 			It(`successfully backs up precise data types`, func() {
+				// Versions before 1.13.0 do not set the extra_float_digits GUC
+				skipIfOldBackupVersionBefore("1.13.0")
+
 				backupdir := filepath.Join(customBackupDir, "real_precision") // Must be unique
 				tableName := "public.test_real_precision"
 				testhelper.AssertQueryRuns(backupConn, fmt.Sprintf(`CREATE TABLE %s (val real)`, tableName))
