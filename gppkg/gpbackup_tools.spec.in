@@ -17,8 +17,9 @@ Backup and restore utilities for Greenplum
 %setup -c -q -T -D -a 0
 
 %install
-mkdir -p $RPM_BUILD_ROOT%{prefix}/bin
+mkdir -p $RPM_BUILD_ROOT%{prefix}/bin $RPM_BUILD_ROOT%{prefix}/lib
 cp bin/gpbackup bin/gprestore bin/gpbackup_helper bin/gpbackup_manager bin/gpbackup_ddboost_plugin bin/gpbackup_s3_plugin $RPM_BUILD_ROOT%{prefix}/bin
+cp lib/libDDBoost.so $RPM_BUILD_ROOT%{prefix}/lib
 
 %files
 %{prefix}/bin/gpbackup
@@ -27,3 +28,4 @@ cp bin/gpbackup bin/gprestore bin/gpbackup_helper bin/gpbackup_manager bin/gpbac
 %{prefix}/bin/gpbackup_manager
 %{prefix}/bin/gpbackup_ddboost_plugin
 %{prefix}/bin/gpbackup_s3_plugin
+%{prefix}/lib/libDDBoost.so

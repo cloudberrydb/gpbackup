@@ -540,6 +540,7 @@ jobs:
 
             echo ${ddboost_plugin_version} > ddboost_components/ddboost_plugin_version
             cp gpbackup_ddboost_plugin/gpbackup_ddboost_plugin ddboost_components/
+            cp gpbackup_ddboost_plugin/DDBoostSDK/lib/release/linux/64/libDDBoost.so ddboost_components/
     - task: build-ddboost-SLES
       image: sles11-image
       config:
@@ -575,6 +576,7 @@ jobs:
 
             echo ${ddboost_plugin_version} > ddboost_components_SLES/ddboost_plugin_version
             cp gpbackup_ddboost_plugin/gpbackup_ddboost_plugin ddboost_components_SLES/
+            cp gpbackup_ddboost_plugin/DDBoostSDK/lib/release/linux/64/libDDBoost.so ddboost_components_SLES/
   - task: tar-binaries-RHEL
     config:
       platform: linux
@@ -611,7 +613,10 @@ jobs:
             cp ../go_components/gpbackup_manager bin/
             cp ../ddboost_components/gpbackup_ddboost_plugin bin/
 
-            tar -czvf bin_gpbackup.tar.gz bin/
+            mkdir -p lib
+            cp ../ddboost_components/libDDBoost.so lib/
+
+            tar -czvf bin_gpbackup.tar.gz bin/ lib/
 
             version=`cat version`
             tar -czvf "gpbackup-${version}.tar.gz" bin_gpbackup.tar.gz install_gpdb_component gpbackup_version version s3_plugin_version
@@ -648,7 +653,10 @@ jobs:
             cp ../go_components/gpbackup_manager bin/
             cp ../ddboost_components_SLES/gpbackup_ddboost_plugin bin/
 
-            tar -czvf bin_gpbackup.tar.gz bin/
+            mkdir -p lib
+            cp ../ddboost_components_SLES/libDDBoost.so lib/
+
+            tar -czvf bin_gpbackup.tar.gz bin/ lib/
 
             version=`cat version`
             tar -czvf "gpbackup-${version}.tar.gz" bin_gpbackup.tar.gz install_gpdb_component gpbackup_version version s3_plugin_version
