@@ -662,6 +662,9 @@ var _ = Describe("backup end to end integration tests", func() {
 				assertDataRestored(restoreConn, schema2TupleCounts)
 			})
 			It("restores from an incremental backup with AO Table consisting of multiple segment files", func() {
+				// Versions before 1.13.0 incorrectly handle AO table inserts involving multiple seg files
+				skipIfOldBackupVersionBefore("1.13.0")
+
 				testhelper.AssertQueryRuns(backupConn, "CREATE TABLE foobar WITH (appendonly=true) AS SELECT i FROM generate_series(1,5) i")
 				defer testhelper.AssertQueryRuns(backupConn, "DROP TABLE foobar")
 				testhelper.AssertQueryRuns(backupConn, "VACUUM foobar")
