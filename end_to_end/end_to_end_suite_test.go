@@ -671,9 +671,16 @@ var _ = Describe("backup end to end integration tests", func() {
 				fullBackupTimestamp := gpbackup(gpbackupPath, backupHelperPath, "--leaf-partition-data")
 
 				testhelper.AssertQueryRuns(backupConn, "INSERT INTO foobar VALUES (1)")
+
 				// Ensure two distinct seg files contain 'foobar' data
-				numRows := dbconn.MustSelectString(backupConn, "SELECT count(*) FROM gp_toolkit.__gp_aoseg('foobar'::regclass)")
+				var numRows string
+				if backupConn.Version.Before("6") {
+					numRows = dbconn.MustSelectString(backupConn, "SELECT count(*) FROM gp_toolkit.__gp_aoseg_name('foobar')")
+				} else {
+					numRows = dbconn.MustSelectString(backupConn, "SELECT count(*) FROM gp_toolkit.__gp_aoseg('foobar'::regclass)")
+				}
 				Expect(numRows).To(Equal(strconv.Itoa(2)))
+
 				entriesInTable = dbconn.MustSelectString(backupConn, "SELECT count(*) FROM foobar")
 				Expect(entriesInTable).To(Equal(strconv.Itoa(6)))
 
