@@ -276,8 +276,6 @@ var _ = Describe("backup end to end integration tests", func() {
 		if backupConn.Version.Before("6") {
 			testutils.DestroyTestFilespace(backupConn)
 		} else {
-			_ = exec.Command("dropdb", "testdb").Run()
-			_ = exec.Command("dropdb", "restoredb").Run()
 			_ = exec.Command("psql", "postgres", "-c", "DROP RESOURCE QUEUE test_queue").Run()
 			_ = exec.Command("psql", "postgres", "-c", "DROP TABLESPACE test_tablespace").Run()
 			remoteOutput := backupCluster.GenerateAndExecuteCommand("Removing /tmp/test_dir* directories on all hosts", func(contentID int) string {
@@ -662,6 +660,31 @@ var _ = Describe("backup end to end integration tests", func() {
 				assertDataRestored(restoreConn, publicSchemaTupleCounts)
 				schema2TupleCounts["schema2.ao1"] = 1002
 				assertDataRestored(restoreConn, schema2TupleCounts)
+			})
+			It("restores from an incremental backup with AO Table consisting of multiple segment files", func() {
+				testhelper.AssertQueryRuns(backupConn, "CREATE TABLE foobar WITH (appendonly=true) AS SELECT i FROM generate_series(1,5) i")
+				defer testhelper.AssertQueryRuns(backupConn, "DROP TABLE foobar")
+				testhelper.AssertQueryRuns(backupConn, "VACUUM foobar")
+				entriesInTable := dbconn.MustSelectString(backupConn, "SELECT count(*) FROM foobar")
+				Expect(entriesInTable).To(Equal(strconv.Itoa(5)))
+
+				fullBackupTimestamp := gpbackup(gpbackupPath, backupHelperPath, "--leaf-partition-data")
+
+				testhelper.AssertQueryRuns(backupConn, "INSERT INTO foobar VALUES (1)")
+				// Ensure two distinct seg files contain 'foobar' data
+				numRows := dbconn.MustSelectString(backupConn, "SELECT count(*) FROM gp_toolkit.__gp_aoseg('foobar'::regclass)")
+				Expect(numRows).To(Equal(strconv.Itoa(2)))
+				entriesInTable = dbconn.MustSelectString(backupConn, "SELECT count(*) FROM foobar")
+				Expect(entriesInTable).To(Equal(strconv.Itoa(6)))
+
+				incremental1Timestamp := gpbackup(gpbackupPath, backupHelperPath,
+					"--incremental", "--leaf-partition-data", "--from-timestamp", fullBackupTimestamp)
+
+				gprestore(gprestorePath, restoreHelperPath, incremental1Timestamp, "--redirect-db", "restoredb")
+
+				// The insertion should have been recorded in the incremental backup
+				entriesInTable = dbconn.MustSelectString(restoreConn, "SELECT count(*) FROM foobar")
+				Expect(entriesInTable).To(Equal(strconv.Itoa(6)))
 			})
 			It("can restore from an old backup with an incremental taken from new binaries with --include-table", func() {
 				if !useOldBackupVersion {

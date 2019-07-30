@@ -84,7 +84,7 @@ func getAOSegTableFQNs(connectionPool *dbconn.DBConn) map[string]string {
 
 func getModCount(connectionPool *dbconn.DBConn, aosegtablefqn string) int64 {
 	query := fmt.Sprintf(`
-	SELECT modcount FROM %s
+	SELECT COALESCE(pg_catalog.sum(modcount), 0) AS modcount FROM %s
 `, aosegtablefqn)
 
 	var results []struct {
@@ -93,9 +93,6 @@ func getModCount(connectionPool *dbconn.DBConn, aosegtablefqn string) int64 {
 	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 
-	if len(results) == 0 {
-		return 0
-	}
 	return results[0].Modcount
 }
 
