@@ -74,9 +74,9 @@ var _ = Describe("restore/data tests", func() {
 			execStr := regexp.QuoteMeta("COPY public.foo(i,j) FROM PROGRAM 'cat <SEG_DATA_DIR>/backups/20170101/20170101010101/gpbackup_<SEGID>_20170101010101_3456 | cat -' WITH CSV DELIMITER ',' ON SEGMENT;")
 			pgErr := pgx.PgError{
 				Severity: "ERROR",
-				Code: "22P04",
-				Message: "value of distribution key doesn't belong to segment with ID 0, it belongs to segment with ID 1",
-				Where: "COPY foo, line 1: \"5\"",
+				Code:     "22P04",
+				Message:  "value of distribution key doesn't belong to segment with ID 0, it belongs to segment with ID 1",
+				Where:    "COPY foo, line 1: \"5\"",
 			}
 			mock.ExpectExec(execStr).WillReturnError(pgErr)
 			filename := "<SEG_DATA_DIR>/backups/20170101/20170101010101/gpbackup_<SEGID>_20170101010101_3456"

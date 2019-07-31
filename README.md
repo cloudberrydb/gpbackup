@@ -133,6 +133,14 @@ Note: All contributions must be sent using GitHub Pull Requests.
 
 Overall we follow GPDB's comprehensive contribution policy. Please refer to it [here](https://github.com/greenplum-db/gpdb#contributing) for details.
 
+# Code Formatting
+
+We use `goimports` to format go code. See https://godoc.org/golang.org/x/tools/cmd/goimports
+The following command formats the gpbackup codebase excluding the vendor directory and also lists the files updated.
+```bash
+goimports -w -l $(find . -type f -name '*.go' -not -path "./vendor/*")
+```
+
 # Troubleshooting
 
 ## Dummy Security Label module is not installed or configured
