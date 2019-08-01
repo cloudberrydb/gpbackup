@@ -107,12 +107,6 @@ resources:
     repository: pivotaldata/centos-gpdb-dev
     tag: '6-gcc6.2-llvm3.7'
 
-- name: sles11-image
-  type: docker-image
-  source:
-    repository: pivotaldata/sles-gpdb-dev
-    tag: '11-beta'
-
 
 ##### Other Resources #####
 {% if (nightly_trigger and "gpbackup-release" != pipeline_name) %}
@@ -484,7 +478,6 @@ jobs:
 - name: build_binaries
   plan:
   - aggregate:
-    - get: sles11-image
     - get: centos6-image
     - get: libyaml-0.1.7
     - get: gpbackup
@@ -546,41 +539,7 @@ jobs:
             cp gpbackup_ddboost_plugin/gpbackup_ddboost_plugin ddboost_components/
             cp gpbackup_ddboost_plugin/DDBoostSDK/lib/release/linux/64/libDDBoost.so ddboost_components/
     - task: build-ddboost-SLES
-      image: sles11-image
-      config:
-        platform: linux
-        inputs:
-          - name: libyaml-0.1.7
-          - name: gpbackup_ddboost_plugin
-          - name: bin_gpdb_5x_sles11
-        outputs:
-          - name: ddboost_components_SLES
-        run:
-          path: bash
-          args:
-          - -c
-          - |
-            set -ex
-
-            # Install gpdb binaries
-            # This is required because ddboost has a dependency on libpq-fe.h
-            mkdir -p /usr/local/greenplum-db-devel
-            tar -xzf bin_gpdb_5x_sles11/*.tar.gz -C /usr/local/greenplum-db-devel
-            source /usr/local/greenplum-db-devel/greenplum_path.sh
-
-            # unpack libyaml so makefile does not try to curl it
-            tar xzf libyaml-0.1.7/libyaml-0.1.7.tar.gz -C gpbackup_ddboost_plugin
-
-            # build ddboost plugin
-            pushd gpbackup_ddboost_plugin
-              source /opt/gcc_env.sh
-              make build
-              ddboost_plugin_version=`git describe --tags | perl -pe 's/(.*)-([0-9]*)-(g[0-9a-f]*)/\1+dev.\2.\3/'`
-            popd
-
-            echo ${ddboost_plugin_version} > ddboost_components_SLES/ddboost_plugin_version
-            cp gpbackup_ddboost_plugin/gpbackup_ddboost_plugin ddboost_components_SLES/
-            cp gpbackup_ddboost_plugin/DDBoostSDK/lib/release/linux/64/libDDBoost.so ddboost_components_SLES/
+      file: gpbackup/ci/tasks/build-ddboost-sles.yml
   - task: tar-binaries-RHEL
     config:
       platform: linux
