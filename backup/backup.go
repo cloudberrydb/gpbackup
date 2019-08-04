@@ -3,6 +3,7 @@ package backup
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime/debug"
 	"sync"
 	"time"
@@ -108,6 +109,11 @@ func DoSetup() {
 
 	if pluginConfigFlag != "" {
 		pluginConfig, err = utils.ReadPluginConfig(pluginConfigFlag)
+		configFilename := filepath.Base(pluginConfig.ConfigPath)
+		configDirname := filepath.Dir(pluginConfig.ConfigPath)
+		pluginConfig.ConfigPath = filepath.Join(configDirname, timestamp + "_" + configFilename)
+		_ = cmdFlags.Set(utils.PLUGIN_CONFIG, pluginConfig.ConfigPath)
+		gplog.Info("plugin config path: %s", pluginConfig.ConfigPath)
 		gplog.FatalOnError(err)
 	}
 
@@ -123,6 +129,7 @@ func DoSetup() {
 func DoBackup() {
 	LogBackupInfo()
 
+	pluginConfigFlag := MustGetFlagString(utils.PLUGIN_CONFIG)
 	targetBackupTimestamp := ""
 	var targetBackupFPInfo backup_filepath.FilePathInfo
 	if MustGetFlagBool(utils.INCREMENTAL) {
@@ -130,10 +137,11 @@ func DoBackup() {
 		targetBackupFPInfo = backup_filepath.NewFilePathInfo(globalCluster, globalFPInfo.UserSpecifiedBackupDir,
 			targetBackupTimestamp, globalFPInfo.UserSpecifiedSegPrefix)
 
-		if MustGetFlagString(utils.PLUGIN_CONFIG) != "" {
+		if pluginConfigFlag != "" {
 			// These files need to be downloaded from the remote system into the local filesystem
 			pluginConfig.MustRestoreFile(targetBackupFPInfo.GetConfigFilePath())
 			pluginConfig.MustRestoreFile(targetBackupFPInfo.GetTOCFilePath())
+			pluginConfig.MustRestoreFile(targetBackupFPInfo.GetPluginConfigPath())
 		}
 	}
 
@@ -189,12 +197,14 @@ func DoBackup() {
 		connectionPool.MustCommit(connNum)
 	}
 	metadataFile.Close()
-	if MustGetFlagString(utils.PLUGIN_CONFIG) != "" {
+	if pluginConfigFlag != "" {
 		pluginConfig.MustBackupFile(metadataFilename)
 		pluginConfig.MustBackupFile(globalFPInfo.GetTOCFilePath())
 		if MustGetFlagBool(utils.WITH_STATS) {
 			pluginConfig.MustBackupFile(globalFPInfo.GetStatisticsFilePath())
 		}
+		_ = utils.CopyFile(pluginConfigFlag, globalFPInfo.GetPluginConfigPath())
+		pluginConfig.MustBackupFile(globalFPInfo.GetPluginConfigPath())
 	}
 
 	err := backup_history.WriteBackupHistory(globalFPInfo.GetBackupHistoryFilePath(), &backupReport.BackupConfig)

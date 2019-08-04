@@ -2,6 +2,7 @@ package restore
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
@@ -142,6 +143,11 @@ func RecoverMetadataFilesUsingPlugin() {
 	var err error
 	pluginConfig, err = utils.ReadPluginConfig(MustGetFlagString(utils.PLUGIN_CONFIG))
 	gplog.FatalOnError(err)
+	configFilename := filepath.Base(pluginConfig.ConfigPath)
+	configDirname := filepath.Dir(pluginConfig.ConfigPath)
+	pluginConfig.ConfigPath = filepath.Join(configDirname, backup_history.CurrentTimestamp() + "_" + configFilename)
+	_ = cmdFlags.Set(utils.PLUGIN_CONFIG, pluginConfig.ConfigPath)
+	gplog.Info("plugin config path: %s", pluginConfig.ConfigPath)
 
 	pluginConfig.CheckPluginExistsOnAllHosts(globalCluster)
 
