@@ -179,11 +179,14 @@ var _ = Describe("gpbackup_helper end to end integration tests", func() {
 		})
 		It("runs restore gpbackup_helper with compression with plugin", func() {
 			setupRestoreFiles(true, true)
-			gpbackupHelper(gpbackupHelperPath, "--restore-agent", "--data-file", dataFileFullPath+".gz", "--plugin-config", pluginConfigPath)
+			helperCmd := gpbackupHelper(gpbackupHelperPath, "--restore-agent", "--data-file", dataFileFullPath+".gz", "--plugin-config", pluginConfigPath)
 			for _, i := range []int{1, 3} {
 				contents, _ := ioutil.ReadFile(fmt.Sprintf("%s_%d", pipeFile, i))
 				Expect(string(contents)).To(Equal("here is some data\n"))
 			}
+			err := helperCmd.Wait()
+			printHelperLogOnError(err)
+			Expect(err).ToNot(HaveOccurred())
 			assertNoErrors()
 		})
 		It("Generates error file when restore agent interrupted", func() {
