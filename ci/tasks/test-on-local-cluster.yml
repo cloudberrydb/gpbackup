@@ -29,7 +29,7 @@ run:
 
     source /usr/local/greenplum-db-devel/greenplum_path.sh
 
-    if $REQUIRES_DUMMY_SEC ; then
+    if [ $REQUIRES_DUMMY_SEC ] ; then
       # dummy security label: copy library from bucket to correct location
       # (someday this will be part of the bin_gpdb tarball?)
       mkdir -p "$GPHOME/postgresql"
@@ -57,7 +57,7 @@ run:
     # reference PATH defined by parent shell
     export PATH=/usr/local/go/bin:$PATH:\$PATH:\$GOPATH/bin
 
-    if $REQUIRES_DUMMY_SEC ; then
+    if [ $REQUIRES_DUMMY_SEC ]; then
       # sec label
       gpconfig -c shared_preload_libraries -v dummy_seclabel
       gpstop -ra
