@@ -142,6 +142,7 @@ func CreateBackupLockFile(timestamp string) {
 	gplog.FatalOnError(err)
 	err = backupLockFile.TryLock()
 	if err != nil {
+		gplog.Error(err.Error())
 		gplog.Fatal(errors.Errorf("A backup with timestamp %s is already in progress. Wait 1 second and try the backup again.", timestamp), "")
 	}
 }
