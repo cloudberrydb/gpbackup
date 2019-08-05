@@ -884,14 +884,21 @@ var _ = Describe("backup end to end integration tests", func() {
 			})
 		})
 		It("runs gpbackup and gprestore without redirecting restore to another db", func() {
-			timestamp := gpbackup(gpbackupPath, backupHelperPath)
-			backupConn.Close()
-			err := exec.Command("dropdb", "testdb").Run()
+			err := exec.Command("createdb", "recreateme").Run()
 			if err != nil {
 				Fail(fmt.Sprintf("%v", err))
 			}
+
+			timestamp := gpbackup(gpbackupPath, backupHelperPath, "--dbname", "recreateme")
+
+			err = exec.Command("dropdb", "recreateme").Run()
+			if err != nil {
+				Fail(fmt.Sprintf("%v", err))
+			}
+
 			gprestore(gprestorePath, restoreHelperPath, timestamp, "--create-db")
-			backupConn = testutils.SetupTestDbConn("testdb")
+			recreatemeConn := testutils.SetupTestDbConn("recreateme")
+			recreatemeConn.Close()
 		})
 		It("runs gpbackup and gprestore with redirecting restore to another db containing special capital letters", func() {
 			timestamp := gpbackup(gpbackupPath, backupHelperPath)
