@@ -889,6 +889,7 @@ var _ = Describe("backup end to end integration tests", func() {
 				Fail(fmt.Sprintf("%v", err))
 			}
 
+			// Specifying the recreateme database will override the default DB, testdb
 			timestamp := gpbackup(gpbackupPath, backupHelperPath, "--dbname", "recreateme")
 
 			err = exec.Command("dropdb", "recreateme").Run()
@@ -1091,7 +1092,7 @@ var _ = Describe("backup end to end integration tests", func() {
 		It("runs gpbackup with --include-table flag with CAPS special characters", func() {
 			skipIfOldBackupVersionBefore("1.9.1")
 			backupdir := filepath.Join(customBackupDir, "includes") // Must be unique
-			timestamp := gpbackup(gpbackupPath, backupHelperPath, "--backup-dir", backupdir, "--dbname", "testdb", "--include-table", `public.FOObar`)
+			timestamp := gpbackup(gpbackupPath, backupHelperPath, "--backup-dir", backupdir, "--include-table", `public.FOObar`)
 			gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--backup-dir", backupdir)
 
 			assertRelationsCreated(restoreConn, 1)
@@ -1117,7 +1118,7 @@ PARTITION BY LIST (gender)
 			testhelper.AssertQueryRuns(backupConn, `insert into public.testparent values (1,1,1,'M',1)`)
 			testhelper.AssertQueryRuns(backupConn, `insert into public.testparent values (0,0,0,'F',1)`)
 
-			timestamp := gpbackup(gpbackupPath, backupHelperPath, "--backup-dir", backupdir, "--dbname", "testdb", "--include-table", `public.testparent_1_prt_girls`, "--leaf-partition-data")
+			timestamp := gpbackup(gpbackupPath, backupHelperPath, "--backup-dir", backupdir, "--include-table", `public.testparent_1_prt_girls`, "--leaf-partition-data")
 			gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--backup-dir", backupdir)
 
 			assertRelationsCreated(restoreConn, 4)
@@ -1145,7 +1146,7 @@ PARTITION BY LIST (gender)
 			testhelper.AssertQueryRuns(backupConn, `insert into public."CAPparent" values (1,1,1,'M',1)`)
 			testhelper.AssertQueryRuns(backupConn, `insert into public."CAPparent" values (0,0,0,'F',1)`)
 
-			timestamp := gpbackup(gpbackupPath, backupHelperPath, "--backup-dir", backupdir, "--dbname", "testdb", "--include-table", `public.CAPparent_1_prt_girls`, "--leaf-partition-data")
+			timestamp := gpbackup(gpbackupPath, backupHelperPath, "--backup-dir", backupdir, "--include-table", `public.CAPparent_1_prt_girls`, "--leaf-partition-data")
 			gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--backup-dir", backupdir)
 
 			assertRelationsCreated(restoreConn, 4)
@@ -1188,7 +1189,7 @@ PARTITION BY LIST (gender)
 				testhelper.AssertQueryRuns(backupConn, fmt.Sprintf(`CREATE TABLE %s (val real)`, tableName))
 				defer testhelper.AssertQueryRuns(backupConn, fmt.Sprintf(`DROP TABLE %s`, tableName))
 				testhelper.AssertQueryRuns(backupConn, fmt.Sprintf(`INSERT INTO %s VALUES (0.100001216)`, tableName))
-				timestamp := gpbackup(gpbackupPath, backupHelperPath, "--backup-dir", backupdir, "--dbname", "testdb", "--include-table", fmt.Sprintf("%s", tableName))
+				timestamp := gpbackup(gpbackupPath, backupHelperPath, "--backup-dir", backupdir, "--include-table", fmt.Sprintf("%s", tableName))
 				gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--backup-dir", backupdir)
 				tableCount := dbconn.MustSelectString(restoreConn, fmt.Sprintf("SELECT count(*) FROM %s WHERE val = 0.100001216::real", tableName))
 				Expect(tableCount).To(Equal(strconv.Itoa(1)))
