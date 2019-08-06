@@ -899,6 +899,11 @@ var _ = Describe("backup end to end integration tests", func() {
 			gprestore(gprestorePath, restoreHelperPath, timestamp, "--create-db")
 			recreatemeConn := testutils.SetupTestDbConn("recreateme")
 			recreatemeConn.Close()
+
+			err = exec.Command("dropdb", "recreateme").Run()
+			if err != nil {
+				Fail(fmt.Sprintf("%v", err))
+			}
 		})
 		It("runs gpbackup and gprestore with redirecting restore to another db containing special capital letters", func() {
 			timestamp := gpbackup(gpbackupPath, backupHelperPath)
