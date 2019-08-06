@@ -23,7 +23,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:03ad4d58e1c75162d55b009ceb227332f4bc2359dc7901b01c3a07abbcfc0369"
+  digest = "1:81edcefb618fbdaeee2f471fb67fb78d00704e73259365325ce2bbc65295fb0f"
   name = "github.com/greenplum-db/gp-common-go-libs"
   packages = [
     "cluster",
@@ -35,7 +35,7 @@
     "testhelper",
   ]
   pruneopts = "NUT"
-  revision = "af9b9ccfb5023361967a789a306fedc1cc02055f"
+  revision = "c535ba3a6e07217feb463f1c6152c934f65f1f36"
 
 [[projects]]
   digest = "1:41933d387bfa3eaa6a82647914ed7044f7b8355764c24fb920892bc8c03ef0c3"
@@ -60,7 +60,7 @@
   version = "v1.0"
 
 [[projects]]
-  digest = "1:1cbbe90c54d3308204c955163a6dce9a328839a166aadd2d13dd26ab290162f8"
+  digest = "1:7eabd95eadc523034e0f3595bbb886c917f8d593535d89509e2bc97d1cae1256"
   name = "github.com/jackc/pgx"
   packages = [
     ".",
@@ -72,8 +72,8 @@
     "stdlib",
   ]
   pruneopts = "NUT"
-  revision = "c59c9cac59ab95eceb0c12ff338923c62f411ea2"
-  version = "v3.3.0"
+  revision = "a1d6202434aa40c3624688f6c2cacbc27eef5472"
+  version = "v3.5.0"
 
 [[projects]]
   digest = "1:0c11e987235e8f37af4e9f24cca02754827d009e8b66cf24483b0006504f6045"
@@ -88,7 +88,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:d6be1611bcb7591f47e55f0844c1b998db628940726efa1d643a09584c5bcdb7"
+  digest = "1:74fca97eba09e8d0f4ced8e1d80e0377c49b856e4d01fc9580d3605648ddaff9"
   name = "github.com/lib/pq"
   packages = [
     ".",
@@ -96,7 +96,7 @@
     "scram",
   ]
   pruneopts = "NUT"
-  revision = "51e2106eed1cea199c802d2a49e91e2491b02056"
+  revision = "3427c32cb71afc948325f299f040e53c1dd78979"
 
 [[projects]]
   digest = "1:70ef8268170621826f8c111ac1674afe75136f526f449453b4a6631c6dba1946"
@@ -189,12 +189,12 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:343d44e06621142ab09ae0c76c1799104cdfddd3ffb445d78b1adf8dc3ffaf3d"
+  digest = "1:d3533ee568fc00a971617ec09dc0f0b3eddfb4adbc1275f8f6332553d67506b4"
   name = "github.com/spf13/cobra"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "ef82de70bb3f60c65fb8eebacbb2d122ef517385"
-  version = "v0.0.3"
+  revision = "f2b07da1e2c38d5f12845a4f607e2e1018cbb1f5"
+  version = "v0.0.5"
 
 [[projects]]
   digest = "1:9d8420bbf131d1618bde6530af37c3799340d3762cc47210c1d9532a4c3a2779"
@@ -206,7 +206,15 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:d5d8006ff2f825ddeac50550bbe002464b1f85810666e700a68459e91e2f875f"
+  digest = "1:f92f6956e4059f6a3efc14924d2dd58ba90da25cc57fe07ae3779ef2f5e0c5f2"
+  name = "golang.org/x/crypto"
+  packages = ["pbkdf2"]
+  pruneopts = "NUT"
+  revision = "4def268fd1a49955bfb3dda92fe3db4f924f2285"
+
+[[projects]]
+  branch = "master"
+  digest = "1:a167b5c532f3245f5a147ade26185f16d6ee8f8d3f6c9846f447e9d8b9705505"
   name = "golang.org/x/net"
   packages = [
     "html",
@@ -214,20 +222,23 @@
     "html/charset",
   ]
   pruneopts = "NUT"
-  revision = "1f3472d942ba824034fb77cab6a6cfc1bc8a2c3c"
+  revision = "ca1201d0de80cfde86cb01aea620983605dfe99b"
 
 [[projects]]
   branch = "master"
-  digest = "1:f632c225ef300cb47bb7363bc1006ca57601af35f03b8fe41d03ed67b581c4fc"
+  digest = "1:9c684a8c6bb9501591c1ac600e7669fdf4683b1a08be53e17e98e4660985c000"
   name = "golang.org/x/sys"
   packages = ["unix"]
   pruneopts = "NUT"
-  revision = "e8e3143a4f4a00f1fafef0dd82ba78223281b01b"
+  revision = "51ab0e2deafac1f46c46ad59cf0921be2f180c3d"
 
 [[projects]]
-  digest = "1:7c61a813b250ba8bb02bebb0382e6c3d00e04da2b577dc58985b86312fb89ffd"
+  digest = "1:24fc27c3b00594289e400127e23d9963f07fec119cc7bb59d4cf7626445104d0"
   name = "golang.org/x/text"
   packages = [
+    "cases",
+    "collate",
+    "collate/build",
     "encoding",
     "encoding/charmap",
     "encoding/htmlindex",
@@ -238,21 +249,33 @@
     "encoding/simplifiedchinese",
     "encoding/traditionalchinese",
     "encoding/unicode",
+    "internal",
+    "internal/colltab",
     "internal/gen",
+    "internal/language",
+    "internal/language/compact",
     "internal/tag",
+    "internal/triegen",
+    "internal/ucd",
     "internal/utf8internal",
     "language",
     "runes",
+    "secure/bidirule",
+    "secure/precis",
     "transform",
+    "unicode/bidi",
     "unicode/cldr",
+    "unicode/norm",
+    "unicode/rangetable",
+    "width",
   ]
   pruneopts = "NUT"
-  revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
-  version = "v0.3.0"
+  revision = "342b2e1fbaa52c93f31447ad2c6abc048c63e475"
+  version = "v0.3.2"
 
 [[projects]]
   branch = "master"
-  digest = "1:d2338a2a5dc0b7f3bb801fef781991cd0170de0d94c7f0415289d47cf1f4c921"
+  digest = "1:fecf9ac9ba4439d3f8ed168a88810ac2fdb11a9c19bc050ae15480dc6074da27"
   name = "golang.org/x/tools"
   packages = [
     "cmd/goimports",
@@ -262,14 +285,14 @@
     "go/internal/packagesdriver",
     "go/packages",
     "go/types/typeutil",
-    "imports",
     "internal/fastwalk",
     "internal/gopathwalk",
+    "internal/imports",
     "internal/module",
     "internal/semver",
   ]
   pruneopts = "NUT"
-  revision = "c39e7748f6ebfccd12b373374b6d14018827ea9c"
+  revision = "88ddfcebc769cb7884c38d144ee893cfb4519053"
 
 [[projects]]
   digest = "1:26e56bf1243a3675608f918a1574bf0005d5263b67b84a24a5fb0946ad7a75e3"
