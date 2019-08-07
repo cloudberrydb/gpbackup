@@ -47,6 +47,11 @@ TEMPLATE_ENVIRONMENT = Environment(
     extensions=['jinja2.ext.loopcontrols']
 )
 
+def suggested_git_branch():
+    """Try to guess the current git branch"""
+    branch = subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"]).decode('utf-8').rstrip()
+    return branch
+
 def render_template(template_filename, context):
     """Render pipeline template yaml"""
     return TEMPLATE_ENVIRONMENT.get_template(template_filename).render(context)
@@ -77,7 +82,10 @@ def create_pipeline(args):
     return True
 
 def print_output_message(args):
+    git_branch = suggested_git_branch()
     if not args.is_prod:
+        if git_branch == "master":
+            print "\n[WARNING] You are generating a dev pipeline pointed to the master branch!\n"
         print "To set this pipeline on dev, run: \n\
     fly -t gpdb-dev set-pipeline \
 -p dev:%s \
@@ -85,9 +93,11 @@ def print_output_message(args):
 -l ~/workspace/gp-continuous-integration/secrets/gpdb_common-ci-secrets.yml \
 -l ~/workspace/gp-continuous-integration/secrets/ccp_ci_secrets_dev.yml \
 -l ~/workspace/gp-continuous-integration/secrets/gpbackup.dev.yml \
--v gpbackup-git-branch=<your_dev_branch>" % (args.pipeline_name, args.pipeline_name)
+-v gpbackup-git-branch=%s" % (args.pipeline_name, args.pipeline_name, git_branch)
 
     if args.is_prod:
+        if git_branch != "master":
+            print "\n[WARNING] You are generating a prod pipeline, but are not on the master branch!\n"
         print "To set this pipeline on prod, run: \n\
     fly -t gpdb-prod set-pipeline \
 -p %s \
