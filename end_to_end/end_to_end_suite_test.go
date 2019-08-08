@@ -304,7 +304,7 @@ var _ = Describe("backup end to end integration tests", func() {
 
 	Describe("end to end gpbackup and gprestore tests", func() {
 		var publicSchemaTupleCounts, schema2TupleCounts map[string]int
-		var backupDir, pluginDir string
+		var backupDir string
 
 		BeforeEach(func() {
 			testhelper.AssertQueryRuns(restoreConn, "DROP SCHEMA IF EXISTS schema2 CASCADE; DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
@@ -326,12 +326,10 @@ var _ = Describe("backup end to end integration tests", func() {
 			_ = os.Remove(historyFilePath)
 
 			// Assign a unique directory for each test
-			backupDir = filepath.Join(customBackupDir, randomString(6))
-			pluginDir = filepath.Join("/tmp", randomString(6), "plugin_dest")
+			backupDir, _ = ioutil.TempDir("", "temp")
 		})
 		AfterEach(func() {
 			_ = os.RemoveAll(backupDir)
-			_ = os.RemoveAll(pluginDir)
 		})
 		Describe("Backup include filtering", func() {
 			It("runs gpbackup and gprestore with include-schema backup flag and compression level", func() {
@@ -1160,14 +1158,4 @@ func saveHistory(myCluster *cluster.Cluster) {
 	mdd := myCluster.GetDirForContent(-1)
 	historyFilePath = filepath.Join(mdd, "gpbackup_history.yaml")
 	_ = utils.CopyFile(historyFilePath, saveHistoryFilePath)
-}
-
-//RandomString - Generate a random string of A-Z chars with len = l
-//Source: https://medium.com/@kpbird/golang-generate-fixed-size-random-string-dd6dbd5e63c0
-func randomString(len int) string {
-	bytes := make([]byte, len)
-	for i := 0; i < len; i++ {
-		bytes[i] = byte(65 + rand.Intn(25)) //A=65 and Z = 65+25
-	}
-	return string(bytes)
 }
