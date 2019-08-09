@@ -6,6 +6,9 @@ image_resource:
     repository: pivotaldata/centos-gpdb-dev
     tag: '6-gcc6.2-llvm3.7'
 
+params:
+- GPBACKUP_VERSION:
+
 inputs:
 - name: gpbackup
   path: go/src/github.com/greenplum-db/gpbackup
@@ -14,8 +17,6 @@ inputs:
 - name: pgcrypto43
   optional: true
 - name: gppkgs
-- name: GPBACKUP_VERSION
-  optional: true
 
 run:
   path: bash
