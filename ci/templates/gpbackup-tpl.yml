@@ -508,9 +508,11 @@ jobs:
     - do:
       - task: build-go-binaries
         file: gpbackup/ci/tasks/build-go-binaries.yml
+{% if is_prod %}
       - put: gpbackup-dependencies
         params:
           file: output_deps/dependencies.tar.gz
+{% endif %}
     - task: build-ddboost-RHEL
       config:
         platform: linux
