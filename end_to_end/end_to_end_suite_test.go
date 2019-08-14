@@ -326,7 +326,7 @@ var _ = Describe("backup end to end integration tests", func() {
 			_ = os.Remove(historyFilePath)
 
 			// Assign a unique directory for each test
-			backupDir, _ = ioutil.TempDir("", "temp")
+			backupDir, _ = ioutil.TempDir(customBackupDir, "temp")
 		})
 		AfterEach(func() {
 			_ = os.RemoveAll(backupDir)
