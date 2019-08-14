@@ -269,6 +269,13 @@ var _ = Describe("backup end to end integration tests", func() {
 		}
 
 		saveHistory(backupCluster)
+
+		// Flag validation
+		_, err = os.Stat(customBackupDir)
+		if os.IsNotExist(err) {
+			Fail(fmt.Sprintf("Custom backup directory %s does not exist.", customBackupDir))
+		}
+
 	})
 	AfterSuite(func() {
 		_ = utils.CopyFile(saveHistoryFilePath, historyFilePath)
@@ -939,8 +946,12 @@ var _ = Describe("backup end to end integration tests", func() {
 		It("runs gpbackup and gprestore with no-compression flag", func() {
 			timestamp := gpbackup(gpbackupPath, backupHelperPath, "--no-compression", "--backup-dir", backupDir)
 			gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--backup-dir", backupDir)
-			configFile, _ := filepath.Glob(filepath.Join(backupDir, "*-1/backups/*", timestamp, "*config.yaml"))
-			contents, _ := ioutil.ReadFile(configFile[0])
+			configFile, err := filepath.Glob(filepath.Join(backupDir, "*-1/backups/*", timestamp, "*config.yaml"))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(configFile).To(HaveLen(1))
+
+			contents, err := ioutil.ReadFile(configFile[0])
+			Expect(err).ToNot(HaveOccurred())
 
 			Expect(string(contents)).To(ContainSubstring("compressed: false"))
 			assertRelationsCreated(restoreConn, TOTAL_RELATIONS)
@@ -950,9 +961,10 @@ var _ = Describe("backup end to end integration tests", func() {
 		})
 		It("runs gpbackup and gprestore with with-stats flag", func() {
 			timestamp := gpbackup(gpbackupPath, backupHelperPath, "--with-stats", "--backup-dir", backupDir)
-			files, _ := filepath.Glob(filepath.Join(backupDir, "*-1/backups/*", timestamp, "*statistics.sql"))
-
+			files, err := filepath.Glob(filepath.Join(backupDir, "*-1/backups/*", timestamp, "*statistics.sql"))
+			Expect(err).ToNot(HaveOccurred())
 			Expect(files).To(HaveLen(1))
+
 			output := gprestore(gprestorePath, restoreHelperPath, timestamp, "--redirect-db", "restoredb", "--with-stats", "--backup-dir", backupDir)
 
 			Expect(string(output)).To(ContainSubstring("Query planner statistics restore complete"))
