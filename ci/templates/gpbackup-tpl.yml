@@ -155,8 +155,7 @@ resources:
     private_key: {{gp-backup-manager-remote-deploy-key}}
     uri: {{gp-backup-manager-git-remote}}
 {% if "gpbackup-release" == pipeline_name %}
-# TODO: Re-add this filter once a GA version of gpbackup_manager is cut
-#     tag_filter: 1.*
+    tag_filter: 1.*
 {% endif %}
 
 - name: gpdb5_src
