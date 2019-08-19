@@ -165,7 +165,7 @@ func GetSegPrefix(connectionPool *dbconn.DBConn) string {
 	if connectionPool.Version.Before("6") {
 		query = "SELECT fselocation FROM pg_filespace_entry WHERE fsedbid = 1;"
 	} else {
-		query = "SELECT datadir FROM gp_segment_configuration WHERE dbid = 1;"
+		query = "SELECT datadir FROM gp_segment_configuration WHERE content = -1 AND role = 'p';"
 	}
 	result := ""
 	err := connectionPool.Get(&result, query)
