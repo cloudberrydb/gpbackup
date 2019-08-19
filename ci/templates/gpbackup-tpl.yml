@@ -382,7 +382,7 @@ resources:
   type: s3
   source:
     access_key_id: {{bucket-access-key-id}}
-    bucket: gpbackup-pivotal-network-staging
+    bucket: {{pivnet_bucket_name}}
     region_name: {{aws-region}}
     secret_access_key: {{bucket-secret-access-key}}
     regexp: pivnet_release_version/v-(.*)
