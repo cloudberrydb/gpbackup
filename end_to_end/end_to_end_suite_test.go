@@ -991,12 +991,12 @@ var _ = Describe("backup end to end integration tests", func() {
 			go func() {
 				/*
 				 * We use a random delay for the sleep in this test (between
-				 * 0.5s and 1.2s) so that gpbackup will be interrupted at a
+				 * 0.5s and 0.8s) so that gpbackup will be interrupted at a
 				 * different point in the backup process every time to help
 				 * catch timing issues with the cleanup.
 				 */
 				rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-				time.Sleep(time.Duration(rng.Intn(700)+500) * time.Millisecond)
+				time.Sleep(time.Duration(rng.Intn(300)+500) * time.Millisecond)
 				cmd.Process.Signal(os.Interrupt)
 			}()
 			output, _ := cmd.CombinedOutput()
@@ -1017,12 +1017,12 @@ var _ = Describe("backup end to end integration tests", func() {
 			go func() {
 				/*
 				 * We use a random delay for the sleep in this test (between
-				 * 0.5s and 1.2s) so that gprestore will be interrupted at a
+				 * 0.5s and 0.8s) so that gprestore will be interrupted at a
 				 * different point in the backup process every time to help
 				 * catch timing issues with the cleanup.
 				 */
 				rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-				time.Sleep(time.Duration(rng.Intn(700)+500) * time.Millisecond)
+				time.Sleep(time.Duration(rng.Intn(300)+500) * time.Millisecond)
 				cmd.Process.Signal(os.Interrupt)
 			}()
 			output, _ := cmd.CombinedOutput()
