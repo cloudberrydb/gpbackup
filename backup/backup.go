@@ -331,7 +331,7 @@ func backupData(tables []Table) {
 			compressStr = " --compression-level 0"
 		}
 		// Do not pass through the --on-error-continue flag because it does not apply to gpbackup
-		utils.StartAgent(globalCluster, globalFPInfo, "--backup-agent",
+		utils.StartGpbackupHelpers(globalCluster, globalFPInfo, "--backup-agent",
 			MustGetFlagString(utils.PLUGIN_CONFIG), compressStr, false)
 	}
 	gplog.Info("Writing data to file")
