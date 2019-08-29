@@ -1,5 +1,9 @@
 all: build
 
+ifndef GOPATH
+$(error Environment variable GOPATH is not set)
+endif
+
 SHELL := /bin/bash
 .DEFAULT_GOAL := all
 BACKUP=gpbackup
