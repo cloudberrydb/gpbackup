@@ -106,6 +106,7 @@ var _ = BeforeEach(func() {
 
 	backup.SetFlagDefaults(backupCmdFlags)
 	backup.SetCmdFlags(backupCmdFlags)
+	backup.SetFilterRelationClause("")
 
 	restoreCmdFlags = pflag.NewFlagSet("gprestore", pflag.ExitOnError)
 

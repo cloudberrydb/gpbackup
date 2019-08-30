@@ -244,6 +244,7 @@ PARTITION BY RANGE (date)
 				structmatcher.ExpectStructsToMatchExcluding(&constraints[0], &uniqueConstraint, "Oid")
 
 				backupCmdFlags.Set(utils.EXCLUDE_RELATION, "public.constraints_table")
+				backup.SetFilterRelationClause("")
 				constraints = backup.GetConstraints(connectionPool)
 				Expect(constraints).To(BeEmpty())
 			})

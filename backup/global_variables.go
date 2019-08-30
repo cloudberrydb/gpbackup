@@ -86,6 +86,10 @@ func SetVersion(v string) {
 	version = v
 }
 
+func SetFilterRelationClause(v string) {
+	filterRelationClause = v
+}
+
 // Util functions to enable ease of access to global flag values
 
 func MustGetFlagString(flagName string) string {
