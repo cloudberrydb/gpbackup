@@ -15,7 +15,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
-	"github.com/DATA-DOG/go-sqlmock"
+	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
 
 var _ = Describe("wrapper tests", func() {

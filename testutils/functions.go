@@ -19,7 +19,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
-	"github.com/DATA-DOG/go-sqlmock"
+	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
 
 /*

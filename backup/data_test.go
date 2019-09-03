@@ -11,7 +11,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/DATA-DOG/go-sqlmock"
+	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 	"gopkg.in/cheggaaa/pb.v1"
 )
 
