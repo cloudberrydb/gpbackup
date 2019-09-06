@@ -131,7 +131,7 @@ func StartGpbackupHelpers(c *cluster.Cluster, fpInfo backup_filepath.FilePathInf
 		backupFile := fpInfo.GetTableBackupFilePath(contentID, 0, GetPipeThroughProgram().Extension, true)
 		helperCmdStr := fmt.Sprintf("gpbackup_helper %s --toc-file %s --oid-file %s --pipe-file %s --data-file %s --content %d%s%s%s", operation, tocFile, oidFile, pipeFile, backupFile, contentID, pluginStr, compressStr, onErrorContinueStr)
 		// we run these commands in sequence to ensure that any failure is critical; the last command ensures the agent process was successfully started
-		return fmt.Sprintf(`cat << HEREDOC > %[1]s && chmod +x %[1]s && ( nohup %[1]s &> /dev/null &) && ps aux | grep -v "grep" | grep "%[1]s"
+		return fmt.Sprintf(`cat << HEREDOC > %[1]s && chmod +x %[1]s && ( nohup %[1]s &> /dev/null &)
 #!/bin/bash
 source %[2]s/greenplum_path.sh
 %[2]s/bin/%s
