@@ -128,7 +128,8 @@ func DoSetup() {
 }
 
 func DoBackup() {
-	gplog.Info("Backup Database: %s from Timestamp: %s", connectionPool.DBName, globalFPInfo.Timestamp)
+	gplog.Info("Backup Timestamp = %s", globalFPInfo.Timestamp)
+	gplog.Info("Backup Database = %s", connectionPool.DBName)
 	gplog.Verbose("Backup Parameters: {%s}", strings.ReplaceAll(backupReport.BackupParamsString, "\n", ", "))
 
 	pluginConfigFlag := MustGetFlagString(utils.PLUGIN_CONFIG)
