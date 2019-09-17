@@ -235,7 +235,8 @@ SELECT g.oid,
 	t7.value    AS cpuset
 `
 
-	if connectionPool.Version.AtLeast(GPDB_TAG_WITH_RES_GROUP_CHANGE) {
+	// This is when pg_dumpall was changed to use the actual values.
+	if connectionPool.Version.AtLeast("5.2.0") {
 		query = `
 SELECT g.oid,
 	quote_ident(g.rsgname) AS name,

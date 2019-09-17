@@ -188,7 +188,7 @@ GRANT TEMPORARY,CONNECT ON DATABASE testdb TO testrole;`,
 		})
 		// Test for GPDB5x, 'retired' in 6X+ #temp5xResGroup
 		It("prints memory_spill_ratio resource groups in new syntax", func() {
-			testhelper.SetDBVersion(connectionPool, backup.GPDB_TAG_WITH_RES_GROUP_CHANGE)
+			testhelper.SetDBVersion(connectionPool, "5.2.0")
 
 			default_group := backup.ResourceGroup{Oid: 1, Name: "default_group", CPURateLimit: "10", MemoryLimit: "20", Concurrency: "15", MemorySharedQuota: "25", MemorySpillRatio: "30 MB"}
 			admin_group := backup.ResourceGroup{Oid: 2, Name: "admin_group", CPURateLimit: "10", MemoryLimit: "20", Concurrency: "15", MemorySharedQuota: "25", MemorySpillRatio: "30"}
