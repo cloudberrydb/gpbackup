@@ -3,8 +3,8 @@ package utils
 import (
 	"fmt"
 	"io"
-	"regexp"
 	"os"
+	"regexp"
 
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gp-common-go-libs/operating"
@@ -79,7 +79,7 @@ func (toc *TOC) WriteToFileAndMakeReadOnly(filename string) {
 	tocContents, err := yaml.Marshal(toc)
 	gplog.FatalOnError(err)
 
-	tocFile, err := os.OpenFile(filename, os.O_CREATE | os.O_EXCL | os.O_WRONLY, 0644)
+	tocFile, err := os.OpenFile(filename, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
 	gplog.FatalOnError(err)
 
 	_, err = tocFile.Write(tocContents)
@@ -102,7 +102,7 @@ func (toc *SegmentTOC) WriteToFileAndMakeReadOnly(filename string) error {
 		return err
 	}
 
-	tocFile, err := os.OpenFile(filename, os.O_CREATE | os.O_EXCL | os.O_WRONLY, 0644)
+	tocFile, err := os.OpenFile(filename, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
