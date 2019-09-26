@@ -1,4 +1,4 @@
-package backup
+package iackup
 
 import (
 	"fmt"
@@ -370,7 +370,7 @@ func RetrieveUserMappings(sortables *[]Sortable) {
 }
 
 func BackupSessionGUCs(metadataFile *utils.FileWithByteCount) {
-	gplog.Verbose("Writing Session GUCs")
+	gplog.Verbose("Writing Session Configuration Parameters to metadata file")
 	gucs := GetSessionGUCs(connectionPool)
 	PrintSessionGUCs(metadataFile, globalTOC, gucs)
 }
@@ -396,7 +396,7 @@ func BackupCreateDatabase(metadataFile *utils.FileWithByteCount) {
 }
 
 func BackupDatabaseGUCs(metadataFile *utils.FileWithByteCount) {
-	gplog.Verbose("Writing database GUCs to metadata file")
+	gplog.Verbose("Writing Database Configuration Parameters to metadata file")
 	databaseGucs := GetDatabaseGUCs(connectionPool)
 	objectCounts["Database GUCs"] = len(databaseGucs)
 	PrintDatabaseGUCs(metadataFile, globalTOC, databaseGucs, connectionPool.DBName)
@@ -428,7 +428,7 @@ func BackupRoles(metadataFile *utils.FileWithByteCount) {
 }
 
 func BackupRoleGUCs(metadataFile *utils.FileWithByteCount) {
-	gplog.Verbose("Writing ROLE GUC statements to metadata file")
+	gplog.Verbose("Writing ROLE Configuration Parameter to meadata file")
 	roleGUCs := GetRoleGUCs(connectionPool)
 	PrintRoleGUCStatements(metadataFile, globalTOC, roleGUCs)
 }

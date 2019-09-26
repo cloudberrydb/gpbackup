@@ -352,7 +352,7 @@ func GetTableReplicaIdentity(connectionPool *dbconn.DBConn) map[uint32]string {
 }
 
 func GetPartitionDefinitions(connectionPool *dbconn.DBConn) map[uint32]string {
-	gplog.Info("Getting partition defintions")
+	gplog.Info("Getting partition definitions")
 	query := fmt.Sprintf(`SELECT p.parrelid AS oid, pg_get_partition_def(p.parrelid, true, true) AS value FROM pg_partition p
 	JOIN pg_class c ON p.parrelid = c.oid
 	JOIN pg_namespace n ON c.relnamespace = n.oid

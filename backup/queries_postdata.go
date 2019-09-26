@@ -84,7 +84,6 @@ func (i IndexDefinition) FQN() string {
  * e.g. comments on implicitly created indexes
  */
 func GetIndexes(connectionPool *dbconn.DBConn) []IndexDefinition {
-	defer utils.LogExecutionTime(time.Now(), "GetIndexes")
 	resultIndexes := make([]IndexDefinition, 0)
 	if connectionPool.Version.Before("6") {
 		indexNameSet := ConstructImplicitIndexNames(connectionPool)
