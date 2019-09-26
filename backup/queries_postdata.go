@@ -7,7 +7,6 @@ package backup
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 	"github.com/greenplum-db/gp-common-go-libs/gplog"

@@ -1,4 +1,4 @@
-package iackup
+package backup
 
 import (
 	"fmt"
