@@ -269,7 +269,8 @@ func getCompositeTypeAttributes(connectionPool *dbconn.DBConn) map[uint32][]Attr
 	JOIN pg_class c ON t.typrelid = c.oid
 	JOIN pg_attribute a ON t.typrelid = a.attrelid
 	LEFT JOIN pg_description d ON (d.objoid = a.attrelid AND d.classoid = 'pg_class'::regclass AND d.objsubid = a.attnum)
-	WHERE t.typtype = 'c' AND c.relkind = 'c';`
+	WHERE t.typtype = 'c' AND c.relkind = 'c'
+	ORDER BY t.oid, a.attnum;`
 
 	if connectionPool.Version.AtLeast("6") {
 		compositeAttributeQuery = `SELECT
@@ -289,7 +290,8 @@ func getCompositeTypeAttributes(connectionPool *dbconn.DBConn) map[uint32][]Attr
 		LEFT JOIN pg_type at ON at.oid = a.atttypid
 		LEFT JOIN pg_collation coll ON a.attcollation = coll.oid
 		LEFT JOIN pg_namespace cn on (coll.collnamespace = cn.oid)
-		WHERE t.typtype = 'c' AND c.relkind = 'c';`
+		WHERE t.typtype = 'c' AND c.relkind = 'c'
+		ORDER BY t.oid, a.attnum;`
 	}
 
 	results := make([]Attribute, 0)
