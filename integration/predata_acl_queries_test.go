@@ -906,7 +906,6 @@ LANGUAGE SQL`)
 				structmatcher.ExpectStructsToMatchExcluding(&expectedMetadata, &resultMetadata, "Oid")
 			})
 			It("returns a slice of default metadata for a resource queue", func() {
-				testutils.SkipIfDarwin()
 				resultMetadataMap := backup.GetCommentsForObjectType(connectionPool, backup.TYPE_RESOURCEQUEUE)
 				numResQueues := len(resultMetadataMap)
 

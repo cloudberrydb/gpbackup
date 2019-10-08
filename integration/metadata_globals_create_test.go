@@ -84,7 +84,6 @@ var _ = Describe("backup integration create statement tests", func() {
 	})
 	Describe("PrintCreateResourceQueueStatements", func() {
 		It("creates a basic resource queue with a comment", func() {
-			testutils.SkipIfDarwin()
 			basicQueue := backup.ResourceQueue{Oid: 1, Name: `"basicQueue"`, ActiveStatements: -1, MaxCost: "32.80", CostOvercommit: false, MinCost: "0.00", Priority: "medium", MemoryLimit: "-1"}
 			resQueueMetadataMap := testutils.DefaultMetadataMap("RESOURCE QUEUE", false, false, true, false)
 			resQueueMetadata := resQueueMetadataMap[basicQueue.GetUniqueID()]
@@ -112,7 +111,6 @@ var _ = Describe("backup integration create statement tests", func() {
 			}
 		})
 		It("creates a resource queue with all attributes", func() {
-			testutils.SkipIfDarwin()
 			everythingQueue := backup.ResourceQueue{Oid: 1, Name: `"everythingQueue"`, ActiveStatements: 7, MaxCost: "32.80", CostOvercommit: true, MinCost: "22.80", Priority: "low", MemoryLimit: "2GB"}
 			emptyMetadataMap := map[backup.UniqueID]backup.ObjectMetadata{}
 

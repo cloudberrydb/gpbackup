@@ -99,7 +99,6 @@ var _ = Describe("backup integration tests", func() {
 	})
 	Describe("GetResourceQueues", func() {
 		It("returns a slice for a resource queue with only ACTIVE_STATEMENTS", func() {
-			testutils.SkipIfDarwin()
 			testhelper.AssertQueryRuns(connectionPool, `CREATE RESOURCE QUEUE "statementsQueue" WITH (ACTIVE_STATEMENTS=7);`)
 			defer testhelper.AssertQueryRuns(connectionPool, `DROP RESOURCE QUEUE "statementsQueue"`)
 
@@ -117,7 +116,6 @@ var _ = Describe("backup integration tests", func() {
 			Fail("Resource queue 'statementsQueue' was not found.")
 		})
 		It("returns a slice for a resource queue with only MAX_COST", func() {
-			testutils.SkipIfDarwin()
 			testhelper.AssertQueryRuns(connectionPool, `CREATE RESOURCE QUEUE "maxCostQueue" WITH (MAX_COST=32.8);`)
 			defer testhelper.AssertQueryRuns(connectionPool, `DROP RESOURCE QUEUE "maxCostQueue"`)
 
@@ -134,7 +132,6 @@ var _ = Describe("backup integration tests", func() {
 			Fail("Resource queue 'maxCostQueue' was not found.")
 		})
 		It("returns a slice for a resource queue with everything", func() {
-			testutils.SkipIfDarwin()
 			testhelper.AssertQueryRuns(connectionPool, `CREATE RESOURCE QUEUE "everyQueue" WITH (ACTIVE_STATEMENTS=7, MAX_COST=3e+4, COST_OVERCOMMIT=TRUE, MIN_COST=22.53, PRIORITY=LOW, MEMORY_LIMIT='2GB');`)
 			defer testhelper.AssertQueryRuns(connectionPool, `DROP RESOURCE QUEUE "everyQueue"`)
 
@@ -483,7 +480,6 @@ CREATEEXTTABLE (protocol='gphdfs', type='writable')`
 			Fail(`Role "1testuser" is not a member of role "1usergroup"`)
 		})
 		It("handles dropped granter", func() {
-			testutils.SkipIfDarwin()
 			testhelper.AssertQueryRuns(connectionPool, `CREATE ROLE testdropgranter_role`)
 			defer testhelper.AssertQueryRuns(connectionPool, `DROP ROLE testdropgranter_role`)
 			testhelper.AssertQueryRuns(connectionPool, `CREATE ROLE testdropgranter_member`)
