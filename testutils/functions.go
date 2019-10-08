@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"runtime"
 	"strings"
 
 	"github.com/greenplum-db/gp-common-go-libs/cluster"
@@ -445,6 +446,12 @@ func SkipIfBefore5(connectionPool *dbconn.DBConn) {
 func SkipIfBefore6(connectionPool *dbconn.DBConn) {
 	if connectionPool.Version.Before("6") {
 		Skip("Test only applicable to GPDB6 and above")
+	}
+}
+
+func SkipIfDarwin() {
+	if runtime.GOOS == "darwin" {
+		Skip("Test not compatible with osx")
 	}
 }
 
