@@ -103,7 +103,7 @@ func PopulateRestorePlan(changedTables []Table,
 		allTableFQNs[tableFQN] = true
 	}
 
-	//Removing filtered table FQNs for the current backup from entries with previous timestamps
+	// Removing filtered table FQNs for the current backup from entries with previous timestamps
 	for i, restorePlanEntry := range restorePlan {
 		tableFQNs := make([]string, 0)
 		for _, tableFQN := range restorePlanEntry.TableFQNs {

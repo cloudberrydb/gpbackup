@@ -4,9 +4,10 @@ import (
 	"testing"
 
 	"github.com/greenplum-db/gpbackup/utils"
+	"github.com/onsi/gomega/gbytes"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
 )
 
 func TestTestUtils(t *testing.T) {
@@ -75,7 +76,7 @@ var _ = Describe("testutils/functions", func() {
 			Expect(CompareSlicesIgnoringWhitespace(actual, expected)).To(BeTrue())
 		})
 		It("returns false when slices are of different lengths", func() {
-			actual := []string{}
+			actual := make([]string, 0)
 			expected := []string{"CREATE TABLE foo (i int);"}
 			Expect(CompareSlicesIgnoringWhitespace(actual, expected)).To(BeFalse())
 		})

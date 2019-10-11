@@ -364,7 +364,6 @@ func generateTableBatches(tables []Relation, batchSize int) []string {
 	var batches []string
 	i := 0
 	for i < len(tables) {
-
 		if i+batchSize < len(tables) {
 			end = i + batchSize
 		} else {

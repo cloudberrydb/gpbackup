@@ -14,6 +14,7 @@ import (
 )
 
 func GetExternalTableDefinitions(connectionPool *dbconn.DBConn) map[uint32]ExternalTableDefinition {
+	gplog.Verbose("Retrieving external table information")
 	execOptions := "'ALL_SEGMENTS', 'HOST', 'MASTER_ONLY', 'PER_HOST', 'SEGMENT_ID', 'TOTAL_SEGS'"
 	version4query := fmt.Sprintf(`
 SELECT
@@ -232,6 +233,6 @@ FROM (
 		}
 		partInfoMap[partInfo.PartitionRuleOid] = partInfo
 	}
-	return extPartitions, partInfoMap
 
+	return extPartitions, partInfoMap
 }

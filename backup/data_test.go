@@ -1,18 +1,17 @@
 package backup_test
 
 import (
+	"fmt"
 	"regexp"
 
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/backup_history"
 	"github.com/greenplum-db/gpbackup/utils"
-
-	"fmt"
+	"gopkg.in/DATA-DOG/go-sqlmock.v1"
+	"gopkg.in/cheggaaa/pb.v1"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"gopkg.in/DATA-DOG/go-sqlmock.v1"
-	"gopkg.in/cheggaaa/pb.v1"
 )
 
 var _ = Describe("backup/data tests", func() {
@@ -28,7 +27,7 @@ var _ = Describe("backup/data tests", func() {
 			Expect(atts).To(Equal("(a,b)"))
 		})
 		It("creates an attribute list for a table with no columns", func() {
-			columnDefs := []backup.ColumnDefinition{}
+			columnDefs := make([]backup.ColumnDefinition, 0)
 			atts := backup.ConstructTableAttributesList(columnDefs)
 			Expect(atts).To(Equal(""))
 		})
