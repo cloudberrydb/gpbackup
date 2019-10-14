@@ -169,7 +169,6 @@ func BackupDataForAllTables(tables []Table) []map[uint32]int64 {
 	}
 
 	counters.ProgressBar.Finish()
-
 	printDataBackupWarnings(numExtOrForeignTables)
 	return rowsCopiedMaps
 }
@@ -177,8 +176,6 @@ func BackupDataForAllTables(tables []Table) []map[uint32]int64 {
 func printDataBackupWarnings(numExtTables int64) {
 	if numExtTables > 0 {
 		gplog.Info("Skipped data backup of %d external/foreign table(s).", numExtTables)
-	}
-	if numExtTables > 0 {
 		gplog.Info("See %s for a complete list of skipped tables.", gplog.GetLogFilePath())
 	}
 }
