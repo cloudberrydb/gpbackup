@@ -74,49 +74,6 @@ func AppendExtPartSuffix(name string) string {
 	return name + SUFFIX
 }
 
-func ConstructColumnPrivilegesMap(results []ColumnPrivilegesQueryStruct) map[uint32]map[string][]ACL {
-	metadataMap := make(map[uint32]map[string][]ACL)
-	var tableMetadata map[string][]ACL
-	var columnMetadata []ACL
-	if len(results) > 0 {
-		currentTable := uint32(0)
-		currentColumn := ""
-		/*
-		 * We group ACLs for each column into its own metadata object.
-		 * All column metadata objects are stored in the result map as
-		 * a nested map indexed by table oid.
-		 */
-		tableMetadata = make(map[string][]ACL)
-		for _, result := range results {
-			privilegesStr := ""
-			if result.Kind == "Empty" {
-				privilegesStr = "GRANTEE=/GRANTOR"
-			} else if result.Privileges.Valid {
-				privilegesStr = result.Privileges.String
-			}
-			if result.TableOid != currentTable || result.Name != currentColumn {
-				if currentTable != 0 && currentColumn != "" {
-					tableMetadata[currentColumn] = sortACLs(columnMetadata)
-					if result.TableOid != currentTable {
-						metadataMap[currentTable] = tableMetadata
-						tableMetadata = make(map[string][]ACL)
-					}
-				}
-				currentTable = result.TableOid
-				currentColumn = result.Name
-				columnMetadata = make([]ACL, 0)
-			}
-			privileges := ParseACL(privilegesStr)
-			if privileges != nil {
-				columnMetadata = append(columnMetadata, *privileges)
-			}
-		}
-		tableMetadata[currentColumn] = sortACLs(columnMetadata)
-		metadataMap[currentTable] = tableMetadata
-	}
-	return metadataMap
-}
-
 /*
  * This function prints CREATE TABLE statements in a format very similar to pg_dump.  Unlike pg_dump,
  * however, table names are printed fully qualified with their schemas instead of relying on setting
@@ -241,8 +198,8 @@ func PrintPostCreateTableStatements(metadataFile *utils.FileWithByteCount, toc *
 			escapedComment := utils.EscapeSingleQuotes(att.Comment)
 			statements = append(statements, fmt.Sprintf("COMMENT ON COLUMN %s.%s IS '%s';", table.FQN(), att.Name, escapedComment))
 		}
-		if len(att.ACL) > 0 {
-			columnMetadata := ObjectMetadata{Privileges: att.ACL, Owner: tableMetadata.Owner}
+		if att.Privileges.Valid {
+			columnMetadata := ObjectMetadata{Privileges: getColumnACL(att.Privileges, att.Kind), Owner: tableMetadata.Owner}
 			columnPrivileges := columnMetadata.GetPrivilegesStatements(table.FQN(), "COLUMN", att.Name)
 			statements = append(statements, strings.TrimSpace(columnPrivileges))
 		}
