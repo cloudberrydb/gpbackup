@@ -7,7 +7,7 @@ image_resource:
     tag: '6-gcc6.2-llvm3.7'
 
 params:
-- GPBACKUP_VERSION:
+  GPBACKUP_VERSION:
 
 inputs:
 - name: gpbackup
