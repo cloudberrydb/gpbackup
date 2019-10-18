@@ -1760,6 +1760,9 @@ jobs:
     - get: nightly-trigger
       trigger: true
 {% endif %}
+    - get: gppkgs
+      passed:
+        - build_binaries
     - get: gpbackup-dependencies
       passed:
        - build_binaries
@@ -1810,6 +1813,9 @@ jobs:
     - get: nightly-trigger
       trigger: true
 {% endif %}
+    - get: gppkgs
+      passed:
+        - build_binaries
     - get: gpbackup-dependencies
       passed:
        - build_binaries
@@ -1859,6 +1865,9 @@ jobs:
     - get: nightly-trigger
       trigger: true
 {% endif %}
+    - get: gppkgs
+      passed:
+        - build_binaries
     - get: gpbackup-dependencies
       passed:
        - build_binaries
@@ -1907,6 +1916,9 @@ jobs:
     - get: nightly-trigger
       trigger: true
 {% endif %}
+    - get: gppkgs
+      passed:
+        - build_binaries
     - get: gpbackup-dependencies
       passed:
        - build_binaries

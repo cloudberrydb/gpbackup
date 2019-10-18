@@ -12,6 +12,7 @@ inputs:
 - name: ccp_src
 - name: cluster_env_files
 - name: scale_schema
+- name: gppkgs
 
 run:
   path: bash
@@ -22,8 +23,24 @@ run:
 
     ccp_src/scripts/setup_ssh_to_cluster.sh
 
+    out=`ssh -t mdw 'source env.sh && psql postgres -c "select version();"'`
+    GPDB_VERSION=`echo $out | sed -n 's/.*Greenplum Database \([0-9]\).*/\1/p'`
+    mkdir /tmp/untarred
+    tar -xzf gppkgs/gpbackup-gppkgs.tar.gz -C /tmp/untarred
+    scp /tmp/untarred/gpbackup_tools*gp${GPDB_VERSION}*RHEL*.gppkg mdw:/home/gpadmin
+
     cat <<SCRIPT > /tmp/run_tests.bash
     source env.sh
+
+    # only install if not installed already
+    is_installed_output=\$(source env.sh; gppkg -q gpbackup*gp*.gppkg)
+    set +e
+    echo \$is_installed_output | grep 'is installed'
+    if [ \$? -ne 0 ] ; then
+      set -e
+      gppkg -i gpbackup*gp*.gppkg
+    fi
+    set -e
 
     ### Data scale tests ###
     log_file=/tmp/gpbackup.log
