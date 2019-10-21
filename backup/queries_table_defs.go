@@ -125,7 +125,7 @@ func GetPartitionTableMap(connectionPool *dbconn.DBConn) map[uint32]PartitionLev
 		'' AS rootname
 	FROM pg_partition p
 		JOIN pg_class pc ON p.parrelid = pc.oid
-	UNION
+	UNION ALL
 	SELECT r.parchildrelid AS oid,
 		CASE WHEN p.parlevel = levels.pl THEN 'l' ELSE 'i' END AS level,
 		quote_ident(cparent.relname) AS rootname

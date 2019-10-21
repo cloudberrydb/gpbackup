@@ -276,34 +276,25 @@ func (tokenTypes *ParserTokenTypes) TokenName(connectionPool *dbconn.DBConn, par
 }
 
 type TypeMapping struct {
-	ConfigOid  uint32
-	TokenType  uint32
-	Dictionary string
+	ConfigOid  uint32 `db:"mapcfg"`
+	TokenType  uint32 `db:"maptokentype"`
+	Dictionary string `db:"mapdictname"`
 }
 
 func getTypeMappings(connectionPool *dbconn.DBConn) map[uint32][]TypeMapping {
 	query := `
-SELECT
-	mapcfg,
-	maptokentype,
-	mapdict::pg_catalog.regdictionary AS mapdictname
-FROM pg_ts_config_map m`
-
-	rows := make([]struct {
-		MapCfg       uint32
-		MapTokenType uint32
-		MapDictName  string
-	}, 0)
+	SELECT
+		mapcfg,
+		maptokentype,
+		mapdict::pg_catalog.regdictionary AS mapdictname
+	FROM pg_ts_config_map m`
+	rows := make([]TypeMapping, 0)
 	err := connectionPool.Select(&rows, query)
 	gplog.FatalOnError(err)
 
 	mapping := make(map[uint32][]TypeMapping)
 	for _, row := range rows {
-		mapping[row.MapCfg] = append(mapping[row.MapCfg], TypeMapping{
-			row.MapCfg,
-			row.MapTokenType,
-			row.MapDictName,
-		})
+		mapping[row.ConfigOid] = append(mapping[row.ConfigOid], row)
 	}
 	return mapping
 }

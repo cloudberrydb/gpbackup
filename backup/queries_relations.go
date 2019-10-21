@@ -136,18 +136,16 @@ ORDER BY c.oid;`, oidStr)
 
 func GetForeignTableRelations(connectionPool *dbconn.DBConn) []Relation {
 	query := fmt.Sprintf(`
-SELECT
-	n.oid AS schemaoid,
-	c.oid AS oid,
-	quote_ident(n.nspname) AS schema,
-	quote_ident(c.relname) AS name
-FROM pg_class c
-JOIN pg_namespace n
-	ON c.relnamespace = n.oid
-WHERE %s
-AND relkind = 'f'
-AND %s
-ORDER BY c.oid;`, relationAndSchemaFilterClause(), ExtensionFilterClause("c"))
+	SELECT n.oid AS schemaoid,
+		c.oid AS oid,
+		quote_ident(n.nspname) AS schema,
+		quote_ident(c.relname) AS name
+	FROM pg_class c
+		JOIN pg_namespace n ON c.relnamespace = n.oid
+	WHERE %s
+		AND relkind = 'f'
+		AND %s
+	ORDER BY c.oid`, relationAndSchemaFilterClause(), ExtensionFilterClause("c"))
 
 	results := make([]Relation, 0)
 	err := connectionPool.Select(&results, query)
@@ -198,18 +196,19 @@ func GetAllSequences(connectionPool *dbconn.DBConn, sequenceOwnerTables map[stri
 }
 
 func GetAllSequenceRelations(connectionPool *dbconn.DBConn) []Relation {
-	query := fmt.Sprintf(`SELECT
-	n.oid AS schemaoid,
-	c.oid AS oid,
-	quote_ident(n.nspname) AS schema,
-	quote_ident(c.relname) AS name
-FROM pg_class c
-LEFT JOIN pg_namespace n
-	ON c.relnamespace = n.oid
-WHERE relkind = 'S'
-AND %s
-AND %s
-ORDER BY n.nspname, c.relname;`, relationAndSchemaFilterClause(), ExtensionFilterClause("c"))
+	query := fmt.Sprintf(`
+	SELECT
+		n.oid AS schemaoid,
+		c.oid AS oid,
+		quote_ident(n.nspname) AS schema,
+		quote_ident(c.relname) AS name
+	FROM pg_class c
+		LEFT JOIN pg_namespace n
+		ON c.relnamespace = n.oid
+	WHERE relkind = 'S'
+		AND %s
+		AND %s
+	ORDER BY n.nspname, c.relname`, relationAndSchemaFilterClause(), ExtensionFilterClause("c"))
 
 	results := make([]Relation, 0)
 	err := connectionPool.Select(&results, query)
@@ -242,21 +241,17 @@ func GetSequenceDefinition(connectionPool *dbconn.DBConn, seqName string) Sequen
 
 func GetSequenceColumnOwnerMap(connectionPool *dbconn.DBConn) (map[string]string, map[string]string) {
 	query := fmt.Sprintf(`SELECT
-	quote_ident(n.nspname) AS schema,
-	quote_ident(s.relname) AS name,
-	quote_ident(c.relname) AS tablename,
-	quote_ident(a.attname) AS columnname
-FROM pg_depend d
-JOIN pg_attribute a
-	ON a.attrelid = d.refobjid AND a.attnum = d.refobjsubid
-JOIN pg_class s
-	ON s.oid = d.objid
-JOIN pg_class c
-	ON c.oid = d.refobjid
-JOIN pg_namespace n
-	ON n.oid = s.relnamespace
-WHERE s.relkind = 'S'
-AND %s;`, relationAndSchemaFilterClause())
+		quote_ident(n.nspname) AS schema,
+		quote_ident(s.relname) AS name,
+		quote_ident(c.relname) AS tablename,
+		quote_ident(a.attname) AS columnname
+	FROM pg_depend d
+	JOIN pg_attribute a ON a.attrelid = d.refobjid AND a.attnum = d.refobjsubid
+	JOIN pg_class s ON s.oid = d.objid
+	JOIN pg_class c ON c.oid = d.refobjid
+	JOIN pg_namespace n ON n.oid = s.relnamespace
+	WHERE s.relkind = 'S'
+	AND %s;`, relationAndSchemaFilterClause())
 
 	results := make([]struct {
 		Schema     string
@@ -313,17 +308,17 @@ func GetViews(connectionPool *dbconn.DBConn) []View {
 		optionsStr = "coalesce(' WITH (' || array_to_string(c.reloptions, ', ') || ')', '') AS options,"
 	}
 	query := fmt.Sprintf(`
-SELECT
-	c.oid AS oid,
-	quote_ident(n.nspname) AS schema,
-	quote_ident(c.relname) AS name,
-	%s
-	pg_get_viewdef(c.oid) AS definition
-FROM pg_class c
-LEFT JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE c.relkind = 'v'::"char"
-AND %s
-AND %s;`, optionsStr, relationAndSchemaFilterClause(), ExtensionFilterClause("c"))
+	SELECT
+		c.oid AS oid,
+		quote_ident(n.nspname) AS schema,
+		quote_ident(c.relname) AS name,
+		%s
+		pg_get_viewdef(c.oid) AS definition
+	FROM pg_class c
+	LEFT JOIN pg_namespace n ON n.oid = c.relnamespace
+	WHERE c.relkind = 'v'::"char"
+	AND %s
+	AND %s;`, optionsStr, relationAndSchemaFilterClause(), ExtensionFilterClause("c"))
 	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 	return results
