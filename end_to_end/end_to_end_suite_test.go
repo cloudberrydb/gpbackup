@@ -1094,6 +1094,9 @@ var _ = Describe("backup end to end integration tests", func() {
 				Skip("This test is not needed for old backup versions")
 			}
 
+			// Query to see if gpbackup lock acquire on schema2.foo2 is blocked
+			checkLockQuery := `SELECT count(*) FROM pg_locks l, pg_class c, pg_namespace n WHERE l.relation = c.oid AND n.oid = c.relnamespace AND n.nspname = 'schema2' AND c.relname = 'foo2' AND l.granted = 'f'`
+
 			// Acquire AccessExclusiveLock on schema2.foo2 to prevent gpbackup from acquiring AccessShareLock
 			backupConn.MustExec("BEGIN; LOCK TABLE schema2.foo2 IN ACCESS EXCLUSIVE MODE")
 			args := []string{"--dbname", "testdb", "--backup-dir", backupDir, "--verbose"}
@@ -1105,7 +1108,7 @@ var _ = Describe("backup end to end integration tests", func() {
 			go func() {
 				iterations := 50
 				for iterations > 0 {
-					_ = backupConn.Get(&beforeLockCount, "SELECT count(*) FROM pg_locks l, pg_class c WHERE l.relation = c.oid AND c.relnamespace = 'schema2'::regnamespace AND c.relname = 'foo2' AND l.granted = 'f'")
+					_ = backupConn.Get(&beforeLockCount, checkLockQuery)
 					if beforeLockCount < 1 {
 						time.Sleep(100 * time.Millisecond)
 						iterations--
@@ -1121,7 +1124,7 @@ var _ = Describe("backup end to end integration tests", func() {
 			// After gpbackup has been canceled, we should no longer see a blocked SQL
 			// session trying to acquire AccessShareLock on foo2.
 			var afterLockCount int
-			_ = backupConn.Get(&afterLockCount, "SELECT count(*) FROM pg_locks l, pg_class c WHERE l.relation = c.oid AND c.relnamespace = 'schema2'::regnamespace AND c.relname = 'foo2' AND l.granted = 'f'")
+			_ = backupConn.Get(&afterLockCount, checkLockQuery)
                         Expect(afterLockCount).To(Equal(0))
 			backupConn.MustExec("ROLLBACK")
 
