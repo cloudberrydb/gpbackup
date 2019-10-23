@@ -1,5 +1,4 @@
----
-PLATFORM: linux
+platform: linux
 
 image_resource:
   type: docker-image
@@ -21,7 +20,6 @@ run:
   - -c
   - |
     set -ex
-
     # Install gpdb binaries
     # This is required because ddboost has a dependency on libpq-fe.h
     mkdir -p /usr/local/greenplum-db-devel

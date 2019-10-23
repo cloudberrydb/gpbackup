@@ -1,0 +1,31 @@
+platform: linux
+
+image_resource:
+  type: docker-image
+  source:
+    repository: pivotaldata/ccp
+    tag: '7'
+
+inputs:
+- name: ccp_src
+- name: cluster_env_files
+- name: boostfs_installer
+- name: gpbackup
+
+params:
+  DD_SOURCE_HOST:
+  DD_USER:
+  DD_PW:
+
+run:
+  path: bash
+  args:
+  - -c
+  - |
+    set -ex
+    ccp_src/scripts/setup_ssh_to_cluster.sh
+    export DD_IP=${DD_SOURCE_HOST}
+    export DD_USER=${DD_USER}
+    export DD_PASSWORD=${DD_PW}
+    chmod +x gpbackup/ci/scripts/setup_boostfs.sh
+    gpbackup/ci/scripts/setup_boostfs.sh
