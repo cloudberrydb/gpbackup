@@ -1277,6 +1277,7 @@ PARTITION BY LIST (gender)
 
 		})
 		It("backup and restore all data when NOT VALID option on constraints is specified", func() {
+			testutils.SkipIfBefore6(backupConn)
 			testhelper.AssertQueryRuns(backupConn, "CREATE TABLE legacy_table_violate_constraints (a int)")
 			defer testhelper.AssertQueryRuns(backupConn, "DROP TABLE legacy_table_violate_constraints")
 			testhelper.AssertQueryRuns(backupConn, "INSERT INTO legacy_table_violate_constraints values (0), (1), (2), (3), (4), (5), (6), (7)")
