@@ -1275,6 +1275,7 @@ jobs:
 - name: scale-6x
   plan:
   - in_parallel:
+    - get: centos6-image
     - get: gpbackup
     - get: gpdb_binary
       resource: bin_gpdb_6x_stable_centos6
@@ -1321,6 +1322,7 @@ jobs:
 - name: scale-5x
   plan:
   - in_parallel:
+    - get: centos6-image
     - get: gpbackup
     - get: gpdb_binary
       resource: bin_gpdb_5x_stable_centos6
@@ -1366,6 +1368,7 @@ jobs:
 - name: scale-43
   plan:
   - in_parallel:
+    - get: centos6-image
     - get: gpbackup
     - get: gpdb_binary
       resource: bin_gpdb_43_stable
