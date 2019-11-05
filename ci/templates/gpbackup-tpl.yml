@@ -1444,6 +1444,7 @@ jobs:
 
 - name: push-to-github
   plan:
+  - get: centos6-image
   - get: github_release_components_rc
     passed:
       - green_gate
