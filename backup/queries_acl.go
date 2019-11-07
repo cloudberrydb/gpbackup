@@ -117,11 +117,9 @@ type MetadataQueryStruct struct {
 
 func GetMetadataForObjectType(connectionPool *dbconn.DBConn, params MetadataQueryParams) MetadataMap {
 	gplog.Verbose("Getting object type metadata from " + params.CatalogTable)
+
 	aclStr := "''"
 	kindStr := "''"
-	schemaStr := ""
-	ownerStr := "''"
-
 	if params.ACLField != "" {
 		aclStr = fmt.Sprintf(`CASE
 		WHEN %[1]s IS NULL THEN NULL
@@ -132,10 +130,10 @@ func GetMetadataForObjectType(connectionPool *dbconn.DBConn, params MetadataQuer
 		WHEN array_upper(%[1]s, 1) = 0 THEN 'Empty'
 		ELSE '' END`, params.ACLField)
 	}
-
+	schemaStr := ""
 	if params.SchemaField != "" {
 		schemaStr = fmt.Sprintf(`JOIN pg_namespace n ON o.%s = n.oid
-WHERE %s`, params.SchemaField, SchemaFilterClause("n"))
+	WHERE %s`, params.SchemaField, SchemaFilterClause("n"))
 	}
 	descFunc := "pg_description"
 	subidStr := " AND d.objsubid = 0"
@@ -143,10 +141,10 @@ WHERE %s`, params.SchemaField, SchemaFilterClause("n"))
 		descFunc = "pg_shdescription"
 		subidStr = ""
 	}
+	ownerStr := "''"
 	if params.OwnerField != "" {
 		ownerStr = fmt.Sprintf("quote_ident(pg_get_userbyid(%s))", params.OwnerField)
 	}
-
 	secCols := ""
 	secStr := ""
 	if connectionPool.Version.AtLeast("6") {
@@ -173,7 +171,8 @@ WHERE %s`, params.SchemaField, SchemaFilterClause("n"))
 		%s
 		%s
 		AND o.oid NOT IN (SELECT objid FROM pg_depend WHERE deptype='e')
-	ORDER BY o.oid`, params.CatalogTable, aclStr, kindStr, ownerStr, secCols, params.CatalogTable, descFunc, params.CatalogTable, subidStr, secStr, schemaStr)
+	ORDER BY o.oid`, params.CatalogTable, aclStr, kindStr, ownerStr, secCols,
+	params.CatalogTable, descFunc, params.CatalogTable, subidStr, secStr, schemaStr)
 
 	results := make([]MetadataQueryStruct, 0)
 	err := connectionPool.Select(&results, query)
@@ -190,9 +189,9 @@ func sortACLs(privileges []ACL) []ACL {
 }
 
 func GetCommentsForObjectType(connectionPool *dbconn.DBConn, params MetadataQueryParams) MetadataMap {
-	schemaStr := ""
+	joinStr := ""
 	if params.SchemaField != "" {
-		schemaStr = fmt.Sprintf(` JOIN pg_namespace n ON o.%s = n.oid
+		joinStr = fmt.Sprintf(`JOIN pg_namespace n ON o.%s = n.oid
 	 WHERE %s`, params.SchemaField, SchemaFilterClause("n"))
 	}
 	descTable := "pg_description"
@@ -209,8 +208,10 @@ func GetCommentsForObjectType(connectionPool *dbconn.DBConn, params MetadataQuer
 	SELECT '%s'::regclass::oid AS classid,
 		o.%s AS oid,
 		coalesce(description,'') AS comment
-	FROM %s o JOIN %s d ON (d.objoid = %s AND d.classoid = '%s'::regclass%s)%s
-	`, params.CatalogTable, params.OidField, params.CatalogTable, descTable, params.OidField, commentTable, subidStr, schemaStr)
+	FROM %s o
+		JOIN %s d ON (d.objoid = %s AND d.classoid = '%s'::regclass%s)
+		%s`, params.CatalogTable, params.OidField, params.CatalogTable, descTable,
+		params.OidField, commentTable, subidStr, joinStr)
 
 	results := make([]struct {
 		UniqueID
