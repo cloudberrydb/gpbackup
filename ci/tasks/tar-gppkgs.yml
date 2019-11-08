@@ -4,17 +4,15 @@ image_resource:
   type: docker-image
 
 inputs:
-- name: gpbackup_tar
-- name: gpdb_src
-- name: bin_gpdb
+- name: rhel-gppkg
+- name: sles-gppkg
+- name: ubuntu-gppkg
 - name: gpbackup
 - name: gpbackup-tools-versions
+- name: gpbackup-go-components
 
 outputs:
 - name: gppkgs
 
-params:
-  OS:
-
 run:
-  path: gpbackup/ci/scripts/build-gppkgs.bash
+  path: gpbackup/ci/scripts/tar-gppkgs.bash

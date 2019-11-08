@@ -1,0 +1,17 @@
+platform: linux
+
+image_resource:
+  type: docker-image
+
+inputs:
+- name: gpbackup
+- name: libyaml-0.1.7
+  optional: true
+- name: gpbackup_ddboost_plugin
+- name: bin_gpdb
+
+outputs:
+- name: ddboost_components
+
+run:
+  path: gpbackup/ci/scripts/build-ddboost.bash
