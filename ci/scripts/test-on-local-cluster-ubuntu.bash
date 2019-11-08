@@ -53,7 +53,7 @@ gppkg -i /tmp/untarred/gpbackup*-ubuntu-*.gppkg
 # Test gpbackup
 pushd \$GOPATH/src/github.com/greenplum-db/gpbackup
   make integration
-  make end_to_end_without_install
+  make end_to_end
 popd
 SCRIPT
 
