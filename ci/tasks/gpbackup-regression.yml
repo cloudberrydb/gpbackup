@@ -15,4 +15,3 @@ outputs:
 
 run:
   path: gpbackup/ci/scripts/gpbackup-regression.bash
-

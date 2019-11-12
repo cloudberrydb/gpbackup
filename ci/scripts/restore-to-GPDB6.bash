@@ -36,5 +36,4 @@ EOF
 
 # Run gprestore to GPDB 6 cluster
 chmod +x /home/gpadmin/run_gprestore.sh
-su - gpadmin /home/gpadmin/run_gprestore.sh
-
+su - gpadmin "/home/gpadmin/run_gprestore.sh"

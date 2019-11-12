@@ -10,5 +10,8 @@ inputs:
 - name: scale_schema
 - name: gppkgs
 
+params:
+  OS: RHEL
+
 run:
   path: gpbackup/ci/scripts/scale-tests.bash

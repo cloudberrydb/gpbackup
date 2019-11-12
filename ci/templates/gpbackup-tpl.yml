@@ -259,16 +259,9 @@ ddboost_plugin_and_boostfs_tests_anchor: &ddboost_plugin_and_boostfs_tests
     tags: ["ddboost"]
     image: centos7-image
     file: gpbackup/ci/tasks/setup-centos-env.yml
-  - task: install_dependencies
-    tags: ["ddboost"]
-    image: centos7-image
-    file: gpbackup/ci/tasks/install-ddboost-deps.yml
-    on_failure:
-      do:
-        - *slack_alert
-        - *debug_sleep
   - task: boostfs_installation
     tags: ["ddboost"]
+    image: centos7-image
     file: gpbackup/ci/tasks/boostfs-install.yml
     params:
       <<: *ddboost_params
@@ -806,6 +799,7 @@ jobs:
     - get: centos6-image
     - get: sles11-image
     - get: ubuntu-debian-image
+    - get: ubuntu-debian-test-image
     - get: libyaml-0.1.7
     - get: gpdb_src
       resource: gpdb6_src
@@ -874,7 +868,7 @@ jobs:
           image: ubuntu-debian-image
           file: gpbackup/ci/tasks/build-os-tars.yml
         - task: build_gppkgs-ubuntu
-          image: ubuntu-debian-image
+          image: ubuntu-debian-test-image
           file: gpbackup/ci/tasks/build-gppkg.yml
           input_mapping:
             bin_gpdb: bin_gpdb_6x_stable_ubuntu
@@ -1424,7 +1418,7 @@ jobs:
   - task: gpinitsystem
     file: ccp_src/ci/tasks/gpinitsystem.yml
   - task: setup-centos-env
-    image: centos7-image
+    image: centos6-image
     file: gpbackup/ci/tasks/setup-centos-env.yml
   - task: scale-tests
     image: centos6-image
@@ -1474,7 +1468,7 @@ jobs:
   - task: gpinitsystem
     file: ccp_src/ci/tasks/gpinitsystem.yml
   - task: setup-centos-env
-    image: centos7-image
+    image: centos6-image
     file: gpbackup/ci/tasks/setup-centos-env.yml
   - task: scale-tests
     image: centos6-image
@@ -1521,7 +1515,7 @@ jobs:
   - task: gpinitsystem
     file: ccp_src/ci/tasks/gpinitsystem.yml
   - task: setup-centos-env
-    image: centos7-image
+    image: centos6-image
     file: gpbackup/ci/tasks/setup-centos-env.yml
   - task: scale-tests
     image: centos6-image
@@ -1568,7 +1562,7 @@ jobs:
   - task: gpinitsystem
     file: ccp_src/ci/tasks/gpinitsystem.yml
   - task: setup-centos-env
-    image: centos7-image
+    image: centos6-image
     file: gpbackup/ci/tasks/setup-centos-env.yml
   - task: scale-tests
     image: centos6-image
@@ -1616,8 +1610,7 @@ jobs:
   plan:
   - get: centos6-image
   - get: github_release_components_rc
-    passed:
-      - green_gate
+    passed: [green_gate]
   - task: prepare-for-release
     image: centos6-image
     config:
@@ -1648,11 +1641,9 @@ jobs:
     - in_parallel:
       - get: gppkgs
         resource: gppkgs_rc
-        passed:
-          - green_gate
+        passed: [green_gate]
       - get: github_release_components_rc
-        passed:
-          - green_gate
+        passed: [green_gate]
       - get: gpbackup
       - get: gpbackup-release-license
       - get: pivnet_release_cache

@@ -1,19 +1,21 @@
 #!/bin/bash
 
 set -ex
-if [[ ! -f bin_gpdb/bin_gpdb.tar.gz ]] ; then
-  mv bin_gpdb/*.tar.gz bin_gpdb/bin_gpdb.tar.gz
-fi
+
+GO_VERSION=1.13.4
 
 if [[ ${OS} == "ubuntu" ]] ; then
   DEBIAN_FRONTEND=noninteractive apt-get update && apt-get -yq install curl
-  wget https://storage.googleapis.com/golang/go1.12.7.linux-amd64.tar.gz
-  tar -xzf go1.12.7.linux-amd64.tar.gz && mv go /usr/local
+  wget https://storage.googleapis.com/golang/go${GO_VERSION}.linux-amd64.tar.gz
+  tar -xzf go${GO_VERSION}.linux-amd64.tar.gz && mv go /usr/local
 fi
 
 mkdir /tmp/untarred
 tar -xzf gppkgs/gpbackup-gppkgs.tar.gz -C /tmp/untarred
 
+if [[ ! -f bin_gpdb/bin_gpdb.tar.gz ]] ; then
+  mv bin_gpdb/*.tar.gz bin_gpdb/bin_gpdb.tar.gz
+fi
 source gpdb_src/concourse/scripts/common.bash
 time install_gpdb
 time ./gpdb_src/concourse/scripts/setup_gpadmin_user.bash
@@ -25,7 +27,7 @@ cat <<SCRIPT > /tmp/run_tests.bash
 set -ex
 
 # use "temp build dir" of parent shell
-export GOPATH=\$HOME/go
+export GOPATH=\${HOME}/go
 export PATH=/usr/local/go/bin:\$PATH:\${GOPATH}/bin
 mkdir -p \${GOPATH}/bin \${GOPATH}/src/github.com/greenplum-db
 
@@ -61,4 +63,5 @@ popd
 SCRIPT
 
 chmod +x /tmp/run_tests.bash
-su - gpadmin bash -c /tmp/run_tests.bash
+su - gpadmin "/tmp/run_tests.bash"
+

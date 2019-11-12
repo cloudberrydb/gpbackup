@@ -2,15 +2,15 @@ platform: linux
 
 image_resource:
   type: docker-image
-  source:
-    repository: pivotaldata/ccp
-    tag: '7'
 
 inputs:
+- name: gpbackup
 - name: ccp_src
 - name: cluster_env_files
 - name: boostfs_installer
-- name: gpbackup
+- name: pgcrypto43
+  optional: true
+- name: gpbackup_ddboost_plugin
 
 params:
   DD_SOURCE_HOST:

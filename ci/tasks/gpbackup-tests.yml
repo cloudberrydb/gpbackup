@@ -6,9 +6,9 @@ image_resource:
 inputs:
 - name: gpbackup
 - name: ccp_src
+- name: cluster_env_files
 - name: dummy_seclabel
   optional: true
-- name: cluster_env_files
 - name: gpbackup-dependencies
 - name: gppkgs
 

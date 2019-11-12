@@ -4,11 +4,11 @@ image_resource:
   type: docker-image
 
 inputs:
-- name: gppkgs
-- name: github_release_components_rc
 - name: gpbackup
+- name: github_release_components_rc
 - name: gpbackup-release-license
 - name: pivnet_release_cache
+- name: gppkgs
 
 outputs:
 - name: workspace

@@ -13,7 +13,7 @@ GENERATE_SCRIPT=gpbackup/ci/scripts/generate_backup_artifact.bash
 scp ${GENERATE_SCRIPT} mdw:/home/gpadmin/generate_backup_artifact.bash
 ssh -t mdw "bash  /home/gpadmin/generate_backup_artifact.bash"
 
-scp mdw:/tmp/regression_dump.sql.xz  artifacts/
+scp mdw:/tmp/regression_dump.sql.xz artifacts/
 
 # combine gpbackup's separate tarballs for master and segments
 ssh -t sdw1 "pushd /tmp ; tar czvf backup_artifact.tar.gz backup_artifact ; popd"

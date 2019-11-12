@@ -4,10 +4,10 @@ image_resource:
   type: docker-image
 
 inputs:
+- name: gpbackup
 - name: rhel-gppkg
 - name: sles-gppkg
 - name: ubuntu-gppkg
-- name: gpbackup
 - name: gpbackup-tools-versions
 - name: gpbackup-go-components
 

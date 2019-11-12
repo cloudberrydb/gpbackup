@@ -18,4 +18,3 @@ outputs:
 
 run:
   path: go/src/github.com/greenplum-db/gpbackup/ci/scripts/build-go-binaries.bash
-

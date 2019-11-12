@@ -5,15 +5,14 @@ set -ex
 # get versions for gpbackup, s3_plugin and gpbackup_manager
 pushd gpbackup-go-components
       tar -xzf go_components.tar.gz
-      GPBACKUP_VERSION=`cat gpbackup_version`
+      GPBACKUP_VERSION=$(cat gpbackup_version)
       cp *_version ../gpbackup-tools-versions/
 popd
 
 # get version for ddboost_plugin
 pushd gpbackup_ddboost_plugin
-      DDBOOST_PLUGIN_VERSION=`git describe --tags | perl -pe 's/(.*)-([0-9]*)-(g[0-9a-f]*)/\1+dev.\2.\3/'`
+      DDBOOST_PLUGIN_VERSION=$(git describe --tags | perl -pe 's/(.*)-([0-9]*)-(g[0-9a-f]*)/\1+dev.\2.\3/')
 popd
-touch gpbackup-tools-versions/ddboost_plugin_version
 echo ${DDBOOST_PLUGIN_VERSION} > gpbackup-tools-versions/ddboost_plugin_version
 
 # get version for future .rpm and .deb files as well as .gppkg files
@@ -32,7 +31,4 @@ pushd pivnet_release_cache
   NEXT_GPBACKUP_TOOLS_VERSION=${GPBACKUP_VERSION}+${COUNT}
 popd
 
-touch gpbackup-tools-versions/pkg_version
 echo ${NEXT_GPBACKUP_TOOLS_VERSION} > gpbackup-tools-versions/pkg_version
-
-

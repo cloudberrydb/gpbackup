@@ -13,5 +13,3 @@ outputs:
 
 run:
   path: gpbackup/ci/scripts/build-os-tars.bash
-
-

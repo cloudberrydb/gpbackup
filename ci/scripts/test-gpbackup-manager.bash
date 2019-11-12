@@ -51,4 +51,4 @@ SCRIPT
 
 cp -r gppkgs /home/gpadmin
 chmod +x /tmp/run_tests.bash
-su - gpadmin bash -c /tmp/run_tests.bash
+su - gpadmin "/tmp/run_tests.bash"

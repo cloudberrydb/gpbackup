@@ -10,5 +10,3 @@ mv ubuntu-gppkg/* gppkgs/
 pushd gppkgs
     tar cvzf gpbackup-gppkgs.tar.gz *
 popd
-
-

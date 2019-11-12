@@ -4,10 +4,10 @@ image_resource:
   type: docker-image
 
 inputs:
-- name: gpbackup_tar
+- name: gpbackup
 - name: gpdb_src
 - name: bin_gpdb
-- name: gpbackup
+- name: gpbackup_tar
 - name: gpbackup-tools-versions
 
 outputs:

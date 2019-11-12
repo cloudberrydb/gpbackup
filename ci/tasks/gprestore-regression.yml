@@ -13,5 +13,3 @@ inputs:
 
 run:
   path: gpbackup/ci/scripts/gprestore-regression.bash
-
-

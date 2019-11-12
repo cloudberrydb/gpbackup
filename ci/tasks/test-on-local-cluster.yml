@@ -4,9 +4,9 @@ image_resource:
   type: docker-image
 
 inputs:
+- name: gpbackup
 - name: gpdb_src
 - name: bin_gpdb
-- name: gpbackup
 - name: dummy_seclabel
   optional: true
 - name: gpbackup-dependencies
