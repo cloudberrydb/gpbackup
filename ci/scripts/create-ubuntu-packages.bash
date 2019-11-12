@@ -56,4 +56,5 @@ echo "Successfully built gppkg"
 
 ########### Prepare to publish output ###########
 
+chown gpadmin:gpadmin ${PACKAGE_NAME}.gppkg
 mv ${PACKAGE_NAME}.gppkg gppkgs/
