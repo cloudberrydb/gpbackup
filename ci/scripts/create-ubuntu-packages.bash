@@ -37,6 +37,9 @@ popd
 mv bin_gpdb/{*.tar.gz,bin_gpdb.tar.gz}
 mkdir -p /usr/local/greenplum-db-devel
 tar -xzf bin_gpdb/bin_gpdb.tar.gz -C /usr/local/greenplum-db-devel
+
+# Setup gpadmin user
+gpdb_src/concourse/scripts/setup_gpadmin_user.bash
 source /usr/local/greenplum-db-devel/greenplum_path.sh
 
 # spec file
