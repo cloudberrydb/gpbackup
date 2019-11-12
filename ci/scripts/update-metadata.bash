@@ -53,7 +53,7 @@ pushd pivnet_release_cache
   touch ../workspace/v-${TILE_RELEASE_VERSION}
 popd
 
-if [[ ! -f gpbackup-release-license/open_source_license_pivotal-gpdb-backup-${GPBACKUP_VERSION}-*.txt ]] ; then
+if test ! -f gpbackup-release-license/open_source_license_pivotal-gpdb-backup-${GPBACKUP_VERSION}-*.txt ; then
   echo "License file for gpbackup version ${GPBACKUP_VERSION} does not exist in resource.\n Ensure the OSL is properly uploaded to the GCS bucket prior to pushing to pivnet." 1>&2
   exit 1
 fi
