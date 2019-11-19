@@ -28,6 +28,7 @@ var _ = Describe("utils/plugin tests", func() {
 	var tempDir string
 
 	BeforeEach(func() {
+		operating.InitializeSystemFunctions()
 		tempDir, _ = ioutil.TempDir("", "temp")
 		operating.System.Stdout = stdout
 		subject = utils.PluginConfig{
@@ -41,7 +42,7 @@ var _ = Describe("utils/plugin tests", func() {
 		}
 		// set up fake command results
 		apiResponse := make(map[int]string, 3)
-		apiResponse[-1] = utils.RequiredPluginVersion // this is a successful result fpr API version
+		apiResponse[-1] = utils.RequiredPluginVersion // this is a successful result for API version
 		apiResponse[0] = utils.RequiredPluginVersion
 		apiResponse[1] = utils.RequiredPluginVersion
 		executor.ClusterOutputs[0] = &cluster.RemoteOutput{
@@ -336,6 +337,14 @@ options:
 
 			Expect(pluginName).To(Equal(""))
 			Expect(err.Error()).To(Equal("Unexpected plugin version format: \"bad output\"\nExpected: \"[plugin_name] version [git_version]\""))
+		})
+	})
+	Describe("ReadPluginConfig", func() {
+		It("returns an error if executablepath is not specified", func() {
+			operating.System.ReadFile = func(string) ([]byte, error) { return []byte{}, nil }
+
+			_, err := utils.ReadPluginConfig("myconfigpath")
+			Expect(err.Error()).To(Equal("executablepath is required in config file"))
 		})
 	})
 })
