@@ -354,6 +354,7 @@ test_backup_and_restore_with_plugin() {
     fi
 
     if [ -n "$secondary_plugin_config" ]; then
+        # Test gprestore using the timestamp from the secondary destination
         dropdb $test_db
         echo "[RUNNING] gprestore with test database from secondary destination"
         gprestore --timestamp $timestamp --plugin-config $secondary_plugin_config --create-db &> $log_file
@@ -369,7 +370,43 @@ test_backup_and_restore_with_plugin() {
           echo "Expected to restore 50000 rows, got $num_rows"
           exit 1
         fi
+
+        # Test replica_backup command via gpbackup_manager
+        echo "[RUNNING] gpbackup_manager delete-backup from secondary destinatione"
+        gpbackup_manager delete-backup --plugin-config $secondary_plugin_config $timestamp
+        if [ ! $? -eq 0 ]; then
+            echo
+            cat $log_file
+            echo
+            echo "gpbackup_manager delete-backup failed. Check log file in ~/gpAdminLogs for details."
+            exit 1
+        fi
+        echo "[RUNNING] gpbackup_manager replicate-backup to secondary destination"
+        gpbackup_manager replicate-backup $timestamp --plugin-config $plugin_config
+        if [ ! $? -eq 0 ]; then
+            echo
+            cat $log_file
+            echo
+            echo "gpbackup_manager replicate-backup failed. Check log file in ~/gpAdminLogs for details."
+            exit 1
+        fi
+        dropdb $test_db
+        echo "[RUNNING] gprestore with test database from secondary destination"
+        gprestore --timestamp $timestamp --plugin-config $secondary_plugin_config --create-db &> $log_file
+        if [ ! $? -eq 0 ]; then
+            echo
+            cat $log_file
+            echo
+            echo "gprestore from secondary destination failed after replicate-backup. Check gprestore log file in ~/gpAdminLogs for details."
+            exit 1
+        fi
+        num_rows=`psql -d $test_db -tc "SELECT count(*) FROM test_table" | xargs`
+        if [ "$num_rows" != "50000" ]; then
+          echo "Expected to restore 50000 rows, got $num_rows"
+          exit 1
+        fi
     fi
+
     # replace the encrypt key file to its proper location
     if [ -f "/tmp/.encrypt_saved" ] ; then
         mv /tmp/.encrypt_saved $MASTER_DATA_DIRECTORY/.encrypt
