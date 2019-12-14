@@ -445,7 +445,7 @@ resources:
     json_key: ((concourse-gcs-resources-service-account-key))
     regexp: server/published/gpdb6/server-rc-(.*)-ubuntu18.04_x86_64((rc-build-type-gcs)).tar.gz
 
-  {% if "gpbackup-release" != pipeline_name %}
+{% if "gpbackup-release" != pipeline_name %}
 - name: gpdb_master_src
   type: git
   icon: github-circle
@@ -492,6 +492,7 @@ resources:
     access_key_id: {{bucket-access-key-id}}
     secret_access_key: {{bucket-secret-access-key}}
 
+{% if "gpbackup-release" != pipeline_name %}
 # Manual caching to prevent dep flakes when downloading dependencies
 - name: gpbackup_1.12.1_dependencies
   type: s3
@@ -502,6 +503,7 @@ resources:
     region_name: us-west-2
     access_key_id: {{bucket-access-key-id}}
     secret_access_key: {{bucket-secret-access-key}}
+{% endif %}
 
 - name: pgcrypto43
   type: s3
