@@ -51,9 +51,6 @@ cat <<SCRIPT > /tmp/run_tests.bash
     gpconfig -s shared_preload_libraries | grep dummy_seclabel
   fi
 
-  cd \${GOPATH}/src/github.com/greenplum-db/gpbackup
-  make depend # Needed to install ginkgo
-
   # NOTE: This is a temporary hotfix intended to skip these tests when running on CCP cluster
   #       because the backup artifact that these tests are using only works on local clusters.
   sed -i 's|\tIt\(.*\)\(--on-error-continue\)|\tPIt\1\2|' end_to_end/end_to_end_suite_test.go
