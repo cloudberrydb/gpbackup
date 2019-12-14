@@ -492,8 +492,6 @@ resources:
     access_key_id: {{bucket-access-key-id}}
     secret_access_key: {{bucket-secret-access-key}}
 
-
-  {% if "gpbackup-release" != pipeline_name %}
 # Manual caching to prevent dep flakes when downloading dependencies
 - name: gpbackup_1.12.1_dependencies
   type: s3
@@ -504,7 +502,6 @@ resources:
     region_name: us-west-2
     access_key_id: {{bucket-access-key-id}}
     secret_access_key: {{bucket-secret-access-key}}
-{% endif %}
 
 - name: pgcrypto43
   type: s3

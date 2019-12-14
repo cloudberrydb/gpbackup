@@ -7,7 +7,7 @@ export PATH=$PATH:${GOPATH}/bin
 
 # Build gpbackup
 pushd ${GOPATH}/src/github.com/greenplum-db/gpbackup
-  make build unit
+  make depend build unit
   version=$(git describe --tags | perl -pe 's/(.*)-([0-9]*)-(g[0-9a-f]*)/\1+dev.\2.\3/')
 popd
 echo ${version} > go_components/gpbackup_version
@@ -20,7 +20,7 @@ fi
 
 # Build s3 plugin
 pushd ${GOPATH}/src/github.com/greenplum-db/gpbackup-s3-plugin
-  make build unit
+  make depend build unit
   s3_plugin_version=$(git describe --tags | perl -pe 's/(.*)-([0-9]*)-(g[0-9a-f]*)/\1+dev.\2.\3/')
 popd
 echo ${s3_plugin_version} > go_components/s3_plugin_version
@@ -33,7 +33,7 @@ fi
 
 # Build gpbackup-manager
 pushd ${GOPATH}/src/github.com/pivotal/gp-backup-manager
-  make build unit
+  make depend build unit
   gpbackup_manager_version=$(git describe --tags | perl -pe 's/(.*)-([0-9]*)-(g[0-9a-f]*)/\1+dev.\2.\3/')
 popd
 echo ${gpbackup_manager_version} > go_components/gpbackup_manager_version

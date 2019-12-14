@@ -33,6 +33,11 @@ mkdir -p \${GOPATH}/bin \${GOPATH}/src/github.com/greenplum-db
 
 cp -R $(pwd)/gpbackup \${GOPATH}/src/github.com/greenplum-db/
 
+# Install dependencies before sourcing greenplum path. Using the GPDB curl is causing issues.
+pushd \${GOPATH}/src/github.com/greenplum-db/gpbackup
+  make depend
+popd
+
 source /usr/local/greenplum-db-devel/greenplum_path.sh
 source $(pwd)/gpdb_src/gpAux/gpdemo/gpdemo-env.sh
 

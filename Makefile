@@ -30,11 +30,14 @@ $(DEP) :
 		mkdir -p $(GOPATH)/bin
 		curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 
-$(GINKGO) :
-		go install github.com/onsi/ginkgo/ginkgo
+depend :
+		go mod download
 
-$(GOIMPORTS) :
-		go install golang.org/x/tools/cmd/goimports
+$(GINKGO) :
+		go get github.com/onsi/ginkgo/ginkgo
+
+$(GOIMPORTS) : depend
+		@cd vendor/golang.org/x/tools/cmd/goimports; go install .
 
 format : $(GOIMPORTS)
 		@goimports -w $(shell find . -type f -name '*.go' -not -path "./vendor/*")

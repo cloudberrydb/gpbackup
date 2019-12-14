@@ -20,7 +20,7 @@ git cherry-pick c149e8b7b671e931ca892f22c8cdef906512d591
 
 tar -zxf ~/gpbackup_1.12.1_dependencies.tar.gz
 
-make build integration
+make depend build integration
 
 # NOTE: This is a temporary hotfix intended to skip these tests when running on CCP cluster
 #       because the backup artifact that these tests are using only works on local clusters.
