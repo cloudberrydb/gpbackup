@@ -9,7 +9,7 @@ BACKUP=gpbackup
 RESTORE=gprestore
 HELPER=gpbackup_helper
 BIN_DIR=$(shell echo $${GOPATH:-~/go} | awk -F':' '{ print $$1 "/bin"}')
-GINKGO_FLAGS := -r -randomizeSuites -randomizeAllSpecs -noisySkippings=false
+GINKGO_FLAGS := -r -keepGoing -randomizeSuites -randomizeAllSpecs -noisySkippings=false
 
 GIT_VERSION := $(shell git describe --tags | perl -pe 's/(.*)-([0-9]*)-(g[0-9a-f]*)/\1+dev.\2.\3/')
 BACKUP_VERSION_STR="-X github.com/greenplum-db/gpbackup/backup.version=$(GIT_VERSION)"
@@ -22,18 +22,19 @@ SUBDIRS_ALL=$(SUBDIRS_HAS_UNIT) integration/ end_to_end/
 GOLANG_LINTER=$(GOPATH)/bin/golangci-lint
 GINKGO=$(GOPATH)/bin/ginkgo
 GOIMPORTS=$(GOPATH)/bin/goimports
+GO_ENV=GO111MODULE=on # ensure the project still compiles in $GOPATH/src using golang versions 1.12 and below
 
 CUSTOM_BACKUP_DIR ?= "/tmp"
 helper_path ?= $(BIN_DIR)/$(HELPER)
 
 depend :
-		go mod download
+		$(GO_ENV) go mod download
 
 $(GINKGO) :
-		go install github.com/onsi/ginkgo/ginkgo
+		$(GO_ENV) go install github.com/onsi/ginkgo/ginkgo
 
 $(GOIMPORTS) :
-		go install golang.org/x/tools/cmd/goimports
+		$(GO_ENV) go install golang.org/x/tools/cmd/goimports
 
 format : $(GOIMPORTS)
 		@goimports -w $(shell find . -type f -name '*.go' -not -path "./vendor/*")
@@ -49,23 +50,23 @@ lint : $(GOLANG_LINTER)
 		golangci-lint run --tests=false
 
 unit : $(GINKGO)
-		ginkgo -r -keepGoing -randomizeSuites -noisySkippings=false -randomizeAllSpecs $(SUBDIRS_HAS_UNIT) 2>&1
+		$(GO_ENV) ginkgo $(GINKGO_FLAGS) $(SUBDIRS_HAS_UNIT) 2>&1
 
 integration : $(GINKGO)
-		ginkgo -r -randomizeSuites -noisySkippings=false -randomizeAllSpecs integration 2>&1
+		$(GO_ENV) ginkgo $(GINKGO_FLAGS) integration 2>&1
 
 test : unit integration
 
 end_to_end : $(GINKGO)
-		ginkgo -r -randomizeSuites -slowSpecThreshold=10 -noisySkippings=false -randomizeAllSpecs end_to_end -- --custom_backup_dir $(CUSTOM_BACKUP_DIR) 2>&1
+		$(GO_ENV) ginkgo $(GINKGO_FLAGS) -slowSpecThreshold=10 end_to_end -- --custom_backup_dir $(CUSTOM_BACKUP_DIR) 2>&1
 
 coverage :
 		@./show_coverage.sh
 
 build :
-		go build -tags '$(BACKUP)' $(GOFLAGS) -o $(BIN_DIR)/$(BACKUP) -ldflags $(BACKUP_VERSION_STR)
-		go build -tags '$(RESTORE)' $(GOFLAGS) -o $(BIN_DIR)/$(RESTORE) -ldflags $(RESTORE_VERSION_STR)
-		go build -tags '$(HELPER)' $(GOFLAGS) -o $(BIN_DIR)/$(HELPER) -ldflags $(HELPER_VERSION_STR)
+		$(GO_ENV) go build -tags '$(BACKUP)' $(GOFLAGS) -o $(BIN_DIR)/$(BACKUP) -ldflags $(BACKUP_VERSION_STR)
+		$(GO_ENV) go build -tags '$(RESTORE)' $(GOFLAGS) -o $(BIN_DIR)/$(RESTORE) -ldflags $(RESTORE_VERSION_STR)
+		$(GO_ENV) go build -tags '$(HELPER)' $(GOFLAGS) -o $(BIN_DIR)/$(HELPER) -ldflags $(HELPER_VERSION_STR)
 
 build_linux :
 		env GOOS=linux GOARCH=amd64 go build -tags '$(BACKUP)' $(GOFLAGS) -o $(BACKUP) -ldflags $(BACKUP_VERSION_STR)
