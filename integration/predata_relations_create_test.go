@@ -302,7 +302,6 @@ SET SUBPARTITION TEMPLATE ` + `
 			rowOne := backup.ColumnDefinition{Oid: 0, Num: 1, Name: "i", NotNull: false, HasDefault: false, Type: "integer", Encoding: "", StatTarget: -1, StorageType: "", DefaultVal: "", Comment: "", FdwOptions: "option1 'value1', option2 'value2'"}
 			testTable.ColumnDefs = []backup.ColumnDefinition{rowOne}
 			testTable.ForeignDef = backup.ForeignTableDefinition{Oid: 0, Options: "", Server: "sc"}
-			testTable.ReplicaIdentity = "n"
 			backup.PrintRegularTableCreateStatement(backupfile, tocfile, testTable)
 
 			metadata := testutils.DefaultMetadata("TABLE", true, true, true, true)
