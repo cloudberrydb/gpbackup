@@ -23,6 +23,7 @@ GOLANG_LINTER=$(GOPATH)/bin/golangci-lint
 GINKGO=$(GOPATH)/bin/ginkgo
 GOIMPORTS=$(GOPATH)/bin/goimports
 GO_ENV=GO111MODULE=on # ensure the project still compiles in $GOPATH/src using golang versions 1.12 and below
+DEBUG=-gcflags=all="-N -l"
 
 CUSTOM_BACKUP_DIR ?= "/tmp"
 helper_path ?= $(BIN_DIR)/$(HELPER)
@@ -64,9 +65,14 @@ coverage :
 		@./show_coverage.sh
 
 build :
-		$(GO_ENV) go build -tags '$(BACKUP)' $(GOFLAGS) -o $(BIN_DIR)/$(BACKUP) -ldflags $(BACKUP_VERSION_STR)
-		$(GO_ENV) go build -tags '$(RESTORE)' $(GOFLAGS) -o $(BIN_DIR)/$(RESTORE) -ldflags $(RESTORE_VERSION_STR)
-		$(GO_ENV) go build -tags '$(HELPER)' $(GOFLAGS) -o $(BIN_DIR)/$(HELPER) -ldflags $(HELPER_VERSION_STR)
+		$(GO_ENV) go build -tags '$(BACKUP)' -o $(BIN_DIR)/$(BACKUP) -ldflags $(BACKUP_VERSION_STR)
+		$(GO_ENV) go build -tags '$(RESTORE)' -o $(BIN_DIR)/$(RESTORE) -ldflags $(RESTORE_VERSION_STR)
+		$(GO_ENV) go build -tags '$(HELPER)' -o $(BIN_DIR)/$(HELPER) -ldflags $(HELPER_VERSION_STR)
+
+debug :
+		$(GO_ENV) go build -tags '$(BACKUP)' $(DEBUG) -o $(BIN_DIR)/$(BACKUP) -ldflags $(BACKUP_VERSION_STR)
+		$(GO_ENV) go build -tags '$(RESTORE)' $(DEBUG) -o $(BIN_DIR)/$(RESTORE) -ldflags $(RESTORE_VERSION_STR)
+		$(GO_ENV) go build -tags '$(HELPER)' $(DEBUG) -o $(BIN_DIR)/$(HELPER) -ldflags $(HELPER_VERSION_STR)
 
 build_linux :
 		env GOOS=linux GOARCH=amd64 go build -tags '$(BACKUP)' $(GOFLAGS) -o $(BACKUP) -ldflags $(BACKUP_VERSION_STR)
