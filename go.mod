@@ -6,8 +6,6 @@ require (
 	github.com/DATA-DOG/go-sqlmock v1.4.1
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/blang/vfs v1.0.0
-	github.com/fatih/color v1.9.0 // indirect
-	github.com/gofrs/uuid v3.2.0+incompatible // indirect
 	github.com/greenplum-db/gp-common-go-libs v0.0.0-20200220000734-974a164cfd33
 	github.com/jackc/pgx v3.6.2+incompatible
 	github.com/lib/pq v1.3.0
