@@ -1519,8 +1519,8 @@ PARTITION BY LIST (gender)
 			assertDataRestored(restoreConn, localSchemaTupleCounts)
 			assertArtifactsCleaned(restoreConn, timestamp)
 		})
-		It(`gpbackup runs with table name including special chars ~#$%^&*()_-+[]{}><|;:/?!\tC`, func() {
-			allChars := []string{" ", "`", "~", "#", "$", "%", "^", "&", "*", "(", ")", "-", "+", "[", "]", "{", "}", ">", "<", "\\", "|", ";", ":", "/", "?", ",", "!", "C", "\t", "'", "\n", "1", "\\n", "\\t", "\""}
+		FIt(`gpbackup runs with table name including special chars ~#$%^&*()_-+[]{}><|;:/?!\tC`, func() {
+			allChars := []string{" ", "`", "~", "#", "$", "%", "^", "&", "*", "(", ")", "-", "+", "[", "]", "{", "}", ">", "<", "\\", "|", ";", ":", "/", "?", ",", "!", "C", "\t", "'", "1", "\\n", "\\t", "\""}
 			var includeTableArgs []string
 			includeTableArgs = append(includeTableArgs, "--dbname")
 			includeTableArgs = append(includeTableArgs, "testdb")
