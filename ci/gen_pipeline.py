@@ -87,11 +87,11 @@ def print_output_message(args):
         if git_branch == "master":
             print "\n[WARNING] You are generating a dev pipeline pointed to the master branch!\n"
         print "To set this pipeline on dev, run: \n\
-    fly -t gpdb-dev set-pipeline \
+    fly -t dp set-pipeline \
 -p dev:%s_%s \
 -c ~/go/src/github.com/greenplum-db/gpbackup/ci/%s-dev-generated.yml \
 -l ~/workspace/gp-continuous-integration/secrets/gpdb_common-ci-secrets.yml \
--l ~/workspace/gp-continuous-integration/secrets/ccp_ci_secrets_dev.yml \
+-l ~/workspace/gp-continuous-integration/secrets/ccp_ci_secrets_dp.yml \
 -l ~/workspace/gp-continuous-integration/secrets/gpbackup.dev.yml \
 -v gpbackup-git-branch=%s" % (args.pipeline_name, git_branch, args.pipeline_name, git_branch)
 
