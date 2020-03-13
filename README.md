@@ -38,7 +38,7 @@ This will also attempt to copy `gpbackup_helper` to the greenplum segments (retr
 Required for Greenplum Database 6 or higher, several tests require the `dummy_seclabel` Greenplum contrib module. This module exists only to support regression testing of the SECURITY LABEL statement. It is not intended to be used in production. Use the following commands to install the module.
 
 ```bash
-pushd ~/workspace/gpdb/contrib/dummy_seclabel
+pushd $(find ~/workspace/gpdb -name dummy_seclabel)
     make install
     gpconfig -c shared_preload_libraries -v dummy_seclabel
     gpstop -ra
