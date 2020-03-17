@@ -65,7 +65,7 @@ func (plugin *PluginConfig) BackupFile(filenamePath string) error {
 	gplog.Debug("%s", command)
 	output, err := exec.Command("bash", "-c", command).CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("Plugin failed to process %s. %s", filenamePath, string(output))
+		return fmt.Errorf("ERROR: Plugin failed to process %s. %s", filenamePath, string(output))
 	}
 	err = operating.System.Chmod(filenamePath, 0755)
 	return err
@@ -133,7 +133,7 @@ func (plugin *PluginConfig) checkPluginAPIVersion(c *cluster.Cluster) {
 		pluginVersion = tempPluginVersion
 		version, err = semver.Make(pluginVersion)
 		if err != nil {
-			gplog.Fatal(fmt.Errorf("Unable to parse plugin API version: %s", err.Error()), "")
+			gplog.Fatal(fmt.Errorf("ERROR: Unable to parse plugin API version: %s", err.Error()), "")
 		}
 		if !version.GE(requiredVersion) {
 			gplog.Verbose("Plugin %s API version %s is not compatible with supported API " +
@@ -443,7 +443,7 @@ func (plugin *PluginConfig) GetPluginName(c *cluster.Cluster) (pluginName string
 	pluginCall := fmt.Sprintf("%s --version", plugin.ExecutablePath)
 	output, err := c.ExecuteLocalCommand(pluginCall)
 	if err != nil {
-		return "", fmt.Errorf(`Failed to get plugin name. Failed with error: %s`, err.Error())
+		return "", fmt.Errorf("ERROR: Failed to get plugin name. Failed with error: %s", err.Error())
 	}
 
 	// expects the output to be in "[plugin_name] version [git_version]"

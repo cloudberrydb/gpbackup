@@ -300,7 +300,7 @@ func backupPredata(metadataFile *utils.FileWithByteCount, tables []Table, tableO
 
 	retrieveViews(&objects)
 	sequences, sequenceOwnerColumns := retrieveSequences()
-	backupCreateSequences(metadataFile, sequences, sequenceOwnerColumns, relationMetadata)
+	backupCreateSequences(metadataFile, sequences, relationMetadata)
 	constraints, conMetadata := retrieveConstraints()
 
 	backupDependentObjects(metadataFile, tables, protocols, metadataMap, constraints, objects, funcInfoMap, tableOnly)
@@ -449,7 +449,7 @@ func DoTeardown() {
 		if backupReport != nil {
 			backupReport.ConstructBackupParamsString()
 			history.WriteConfigFile(&backupReport.BackupConfig, configFilename)
-			if (backupReport.BackupConfig.EndTime == "") {
+			if backupReport.BackupConfig.EndTime == "" {
 				backupReport.BackupConfig.EndTime = history.CurrentTimestamp()
 			}
 			endtime, _ := time.ParseInLocation("20060102150405", backupReport.BackupConfig.EndTime, operating.System.Local)

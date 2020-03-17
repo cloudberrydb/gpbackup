@@ -464,7 +464,7 @@ func backupEnumTypes(metadataFile *utils.FileWithByteCount, typeMetadata Metadat
 	PrintCreateEnumTypeStatements(metadataFile, globalTOC, enums, typeMetadata)
 }
 
-func backupCreateSequences(metadataFile *utils.FileWithByteCount, sequences []Sequence, sequenceOwnerColumns map[string]string, relationMetadata MetadataMap) {
+func backupCreateSequences(metadataFile *utils.FileWithByteCount, sequences []Sequence, relationMetadata MetadataMap) {
 	gplog.Verbose("Writing CREATE SEQUENCE statements to metadata file")
 	objectCounts["Sequences"] = len(sequences)
 	PrintCreateSequenceStatements(metadataFile, globalTOC, sequences, relationMetadata)

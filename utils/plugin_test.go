@@ -330,7 +330,7 @@ options:
 
 			Expect(pluginName).To(Equal(""))
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("Failed to get plugin name. Failed with error: error executing plugin"))
+			Expect(err.Error()).To(Equal("ERROR: Failed to get plugin name. Failed with error: error executing plugin"))
 		})
 		It("did not recieve expected information from plugin", func() {
 			executor.LocalOutput = "bad output"
