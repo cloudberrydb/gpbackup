@@ -274,5 +274,9 @@ func PrintDependentObjectStatements(metadataFile *utils.FileWithByteCount, toc *
 		case MaterializedView:
 			PrintCreateMaterializedViewStatement(metadataFile, toc, obj, objMetadata)
 		}
+		// Remove ACLs from metadataMap for the current object since they have been processed
+		delete(metadataMap, object.GetUniqueID())
 	}
+	//  Process ACLs for left over objects in the metadata map
+	printExtensionFunctionACLs(metadataFile, toc, metadataMap, funcInfoMap)
 }

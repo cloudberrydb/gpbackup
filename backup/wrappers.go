@@ -169,17 +169,16 @@ func RetrieveAndProcessTables() ([]Table, []Table) {
 	return metadataTables, dataTables
 }
 
-func retrieveFunctions(sortables *[]Sortable, metadataMap MetadataMap, procLangs []ProceduralLanguage) ([]Function, MetadataMap) {
+func retrieveFunctions(sortables *[]Sortable, metadataMap MetadataMap) ([]Function, map[uint32]FunctionInfo) {
 	gplog.Verbose("Retrieving function information")
-	functions := GetFunctionsAllVersions(connectionPool)
-	objectCounts["Functions"] = len(functions)
 	functionMetadata := GetMetadataForObjectType(connectionPool, TYPE_FUNCTION)
-	langFuncs, otherFuncs := ExtractLanguageFunctions(functions, procLangs)
-
-	*sortables = append(*sortables, convertToSortableSlice(otherFuncs)...)
 	addToMetadataMap(functionMetadata, metadataMap)
+	functions := GetFunctionsAllVersions(connectionPool)
+	funcInfoMap := GetFunctionOidToInfoMap(connectionPool)
+	objectCounts["Functions"] = len(functions)
+	*sortables = append(*sortables, convertToSortableSlice(functions)...)
 
-	return langFuncs, functionMetadata
+	return functions, funcInfoMap
 }
 
 func retrieveAndBackupTypes(metadataFile *utils.FileWithByteCount, sortables *[]Sortable, metadataMap MetadataMap) {
@@ -310,11 +309,6 @@ func retrieveAggregates(sortables *[]Sortable, metadataMap MetadataMap) {
 	gplog.Verbose("Retrieving AGGREGATE information")
 	aggregates := GetAggregates(connectionPool)
 	objectCounts["Aggregates"] = len(aggregates)
-	/* This call to get Metadata for Aggregates, although redundant, is preserved for
-	 * consistency with other, similar methods.  The metadata for aggregate
-	 * are located on the same catalog table as functions (pg_proc). This means that when we
-	 * get function metadata we also get aggregate metadata at the same time.
-	 */
 	aggMetadata := GetMetadataForObjectType(connectionPool, TYPE_AGGREGATE)
 
 	*sortables = append(*sortables, convertToSortableSlice(aggregates)...)
@@ -442,9 +436,12 @@ func backupSchemas(metadataFile *utils.FileWithByteCount, partitionAlteredSchema
 	PrintCreateSchemaStatements(metadataFile, globalTOC, schemas, schemaMetadata)
 }
 
-func backupProceduralLanguages(metadataFile *utils.FileWithByteCount, procLangs []ProceduralLanguage, langFuncs []Function, functionMetadata MetadataMap, funcInfoMap map[uint32]FunctionInfo) {
+func backupProceduralLanguages(metadataFile *utils.FileWithByteCount,
+	functions []Function, funcInfoMap map[uint32]FunctionInfo, functionMetadata MetadataMap) {
 	gplog.Verbose("Writing CREATE PROCEDURAL LANGUAGE statements to metadata file")
+	procLangs := GetProceduralLanguages(connectionPool)
 	objectCounts["Procedural Languages"] = len(procLangs)
+	langFuncs, _ := ExtractLanguageFunctions(functions, procLangs)
 	for _, langFunc := range langFuncs {
 		PrintCreateFunctionStatement(metadataFile, globalTOC, langFunc, functionMetadata[langFunc.GetUniqueID()])
 	}
