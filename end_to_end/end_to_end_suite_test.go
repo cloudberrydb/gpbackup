@@ -937,14 +937,18 @@ var _ = Describe("backup end to end integration tests", func() {
 				testhelper.AssertQueryRuns(backupConn,
 					"INSERT INTO foobar VALUES (1)")
 
-				// Ensure two distinct seg files contain 'foobar' data
+				// Ensure two distinct aoseg entries contain 'foobar' data
 				var numRows string
 				if backupConn.Version.Before("6") {
 					numRows = dbconn.MustSelectString(backupConn,
 						"SELECT count(*) FROM gp_toolkit.__gp_aoseg_name('foobar')")
-				} else {
+				} else if backupConn.Version.Before("7") {
 					numRows = dbconn.MustSelectString(backupConn,
 						"SELECT count(*) FROM gp_toolkit.__gp_aoseg('foobar'::regclass)")
+				} else {
+					// For GPDB 7+, the gp_toolkit function returns the aoseg entries from the segments
+					numRows = dbconn.MustSelectString(backupConn,
+						"SELECT count(distinct(segno)) FROM gp_toolkit.__gp_aoseg('foobar'::regclass)")
 				}
 				Expect(numRows).To(Equal(strconv.Itoa(2)))
 
