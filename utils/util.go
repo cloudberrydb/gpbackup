@@ -28,11 +28,11 @@ const MINIMUM_GPDB5_VERSION = "5.1.0"
  */
 
 func OpenFileForWrite(filename string) (*os.File, error) {
-	return os.OpenFile(filename, os.O_CREATE | os.O_EXCL | os.O_WRONLY, 0644)
+	return os.OpenFile(filename, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
 }
 
 func WriteToFileAndMakeReadOnly(filename string, contents []byte) error {
-	file, err := os.OpenFile(filename, os.O_CREATE | os.O_EXCL | os.O_WRONLY, 0644)
+	file, err := os.OpenFile(filename, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
@@ -149,13 +149,13 @@ func Exists(slice []string, val string) bool {
 	return false
 }
 
-func SchemaIsExcludedByUser(inSchemasUserInput []string, exSchemasUserInput []string, schemaName string) bool{
+func SchemaIsExcludedByUser(inSchemasUserInput []string, exSchemasUserInput []string, schemaName string) bool {
 	included := Exists(inSchemasUserInput, schemaName) || len(inSchemasUserInput) == 0
 	excluded := Exists(exSchemasUserInput, schemaName)
 	return excluded || !included
 }
 
-func RelationIsExcludedByUser(inRelationsUserInput []string, exRelationsUserInput []string, tableFQN string) bool{
+func RelationIsExcludedByUser(inRelationsUserInput []string, exRelationsUserInput []string, tableFQN string) bool {
 	included := Exists(inRelationsUserInput, tableFQN) || len(inRelationsUserInput) == 0
 	excluded := Exists(exRelationsUserInput, tableFQN)
 	return excluded || !included
