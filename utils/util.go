@@ -160,3 +160,33 @@ func RelationIsExcludedByUser(inRelationsUserInput []string, exRelationsUserInpu
 	excluded := Exists(exRelationsUserInput, tableFQN)
 	return excluded || !included
 }
+
+func UnquoteIdent(ident string) string {
+	if len(ident) <= 1 {
+		return ident
+	}
+
+	if ident[0] == '"' && ident[len(ident)-1] == '"' {
+		ident = ident[1 : len(ident)-1]
+		unescape := strings.NewReplacer(`""`, `"`)
+		ident = unescape.Replace(ident)
+	}
+
+	return ident
+}
+
+func QuoteIdent(connectionPool *dbconn.DBConn, ident string) string {
+	return dbconn.MustSelectString(connectionPool, fmt.Sprintf(`SELECT quote_ident('%s')`, EscapeSingleQuotes(ident)))
+}
+
+func SliceToQuotedString(slice []string) string {
+	quotedStrings := make([]string, len(slice))
+	for i, str := range slice {
+		quotedStrings[i] = fmt.Sprintf("'%s'", EscapeSingleQuotes(str))
+	}
+	return strings.Join(quotedStrings, ",")
+}
+
+func EscapeSingleQuotes(str string) string {
+	return strings.Replace(str, "'", "''", -1)
+}
