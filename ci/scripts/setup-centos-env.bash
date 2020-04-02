@@ -8,7 +8,6 @@ GO_VERSION=1.13.4
 GPHOME=/usr/local/greenplum-db-devel
 
 ssh -t ${default_ami_user}@mdw " \
-    sudo yum update -y && \
     sudo yum -y install git && \
     sudo wget https://storage.googleapis.com/golang/go${GO_VERSION}.linux-amd64.tar.gz && \
     sudo tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz && \
