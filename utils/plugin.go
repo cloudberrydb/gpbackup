@@ -328,7 +328,7 @@ func (plugin *PluginConfig) DeletePluginConfigWhenEncrypting(c *cluster.Cluster)
 			//hostConfigFile := plugin.createHostPluginConfig(contentIDForSegmentOnHost, c)
 			return command
 		},
-		cluster.ON_MASTER_TO_HOSTS_AND_MASTER,
+		cluster.ON_HOSTS_AND_MASTER,
 	)
 	gplog.Debug("%s", command)
 	errMsg := "Unable to remove plugin config"
