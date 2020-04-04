@@ -1,0 +1,20 @@
+platform: linux
+
+image_resource:
+  type: docker-image
+
+inputs:
+- name: gpbackup
+- name: ccp_src
+- name: cluster_env_files
+- name: gppkgs
+
+params:
+  AWS_ACCESS_KEY_ID:
+  AWS_SECRET_ACCESS_KEY:
+  BUCKET:
+  REGION:
+  OS: RHEL
+
+run:
+  path: gpbackup/ci/scripts/s3-plugin-perf.bash

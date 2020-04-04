@@ -374,7 +374,7 @@ resources:
   type: git
   icon: github-circle
   source:
-    branch: master
+    branch: {{gpbackup-s3-plugin-git-branch}}
     uri: https://github.com/greenplum-db/gpbackup-s3-plugin
 {% if "gpbackup-release" == pipeline_name %}
     tag_filter: 1.*
@@ -922,7 +922,12 @@ jobs:
       <<: *ccp_default_params
       vars:
         <<: *ccp_default_vars
+        number_of_nodes: 4
+        segments_per_host: 4
+        instance_type: n1-standard-8
+        disk_size: 400
         PLATFORM: centos7
+        ccp_reap_minutes: 240
   - task: gen_cluster
     file: ccp_src/ci/tasks/gen_cluster.yml
     params:
@@ -941,6 +946,15 @@ jobs:
       AWS_ACCESS_KEY_ID: {{bucket-access-key-id}}
       AWS_SECRET_ACCESS_KEY: {{bucket-secret-access-key}}
       BUCKET: {{gpbackup-s3-plugin-test-bucket}}
+  - task: run_perf
+    image: centos6-image
+    file: gpbackup/ci/tasks/s3-plugin-perf.yml
+    params:
+      REGION: us-west-2
+      AWS_ACCESS_KEY_ID: {{bucket-access-key-id}}
+      AWS_SECRET_ACCESS_KEY: {{bucket-secret-access-key}}
+      BUCKET: {{gpbackup-s3-plugin-test-bucket}}
+      SCALE_FACTOR: 10
   on_success:
     <<: *ccp_destroy
   on_failure:
