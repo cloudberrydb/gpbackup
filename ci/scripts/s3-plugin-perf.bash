@@ -12,7 +12,6 @@ ssh -t mdw "mkdir -p /tmp/s3 && \
     ls -l ~/tpch_data/benchmark/tpch/lineitem/${SCALE_FACTOR}"
 
 cat << EOF > lineitem.ddl
-DROP TABLE IF EXISTS lineitem;
 CREATE TABLE lineitem (
     l_orderkey       INTEGER NOT NULL,
     l_partkey        INTEGER NOT NULL,
@@ -85,6 +84,7 @@ log_file=/tmp/gpbackup.log
 time gpbackup --dbname tpchdb --plugin-config ~/s3_config.yaml | tee "\$log_file"
 timestamp=\$(head -5 "\$log_file" | grep "Backup Timestamp " | grep -Eo "[[:digit:]]{14}")
 time gprestore --redirect-db restoredb --timestamp "\$timestamp" --plugin-config ~/s3_config.yaml
+\${GPHOME}/bin/gpbackup_s3_plugin delete_backup ~/s3_config.yaml "\$timestamp"
 
 # ----------------------------------------------------------------------
 # Run restore_directory followed by backup_directory
@@ -94,13 +94,11 @@ pushd /data/gpdata/stage1
 # Copy data from S3 to local using restore_directory
 time \${GPHOME}/bin/gpbackup_s3_plugin restore_directory \
     ~/s3_config.yaml benchmark/tpch/lineitem/${SCALE_FACTOR}/lineitem_data
-ls -l benchmark/tpch/lineitem/${SCALE_FACTOR}/lineitem_data
 
 mkdir tmp && mv benchmark tmp
 # Copy data from local to S3 using backup_directory
 time \${GPHOME}/bin/gpbackup_s3_plugin backup_directory \
     ~/s3_config.yaml tmp/benchmark/tpch/lineitem
-ls -l ~/tpch_data/tmp/benchmark/tpch/lineitem/${SCALE_FACTOR}/lineitem_data
 rm -rf ~/tpch_data/tmp
 
 # ----------------------------------------------------------------------
@@ -110,13 +108,11 @@ popd && pushd /data/gpdata/stage2
 # Copy data from S3 to local using restore_directory_parallel
 time \${GPHOME}/bin/gpbackup_s3_plugin restore_directory_parallel \
     ~/s3_config.yaml benchmark/tpch/lineitem/${SCALE_FACTOR}/lineitem_data
-ls -l benchmark/tpch/lineitem/${SCALE_FACTOR}/lineitem_data
 
 mkdir tmp && mv benchmark tmp
 # Copy data from local to S3 using backup_directory_parallel
 time \${GPHOME}/bin/gpbackup_s3_plugin backup_directory_parallel \
     ~/s3_config.yaml tmp/benchmark/tpch/lineitem
-ls -l ~/tpch_data/tmp/benchmark/tpch/lineitem/${SCALE_FACTOR}/lineitem_data
 rm -rf ~/tpch_data/tmp
 popd
 
