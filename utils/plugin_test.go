@@ -303,8 +303,9 @@ options:
 				cc := executor.ClusterCommands[0]
 				Expect(len(cc)).To(Equal(3))
 				Expect(cc[-1][2]).To(Equal("rm -f /tmp/my_plugin_config.yaml"))
-				Expect(cc[0][2]).To(Equal("rm -f /tmp/my_plugin_config.yaml"))
-				Expect(cc[1][2]).To(Equal("rm -f /tmp/my_plugin_config.yaml"))
+				Expect(cc[0][0]).To(Equal("ssh"))
+				Expect(cc[0][4]).To(Equal("rm -f /tmp/my_plugin_config.yaml"))
+				Expect(cc[1][4]).To(Equal("rm -f /tmp/my_plugin_config.yaml"))
 			})
 		})
 		When("config does not have encryption", func() {
