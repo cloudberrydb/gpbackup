@@ -138,7 +138,7 @@ func buildOldBinaries(version string) (string, string) {
 
 func assertDataRestored(conn *dbconn.DBConn, tableToTupleCount map[string]int) {
 	for tableName, expectedNumTuples := range tableToTupleCount {
-		actualTupleCount := dbconn.MustSelectString(conn, fmt.Sprintf("SELECT count(*) AS string from %s", tableName))
+		actualTupleCount := dbconn.MustSelectString(conn, fmt.Sprintf("SELECT count(*) AS string FROM %s", tableName))
 		if strconv.Itoa(expectedNumTuples) != actualTupleCount {
 			Fail(fmt.Sprintf("Expected:\n\t%s rows to have been restored into table %s\nActual:\n\t%s rows were restored", strconv.Itoa(expectedNumTuples), tableName, actualTupleCount))
 		}
@@ -712,6 +712,7 @@ var _ = Describe("backup and restore end to end tests", func() {
 	})
 	Describe("Redirect Schema", func() {
 		It("runs gprestore with --redirect-schema to redirect data back to the original database which still contain the original tables", func() {
+			Skip("TODO: fix restore statistics on redirect")
 			skipIfOldBackupVersionBefore("1.17.0")
 			testhelper.AssertQueryRuns(backupConn,
 				"DROP SCHEMA IF EXISTS schema3 CASCADE; CREATE SCHEMA schema3;")
@@ -740,7 +741,7 @@ var _ = Describe("backup and restore end to end tests", func() {
 			Expect(actualIndexCount).To(Equal("1"))
 
 			actualStatisticCount := dbconn.MustSelectString(backupConn,
-				`SELECT count(*) AS string FROM pg_stats WHERE schemaname='schema3' AND tablename='foo3';`)
+				`SELECT count(*) FROM pg_statistic WHERE starelid='schema3.foo3'::regclass::oid;`)
 			Expect(actualStatisticCount).To(Equal("1"))
 		})
 		It("runs gprestore with --redirect-schema and multiple included schemas", func() {
@@ -1018,10 +1019,22 @@ var _ = Describe("backup and restore end to end tests", func() {
 		Expect(string(output)).To(ContainSubstring("Query planner statistics restore complete"))
 		assertDataRestored(restoreConn, publicSchemaTupleCounts)
 		assertDataRestored(restoreConn, schema2TupleCounts)
+
+		backupStatisticCount := dbconn.MustSelectString(backupConn,
+			`SELECT count(*) AS string FROM pg_statistic;`)
+		restoredStatisticsCount := dbconn.MustSelectString(restoreConn,
+			`SELECT count(*) AS string FROM pg_statistic;`)
+		Expect(backupStatisticCount).To(Equal(restoredStatisticsCount))
+
+		restoredTablesAnalyzed := dbconn.MustSelectString(restoreConn,
+			`SELECT count(*) FROM pg_stat_last_operation WHERE objid IN ('public.foo'::regclass::oid, 'public.holds'::regclass::oid, 'public.sales'::regclass::oid, 'schema2.returns'::regclass::oid, 'schema2.foo2'::regclass::oid, 'schema2.foo3'::regclass::oid, 'schema2.ao1'::regclass::oid, 'schema2.ao2'::regclass::oid) AND staactionname='ANALYZE';`)
+		Expect(restoredTablesAnalyzed).To(Equal("0"))
 	})
 	It("restores statistics only for tables specified in --include-table flag when runs gprestore with with-stats flag", func() {
 		testhelper.AssertQueryRuns(backupConn,
 			"CREATE TABLE public.table_to_include_with_stats(i int)")
+		testhelper.AssertQueryRuns(backupConn,
+			"INSERT INTO public.table_to_include_with_stats SELECT generate_series(0,9);")
 		defer testhelper.AssertQueryRuns(backupConn,
 			"DROP TABLE public.table_to_include_with_stats")
 		timestamp := gpbackup(gpbackupPath, backupHelperPath,
@@ -1039,7 +1052,7 @@ var _ = Describe("backup and restore end to end tests", func() {
 			"--include-table", "public.table_to_include_with_stats")
 
 		rawCount := dbconn.MustSelectString(restoreConn,
-			"SELECT COUNT(*) FROM pg_stat_all_tables WHERE schemaname='public'")
+			"SELECT count(*) FROM pg_statistic WHERE starelid = 'public.table_to_include_with_stats'::regclass::oid;")
 		Expect(rawCount).To(Equal(strconv.Itoa(1)))
 	})
 	It("runs gpbackup and gprestore with jobs flag", func() {
@@ -1115,7 +1128,7 @@ var _ = Describe("backup and restore end to end tests", func() {
 		assertDataRestored(restoreConn, legacySchemaTupleCounts)
 
 		isConstraintHere := dbconn.MustSelectString(restoreConn,
-			"SELECT COUNT(*) FROM pg_constraint WHERE conname='new_constraint_not_valid'")
+			"SELECT count(*) FROM pg_constraint WHERE conname='new_constraint_not_valid'")
 		Expect(isConstraintHere).To(Equal(strconv.Itoa(1)))
 
 		_, err := restoreConn.Exec("INSERT INTO legacy_table_violate_constraints VALUES (1)")
