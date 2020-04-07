@@ -1543,7 +1543,8 @@ var _ = Describe("backup end to end integration tests", func() {
 				tocStruct := &toc.TOC{}
 				err := yaml.Unmarshal(tocFileContents, tocStruct)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(tocStruct.GlobalEntries).To(BeEmpty())
+				Expect(len(tocStruct.GlobalEntries)).To(Equal(1))
+				Expect(tocStruct.GlobalEntries[0].ObjectType).To(Equal("SESSION GUCS"))
 			})
 			It("runs gpbackup with --without-globals and --metadata-only", func() {
 				skipIfOldBackupVersionBefore("1.18.0")
@@ -1562,7 +1563,8 @@ var _ = Describe("backup end to end integration tests", func() {
 				tocStruct := &toc.TOC{}
 				err := yaml.Unmarshal(tocFileContents, tocStruct)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(tocStruct.GlobalEntries).To(BeEmpty())
+				Expect(len(tocStruct.GlobalEntries)).To(Equal(1))
+				Expect(tocStruct.GlobalEntries[0].ObjectType).To(Equal("SESSION GUCS"))
 			})
 		})
 		It("runs gpbackup and gprestore without redirecting restore to another db", func() {
