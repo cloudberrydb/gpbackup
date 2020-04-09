@@ -67,9 +67,9 @@ createdb tpchdb
 createdb restoredb
 psql -d tpchdb -a -f lineitem.ddl
 
-# ----------------------------------------------------------------------
-# Load lineitem data using gpload
-# ----------------------------------------------------------------------
+echo ##########################################################
+echo ### LOAD lineitem data using gpload with ${SCALE_FACTOR} GB of data ###
+echo ##########################################################
 time gpload -f gpload.yml
 time psql -d tpchdb -c "CREATE TABLE lineitem_1 AS SELECT * FROM lineitem DISTRIBUTED BY (l_orderkey)"
 time psql -d tpchdb -c "CREATE TABLE lineitem_2 AS SELECT * FROM lineitem DISTRIBUTED BY (l_orderkey)"
@@ -77,18 +77,18 @@ time psql -d tpchdb -c "CREATE TABLE lineitem_3 AS SELECT * FROM lineitem DISTRI
 time psql -d tpchdb -c "CREATE TABLE lineitem_4 AS SELECT * FROM lineitem DISTRIBUTED BY (l_orderkey)"
 time psql -d tpchdb -c "CREATE TABLE lineitem_5 AS SELECT * FROM lineitem DISTRIBUTED BY (l_orderkey)"
 
-# ----------------------------------------------------------------------
-# Run gpbackup followed by gprestore
-# ----------------------------------------------------------------------
+echo ############################################################
+echo ### GPBACKUP/GPRESTORE with ${SCALE_FACTOR} GB of data for each table ###
+echo ############################################################
 log_file=/tmp/gpbackup.log
 time gpbackup --dbname tpchdb --plugin-config ~/s3_config.yaml | tee "\$log_file"
 timestamp=\$(head -5 "\$log_file" | grep "Backup Timestamp " | grep -Eo "[[:digit:]]{14}")
 time gprestore --redirect-db restoredb --timestamp "\$timestamp" --plugin-config ~/s3_config.yaml
 \${GPHOME}/bin/gpbackup_s3_plugin delete_backup ~/s3_config.yaml "\$timestamp"
 
-# ----------------------------------------------------------------------
-# Run restore_directory followed by backup_directory
-# ----------------------------------------------------------------------
+echo ######################################################################
+echo ### RESTORE_DIRECTORY/BACKUP_DIRECTORY (SERIAL) with ${SCALE_FACTOR} GB of data ###
+echo ######################################################################
 mkdir -p /data/gpdata/stage1 /data/gpdata/stage2
 pushd /data/gpdata/stage1
 # Copy data from S3 to local using restore_directory
@@ -101,9 +101,9 @@ time \${GPHOME}/bin/gpbackup_s3_plugin backup_directory \
     ~/s3_config.yaml tmp/benchmark/tpch/lineitem
 rm -rf ~/tpch_data/tmp
 
-# ----------------------------------------------------------------------
-# Run restore_directory_parallel followed by backup_directory_parallel
-# ----------------------------------------------------------------------
+echo ##########################################################################
+echo ### RESTORE_DIRECTORY/BACKUP_DIRECTORY (PARALLEL=5) with ${SCALE_FACTOR} GB of data ###
+echo ##########################################################################
 popd && pushd /data/gpdata/stage2
 # Copy data from S3 to local using restore_directory_parallel
 time \${GPHOME}/bin/gpbackup_s3_plugin restore_directory_parallel \
