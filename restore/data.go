@@ -40,6 +40,7 @@ func CopyTableIn(connectionPool *dbconn.DBConn, tableName string, tableAttribute
 	copyCommand = fmt.Sprintf("PROGRAM '%s %s | %s'", readFromDestinationCommand, destinationToRead, customPipeThroughCommand)
 
 	query := fmt.Sprintf("COPY %s%s FROM %s WITH CSV DELIMITER '%s' ON SEGMENT;", tableName, tableAttributes, copyCommand, tableDelim)
+	gplog.Verbose(query)
 	result, err := connectionPool.Exec(query, whichConn)
 	if err != nil {
 		errStr := fmt.Sprintf("Error loading data into table %s", tableName)
