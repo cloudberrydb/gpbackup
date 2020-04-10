@@ -63,13 +63,21 @@ cat <<SCRIPT > /tmp/run_perf.bash
 set -ex
 source env.sh
 
+function print_header() {
+    set +x
+    header="### \$1 ###"
+    len=\$(echo \$header | awk '{print length}')
+    printf "%0.s#" \$(seq 1 \$len) && echo
+    echo -e "\$header"
+    printf "%0.s#" \$(seq 1 \$len) && echo
+    set -x
+}
+
 createdb tpchdb
 createdb restoredb
 psql -d tpchdb -a -f lineitem.ddl
 
-echo ##########################################################
-echo ### LOAD lineitem data using gpload with ${SCALE_FACTOR} GB of data ###
-echo ##########################################################
+print_header "LOAD lineitem data using gpload with ${SCALE_FACTOR} GB of data"
 time gpload -f gpload.yml
 time psql -d tpchdb -c "CREATE TABLE lineitem_1 AS SELECT * FROM lineitem DISTRIBUTED BY (l_orderkey)"
 time psql -d tpchdb -c "CREATE TABLE lineitem_2 AS SELECT * FROM lineitem DISTRIBUTED BY (l_orderkey)"
@@ -77,43 +85,44 @@ time psql -d tpchdb -c "CREATE TABLE lineitem_3 AS SELECT * FROM lineitem DISTRI
 time psql -d tpchdb -c "CREATE TABLE lineitem_4 AS SELECT * FROM lineitem DISTRIBUTED BY (l_orderkey)"
 time psql -d tpchdb -c "CREATE TABLE lineitem_5 AS SELECT * FROM lineitem DISTRIBUTED BY (l_orderkey)"
 
-echo ############################################################
-echo ### GPBACKUP/GPRESTORE with ${SCALE_FACTOR} GB of data for each table ###
-echo ############################################################
 log_file=/tmp/gpbackup.log
+print_header "GPBACKUP with ${SCALE_FACTOR} GB of data for each table"
 time gpbackup --dbname tpchdb --plugin-config ~/s3_config.yaml | tee "\$log_file"
+echo
 timestamp=\$(head -5 "\$log_file" | grep "Backup Timestamp " | grep -Eo "[[:digit:]]{14}")
+print_header "GPRESTORE with ${SCALE_FACTOR} GB of data for each table"
 time gprestore --redirect-db restoredb --timestamp "\$timestamp" --plugin-config ~/s3_config.yaml
+echo
 \${GPHOME}/bin/gpbackup_s3_plugin delete_backup ~/s3_config.yaml "\$timestamp"
 
-echo ######################################################################
-echo ### RESTORE_DIRECTORY/BACKUP_DIRECTORY (SERIAL) with ${SCALE_FACTOR} GB of data ###
-echo ######################################################################
 mkdir -p /data/gpdata/stage1 /data/gpdata/stage2
 pushd /data/gpdata/stage1
 # Copy data from S3 to local using restore_directory
+print_header "RESTORE_DIRECTORY (SERIAL) with ${SCALE_FACTOR} GB of data"
 time \${GPHOME}/bin/gpbackup_s3_plugin restore_directory \
     ~/s3_config.yaml benchmark/tpch/lineitem/${SCALE_FACTOR}/lineitem_data
-
-mkdir tmp && mv benchmark tmp
+echo
+mkdir -p tmp/\$timestamp && mv benchmark tmp/\$timestamp
 # Copy data from local to S3 using backup_directory
+print_header "BACKUP_DIRECTORY (SERIAL) with ${SCALE_FACTOR} GB of data"
 time \${GPHOME}/bin/gpbackup_s3_plugin backup_directory \
-    ~/s3_config.yaml tmp/benchmark/tpch/lineitem
-rm -rf ~/tpch_data/tmp
+    ~/s3_config.yaml tmp/\$timestamp/benchmark/tpch/lineitem
+echo
+rm -rf ~/tpch_data/tmp/\$timestamp
 
-echo ##########################################################################
-echo ### RESTORE_DIRECTORY/BACKUP_DIRECTORY (PARALLEL=5) with ${SCALE_FACTOR} GB of data ###
-echo ##########################################################################
 popd && pushd /data/gpdata/stage2
+print_header "RESTORE_DIRECTORY (PARALLEL=5) with ${SCALE_FACTOR} GB of data"
 # Copy data from S3 to local using restore_directory_parallel
 time \${GPHOME}/bin/gpbackup_s3_plugin restore_directory_parallel \
     ~/s3_config.yaml benchmark/tpch/lineitem/${SCALE_FACTOR}/lineitem_data
-
-mkdir tmp && mv benchmark tmp
+echo
+mkdir -p tmp/\$timestamp && mv benchmark tmp/\$timestamp
 # Copy data from local to S3 using backup_directory_parallel
+print_header "BACKUP_DIRECTORY (PARALLEL=5) with ${SCALE_FACTOR} GB of data"
 time \${GPHOME}/bin/gpbackup_s3_plugin backup_directory_parallel \
-    ~/s3_config.yaml tmp/benchmark/tpch/lineitem
-rm -rf ~/tpch_data/tmp
+    ~/s3_config.yaml tmp/\$timestamp/benchmark/tpch/lineitem
+echo
+rm -rf ~/tpch_data/tmp/\$timestamp
 popd
 
 SCRIPT
