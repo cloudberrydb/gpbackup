@@ -18,9 +18,9 @@ import (
  */
 
 func validateFilterLists(opts *options.Options) {
-	gplog.Verbose("Validating filters")
-	DBValidate(connectionPool, opts.GetIncludedTables(), false)
-	DBValidate(connectionPool, opts.GetExcludedTables(), true)
+	gplog.Verbose("Validating Tables and Schemas exist in Database")
+	ValidateTablesExist(connectionPool, opts.GetIncludedTables(), false)
+	ValidateTablesExist(connectionPool, opts.GetExcludedTables(), true)
 	ValidateFilterSchemas(connectionPool, opts.GetIncludedSchemas(), false)
 	ValidateFilterSchemas(connectionPool, opts.GetExcludedSchemas(), true)
 }
@@ -29,6 +29,7 @@ func ValidateFilterSchemas(connectionPool *dbconn.DBConn, schemaList []string, e
 	if len(schemaList) == 0 {
 		return
 	}
+
 	quotedSchemasStr := utils.SliceToQuotedString(schemaList)
 	query := fmt.Sprintf("SELECT nspname AS string FROM pg_namespace WHERE nspname IN (%s)", quotedSchemasStr)
 	resultSchemas := dbconn.MustSelectStringSlice(connectionPool, query)
@@ -46,20 +47,11 @@ func ValidateFilterSchemas(connectionPool *dbconn.DBConn, schemaList []string, e
 	}
 }
 
-func ValidateFilterTables(conn *dbconn.DBConn, tableList []string, excludeSet bool) {
+func ValidateTablesExist(conn *dbconn.DBConn, tableList []string, excludeSet bool) {
 	if len(tableList) == 0 {
 		return
 	}
-	err := utils.ValidateFQNs(tableList)
-	gplog.FatalOnError(err)
-	DBValidate(conn, tableList, excludeSet)
-}
 
-func DBValidate(conn *dbconn.DBConn, tableList []string, excludeSet bool) {
-	if len(tableList) == 0 {
-		return
-	}
-	gplog.Verbose("Validating tables")
 	quotedIncludeRelations, err := options.QuoteTableNames(connectionPool, tableList)
 	gplog.FatalOnError(err)
 	// todo perhaps store quoted list in options??
