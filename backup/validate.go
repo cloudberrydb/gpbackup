@@ -21,11 +21,11 @@ func validateFilterLists(opts *options.Options) {
 	gplog.Verbose("Validating Tables and Schemas exist in Database")
 	ValidateTablesExist(connectionPool, opts.GetIncludedTables(), false)
 	ValidateTablesExist(connectionPool, opts.GetExcludedTables(), true)
-	ValidateFilterSchemas(connectionPool, opts.GetIncludedSchemas(), false)
-	ValidateFilterSchemas(connectionPool, opts.GetExcludedSchemas(), true)
+	ValidateSchemasExist(connectionPool, opts.GetIncludedSchemas(), false)
+	ValidateSchemasExist(connectionPool, opts.GetExcludedSchemas(), true)
 }
 
-func ValidateFilterSchemas(connectionPool *dbconn.DBConn, schemaList []string, excludeSet bool) {
+func ValidateSchemasExist(connectionPool *dbconn.DBConn, schemaList []string, excludeSet bool) {
 	if len(schemaList) == 0 {
 		return
 	}
