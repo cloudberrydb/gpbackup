@@ -122,7 +122,7 @@ SELECT pg_catalog.setval('public.seq_name', 7, true);`, getSeqDefReplace()))
 		})
 		It("can print a sequence with a start value", func() {
 			if connectionPool.Version.AtLeast("6") {
-				seqStart.SequenceDefinition.StartVal = 7
+				seqStart.Definition.StartVal = 7
 			}
 			sequences := []backup.Sequence{seqStart}
 			backup.PrintCreateSequenceStatements(backupfile, tocfile, sequences, emptySequenceMetadataMap)
