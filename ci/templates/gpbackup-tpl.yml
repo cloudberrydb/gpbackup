@@ -1427,9 +1427,11 @@ jobs:
       terraform_source: ccp_src/google-nvme-block-device/
       vars:
         instance_type: n1-standard-8
+        PLATFORM: centos7
   - task: gen_cluster
     params:
       <<: *ccp_gen_cluster_default_params
+      PLATFORM: centos7
     file: ccp_src/ci/tasks/gen_cluster.yml
   - task: gpinitsystem
     file: ccp_src/ci/tasks/gpinitsystem.yml
@@ -1474,9 +1476,11 @@ jobs:
       terraform_source: ccp_src/google-nvme-block-device/
       vars:
         instance_type: n1-standard-8
+        PLATFORM: centos7
   - task: gen_cluster
     params:
       <<: *ccp_gen_cluster_default_params
+      PLATFORM: centos7
     file: ccp_src/ci/tasks/gen_cluster.yml
   - task: gpinitsystem
     file: ccp_src/ci/tasks/gpinitsystem.yml
