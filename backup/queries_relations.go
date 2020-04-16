@@ -292,9 +292,12 @@ func GetAllViews(connectionPool *dbconn.DBConn) (regularViews []View, materializ
 	// When querying the view definition using pg_get_viewdef(), the pg function
 	// obtains dependency locks that are not released until the transaction is
 	// committed at the end of gpbackup session. This blocks other sessions
-	// from commands that need AccessExclusiveLock (e.g. TRUNCATE)
-	connectionPool.MustExec("SAVEPOINT gpbackup_get_views")
-	defer connectionPool.MustExec("ROLLBACK TO SAVEPOINT gpbackup_get_views")
+	// from commands that need AccessExclusiveLock (e.g. TRUNCATE).
+	// NB: SAVEPOINT should be created only if there is transaction in progress
+	if connectionPool.Tx[0] != nil {
+		connectionPool.MustExec("SAVEPOINT gpbackup_get_views")
+		defer connectionPool.MustExec("ROLLBACK TO SAVEPOINT gpbackup_get_views")
+	}
 
 	selectClause := `
 	SELECT
