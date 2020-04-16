@@ -87,7 +87,7 @@ bar";
 				"public.newline\nbar", // important to use double quotes to allow \n to become newline
 			}
 
-			backup.DBValidate(connectionPool, tableList, false)
+			backup.ValidateTablesExist(connectionPool, tableList, false)
 		})
 	})
 	Describe("ExpandIncludesForPartitions", func() {
