@@ -12,7 +12,6 @@ import (
 	"os"
 
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
-	"github.com/greenplum-db/gp-common-go-libs/operating"
 )
 
 /*
@@ -63,7 +62,7 @@ func (file *FileWithByteCount) Close() {
 		err = file.File.Close()
 		gplog.FatalOnError(err)
 		if file.Filename != "" {
-			err := operating.System.Chmod(file.Filename, 0444)
+			err := os.Chmod(file.Filename, 0444)
 			gplog.FatalOnError(err)
 		}
 	}

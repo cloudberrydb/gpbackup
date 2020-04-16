@@ -27,12 +27,27 @@ const MINIMUM_GPDB5_VERSION = "5.1.0"
  * General helper functions
  */
 
+func FileExists(filename string) bool {
+	_, err := os.Stat(filename)
+	return err == nil
+}
+
+func RemoveFileIfExists(filename string) error {
+	if FileExists(filename) {
+		err := os.Remove(filename)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func OpenFileForWrite(filename string) (*os.File, error) {
-	return os.OpenFile(filename, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
+	return os.OpenFile(filename, os.O_CREATE | os.O_TRUNC | os.O_WRONLY, 0644)
 }
 
 func WriteToFileAndMakeReadOnly(filename string, contents []byte) error {
-	file, err := os.OpenFile(filename, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(filename, os.O_CREATE | os.O_TRUNC | os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}

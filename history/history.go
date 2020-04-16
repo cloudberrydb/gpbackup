@@ -1,12 +1,14 @@
 package history
 
 import (
+	"io/ioutil"
+	"os"
 	"sort"
 	"time"
 
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
-	"github.com/greenplum-db/gp-common-go-libs/iohelper"
 	"github.com/greenplum-db/gp-common-go-libs/operating"
+	"github.com/greenplum-db/gpbackup/utils"
 	"github.com/nightlyone/lockfile"
 	"gopkg.in/yaml.v2"
 )
@@ -47,7 +49,7 @@ type BackupConfig struct {
 
 func ReadConfigFile(filename string) *BackupConfig {
 	config := &BackupConfig{}
-	contents, err := operating.System.ReadFile(filename)
+	contents, err := ioutil.ReadFile(filename)
 	gplog.FatalOnError(err)
 	err = yaml.Unmarshal(contents, config)
 	gplog.FatalOnError(err)
@@ -55,14 +57,9 @@ func ReadConfigFile(filename string) *BackupConfig {
 }
 
 func WriteConfigFile(config *BackupConfig, configFilename string) {
-	configFile := iohelper.MustOpenFileForWriting(configFilename)
-	configContents, _ := yaml.Marshal(config)
-	_, err := configFile.Write(configContents)
+	configContents, err := yaml.Marshal(config)
 	gplog.FatalOnError(err)
-	err = configFile.Close()
-	gplog.FatalOnError(err)
-	err = operating.System.Chmod(configFilename, 0444)
-	gplog.FatalOnError(err)
+	_ = utils.WriteToFileAndMakeReadOnly(configFilename, configContents)
 }
 
 type History struct {
@@ -100,16 +97,14 @@ func WriteBackupHistory(historyFilePath string, currentBackupConfig *BackupConfi
 		_ = lock.Unlock()
 	}()
 
-	var history *History
-
-	if iohelper.FileExistsAndIsReadable(historyFilePath) {
-		var err error
+	history := &History{BackupConfigs: make([]BackupConfig, 0)}
+	_, err := os.Stat(historyFilePath)
+	fileExists := err == nil
+	if fileExists {
+		err = os.Chmod(historyFilePath, 0644)
+		gplog.FatalOnError(err)
 		history, err = NewHistory(historyFilePath)
-		if err != nil {
-			return err
-		}
-	} else {
-		history = &History{BackupConfigs: make([]BackupConfig, 0)}
+		gplog.FatalOnError(err)
 	}
 	if len(history.BackupConfigs) == 0 {
 		gplog.Verbose("No existing backups found. Creating new backup history file.")
@@ -151,25 +146,12 @@ func (history *History) WriteToFileAndMakeReadOnly(filename string) error {
 			return err
 		}
 	}
-	var historyFileContents []byte
-	historyFileContents, err = yaml.Marshal(history)
+	historyFileContents, err := yaml.Marshal(history)
+
 	if err != nil {
 		return err
 	}
-	historyFile := iohelper.MustOpenFileForWriting(filename)
-	_, err = historyFile.Write(historyFileContents)
-	if err != nil {
-		return err
-	}
-	err = historyFile.Close()
-	if err != nil {
-		return err
-	}
-	err = operating.System.Chmod(filename, 0444)
-	if err != nil {
-		return err
-	}
-	return nil
+	return utils.WriteToFileAndMakeReadOnly(filename, historyFileContents)
 }
 
 func (history *History) FindBackupConfig(timestamp string) *BackupConfig {

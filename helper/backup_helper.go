@@ -80,7 +80,7 @@ func doBackupAgent() error {
 		lastPipe = currentPipe
 		currentPipe = nextPipe
 		_ = readHandle.Close()
-		err = removeFileIfExists(lastPipe)
+		err = utils.RemoveFileIfExists(lastPipe)
 		if err != nil {
 			return err
 		}

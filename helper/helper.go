@@ -15,8 +15,8 @@ import (
 	"syscall"
 
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
-	"github.com/greenplum-db/gp-common-go-libs/iohelper"
 	"github.com/greenplum-db/gp-common-go-libs/operating"
+	"github.com/greenplum-db/gpbackup/utils"
 )
 
 /*
@@ -84,7 +84,7 @@ func DoHelper() {
 	}
 	if err != nil {
 		gplog.Error(fmt.Sprintf("%v: %s", err, debug.Stack()))
-		handle, _ := iohelper.OpenFileForWriting(fmt.Sprintf("%s_error", *pipeFile))
+		handle, _ := utils.OpenFileForWrite(fmt.Sprintf("%s_error", *pipeFile))
 		_ = handle.Close()
 	}
 }
@@ -161,20 +161,6 @@ func flushAndCloseRestoreWriter() error {
 	return nil
 }
 
-func fileExists(filename string) bool {
-	_, err := operating.System.Stat(filename)
-	return err == nil
-}
-
-func removeFileIfExists(filename string) error {
-	if fileExists(filename) {
-		err := os.Remove(filename)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
 
 /*
  * Shared helper functions
@@ -188,22 +174,22 @@ func DoCleanup() {
 		 * success, so we create an error file and check for its presence in
 		 * gprestore after the COPYs are finished.
 		 */
-		handle, _ := iohelper.OpenFileForWriting(fmt.Sprintf("%s_error", *pipeFile))
+		handle, _ := utils.OpenFileForWrite(fmt.Sprintf("%s_error", *pipeFile))
 		_ = handle.Close()
 	}
 	err := flushAndCloseRestoreWriter()
 	if err != nil {
 		log("Encountered error during cleanup: %v", err)
 	}
-	err = removeFileIfExists(lastPipe)
+	err = utils.RemoveFileIfExists(lastPipe)
 	if err != nil {
 		log("Encountered error during cleanup: %v", err)
 	}
-	err = removeFileIfExists(currentPipe)
+	err = utils.RemoveFileIfExists(currentPipe)
 	if err != nil {
 		log("Encountered error during cleanup: %v", err)
 	}
-	err = removeFileIfExists(nextPipe)
+	err = utils.RemoveFileIfExists(nextPipe)
 	if err != nil {
 		log("Encountered error during cleanup: %v", err)
 	}

@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/greenplum-db/gp-common-go-libs/iohelper"
 	"github.com/greenplum-db/gp-common-go-libs/operating"
 	"github.com/greenplum-db/gp-common-go-libs/structmatcher"
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
@@ -15,6 +14,7 @@ import (
 	"github.com/greenplum-db/gpbackup/filepath"
 	"github.com/greenplum-db/gpbackup/history"
 	"github.com/greenplum-db/gpbackup/report"
+	"github.com/greenplum-db/gpbackup/utils"
 	"gopkg.in/yaml.v2"
 
 	. "github.com/onsi/ginkgo"
@@ -116,7 +116,7 @@ var _ = Describe("backup/history tests", func() {
 
 			resultHistory, err := history.NewHistory(historyFilePath)
 			Expect(err).ToNot(HaveOccurred())
-			structmatcher.ExpectStructsToMatch(&historyWithEntries, resultHistory)
+			Expect(historyWithEntries).To(structmatcher.MatchStruct(resultHistory))
 		})
 		It("writes file when file exists and is readonly ", func() {
 			err := ioutil.WriteFile(historyFilePath, []byte{}, 0444)
@@ -127,7 +127,7 @@ var _ = Describe("backup/history tests", func() {
 
 			resultHistory, err := history.NewHistory(historyFilePath)
 			Expect(err).ToNot(HaveOccurred())
-			structmatcher.ExpectStructsToMatch(&historyWithEntries, resultHistory)
+			Expect(historyWithEntries).To(structmatcher.MatchStruct(resultHistory))
 		})
 	})
 	Describe("NewHistory", func() {
@@ -136,14 +136,17 @@ var _ = Describe("backup/history tests", func() {
 				BackupConfigs: []history.BackupConfig{testConfig1, testConfig2},
 			}
 			historyFileContents, _ := yaml.Marshal(historyWithEntries)
-			fileHandle := iohelper.MustOpenFileForWriting(historyFilePath)
-			_, _ = fileHandle.Write(historyFileContents)
-			_ = fileHandle.Close()
+			fileHandle, err := utils.OpenFileForWrite(historyFilePath)
+			Expect(err).ToNot(HaveOccurred())
+			_, err = fileHandle.Write(historyFileContents)
+			Expect(err).ToNot(HaveOccurred())
+			err = fileHandle.Close()
+			Expect(err).ToNot(HaveOccurred())
 
 			resultHistory, err := history.NewHistory(historyFilePath)
 			Expect(err).ToNot(HaveOccurred())
 
-			structmatcher.ExpectStructsToMatch(&historyWithEntries, resultHistory)
+			Expect(historyWithEntries).To(structmatcher.MatchStruct(resultHistory))
 		})
 		Context("fatals when", func() {
 			BeforeEach(func() {
@@ -189,7 +192,7 @@ var _ = Describe("backup/history tests", func() {
 			expectedHistory := history.History{
 				BackupConfigs: []history.BackupConfig{testConfig3, testConfig2, testConfig1},
 			}
-			structmatcher.ExpectStructsToMatch(&expectedHistory, &testHistory)
+			Expect(expectedHistory).To(structmatcher.MatchStruct(testHistory))
 		})
 	})
 	Describe("WriteBackupHistory", func() {
@@ -203,11 +206,13 @@ var _ = Describe("backup/history tests", func() {
 				BackupConfigs: []history.BackupConfig{testConfig2, testConfig1},
 			}
 			historyFileContents, _ := yaml.Marshal(historyWithEntries)
-			fileHandle := iohelper.MustOpenFileForWriting(historyFilePath)
-			_, _ = fileHandle.Write(historyFileContents)
-			_ = fileHandle.Close()
-
-			err := history.WriteBackupHistory(historyFilePath, &testConfig3)
+			fileHandle, err := utils.OpenFileForWrite(historyFilePath)
+			Expect(err).ToNot(HaveOccurred())
+			_, err = fileHandle.Write(historyFileContents)
+			Expect(err).ToNot(HaveOccurred())
+			err = fileHandle.Close()
+			Expect(err).ToNot(HaveOccurred())
+			err = history.WriteBackupHistory(historyFilePath, &testConfig3)
 			Expect(err).ToNot(HaveOccurred())
 
 			resultHistory, err := history.NewHistory(historyFilePath)
@@ -216,7 +221,7 @@ var _ = Describe("backup/history tests", func() {
 			expectedHistory := history.History{
 				BackupConfigs: []history.BackupConfig{testConfig3, testConfig2, testConfig1},
 			}
-			structmatcher.ExpectStructsToMatch(&expectedHistory, resultHistory)
+			Expect(expectedHistory).To(structmatcher.MatchStruct(resultHistory))
 		})
 		It("writes file with new config when file does not exist", func() {
 			Expect(testConfig3.EndTime).To(BeEmpty())
@@ -230,7 +235,7 @@ var _ = Describe("backup/history tests", func() {
 			resultHistory, err := history.NewHistory(historyFilePath)
 			Expect(err).ToNot(HaveOccurred())
 			expectedHistory := history.History{BackupConfigs: []history.BackupConfig{testConfig3}}
-			structmatcher.ExpectStructsToMatch(&expectedHistory, resultHistory)
+			Expect(expectedHistory).To(structmatcher.MatchStruct(resultHistory))
 			Expect(testLogfile).To(Say("No existing backups found. Creating new backup history file."))
 			Expect(testConfig3.EndTime).To(Equal(simulatedEndTime.Format("20060102150405")))
 		})

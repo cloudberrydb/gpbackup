@@ -65,7 +65,7 @@ func doRestoreAgent() error {
 			// In the case this error is hit it means we have lost the
 			// ability to open pipes normally, so hard quit even if
 			// --on-error-continue is given
-			_ = removeFileIfExists(currentPipe)
+			_ = utils.RemoveFileIfExists(currentPipe)
 			return err
 		}
 
@@ -73,7 +73,7 @@ func doRestoreAgent() error {
 		numDiscarded, err = reader.Discard(int(start - lastByte))
 		if err != nil {
 			// Always hard quit if data reader has issues
-			_ = removeFileIfExists(currentPipe)
+			_ = utils.RemoveFileIfExists(currentPipe)
 			return err
 		}
 		log(fmt.Sprintf("Data Reader discarded %d bytes", numDiscarded))
@@ -99,9 +99,9 @@ func doRestoreAgent() error {
 
 	LoopEnd:
 		log(fmt.Sprintf("Removing pipe for oid %d: %s", oid, currentPipe))
-		errRemove = removeFileIfExists(currentPipe)
+		errRemove = utils.RemoveFileIfExists(currentPipe)
 		if errRemove != nil {
-			_ = removeFileIfExists(nextPipe)
+			_ = utils.RemoveFileIfExists(nextPipe)
 			return errRemove
 		}
 

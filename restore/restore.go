@@ -10,7 +10,6 @@ import (
 
 	"github.com/greenplum-db/gp-common-go-libs/cluster"
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
-	"github.com/greenplum-db/gp-common-go-libs/operating"
 	"github.com/greenplum-db/gpbackup/filepath"
 	"github.com/greenplum-db/gpbackup/history"
 	"github.com/greenplum-db/gpbackup/options"
@@ -467,7 +466,7 @@ func writeErrorTables(isMetadata bool) {
 	err = errorWriter.Flush()
 	err = errorFile.Close()
 	gplog.FatalOnError(err)
-	err = operating.System.Chmod(errorFilename, 0444)
+	err = os.Chmod(errorFilename, 0444)
 	gplog.FatalOnError(err)
 }
 
