@@ -323,6 +323,7 @@ var _ = Describe("End to End incremental tests", func() {
 					"--leaf-partition-data",
 					"--plugin-config", pluginConfigPath)
 
+				otherPluginExecutablePath := fmt.Sprintf("%s/other_plugin_location/example_plugin.bash", backupDir)
 				command := exec.Command("bash", "-c", fmt.Sprintf("mkdir %s/other_plugin_location && cp %s %s/other_plugin_location", backupDir, pluginExecutablePath, backupDir))
 				mustRunCommand(command)
 				newCongig := fmt.Sprintf(`EOF1
@@ -330,20 +331,22 @@ executablepath: %s/other_plugin_location/example_plugin.bash
 options:
  password: unknown
 EOF1`, backupDir)
-				newConfigPath := fmt.Sprintf("%s/other_plugin_location/example_plugin_config.yml", backupDir)
-				command = exec.Command("bash", "-c", fmt.Sprintf("cat > %s << %s", newConfigPath, newCongig))
+				otherPluginConfig := fmt.Sprintf("%s/other_plugin_location/example_plugin_config.yml", backupDir)
+				command = exec.Command("bash", "-c", fmt.Sprintf("cat > %s << %s", otherPluginConfig, newCongig))
 				mustRunCommand(command)
+
+				copyPluginToAllHosts(backupConn, otherPluginExecutablePath)
 
 				incrementalBackupTimestamp := gpbackup(gpbackupPath, backupHelperPath,
 					"--leaf-partition-data",
 					"--incremental",
-					"--plugin-config", newConfigPath)
+					"--plugin-config", otherPluginConfig)
 
 				Expect(incrementalBackupTimestamp).NotTo(BeNil())
 
 				gprestore(gprestorePath, restoreHelperPath, incrementalBackupTimestamp,
 					"--redirect-db", "restoredb",
-					"--plugin-config", pluginConfigPath)
+					"--plugin-config", otherPluginConfig)
 
 				assertRelationsCreated(restoreConn, TOTAL_RELATIONS)
 				assertDataRestored(restoreConn, publicSchemaTupleCounts)
