@@ -1028,6 +1028,9 @@ var _ = Describe("backup and restore end to end tests", func() {
 		assertDataRestored(restoreConn, schema2TupleCounts)
 	})
 	It("runs gpbackup and gprestore with with-stats flag", func() {
+		// gpbackup before version 1.18.0 does not dump pg_class statistics correctly
+		skipIfOldBackupVersionBefore("1.18.0")
+
 		timestamp := gpbackup(gpbackupPath, backupHelperPath,
 			"--with-stats",
 			"--backup-dir", backupDir)
@@ -1058,6 +1061,9 @@ var _ = Describe("backup and restore end to end tests", func() {
 		Expect(restoredTablesAnalyzed).To(Equal("0"))
 	})
 	It("restores statistics only for tables specified in --include-table flag when runs gprestore with with-stats flag", func() {
+		// gpbackup before version 1.18.0 does not dump pg_class statistics correctly
+		skipIfOldBackupVersionBefore("1.18.0")
+
 		testhelper.AssertQueryRuns(backupConn,
 			"CREATE TABLE public.table_to_include_with_stats(i int)")
 		testhelper.AssertQueryRuns(backupConn,
