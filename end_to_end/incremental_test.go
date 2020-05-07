@@ -372,7 +372,7 @@ EOF1`, backupDir)
 				testhelper.AssertQueryRuns(backupConn,
 					"CREATE TABLE testschema.co_table (a int) WITH (appendonly=true, orientation=column);")
 				testhelper.AssertQueryRuns(backupConn,
-					"CREATE EXTERNAL WEB TABLE external_table (a text) EXECUTE E'echo hi' FORMAT 'csv';")
+					"CREATE EXTERNAL WEB TABLE testschema.external_table (a text) EXECUTE E'echo hi' FORMAT 'csv';")
 				backupTimestamp := gpbackup(gpbackupPath, backupHelperPath, "--leaf-partition-data")
 
 				// Restore the backup to a different database
