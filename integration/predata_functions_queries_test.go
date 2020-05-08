@@ -270,22 +270,13 @@ STABLE
 			results := backup.GetFunctions4(connectionPool)
 
 			addFunction := backup.Function{
-				Schema: "public", Name: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
-				BinaryPath: "", Arguments: sql.NullString{String: "", Valid: true},
-				IdentArgs: sql.NullString{String: "", Valid: true},
-				ResultType: sql.NullString{String: "", Valid: true},
+				Schema: "public", Name: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2", BinaryPath: "",
 				Volatility: "v", IsStrict: false, IsSecurityDefiner: false, NumRows: 0, Language: "sql", ExecLocation: "a"}
 			appendFunction := backup.Function{
-				Schema: "public", Name: "append", ReturnsSet: true, FunctionBody: "SELECT ($1, $2)",
-				BinaryPath: "", Arguments: sql.NullString{String: "", Valid: true},
-				IdentArgs: sql.NullString{String: "", Valid: true},
-				ResultType: sql.NullString{String: "", Valid: true},
+				Schema: "public", Name: "append", ReturnsSet: true, FunctionBody: "SELECT ($1, $2)", BinaryPath: "",
 				Volatility: "s", IsStrict: true, IsSecurityDefiner: true, Language: "sql", ExecLocation: "a"}
 			specCharFunction := backup.Function{
-				Schema: "public", Name: `"specChar"`, ReturnsSet: false, FunctionBody: "BEGIN RETURN precision + 1; END;",
-				BinaryPath: "", Arguments: sql.NullString{String: "", Valid: true},
-				IdentArgs: sql.NullString{String: "", Valid: true},
-				ResultType: sql.NullString{String: "", Valid: true},
+				Schema: "public", Name: `"specChar"`, ReturnsSet: false, FunctionBody: "BEGIN RETURN precision + 1; END;", BinaryPath: "",
 				Volatility: "v", IsStrict: false, IsSecurityDefiner: false, NumRows: 0, Language: "plpgsql", ExecLocation: "a"}
 
 			Expect(results).To(HaveLen(3))
@@ -306,10 +297,7 @@ LANGUAGE SQL`)
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP FUNCTION testschema.add(float, integer)")
 
 			addFunction := backup.Function{
-				Schema: "testschema", Name: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2",
-				BinaryPath: "", Arguments: sql.NullString{String: "", Valid: true},
-				IdentArgs: sql.NullString{String: "", Valid: true},
-				ResultType: sql.NullString{String: "", Valid: true},
+				Schema: "testschema", Name: "add", ReturnsSet: false, FunctionBody: "SELECT $1 + $2", BinaryPath: "",
 				Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Language: "sql", ExecLocation: "a"}
 			_ = backupCmdFlags.Set(options.INCLUDE_SCHEMA, "testschema")
 			results := backup.GetFunctions4(connectionPool)
