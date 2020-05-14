@@ -4,7 +4,7 @@
 
 ## Pre-Requisites
 
-The project requires the Go Programming language version 1.8 or higher. Follow the directions [here](https://golang.org/doc/) for installation, usage and configuration instructions.
+The project requires the Go Programming language version 1.11 or higher. Follow the directions [here](https://golang.org/doc/) for installation, usage and configuration instructions.
 
 ## Downloading
 
