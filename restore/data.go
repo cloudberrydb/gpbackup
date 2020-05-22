@@ -116,7 +116,6 @@ func restoreDataFromTimestamp(fpInfo filepath.FilePathInfo, dataEntries []toc.Ma
 	var workerPool sync.WaitGroup
 	var numErrors int32
 	var mutex = &sync.Mutex{}
-	var err error
 
 	for i := 0; i < connectionPool.NumConns; i++ {
 		workerPool.Add(1)
@@ -143,6 +142,7 @@ func restoreDataFromTimestamp(fpInfo filepath.FilePathInfo, dataEntries []toc.Ma
 					tableName = utils.MakeFQN(opts.RedirectSchema, entry.Name)
 				}
 				// Truncate table before restore, if needed
+				var err error
 				if MustGetFlagBool(options.INCREMENTAL) || MustGetFlagBool(options.TRUNCATE_TABLE) {
 					err = TruncateTable(tableName)
 				}
