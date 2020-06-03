@@ -83,10 +83,6 @@ pushd workspace/files-to-upload
     newFilename=$(sed -e "s/gpbackup_tools-${GPBACKUP_VERSION}+[0-9]*/pivotal_greenplum_backup_restore-${TILE_RELEASE_VERSION}/" -e "s/RHEL/rhel/" -e "s/SLES/sles/" <<< "$filename")
     mv "$filename" "$newFilename"
   done
-  for filename in *.deb; do
-    newFilename=$(sed -e "s/gpbackup_tools-${GPBACKUP_VERSION}+[0-9]*/pivotal_greenplum_backup_restore-${TILE_RELEASE_VERSION}/" <<< "$filename")
-    mv "$filename" "$newFilename"
-  done
   # rename binary tarball
   mv "bin_gpbackup.tar.gz" "pivotal_greenplum_backup_restore-${TILE_RELEASE_VERSION}.tar.gz"
 popd
