@@ -365,7 +365,7 @@ test_backup_and_restore_with_plugin() {
             exit 1
         fi
         num_rows=`psql -X -d $test_db -tc "SELECT count(*) FROM test_table" | xargs`
-        if [ "$num_rows" != "50000" ]; then
+        if [ "$flags" != "--metadata-only" ] && [ "$num_rows" != "50000" ]; then
           echo "Expected to restore 50000 rows, got $num_rows"
           exit 1
         fi
