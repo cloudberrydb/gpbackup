@@ -34,11 +34,13 @@ testdir="/tmp/testseg/backups/${current_date}/${time_second}"
 testfile="$testdir/testfile_$time_second.txt"
 testdata="$testdir/testdata_$time_second.txt"
 test_no_data="$testdir/test_no_data_$time_second.txt"
+testdatalarge="$testdir/testdatalarge_$time_second.txt"
 
-logdir="/tmp/test_bench_logs"
+logdir="/tmp/test_bench_logs"$
 
 text="this is some text"
 data=`LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 1000 ; echo`
+data_large=`LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 1000000 ; echo`
 mkdir -p $testdir
 mkdir -p $logdir
 echo $text > $testfile
@@ -202,6 +204,49 @@ echo "[PASSED] restore_data with no data"
 cleanup_test_dir $testdir
 
 # ----------------------------------------------
+# Restore subset data functions
+# ----------------------------------------------
+if [[ "$plugin" == *gpbackup_ddboost_plugin ]]; then
+  echo "[RUNNING] backup_data of large data for subset restore"
+  echo $data_large | $plugin backup_data $plugin_config $testdatalarge
+
+  echo "1 3 10" > "$testdir/offsets"
+  echo "[RUNNING] restore_data_subset"
+  echo $plugin restore_data_subset $plugin_config $testdata "$testdir/offsets"
+  output=`$plugin restore_data_subset $plugin_config $testdata "$testdir/offsets"`
+  echo "---------------"
+  data_subset=$(echo $data | cut -c4-10)
+  echo "---------------"
+  if [ "$output" != "$data_subset" ]; then
+    echo "Failure in restore_data_subset of small data using plugin"
+    exit 1
+  fi
+  echo "[PASSED] restore_data_subset with small data"
+
+  echo "1 900000 900001" > "$testdir/offsets"
+  echo "[RUNNING] restore_data_subset"
+  output=`$plugin restore_data_subset $plugin_config $testdatalarge "$testdir/offsets"`
+  data_part=$(echo $data_large | cut -c900001-900001)
+  if [ "$output" != "$data_part" ]; then
+    echo "Failure restore_data_subset of one partition from large data $output $data_part"
+    exit 1
+  fi
+  echo "[PASSED] restore_data_subset of one partition from large data"
+
+  echo "2 0 700000 900000 900001" > "$testdir/offsets"
+  echo "[RUNNING] restore_data_subset"
+  output=`$plugin restore_data_subset $plugin_config $testdatalarge "$testdir/offsets"`
+  data_part1=$(echo $data_large | cut -c1-700000)
+  data_part2=$(echo $data_large | cut -c900001-900001)
+  if [ "$output" != "$data_part1$data_part2" ]; then
+    echo "Failure restore_data_subset of two partitions from large data"
+    exit 1
+  fi
+  echo "[PASSED] restore_data_subset of two partitions from large data"
+  cleanup_test_dir $testdir
+fi
+
+# ----------------------------------------------
 # Delete backup directory function
 # ----------------------------------------------
 time_second_for_del=$(expr 99999999999999 - $(od -vAn -N5 -tu < /dev/urandom | tr -d ' \n'))
@@ -306,18 +351,21 @@ set -e
 # ----------------------------------------------
 # Run test gpbackup and gprestore with plugin
 # ----------------------------------------------
-
 #gpbackup --dbname $test_db --plugin-config $plugin_config $further_options > $log_file
-
 
 test_backup_and_restore_with_plugin() {
     flags=$1
+    restore_filter=$2
     test_db=plugin_test_db
     log_file="$logdir/plugin_test_log_file"
 
     psql -X -d postgres -qc "DROP DATABASE IF EXISTS $test_db" 2>/dev/null
     createdb $test_db
-    psql -X -d $test_db -qc "CREATE TABLE test_table(i int) DISTRIBUTED RANDOMLY; INSERT INTO test_table select generate_series(1,50000)"
+    psql -X -d $test_db -qc "CREATE TABLE test1(i int) DISTRIBUTED RANDOMLY; INSERT INTO test1 select generate_series(1,50000)"
+    if [ "$restore_filter" == "restore-filter" ] ; then
+      psql -X -d $test_db -qc "CREATE TABLE test2(i int) DISTRIBUTED RANDOMLY; INSERT INTO test2 VALUES(3333)"
+      flags_restore="--include-table public.test2"
+    fi
 
     set +e
     # save the encrypt key file, if it exists
@@ -326,7 +374,7 @@ test_backup_and_restore_with_plugin() {
     fi
     echo "gpbackup_ddboost_plugin: 66706c6c6e677a6965796f68343365303133336f6c73366b316868326764" > $MASTER_DATA_DIRECTORY/.encrypt
 
-    echo "[RUNNING] gpbackup with test database (using ${flags})"
+    echo "[RUNNING] gpbackup with test database (using ${flags} ${flags_restore})"
     gpbackup --dbname $test_db --plugin-config $plugin_config $flags &> $log_file
     if [ ! $? -eq 0 ]; then
         echo
@@ -339,7 +387,7 @@ test_backup_and_restore_with_plugin() {
     dropdb $test_db
 
     echo "[RUNNING] gprestore with test database"
-    gprestore --timestamp $timestamp --plugin-config $plugin_config --create-db &> $log_file
+    gprestore --timestamp $timestamp --plugin-config $plugin_config --create-db $flags_restore &> $log_file
     if [ ! $? -eq 0 ]; then
         echo
         cat $log_file
@@ -347,10 +395,24 @@ test_backup_and_restore_with_plugin() {
         echo "gprestore failed. Check gprestore log file in ~/gpAdminLogs for details."
         exit 1
     fi
-    num_rows=`psql -X -d $test_db -tc "SELECT count(*) FROM test_table" | xargs`
-    if [ "$flags" != "--metadata-only" ] && [ "$num_rows" != "50000" ]; then
-        echo "Expected to restore 50000 rows, got $num_rows"
-        exit 1
+
+    if [ "$restore_filter" == "restore-filter" ] ; then
+      result=`psql -X -d $test_db -tc "SELECT table_name FROM information_schema.tables WHERE table_schema='public'" | xargs`
+      if [ "$result" == *"test1"* ]; then
+          echo "Expected relation test1 to not exist"
+          exit 1
+      fi
+      result=`psql -X -d $test_db -tc "SELECT * FROM test2" | xargs`
+      if [ "$flags" != "--metadata-only" ] && [ "$result" != "3333" ]; then
+          echo "Expected relation test2 value: 3333, got %result"
+          exit 1
+      fi
+    else
+      result=`psql -X -d $test_db -tc "SELECT count(*) FROM test1" | xargs`
+      if [ "$flags" != "--metadata-only" ] && [ "$result" != "50000" ]; then
+          echo "Expected to restore 50000 rows, got $result"
+          exit 1
+      fi
     fi
 
     if [ -n "$secondary_plugin_config" ]; then
@@ -364,9 +426,9 @@ test_backup_and_restore_with_plugin() {
             echo "gprestore from secondary destination failed. Check gprestore log file in ~/gpAdminLogs for details."
             exit 1
         fi
-        num_rows=`psql -X -d $test_db -tc "SELECT count(*) FROM test_table" | xargs`
-        if [ "$flags" != "--metadata-only" ] && [ "$num_rows" != "50000" ]; then
-          echo "Expected to restore 50000 rows, got $num_rows"
+        result=`psql -X -d $test_db -tc "SELECT count(*) FROM test1" | xargs`
+        if [ "$flags" != "--metadata-only" ] && [ "$result" != "50000" ]; then
+          echo "Expected to restore 50000 rows, got $result"
           exit 1
         fi
     fi
@@ -381,6 +443,7 @@ test_backup_and_restore_with_plugin() {
 test_backup_and_restore_with_plugin "--no-compression --single-data-file"
 test_backup_and_restore_with_plugin "--no-compression"
 test_backup_and_restore_with_plugin "--metadata-only"
+test_backup_and_restore_with_plugin "--no-compression --single-data-file" "restore-filter"
 
 # ----------------------------------------------
 # Cleanup test artifacts

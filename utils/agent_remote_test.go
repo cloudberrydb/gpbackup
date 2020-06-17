@@ -123,7 +123,7 @@ var _ = Describe("agent remote", func() {
 	})
 	Describe("StartGpbackupHelpers()", func() {
 		It("Correctly propagates --on-error-continue flag to gpbackup_helper", func() {
-			utils.StartGpbackupHelpers(testCluster, fpInfo, "operation", "/tmp/pluginConfigFile.yml", " compressStr", true)
+			utils.StartGpbackupHelpers(testCluster, fpInfo, "operation", "/tmp/pluginConfigFile.yml", " compressStr", true, false)
 
 			cc := testExecutor.ClusterCommands[0]
 			Expect(cc[0][4]).To(ContainSubstring(" --on-error-continue"))

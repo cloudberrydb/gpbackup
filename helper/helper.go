@@ -50,6 +50,7 @@ var (
 	printVersion     *bool
 	restoreAgent     *bool
 	tocFile          *string
+	isFiltered       *bool
 )
 
 func DoHelper() {
@@ -105,6 +106,7 @@ func InitializeGlobals() {
 	printVersion = flag.Bool("version", false, "Print version number and exit")
 	restoreAgent = flag.Bool("restore-agent", false, "Use gpbackup_helper as an agent for restore")
 	tocFile = flag.String("toc-file", "", "Absolute path to the table of contents file")
+	isFiltered = flag.Bool("with-filters", false, "Used with table/schema filters")
 
 	if *onErrorContinue && !*restoreAgent {
 		fmt.Printf("--on-error-continue flag can only be used with --restore-agent flag")

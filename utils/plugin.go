@@ -473,3 +473,9 @@ func (plugin *PluginConfig) SetBackupPluginVersion(timestamp string, historicalP
 		plugin.backupPluginVersion = historicalPluginVersion
 	}
 }
+
+func (plugin *PluginConfig) CanRestoreSubset() bool {
+	return (plugin.Options["restore_subset"] == "on") ||
+			(strings.HasSuffix(plugin.ExecutablePath, "ddboost_plugin") &&
+				plugin.Options["restore_subset"] != "off")
+}
