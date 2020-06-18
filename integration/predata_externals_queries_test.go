@@ -107,7 +107,7 @@ SEGMENT REJECT LIMIT 10 PERCENT
 				Command: "", RejectLimit: 10, RejectLimitType: "p", ErrTableName: "ext_table", ErrTableSchema: "public", Encoding: "UTF8",
 				Writable: false, URIs: []string{"file://tmp/myfile.txt"}}
 			if connectionPool.Version.AtLeast("7") {
-				extTable.FormatOpts = "formatter 'fixedwidth_out'i '20' "
+				extTable.FormatOpts = "formatter 'fixedwidth_out'i '20'"
 			}
 
 			structmatcher.ExpectStructsToMatchExcluding(&extTable, &result, "Oid")

@@ -103,7 +103,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			extTable.FormatType = "b"
 			extTable.FormatOpts = "formatter 'fixedwidth_out' i '20' "
 			if connectionPool.Version.AtLeast("7") {
-				extTable.FormatOpts = "formatter 'fixedwidth_out'i '20' "
+				extTable.FormatOpts = "formatter 'fixedwidth_out'i '20'"
 			}
 			testTable.ExtTableDef = extTable
 
