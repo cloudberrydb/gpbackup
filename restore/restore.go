@@ -141,7 +141,7 @@ func DoRestore() {
 		restoreData()
 	}
 
-	if !isDataOnly {
+	if !isDataOnly && !MustGetFlagBool(options.INCREMENTAL) {
 		restorePostdata(metadataFilename)
 	}
 

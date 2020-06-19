@@ -395,6 +395,24 @@ EOF1`, backupDir)
 				testhelper.AssertQueryRuns(restoreConn,
 					"DROP SCHEMA IF EXISTS testschema CASCADE;")
 			})
+			It("Does not try to restore postdata", func(){
+				testhelper.AssertQueryRuns(backupConn,
+					"CREATE TABLE zoo (a int) WITH (appendonly=true);")
+				testhelper.AssertQueryRuns(backupConn,
+					"CREATE  INDEX fooidx ON zoo USING btree(a);")
+				backupTimestamp := gpbackup(gpbackupPath, backupHelperPath, "--leaf-partition-data")
+				testhelper.AssertQueryRuns(backupConn,
+					"INSERT INTO zoo VALUES (1);")
+				incrementalBackupTimestamp := gpbackup(gpbackupPath, backupHelperPath, "--leaf-partition-data", "--incremental")
+				gprestore(gprestorePath, restoreHelperPath, backupTimestamp, "--redirect-db", "restoredb")
+				gprestore(gprestorePath, restoreHelperPath, incrementalBackupTimestamp, "--redirect-db", "restoredb", "--incremental")
+
+				// Cleanup
+				testhelper.AssertQueryRuns(backupConn,
+					"DROP TABLE IF EXISTS zoo;")
+				testhelper.AssertQueryRuns(restoreConn,
+					"DROP TABLE IF EXISTS zoo;")
+			})
 		})
 		Context("No DDL no partitioning", func() {
 			BeforeEach(func() {
