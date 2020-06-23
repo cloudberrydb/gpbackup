@@ -16,6 +16,10 @@ params:
   DD_PW:
   DD_ENCRYPTED_PW:
   OS: RHEL
+  AWS_ACCESS_KEY_ID:
+  AWS_SECRET_ACCESS_KEY:
+  BUCKET:
+  REGION:
 
 run:
-  path: gpbackup/ci/scripts/ddboost-tests.bash
+  path: gpbackup/ci/scripts/ddboost-plugin-perf.bash

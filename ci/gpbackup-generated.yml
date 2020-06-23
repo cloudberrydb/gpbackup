@@ -264,7 +264,7 @@ ddboost_plugin_and_boostfs_tests_anchor: &ddboost_plugin_and_boostfs_tests
   - task: run_tests
     tags: ["ddboost"]
     image: centos7-image
-    file: gpbackup/ci/tasks/ddboost-tests.yml
+    file: gpbackup/ci/tasks/ddboost-plugin-tests.yml
     params:
       <<: *ddboost_test_params
     on_failure:
