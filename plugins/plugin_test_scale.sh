@@ -24,7 +24,6 @@ fi
 
 logdir="/tmp/test_scale_logs"
 mkdir -p $logdir
-test_db=tpchdb
 
 print_header() {
     header="### $1 ###"
@@ -42,7 +41,7 @@ print_time_exec() {
 test_backup_and_restore_with_plugin() {
     config=$1
     backup_flags=$2
-    restore_filter=$3
+    restore_flags=$3
     log_file="$logdir/plugin_test_log_file"
     TIMEFORMAT=%R
 
@@ -55,7 +54,7 @@ test_backup_and_restore_with_plugin() {
     fi
 
     echo
-    print_header "GPBACKUP (flags: [${backup_flags}])"
+    print_header "GPBACKUP $test_db (flags: [${backup_flags}])"
     print_time_exec "gpbackup --dbname $test_db --plugin-config $config $backup_flags &> $log_file"
 
     if [ ! $? -eq 0 ]; then
@@ -67,11 +66,8 @@ test_backup_and_restore_with_plugin() {
     fi
     timestamp=`head -4 $log_file | grep "Backup Timestamp " | grep -Eo "[[:digit:]]{14}"`
 
-    if [ "$restore_filter" == "restore-filter" ] ; then
-      flags_restore=" --include-table public.lineitem_6"
-    fi
-    print_header "GPRESTORE (flags: [${flags_restore}])"
-    print_time_exec "gprestore --timestamp $timestamp --plugin-config $config --create-db --redirect-db restoredb $flags_restore &> $log_file"
+    print_header "GPRESTORE $test_db (flags: [${restore_flags}])"
+    print_time_exec "gprestore --quiet --timestamp $timestamp --plugin-config $config --create-db --redirect-db restoredb $restore_flags &> $log_file"
 
     dropdb restoredb
     if [ ! $? -eq 0 ]; then
@@ -86,37 +82,39 @@ test_backup_and_restore_with_plugin() {
     if [ -f "/tmp/.encrypt_saved" ] ; then
         mv /tmp/.encrypt_saved $MASTER_DATA_DIRECTORY/.encrypt
     fi
+    $plugin delete_backup $config $timestamp
 }
 
 # ----------------------------------------------
-# Run scale test for gpbackup and gprestore with plugin
+# Run scale tests for gpbackup and gprestore with plugin with tpchdb
 # ----------------------------------------------
-test_backup_and_restore_with_plugin "$plugin_config"
-test_backup_and_restore_with_plugin "$plugin_config" "" "restore-filter"
+test_db=tpchdb
+restore_filter="--include-table public.lineitem_100"
+#test_backup_and_restore_with_plugin "$plugin_config" "" "--jobs=4"
+test_backup_and_restore_with_plugin "$plugin_config" "" "$restore_filter --jobs=4"
+
+if [[ "$plugin" == *gpbackup_s3_plugin ]]; then
+  test_backup_and_restore_with_plugin "$plugin_config" "--single-data-file" "$restore_filter"
+fi
+
+test_backup_and_restore_with_plugin "$plugin_config" "--single-data-file --no-compression" "$restore_filter"
 
 if [[ "$plugin" == *gpbackup_ddboost_plugin ]]; then
-  test_backup_and_restore_with_plugin "$plugin_config" "--single-data-file" "restore-filter"
-  test_backup_and_restore_with_plugin "$plugin_config" "--single-data-file --no-compression" "restore-filter"
   echo
   echo "DISABLED restore_subset"
   cp $plugin_config ${plugin_config}_nofilter
   echo "  restore_subset: \"off\"" >> ${plugin_config}_nofilter
-  test_backup_and_restore_with_plugin "${plugin_config}_nofilter" "--single-data-file --no-compression" "restore-filter"
+  test_backup_and_restore_with_plugin "${plugin_config}_nofilter" "--single-data-file --no-compression" "$restore_filter"
 fi
+
 
 # ----------------------------------------------
 # Cleanup test artifacts
 # ----------------------------------------------
 echo "Cleaning up leftover test artifacts"
-
-dropdb $test_db
+dropdb tpchdb
 rm -r $logdir
 
-if (( 1 == $(echo "0.4.0 $api_version" | awk '{print ($1 > $2)}') )) ; then
-  echo "[SKIPPING] cleanup of uploaded test artifacts using plugins (only compatible with version >= 0.4.0)"
-else
-  $plugin delete_backup $plugin_config $time_second
-fi
 
 echo "# ----------------------------------------------"
 echo "# Finished gpbackup plugin scale tests"

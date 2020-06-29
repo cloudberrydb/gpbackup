@@ -5,7 +5,8 @@ set -ex
 ccp_src/scripts/setup_ssh_to_cluster.sh
 ssh -t centos@mdw "curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscli.zip" && \
     unzip -qq awscli.zip && \
-    sudo ./aws/install"
+    sudo ./aws/install && \
+    sudo yum install -y apr libevent-devel"
 
 out=$(ssh -t mdw 'source env.sh && psql postgres -c "select version();"')
 GPDB_VERSION=$(echo ${out} | sed -n 's/.*Greenplum Database \([0-9]\).*/\1/p')
@@ -68,13 +69,11 @@ source env.sh
 TIMEFORMAT=%R
 
 function print_header() {
-    set +x
     header="### \$1 ###"
     len=\$(echo \$header | awk '{print length}')
     printf "%0.s#" \$(seq 1 \$len) && echo
     echo -e "\$header"
     printf "%0.s#" \$(seq 1 \$len) && echo
-    set -x
 }
 
 mkdir -p /home/gpadmin/.aws
@@ -86,17 +85,21 @@ CRED
 chmod 400 \${HOME}/.aws/credentials
 aws s3 cp s3://${BUCKET}/benchmark/tpch/lineitem/${SCALE_FACTOR}/lineitem.tbl /data/gpdata/lineitem_${SCALE_FACTOR}.tbl
 
+# Create tpch dataset
 createdb tpchdb
 psql -d tpchdb -a -f lineitem.ddl
+gpload -f gpload.yml
 
-print_header "LOAD lineitem data using gpload with ${SCALE_FACTOR} GB of data"
-time gpload -f gpload.yml
-time psql -d tpchdb -c "CREATE TABLE lineitem_1 AS SELECT * FROM lineitem DISTRIBUTED BY (l_orderkey)"
-time psql -d tpchdb -c "CREATE TABLE lineitem_2 AS SELECT * FROM lineitem DISTRIBUTED BY (l_orderkey)"
-time psql -d tpchdb -c "CREATE TABLE lineitem_3 AS SELECT * FROM lineitem DISTRIBUTED BY (l_orderkey)"
-time psql -d tpchdb -c "CREATE TABLE lineitem_4 AS SELECT * FROM lineitem DISTRIBUTED BY (l_orderkey)"
-time psql -d tpchdb -c "CREATE TABLE lineitem_5 AS SELECT * FROM lineitem DISTRIBUTED BY (l_orderkey)"
-time psql -d tpchdb -c "CREATE TABLE lineitem_6 AS SELECT * FROM lineitem LIMIT 100 DISTRIBUTED BY (l_orderkey)"
+set +x
+COUNT=150
+print_header "CREATE tpchdb with \${COUNT} lineitem tables each with ${SCALE_FACTOR} GB"
+for i in {1..150}
+do
+  psql -d tpchdb -c "CREATE TABLE lineitem_\$i AS SELECT * FROM lineitem DISTRIBUTED BY (l_orderkey)"
+#  pids+=" $!"
+done
+#wait $pids || { echo "errors" >&2; exit 1; }
+set -x
 
 SCRIPT
 

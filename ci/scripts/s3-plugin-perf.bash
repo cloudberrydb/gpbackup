@@ -35,21 +35,16 @@ options:
   folder: test/backup
 CONFIG
 
+# ----------------------------------------------
+# Run S3 Plugin scale tests
+# ----------------------------------------------
 pushd \${GOPATH}/src/github.com/greenplum-db/gpbackup/plugins
 print_time_exec "./plugin_test_scale.sh \${GPHOME}/bin/gpbackup_s3_plugin ~/s3_config.yaml"
 popd
 
-#log_file=/tmp/gpbackup.log
-#print_header "GPBACKUP with ${SCALE_FACTOR} GB of data for each table"
-#time gpbackup --dbname tpchdb --plugin-config ~/s3_config.yaml | tee "\$log_file"
-#echo
-#timestamp=\$(head -5 "\$log_file" | grep "Backup Timestamp " | grep -Eo "[[:digit:]]{14}")
-#print_header "GPRESTORE with ${SCALE_FACTOR} GB of data for each table"
-#time gprestore --redirect-db --create-db restoredb --timestamp "\$timestamp" --plugin-config ~/s3_config.yaml
-#dropdb restoredb
-#echo
-#\${GPHOME}/bin/gpbackup_s3_plugin delete_backup ~/s3_config.yaml "\$timestamp"
-
+# ----------------------------------------------
+# Run S3 Plugin RESTORE_DIRECTORY and BACKUP_DIRECTORY serial
+# ----------------------------------------------
 mkdir -p /data/gpdata/stage1 /data/gpdata/stage2
 pushd /data/gpdata/stage1
 # Copy data from S3 to local using restore_directory
@@ -65,6 +60,9 @@ print_time_exec "\${GPHOME}/bin/gpbackup_s3_plugin backup_directory \
 echo
 rm -rf ~/tpch_data/tmp/\$timestamp
 
+# ----------------------------------------------
+# Run S3 Plugin RESTORE_DIRECTORY and BACKUP_DIRECTORY parallel
+# ----------------------------------------------
 popd && pushd /data/gpdata/stage2
 print_header "RESTORE_DIRECTORY (PARALLEL=5) with ${SCALE_FACTOR} GB of data"
 # Copy data from S3 to local using restore_directory_parallel
