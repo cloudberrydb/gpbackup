@@ -91,14 +91,20 @@ psql -d tpchdb -a -f lineitem.ddl
 gpload -f gpload.yml
 
 set +x
-COUNT=150
-print_header "CREATE tpchdb with \${COUNT} lineitem tables each with ${SCALE_FACTOR} GB"
-for i in {1..150}
+print_header "CREATE tpchdb with 150 lineitem tables each with ${SCALE_FACTOR} GB"
+count=0
+for i in {1..5}
 do
-  psql -d tpchdb -c "CREATE TABLE lineitem_\$i AS SELECT * FROM lineitem DISTRIBUTED BY (l_orderkey)"
-#  pids+=" $!"
+  pids=""
+  for j in {1..30}
+  do
+    psql -d tpchdb -c "CREATE TABLE lineitem_\$count AS SELECT * FROM lineitem DISTRIBUTED BY (l_orderkey)" &
+    pids+=" $!"
+    ((count=count+1))
+  done
+  wait $pids || { echo "errors" >&2; exit 1; }
 done
-#wait $pids || { echo "errors" >&2; exit 1; }
+
 set -x
 
 SCRIPT
