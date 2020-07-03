@@ -271,4 +271,7 @@ func ValidateFlagCombinations(flags *pflag.FlagSet) {
 		!flags.Changed(options.DATA_ONLY) {
 		gplog.Fatal(errors.Errorf("Cannot use --truncate-table without --include-table or --include-table-file and without --data-only"), "")
 	}
+	if flags.Changed(options.INCREMENTAL) && !flags.Changed(options.DATA_ONLY) {
+		gplog.Fatal(errors.Errorf("Cannot use --incremental without --data-only"), "")
+	}
 }

@@ -125,8 +125,13 @@ func DoRestore() {
 	metadataFilename := globalFPInfo.GetMetadataFilePath()
 	isDataOnly := backupConfig.DataOnly || MustGetFlagBool(options.DATA_ONLY)
 	isMetadataOnly := backupConfig.MetadataOnly || MustGetFlagBool(options.METADATA_ONLY)
+	isIncremental := MustGetFlagBool(options.INCREMENTAL)
 
-	if !isDataOnly {
+	if isIncremental {
+		verifyIncrementalState()
+	}
+
+	if !isDataOnly && !isIncremental {
 		restorePredata(metadataFilename)
 	}
 
@@ -141,7 +146,7 @@ func DoRestore() {
 		restoreData()
 	}
 
-	if !isDataOnly && !MustGetFlagBool(options.INCREMENTAL) {
+	if !isDataOnly && !isIncremental {
 		restorePostdata(metadataFilename)
 	}
 
@@ -180,87 +185,86 @@ func restoreGlobal(metadataFilename string) {
 	gplog.Info("Global database metadata restore complete")
 }
 
+func verifyIncrementalState() {
+	lastRestorePlanEntry := backupConfig.RestorePlan[len(backupConfig.RestorePlan)-1]
+	tableFQNsToRestore := lastRestorePlanEntry.TableFQNs
+
+	existingSchemas, err := GetExistingSchemas()
+	gplog.FatalOnError(err)
+	existingTableFQNs, err := GetExistingTableFQNs()
+	gplog.FatalOnError(err)
+
+	existingSchemasMap := make(map[string]Empty)
+	for _, schema := range existingSchemas {
+		existingSchemasMap[schema] = Empty{}
+	}
+	existingTablesMap := make(map[string]Empty)
+	for _, table := range existingTableFQNs {
+		existingTablesMap[table] = Empty{}
+	}
+
+	var schemasToCreate []string
+	var tableFQNsToCreate []string
+	var schemasExcludedByUserInput []string
+	var tablesExcludedByUserInput []string
+	for _, table := range tableFQNsToRestore {
+		schemaName := strings.Split(table, ".")[0]
+		if utils.SchemaIsExcludedByUser(opts.IncludedSchemas, opts.ExcludedSchemas, schemaName) {
+			if !utils.Exists(schemasExcludedByUserInput, schemaName) {
+				schemasExcludedByUserInput = append(schemasExcludedByUserInput, schemaName)
+			}
+			tablesExcludedByUserInput = append(tablesExcludedByUserInput, table)
+			continue
+		}
+
+		if _, exists := existingTablesMap[table]; !exists {
+			if utils.RelationIsExcludedByUser(opts.IncludedRelations, opts.ExcludedRelations, table) {
+				tablesExcludedByUserInput = append(tablesExcludedByUserInput, table)
+			} else {
+				_, schemaExists := existingSchemasMap[schemaName]
+				preFilteredToCreate := utils.Exists(schemasToCreate, schemaName)
+				if !schemaExists && !preFilteredToCreate {
+					schemasToCreate = append(schemasToCreate, schemaName)
+				}
+				tableFQNsToCreate = append(tableFQNsToCreate, table)
+			}
+		}
+	}
+
+	var missing []string
+	if len(schemasToCreate) > 0 && !MustGetFlagBool(options.ON_ERROR_CONTINUE) {
+		missing = schemasToCreate
+	}
+	if len(tableFQNsToCreate) > 0 && !MustGetFlagBool(options.ON_ERROR_CONTINUE) {
+		missing = append(missing, tableFQNsToCreate...)
+	}
+	if missing != nil {
+		err = errors.Errorf("Following objects are missing from the target database: %v", missing)
+		gplog.FatalOnError(err)
+	}
+}
+
 func restorePredata(metadataFilename string) {
 	if wasTerminated {
 		return
 	}
 	gplog.Info("Restoring pre-data metadata")
-
-	if MustGetFlagBool(options.INCREMENTAL) {
-		lastRestorePlanEntry := backupConfig.RestorePlan[len(backupConfig.RestorePlan)-1]
-		tableFQNsToRestore := lastRestorePlanEntry.TableFQNs
-
-		existingSchemas, err := GetExistingSchemas()
-		gplog.FatalOnError(err)
-		existingTableFQNs, err := GetExistingTableFQNs()
-		gplog.FatalOnError(err)
-
-		existingSchemasMap := make(map[string]Empty)
-		for _, schema := range existingSchemas {
-			existingSchemasMap[schema] = Empty{}
-		}
-		existingTablesMap := make(map[string]Empty)
-		for _, table := range existingTableFQNs {
-			existingTablesMap[table] = Empty{}
-		}
-
-		var schemasToCreate []string
-		var tableFQNsToCreate []string
-		var schemasExcludedByUserInput []string
-		var tablesExcludedByUserInput []string
-		for _, table := range tableFQNsToRestore {
-			schemaName := strings.Split(table, ".")[0]
-			if utils.SchemaIsExcludedByUser(opts.IncludedSchemas, opts.ExcludedSchemas, schemaName) {
-				if !utils.Exists(schemasExcludedByUserInput, schemaName) {
-					schemasExcludedByUserInput = append(schemasExcludedByUserInput, schemaName)
-				}
-				tablesExcludedByUserInput = append(tablesExcludedByUserInput, table)
-				continue
-			}
-
-			if _, exists := existingTablesMap[table]; !exists {
-				if utils.RelationIsExcludedByUser(opts.IncludedRelations, opts.ExcludedRelations, table) {
-					tablesExcludedByUserInput = append(tablesExcludedByUserInput, table)
-				} else {
-					_, schemaExists := existingSchemasMap[schemaName]
-					preFilteredToCreate := utils.Exists(schemasToCreate, schemaName)
-					if !schemaExists && !preFilteredToCreate {
-						schemasToCreate = append(schemasToCreate, schemaName)
-					}
-					tableFQNsToCreate = append(tableFQNsToCreate, table)
-				}
-			}
-		}
-
-		var missing []string
-		if len(schemasToCreate) > 0 && !MustGetFlagBool(options.ON_ERROR_CONTINUE) {
-			missing = schemasToCreate
-		}
-		if len(tableFQNsToCreate) > 0 && !MustGetFlagBool(options.ON_ERROR_CONTINUE) {
-			missing = append(missing, tableFQNsToCreate...)
-		}
-		if missing != nil {
-			err = errors.Errorf("Following objects are missing from the target database: %v", missing)
-			gplog.FatalOnError(err)
-		}
-	} else {
-		// if not incremental restore - assume database is empty and just filter based on user input
-		filters := NewFilters(opts.IncludedSchemas, opts.ExcludedSchemas, opts.IncludedRelations, opts.ExcludedRelations)
-		var schemaStatements []toc.StatementWithType
-		if opts.RedirectSchema == "" {
-			schemaStatements = GetRestoreMetadataStatementsFiltered("predata", metadataFilename, []string{"SCHEMA"}, []string{}, filters)
-		}
-		statements := GetRestoreMetadataStatementsFiltered("predata", metadataFilename, []string{}, []string{"SCHEMA"}, filters)
-
-		editStatementsRedirectSchema(statements, opts.RedirectSchema)
-		progressBar := utils.NewProgressBar(len(schemaStatements)+len(statements), "Pre-data objects restored: ", utils.PB_VERBOSE)
-		progressBar.Start()
-
-		RestoreSchemas(schemaStatements, progressBar)
-		ExecuteRestoreMetadataStatements(statements, "Pre-data objects", progressBar, utils.PB_VERBOSE, false)
-
-		progressBar.Finish()
+	// if not incremental restore - assume database is empty and just filter based on user input
+	filters := NewFilters(opts.IncludedSchemas, opts.ExcludedSchemas, opts.IncludedRelations, opts.ExcludedRelations)
+	var schemaStatements []toc.StatementWithType
+	if opts.RedirectSchema == "" {
+		schemaStatements = GetRestoreMetadataStatementsFiltered("predata", metadataFilename, []string{"SCHEMA"}, []string{}, filters)
 	}
+	statements := GetRestoreMetadataStatementsFiltered("predata", metadataFilename, []string{}, []string{"SCHEMA"}, filters)
+
+	editStatementsRedirectSchema(statements, opts.RedirectSchema)
+	progressBar := utils.NewProgressBar(len(schemaStatements)+len(statements), "Pre-data objects restored: ", utils.PB_VERBOSE)
+	progressBar.Start()
+
+	RestoreSchemas(schemaStatements, progressBar)
+	ExecuteRestoreMetadataStatements(statements, "Pre-data objects", progressBar, utils.PB_VERBOSE, false)
+
+	progressBar.Finish()
 	if wasTerminated {
 		gplog.Info("Pre-data metadata restore incomplete")
 	} else {
