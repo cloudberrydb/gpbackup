@@ -5,8 +5,7 @@ set -ex
 ccp_src/scripts/setup_ssh_to_cluster.sh
 ssh -t centos@mdw "curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscli.zip" && \
     unzip -qq awscli.zip && \
-    sudo ./aws/install && \
-    sudo yum install -y apr libevent-devel"
+    sudo ./aws/install"
 
 out=$(ssh -t mdw 'source env.sh && psql postgres -c "select version();"')
 GPDB_VERSION=$(echo ${out} | sed -n 's/.*Greenplum Database \([0-9]\).*/\1/p')
