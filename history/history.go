@@ -151,6 +151,10 @@ func WriteBackupHistory(historyFilePath string, currentBackupConfig *BackupConfi
 	if err != nil {
 		return err
 	}
+	err = tmpFile.Close()
+	if err != nil {
+		return err
+	}
 	err = os.Rename(tmpFile.Name(), historyFilePath)
 	if err != nil {
 		return err
