@@ -976,6 +976,7 @@ var _ = Describe("backup and restore end to end tests", func() {
 			Expect(actualStatisticCount).To(Equal("3"))
 		})
 		It("runs gprestore with --run-analyze and --redirect-schema", func() {
+			skipIfOldBackupVersionBefore("1.17.0")
 			testhelper.AssertQueryRuns(restoreConn, "CREATE SCHEMA fooschema")
 			defer testhelper.AssertQueryRuns(restoreConn, "DROP SCHEMA fooschema CASCADE")
 			timestamp := gpbackup(gpbackupPath, backupHelperPath,
