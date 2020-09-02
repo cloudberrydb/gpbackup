@@ -133,7 +133,7 @@ var _ = Describe("gpbackup_helper end to end integration tests", func() {
 		})
 		It("Generates error file when backup agent interrupted", func() {
 			helperCmd := gpbackupHelper(gpbackupHelperPath, "--backup-agent", "--compression-level", "0", "--data-file", dataFileFullPath)
-			time.Sleep(200 * time.Millisecond)
+			waitForPipeCreation()
 			err := helperCmd.Process.Signal(os.Interrupt)
 			Expect(err).ToNot(HaveOccurred())
 			err = helperCmd.Wait()
@@ -193,7 +193,7 @@ var _ = Describe("gpbackup_helper end to end integration tests", func() {
 		It("Generates error file when restore agent interrupted", func() {
 			setupRestoreFiles(true, false)
 			helperCmd := gpbackupHelper(gpbackupHelperPath, "--restore-agent", "--data-file", dataFileFullPath+".gz")
-			time.Sleep(200 * time.Millisecond)
+			waitForPipeCreation()
 			err := helperCmd.Process.Signal(os.Interrupt)
 			Expect(err).ToNot(HaveOccurred())
 			err = helperCmd.Wait()
@@ -357,5 +357,20 @@ func writeToPipes(data string) {
 			fmt.Printf("%s", output)
 			Fail(fmt.Sprintf("%v", err))
 		}
+	}
+}
+
+func waitForPipeCreation() {
+	// wait up to 5 seconds for two pipe files to have been created
+	tries := 0
+	for tries < 1000 {
+		pipes, err := filepath.Glob(pipeFile + "_[1-9]*")
+		Expect(err).ToNot(HaveOccurred())
+		if len(pipes) > 1 {
+			return
+		}
+
+		tries += 1
+		time.Sleep(5 * time.Millisecond)
 	}
 }
