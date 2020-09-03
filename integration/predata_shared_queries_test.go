@@ -131,7 +131,12 @@ var _ = Describe("backup integration tests", func() {
 				structmatcher.ExpectStructsToMatchExcluding(&constraints[0], &uniqueConstraint, "Oid")
 			})
 			It("returns a constraint array for a table with one PRIMARY KEY constraint and a comment", func() {
-				testhelper.AssertQueryRuns(connectionPool, "CREATE TABLE public.constraints_table(a int, b text, c float)")
+				// In GPDB 7+, we no longer allow the distributed key to implicitly change when creating a unique index.
+				if connectionPool.Version.Before("7") {
+					testhelper.AssertQueryRuns(connectionPool, "CREATE TABLE public.constraints_table(a int, b text, c float)")
+				} else {
+					testhelper.AssertQueryRuns(connectionPool, "CREATE TABLE public.constraints_table(a int, b text, c float) DISTRIBUTED BY (b)")
+				}
 				defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLE public.constraints_table")
 				testhelper.AssertQueryRuns(connectionPool, "ALTER TABLE ONLY public.constraints_table ADD CONSTRAINT pk1 PRIMARY KEY (b)")
 				testhelper.AssertQueryRuns(connectionPool, "COMMENT ON CONSTRAINT pk1 ON public.constraints_table IS 'this is a constraint comment'")
@@ -142,7 +147,12 @@ var _ = Describe("backup integration tests", func() {
 				structmatcher.ExpectStructsToMatchExcluding(&constraints[0], &pkConstraint, "Oid")
 			})
 			It("returns a constraint array for a table with one FOREIGN KEY constraint", func() {
-				testhelper.AssertQueryRuns(connectionPool, "CREATE TABLE public.constraints_table(a int, b text, c float)")
+				// In GPDB 7+, we no longer allow the distributed key to implicitly change when creating a unique index.
+				if connectionPool.Version.Before("7") {
+					testhelper.AssertQueryRuns(connectionPool, "CREATE TABLE public.constraints_table(a int, b text, c float)")
+				} else {
+					testhelper.AssertQueryRuns(connectionPool, "CREATE TABLE public.constraints_table(a int, b text, c float) DISTRIBUTED BY (b)")
+				}
 				defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLE public.constraints_table CASCADE")
 				testhelper.AssertQueryRuns(connectionPool, "CREATE TABLE public.constraints_other_table(b text)")
 				defer testhelper.AssertQueryRuns(connectionPool, "DROP TABLE public.constraints_other_table CASCADE")
