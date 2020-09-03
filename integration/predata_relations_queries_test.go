@@ -264,6 +264,10 @@ PARTITION BY LIST (gender)
 			if connectionPool.Version.AtLeast("6") {
 				expectedSequence.StartVal = 1
 			}
+			if connectionPool.Version.AtLeast("7") {
+				// In GPDB 7+, default cache value is 20
+				expectedSequence.CacheVal = 20
+			}
 
 			structmatcher.ExpectStructsToMatch(&expectedSequence, &resultSequenceDef)
 		})
@@ -286,6 +290,14 @@ PARTITION BY LIST (gender)
 			}
 			if connectionPool.Version.AtLeast("6") {
 				expectedSequence.StartVal = 100
+			}
+			if connectionPool.Version.AtLeast("7") {
+				// In GPDB 7+, default cache value is 20
+				expectedSequence.CacheVal = 20
+				// log_cnt goes from 0 -> 32 -> 12 due to next cache batch
+				expectedSequence.LogCnt = 12
+				// last_value goes from 100 -> 195 -> 295 due to increment_by and cache_value
+				expectedSequence.LastVal = 295
 			}
 
 			structmatcher.ExpectStructsToMatch(&expectedSequence, &resultSequenceDef)
@@ -367,6 +379,11 @@ PARTITION BY LIST (gender)
 			if connectionPool.Version.Before("5") {
 				seqOneDef.LogCnt = 1 // In GPDB 4.3, sequence log count is one-indexed
 				seqTwoDef.LogCnt = 1
+			}
+			if connectionPool.Version.AtLeast("7") {
+				// In GPDB 7+, default cache value is 20
+				seqOneDef.CacheVal = 20
+				seqTwoDef.CacheVal = 20
 			}
 
 			results := backup.GetAllSequences(connectionPool)
