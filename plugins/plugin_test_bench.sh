@@ -37,7 +37,7 @@ test_no_data="$testdir/test_no_data_$time_second.txt"
 testdatasmall="$testdir/testdatasmall_$time_second.txt"
 testdatalarge="$testdir/testdatalarge_$time_second.txt"
 
-logdir="/tmp/test_bench_logs"$
+logdir="/tmp/test_bench_logs"
 
 text="this is some text"
 data=`LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 1000 ; echo`
@@ -383,7 +383,7 @@ test_backup_and_restore_with_plugin() {
         echo "gpbackup failed. Check gpbackup log file in ~/gpAdminLogs for details."
         exit 1
     fi
-    timestamp=`head -4 $log_file | grep "Backup Timestamp " | grep -Eo "[[:digit:]]{14}"`
+    timestamp=`head -10 $log_file | grep "Backup Timestamp " | grep -Eo "[[:digit:]]{14}"`
     dropdb $test_db
 
     echo "[RUNNING] gprestore with test database"
