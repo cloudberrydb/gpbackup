@@ -48,7 +48,7 @@ done
 echo "## Performing backup for data scale test ##"
 ### Multiple data file test ###
 time gpbackup --dbname datascaledb --backup-dir /data/gpdata/ | tee "\$log_file"
-timestamp=\$(head -5 "\$log_file" | grep "Backup Timestamp " | grep -Eo "[[:digit:]]{14}")
+timestamp=\$(head -10 "\$log_file" | grep "Backup Timestamp " | grep -Eo "[[:digit:]]{14}")
 dropdb datascaledb
 echo "## Performing restore for data scale test ##"
 time gprestore --timestamp "\$timestamp" --backup-dir /data/gpdata/ --create-db --jobs=4 --quiet
@@ -57,7 +57,7 @@ rm "\$log_file"
 echo "## Performing single-data-file backup for data scale test ##"
 ### Single data file test ###
 time gpbackup --dbname datascaledb --backup-dir /data/gpdata/ --single-data-file | tee "\$log_file"
-timestamp=\$(head -5 "\$log_file" | grep "Backup Timestamp " | grep -Eo "[[:digit:]]{14}")
+timestamp=\$(head -10 "\$log_file" | grep "Backup Timestamp " | grep -Eo "[[:digit:]]{14}")
 dropdb datascaledb
 echo "## Performing single-data-file restore for data scale test ##"
 time gprestore --timestamp "\$timestamp" --backup-dir /data/gpdata/  --create-db --quiet
@@ -76,7 +76,7 @@ time pg_dump -s metadatascaledb > /data/gpdata/pg_dump.sql
 echo "## Performing gpbackup with metadata-only ##"
 time gpbackup --dbname metadatascaledb --backup-dir /data/gpdata/ --metadata-only --verbose | tee "\$log_file"
 
-timestamp=\$(head -5 "\$log_file" | grep "Backup Timestamp " | grep -Eo "[[:digit:]]{14}")
+timestamp=\$(head -10 "\$log_file" | grep "Backup Timestamp " | grep -Eo "[[:digit:]]{14}")
 echo "## Performing gprestore with metadata-only ##"
 time gprestore --timestamp "\$timestamp" --backup-dir /data/gpdata/ --redirect-db=metadatascaledb_res --jobs=4 --create-db
 
