@@ -64,7 +64,7 @@ test_backup_and_restore_with_plugin() {
         echo "gpbackup failed. Check gpbackup log file in ~/gpAdminLogs for details."
         exit 1
     fi
-    timestamp=`head -4 $log_file | grep "Backup Timestamp " | grep -Eo "[[:digit:]]{14}"`
+    timestamp=`head -10 $log_file | grep "Backup Timestamp " | grep -Eo "[[:digit:]]{14}"`
 
     print_header "GPRESTORE $test_db (flags: [${restore_flags}])"
     print_time_exec "gprestore --quiet --timestamp $timestamp --plugin-config $config --create-db --redirect-db restoredb $restore_flags &> $log_file"
