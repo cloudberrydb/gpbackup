@@ -114,24 +114,7 @@ The Greenplum Backup [wiki](https://github.com/greenplum-db/gpbackup/wiki) for t
 
 # How to Contribute
 
-We accept contributions via [Github Pull requests](https://help.github.com/articles/using-pull-requests) only.
-
-Follow the steps below to contribute to gpbackup:
-1. Fork the project’s repository.
-1. Run `go get github.com/greenplum-db/gpbackup/...` and add your fork as a remote.
-1. Run `make depend` to install required dependencies
-1. Create your own feature branch (e.g. `git checkout -b gpbackup_branch`) and make changes on this branch.
-    * Follow the previous sections on this page to setup and build in your environment.
-    * Add new tests to cover your code. We use [Ginkgo](http://onsi.github.io/ginkgo/) and [Gomega](https://onsi.github.io/gomega/) for testing.
-1. Run `make format`, `make test`, and `make end_to_end` in your feature branch and ensure they are successful.
-1. Push your local branch to the fork (e.g. `git push <your_fork> gpbackup_branch`) and [submit a pull request](https://help.github.com/articles/creating-a-pull-request).
-
-Your contribution will be analyzed for product fit and engineering quality prior to merging.
-Note: All contributions must be sent using GitHub Pull Requests.
-
-**Your pull request is much more likely to be accepted if it is small and focused with a clear message that conveys the intent of your change.**
-
-Overall we follow GPDB's comprehensive contribution policy. Please refer to it [here](https://github.com/greenplum-db/gpdb#contributing) for details.
+See [CONTRIBUTING.md file](https://github.com/greenplum-db/gpbackup/blob/master/CONTRIBUTING.md).
 
 # Code Formatting
 
