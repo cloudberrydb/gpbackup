@@ -440,11 +440,46 @@ func runAnalyze(filteredDataEntries map[string][]toc.MasterDataEntry) {
 			analyzeCommand := fmt.Sprintf("ANALYZE %s", tableFQN)
 
 			newAnalyzeStatement := toc.StatementWithType{
-				Schema: tableSchema,
-				Name: entry.Name,
+				Schema:    tableSchema,
+				Name:      entry.Name,
 				Statement: analyzeCommand,
 			}
 			analyzeStatements = append(analyzeStatements, newAnalyzeStatement)
+		}
+	}
+
+	// Only GPDB 5+ has leaf partition stats merged up to the root
+	// automatically. Against GPDB 4.3, we must extract the root partitions
+	// from the leaf partition info and run ANALYZE ROOTPARTITION on the root
+	// partitions. These particular ANALYZE ROOTPARTITION statements should run
+	// last so add them to the end of the analyzeStatements list.
+	if connectionPool.Version.Is("4") {
+		// Create root partition set
+		partitionRootSet := map[toc.StatementWithType]struct{}{}
+		for _, dataEntries := range filteredDataEntries {
+			for _, entry := range dataEntries {
+				if entry.PartitionRoot != "" {
+					tableSchema := entry.Schema
+					if opts.RedirectSchema != "" {
+						tableSchema = opts.RedirectSchema
+					}
+					rootFQN := utils.MakeFQN(tableSchema, entry.PartitionRoot)
+					analyzeCommand := fmt.Sprintf("ANALYZE ROOTPARTITION %s", rootFQN)
+					rootStatement := toc.StatementWithType{
+						Schema:    tableSchema,
+						Name:      entry.PartitionRoot,
+						Statement: analyzeCommand,
+					}
+
+					if _, ok := partitionRootSet[rootStatement]; !ok {
+						partitionRootSet[rootStatement] = struct{}{}
+					}
+				}
+			}
+		}
+
+		for rootAnalyzeStatement, _ := range partitionRootSet {
+			analyzeStatements = append(analyzeStatements, rootAnalyzeStatement)
 		}
 	}
 

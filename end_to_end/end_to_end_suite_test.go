@@ -998,14 +998,6 @@ var _ = Describe("backup and restore end to end tests", func() {
 			Expect(actualStatisticCount).To(Equal("3"))
 		})
 		It("runs gpbackup with --leaf-partition-data and gprestore with --run-analyze", func() {
-			// TODO: In GPDB 4.3, leaf partition statistics
-			// are not automatically merged up to the root
-			// partition when all leaf partitions have been
-			// analyzed. The gprestore --run-analyze feature
-			// needs to be updated to always run ANALYZE on
-			// the root partition in GPDB 4.3.
-			testutils.SkipIfBefore5(backupConn)
-
 			timestamp := gpbackup(gpbackupPath, backupHelperPath,
 				"--include-table", "public.sales", "--leaf-partition-data")
 			gprestore(gprestorePath, restoreHelperPath, timestamp,
