@@ -131,8 +131,8 @@ var _ = Describe("backup integration tests", func() {
 				structmatcher.ExpectStructsToMatchExcluding(&constraints[0], &uniqueConstraint, "Oid")
 			})
 			It("returns a constraint array for a table with one PRIMARY KEY constraint and a comment", func() {
-				// In GPDB 7+, we no longer allow the distributed key to implicitly change when creating a unique index.
-				if connectionPool.Version.Before("7") {
+				// In GPDB 6+, we no longer allow the distributed key to implicitly change when creating a unique index.
+				if connectionPool.Version.Before("6") {
 					testhelper.AssertQueryRuns(connectionPool, "CREATE TABLE public.constraints_table(a int, b text, c float)")
 				} else {
 					testhelper.AssertQueryRuns(connectionPool, "CREATE TABLE public.constraints_table(a int, b text, c float) DISTRIBUTED BY (b)")
@@ -147,8 +147,8 @@ var _ = Describe("backup integration tests", func() {
 				structmatcher.ExpectStructsToMatchExcluding(&constraints[0], &pkConstraint, "Oid")
 			})
 			It("returns a constraint array for a table with one FOREIGN KEY constraint", func() {
-				// In GPDB 7+, we no longer allow the distributed key to implicitly change when creating a unique index.
-				if connectionPool.Version.Before("7") {
+				// In GPDB 6+, we no longer allow the distributed key to implicitly change when creating a unique index.
+				if connectionPool.Version.Before("6") {
 					testhelper.AssertQueryRuns(connectionPool, "CREATE TABLE public.constraints_table(a int, b text, c float)")
 				} else {
 					testhelper.AssertQueryRuns(connectionPool, "CREATE TABLE public.constraints_table(a int, b text, c float) DISTRIBUTED BY (b)")
