@@ -356,14 +356,13 @@ func LockTables(connectionPool *dbconn.DBConn, tables []Relation) {
 	var workerPool sync.WaitGroup
 	for connNum := 0; connNum < connectionPool.NumConns; connNum++ {
 		workerPool.Add(1)
-		go LockTablesWithConnection(connectionPool, tables, connNum, &workerPool)
+		go LockTablesWithConnection(tables, connNum, &workerPool)
 	}
 	workerPool.Wait()
 }
 
-func LockTablesWithConnection(connectionPool *dbconn.DBConn, tables []Relation, whichConn int, wg *sync.WaitGroup) {
+func LockTablesWithConnection(tables []Relation, whichConn int, wg *sync.WaitGroup) {
 	defer wg.Done()
-
 	progressBar := utils.NewProgressBar(len(tables), "Locks acquired: ", utils.PB_VERBOSE)
 	progressBar.Start()
 
@@ -376,12 +375,17 @@ func LockTablesWithConnection(connectionPool *dbconn.DBConn, tables []Relation, 
 	// AccessExclusiveLock on the table.  In the case gpbackup is interrupted,
 	// cancelBlockedQueries() will cancel these queries during cleanup.
 	for i, currentBatch := range tableBatches {
-		connectionPool.MustExec(fmt.Sprintf("LOCK TABLE %s IN ACCESS SHARE MODE", currentBatch), whichConn)
-
+		_, err := connectionPool.Exec(fmt.Sprintf("LOCK TABLE %s IN ACCESS SHARE MODE", currentBatch), whichConn)
+		if err != nil {
+			if wasTerminated {
+				gplog.Warn("Interrupt received while acquiring ACCESS SHARE locks on tables")
+			} else {
+				gplog.FatalOnError(err)
+			}
+		}
 		if i == len(tableBatches)-1 && lastBatchSize > 0 {
 			currentBatchSize = lastBatchSize
 		}
-
 		progressBar.Add(currentBatchSize)
 	}
 
