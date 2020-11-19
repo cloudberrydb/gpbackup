@@ -356,12 +356,12 @@ func LockTables(connectionPool *dbconn.DBConn, tables []Relation) {
 	var workerPool sync.WaitGroup
 	for connNum := 0; connNum < connectionPool.NumConns; connNum++ {
 		workerPool.Add(1)
-		go LockTablesWithConnection(tables, connNum, &workerPool)
+		go LockTablesWithConnection(connectionPool, tables, connNum, &workerPool)
 	}
 	workerPool.Wait()
 }
 
-func LockTablesWithConnection(tables []Relation, whichConn int, wg *sync.WaitGroup) {
+func LockTablesWithConnection(connectionPool *dbconn.DBConn, tables []Relation, whichConn int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	progressBar := utils.NewProgressBar(len(tables), "Locks acquired: ", utils.PB_VERBOSE)
 	progressBar.Start()

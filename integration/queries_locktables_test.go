@@ -36,7 +36,7 @@ var _ = Describe("Queries ", func() {
 			tableRelations := []backup.Relation {backup.Relation{0, 0, "public", "backup_jobs_locktables"}}
 			backup.LockTables(jobsConnectionPool, tableRelations)
 
-			checkLockQuery := `SELECT count(*) FROM pg_locks l, pg_class c, pg_namespace n WHERE l.relation = c.oid AND n.oid = c.relnamespace AND n.nspname = 'public' AND c.relname = 'backup_jobs_locktables' AND l.granted = 't'`
+			checkLockQuery := `SELECT count(*) FROM pg_locks l, pg_class c, pg_namespace n WHERE l.relation = c.oid AND n.oid = c.relnamespace AND n.nspname = 'public' AND c.relname = 'backup_jobs_locktables' AND l.granted = 't' AND l.gp_segment_id = -1`
 			var lockCount int
 			_ = connectionPool.Get(&lockCount, checkLockQuery)
 			Expect(lockCount).To(Equal(3))
