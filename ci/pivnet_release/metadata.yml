@@ -1,7 +1,7 @@
 release:
   version: <TILE_RELEASE_VERSION>
   release_type: <RELEASE_TYPE>
-  eula_slug: pivotal_software_eula
+  eula_slug: vmware_eula
   description: |
         The Pivotal Greenplum Backup and Restore <TILE_RELEASE_VERSION> release contains the following versions of binaries for use with the Pivotal Greenplum Server:
         - gpbackup <GPBAR_VERSION>
