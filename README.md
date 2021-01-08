@@ -29,7 +29,7 @@ This will also attempt to copy `gpbackup_helper` to the greenplum segments (retr
 
 `make build_linux` and `make build_mac` are for cross compiling between macOS and Linux
 
-`make install_helper` will scp the `gpbackup_helper` binary (used with -single-data-file flag) to all hosts
+`make install` will scp the `gpbackup_helper` binary (used with -single-data-file flag) to all hosts
 
 ## Validation and code quality
 
