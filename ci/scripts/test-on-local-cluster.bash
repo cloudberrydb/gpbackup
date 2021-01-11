@@ -2,7 +2,7 @@
 
 set -ex
 
-GO_VERSION=1.13.4
+GO_VERSION=1.15.6
 
 if [[ ${OS} == "ubuntu" ]] ; then
   DEBIAN_FRONTEND=noninteractive apt-get update && apt-get -yq install curl

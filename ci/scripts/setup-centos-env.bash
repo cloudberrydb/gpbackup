@@ -4,7 +4,7 @@ set -ex
 
 ccp_src/scripts/setup_ssh_to_cluster.sh
 
-GO_VERSION=1.13.4
+GO_VERSION=1.15.6
 GPHOME=/usr/local/greenplum-db-devel
 
 ssh -t ${default_ami_user}@mdw " \
