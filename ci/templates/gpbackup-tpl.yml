@@ -99,7 +99,15 @@ ccp_default_params_anchor: &ccp_default_params
   action: create
   delete_on_failure: true
   generate_random_name: true
+  plugin_dir: ../../terraform.d/plugin-cache/linux_amd64
   terraform_source: ccp_src/google/
+
+ccp_aws_default_params_anchor: &ccp_aws_default_params
+  action: create
+  delete_on_failure: true
+  generate_random_name: true
+  plugin_dir: ../../terraform.d/plugin-cache/linux_amd64
+  terraform_source: ccp_src/aws/
 
 ccp_vars_anchor: &ccp_default_vars
   instance_type: n1-standard-1
@@ -132,6 +140,7 @@ ccp_destroy_anchor: &ccp_destroy
   params: &destroy_params
     action: destroy
     env_name_file: terraform/name
+    plugin_dir: ../../terraform.d/plugin-cache/linux_amd64
     terraform_source: ccp_src/google/
     vars:
       aws_instance-node-instance_type: t2.micro
@@ -248,14 +257,16 @@ ddboost_plugin_and_boostfs_anchor: &ddboost_plugin_and_boostfs
     - get: gppkgs
       passed: [build_gppkgs]
       trigger: true
+    - get: terraform.d
+      params:
+        unpack: true
 
 ddboost_plugin_and_boostfs_tests_anchor: &ddboost_plugin_and_boostfs_tests
   do:
   - put: ddboost_terraform
     tags: ["ddboost"]
     params:
-      <<: *ccp_default_params
-      terraform_source: ccp_src/aws/
+      <<: *ccp_aws_default_params
       vars:
         aws_instance-node-instance_type: t2.medium
         PLATFORM: centos6
@@ -632,6 +643,16 @@ resources:
       bucket: {{tf-bucket-name}}
       bucket_path: clusters-aws/
 
+- name: terraform.d
+  type: s3
+  icon: amazon
+  source:
+    access_key_id: ((bucket-access-key-id))
+    bucket: ccp-terraform-provider-plugins
+    region_name: ((aws-region))
+    secret_access_key: ((bucket-secret-access-key))
+    versioned_file: plugin-cache-all.tgz
+
 - name: scale_schema
   type: s3
   icon: amazon
@@ -916,6 +937,9 @@ jobs:
     - get: gppkgs
       passed: [build_gppkgs]
       trigger: true
+    - get: terraform.d
+      params:
+        unpack: true
     - do:
       - get: ccp_src
       - put: terraform
@@ -964,6 +988,9 @@ jobs:
     - get: gppkgs
       passed: [build_gppkgs]
       trigger: true
+    - get: terraform.d
+      params:
+        unpack: true
     - do:
       - get: ccp_src
       - put: terraform
@@ -1067,9 +1094,8 @@ jobs:
       - put: ddboost_terraform
         tags: ["ddboost"]
         params:
-          <<: *ccp_default_params
+          <<: *ccp_aws_default_params
           PLATFORM: centos6
-          terraform_source: ccp_src/aws/
           vars:
             number_of_nodes: 4
             segments_per_host: 4
@@ -1127,6 +1153,9 @@ jobs:
     - get: gppkgs
       passed: [build_gppkgs]
       trigger: true
+    - get: terraform.d
+      params:
+        unpack: true
   - put: terraform
     params:
       <<: *ccp_default_params
@@ -1170,10 +1199,12 @@ jobs:
     - get: gppkgs
       trigger: true
       passed: [build_gppkgs]
+    - get: terraform.d
+      params:
+        unpack: true
   - put: terraform_aws
     params:
-      <<: *ccp_default_params
-      terraform_source: ccp_src/aws/
+      <<: *ccp_aws_default_params
       vars:
         <<: *ccp_default_vars_aws
         PLATFORM: oracle7
@@ -1228,6 +1259,9 @@ jobs:
     - get: gppkgs
       passed: [build_gppkgs]
       trigger: true
+    - get: terraform.d
+      params:
+        unpack: true
   - put: terraform
     params:
       <<: *ccp_default_params
@@ -1405,6 +1439,9 @@ jobs:
     - get: gppkgs
       passed: [build_gppkgs]
       trigger: true
+    - get: terraform.d
+      params:
+        unpack: true
   - put: terraform
     params:
       <<: *ccp_default_params
@@ -1455,6 +1492,9 @@ jobs:
     - get: gpdb_src
       resource: gpdb5_src
     - get: gpbackup_1.12.1_dependencies
+    - get: terraform.d
+      params:
+        unpack: true
   - put: terraform
     params:
       <<: *ccp_default_params
@@ -1501,6 +1541,9 @@ jobs:
 {% endif %}
     - get: gppkgs
       passed: [build_gppkgs]
+    - get: terraform.d
+      params:
+        unpack: true
   - put: terraform
     params:
       <<: *ccp_default_params
@@ -1548,6 +1591,9 @@ jobs:
 {% endif %}
     - get: gppkgs
       passed: [build_gppkgs]
+    - get: terraform.d
+      params:
+        unpack: true
   - put: terraform
     params:
       <<: *ccp_default_params
@@ -1593,6 +1639,9 @@ jobs:
 {% endif %}
     - get: gppkgs
       passed: [build_gppkgs]
+    - get: terraform.d
+      params:
+        unpack: true
   - put: terraform
     params:
       <<: *ccp_default_params
@@ -1636,6 +1685,9 @@ jobs:
 {% endif %}
     - get: gppkgs
       passed: [build_gppkgs]
+    - get: terraform.d
+      params:
+        unpack: true
   - put: terraform
     params:
       <<: *ccp_default_params
