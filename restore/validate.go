@@ -259,6 +259,8 @@ func ValidateFlagCombinations(flags *pflag.FlagSet) {
 
 	options.CheckExclusiveFlags(flags, options.METADATA_ONLY, options.DATA_ONLY)
 	options.CheckExclusiveFlags(flags, options.PLUGIN_CONFIG, options.BACKUP_DIR)
+	options.CheckExclusiveFlags(flags, options.TRUNCATE_TABLE, options.METADATA_ONLY, options.INCREMENTAL)
+	options.CheckExclusiveFlags(flags, options.TRUNCATE_TABLE, options.REDIRECT_SCHEMA)
 
 	if flags.Changed(options.REDIRECT_SCHEMA) {
 		// Redirect schema not compatible with any exclude flags and include schema flags
@@ -272,8 +274,6 @@ func ValidateFlagCombinations(flags *pflag.FlagSet) {
 			gplog.Fatal(errors.Errorf("Cannot use --redirect-schema without --include-table or --include-table-file"), "")
 		}
 	}
-	options.CheckExclusiveFlags(flags,
-		options.TRUNCATE_TABLE, options.METADATA_ONLY, options.INCREMENTAL, options.REDIRECT_SCHEMA)
 	if flags.Changed(options.TRUNCATE_TABLE) &&
 		!(flags.Changed(options.INCLUDE_RELATION) || flags.Changed(options.INCLUDE_RELATION_FILE)) &&
 		!flags.Changed(options.DATA_ONLY) {

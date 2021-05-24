@@ -844,6 +844,28 @@ var _ = Describe("backup and restore end to end tests", func() {
 			assertDataRestored(restoreConn, schema3TupleCounts)
 			assertRelationsCreatedInSchema(restoreConn, "schema2", 0)
 		})
+		It("runs --redirect-schema with --matadata-only", func(){
+			skipIfOldBackupVersionBefore("1.17.0")
+			testhelper.AssertQueryRuns(restoreConn,
+				"DROP SCHEMA IF EXISTS schema_to_redirect CASCADE; CREATE SCHEMA \"schema_to_redirect\";")
+			defer testhelper.AssertQueryRuns(restoreConn,
+				"DROP SCHEMA schema_to_redirect CASCADE")
+			testhelper.AssertQueryRuns(backupConn,
+				"CREATE SCHEMA schema_to_test")
+			defer testhelper.AssertQueryRuns(backupConn,
+				"DROP SCHEMA schema_to_test CASCADE")
+			testhelper.AssertQueryRuns(backupConn,
+				"CREATE TABLE schema_to_test.table_metadata_only AS SELECT generate_series(1,10)")
+			timestamp := gpbackup(gpbackupPath, backupHelperPath, "--metadata-only", "--include-schema", "schema_to_test")
+			fmt.Printf("Timestamp %s\n", timestamp)
+			gprestore(gprestorePath, restoreHelperPath, timestamp,
+				"--redirect-db", "restoredb",
+				"--redirect-schema", "schema_to_redirect",
+				"--include-table", "schema_to_test.table_metadata_only",
+				"--metadata-only")
+			assertRelationsCreatedInSchema(restoreConn, "schema_to_redirect", 1)
+			assertDataRestored(restoreConn, map[string]int{"schema_to_redirect.table_metadata_only": 0})
+		})
 	})
 	Describe("ACLs for extensions", func() {
 		It("runs gpbackup and gprestores any user defined ACLs on extensions", func() {
