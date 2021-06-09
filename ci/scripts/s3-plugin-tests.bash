@@ -25,6 +25,8 @@ options:
   aws_secret_access_key: ${AWS_SECRET_ACCESS_KEY}
   bucket: ${BUCKET}
   folder: test/backup
+  backup_multipart_chunksize: 100MB
+  restore_multipart_chunksize: 100MB
 CONFIG
 
   pushd ~/go/src/github.com/greenplum-db/gpbackup/plugins
