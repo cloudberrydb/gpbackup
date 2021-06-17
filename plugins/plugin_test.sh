@@ -360,6 +360,17 @@ if [[ "$plugin" == *gpbackup_ddboost_plugin ]] && [[ "$plugin_config" == *ddboos
     echo "[RUNNING] replicate_backup"
     $plugin replicate_backup $plugin_config $time_second_for_repl
 
+    set +e
+    echo "[RUNNING] replicate_backup second time to verify error"
+    output=`$plugin replicate_backup $plugin_config $time_second_for_repl 2>&1`
+    echo "replicate backup second time, output: $output"
+    if [[ ! "$output" == *"DDBoost open file in exclusive mode failed on remote"* ]]; then
+        echo "Error doesn't match when trying to replicate already replicated backup"
+        exit 1
+    fi
+    echo "[PASSED] replicate_backup second time to verify error"
+    set -e
+
     if [ -n "$secondary_plugin_config" ]; then
         echo "[RUNNING] restore_data (from secondary destination)"
         output=`$plugin restore_data $secondary_plugin_config $testdata_for_repl`
