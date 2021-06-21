@@ -3,6 +3,7 @@ package end_to_end_test
 import (
 	"flag"
 	"fmt"
+	"github.com/pkg/errors"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -668,6 +669,61 @@ var _ = Describe("backup and restore end to end tests", func() {
 				"public.corrupt_table": 0,
 				"public.good_table1":   10,
 				"public.good_table2":   10})
+		})
+		It(`Creates skip file on segments for corrupted table for helpers to discover the file and skip it`, func(){
+			if useOldBackupVersion {
+				Skip("This test is not needed for old backup versions")
+			}
+			command := exec.Command("tar", "-xzf", "resources/corrupt-db.tar.gz", "-C", backupDir)
+			mustRunCommand(command)
+
+			testhelper.AssertQueryRuns(restoreConn,
+				"CREATE TABLE public.corrupt_table (i integer);")
+			defer testhelper.AssertQueryRuns(restoreConn,
+				"DROP TABLE public.corrupt_table")
+
+			// we know that broken value goes to seg2, so seg1 should be
+			// ok. Connect in utility mode to seg1.
+			segmentOne := backupCluster.ByContent[1]
+			port := segmentOne[0].Port
+			segConn := testutils.SetupTestDBConnSegment("restoredb", port)
+			defer segConn.Close()
+
+			// Take ACCESS EXCLUSIVE LOCK on public.corrupt_table which will
+			// make COPY on seg1 block until the lock is released. By that
+			// time, COPY on seg2 will fail and gprestore will create a skip
+			// file for public.corrupt_table. When the lock is released on seg1,
+			// the restore helper should discover the file and skip the table.
+			segConn.Begin(0)
+			segConn.Exec("LOCK TABLE public.corrupt_table IN ACCESS EXCLUSIVE MODE;")
+
+			gprestoreCmd := exec.Command(gprestorePath,
+				"--timestamp", "20190809230424",
+				"--redirect-db", "restoredb",
+				"--backup-dir", path.Join(backupDir, "corrupt-db"),
+				"--data-only", "--on-error-continue",
+				"--include-table", "public.corrupt_table")
+			_, err := gprestoreCmd.CombinedOutput()
+			Expect(err).To(HaveOccurred())
+
+			segConn.Commit(0)
+			homeDir := os.Getenv("HOME")
+			helperLogs, _ := path.Glob(path.Join(homeDir, "gpAdminLogs/gpbackup_helper*"))
+			cmdStr := fmt.Sprintf("tail -n 40 %s | grep \"Skip file has been discovered for entry\" || true", helperLogs[len(helperLogs)-1])
+
+			attemts := 1000
+			err = errors.New("Timeout to discover skip file")
+			for attemts > 0 {
+				output := mustRunCommand(exec.Command("bash", "-c", cmdStr))
+				if strings.TrimSpace(string(output)) == "" {
+					time.Sleep(5 * time.Millisecond)
+					attemts--
+				} else {
+					err = nil
+					break
+				}
+			}
+			Expect(err).NotTo(HaveOccurred())
 		})
 		It(`ensure gprestore on corrupt backup with --on-error-continue logs error tables`, func() {
 			command := exec.Command("tar", "-xzf",

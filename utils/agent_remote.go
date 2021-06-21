@@ -219,3 +219,12 @@ func CheckAgentErrorsOnSegments(c *cluster.Cluster, fpInfo filepath.FilePathInfo
 	}
 	return nil
 }
+
+func CreateSkipFileOnSegments(oid string, c *cluster.Cluster, fpInfo filepath.FilePathInfo) {
+	remoteOutput := c.GenerateAndExecuteCommand("Touch skip file", cluster.ON_SEGMENTS, func(contentID int) string {
+		return fmt.Sprintf("touch %s_skip_%s", fpInfo.GetSegmentPipeFilePath(contentID), oid)
+	})
+	c.CheckClusterError(remoteOutput, "Error while touching skip file", func(contentID int) string {
+		return fmt.Sprintf("Could not create skip file %s_skip_%s", fpInfo.GetSegmentPipeFilePath(contentID), oid)
+	})
+}
