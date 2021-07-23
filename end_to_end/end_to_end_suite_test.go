@@ -670,7 +670,7 @@ var _ = Describe("backup and restore end to end tests", func() {
 				"public.good_table1":   10,
 				"public.good_table2":   10})
 		})
-		It(`Creates skip file on segments for corrupted table for helpers to discover the file and skip it`, func(){
+		It(`Creates skip file on segments for corrupted table for helpers to discover the file and skip it with --single-data-file and --on-error-continue`, func(){
 			if useOldBackupVersion {
 				Skip("This test is not needed for old backup versions")
 			}
