@@ -159,7 +159,7 @@ func restoreDataFromTimestamp(fpInfo filepath.FilePathInfo, dataEntries []toc.Ma
 					if !MustGetFlagBool(options.ON_ERROR_CONTINUE) {
 						dataProgressBar.(*pb.ProgressBar).NotPrint = true
 						return
-					} else if connectionPool.Version.AtLeast("6") {
+					} else if connectionPool.Version.AtLeast("6") && backupConfig.SingleDataFile {
 						// inform segment helpers to skip this entry
 						utils.CreateSkipFileOnSegments(fmt.Sprintf("%d", entry.Oid), tableName, globalCluster, globalFPInfo)
 					}
