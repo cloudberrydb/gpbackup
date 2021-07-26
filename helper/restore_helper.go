@@ -123,10 +123,15 @@ func doRestoreAgent() error {
 			writer, writeHandle, err = getRestorePipeWriter(currentPipe)
 			if err != nil {
 				if errors.Is(err, syscall.ENXIO) {
-					// the reader is not ready, so writer will fail with very specific error
-					// discover if gprestore created a skip file for this entry
-					skipFileName := fmt.Sprintf("%s_skip_%d", *pipeFile, oid)
-					if *onErrorContinue && utils.FileExists(skipFileName) {
+					// COPY (the pipe reader) has not tried to access the pipe yet so our restore_helper
+					// process will get ENXIO error on its nonblocking open call on the pipe. We loop in
+					// here while looking to see if gprestore has created a skip file for this restore entry.
+					//
+					// TODO: Skip files will only be created when gprestore is run against GPDB 6+ so it
+					// might be good to have a GPDB version check here. However, the restore helper should
+					// not contain a database connection so the version should be passed through the helper
+					// invocation from gprestore (e.g. create a --db-version flag option).
+					if *onErrorContinue && utils.FileExists(fmt.Sprintf("%s_skip_%d", *pipeFile, oid)) {
 						log(fmt.Sprintf("Skip file has been discovered for entry %d, skipping it", oid))
 						err = nil
 						goto LoopEnd

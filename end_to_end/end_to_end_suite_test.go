@@ -673,7 +673,10 @@ var _ = Describe("backup and restore end to end tests", func() {
 		It(`Creates skip file on segments for corrupted table for helpers to discover the file and skip it with --single-data-file and --on-error-continue`, func(){
 			if useOldBackupVersion {
 				Skip("This test is not needed for old backup versions")
+			} else if restoreConn.Version.Before("6") {
+				Skip("This test does not apply to GPDB versions before 6X")
 			}
+
 			command := exec.Command("tar", "-xzf", "resources/corrupt-db.tar.gz", "-C", backupDir)
 			mustRunCommand(command)
 
