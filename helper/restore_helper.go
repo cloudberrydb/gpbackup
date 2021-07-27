@@ -147,6 +147,11 @@ func doRestoreAgent() error {
 					return err
 				}
 			} else {
+				// A reader has connected to the pipe and we have successfully opened
+				// the writer for the pipe. To avoid having to write complex buffer
+				// logic for when os.write() returns EAGAIN due to full buffer, set
+				// the file descriptor to block on IO.
+				syscall.SetNonblock(int(writeHandle.Fd()), false)
 				break
 			}
 		}
