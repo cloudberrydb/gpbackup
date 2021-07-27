@@ -916,7 +916,6 @@ var _ = Describe("backup and restore end to end tests", func() {
 			testhelper.AssertQueryRuns(backupConn,
 				"CREATE TABLE schema_to_test.table_metadata_only AS SELECT generate_series(1,10)")
 			timestamp := gpbackup(gpbackupPath, backupHelperPath, "--metadata-only", "--include-schema", "schema_to_test")
-			fmt.Printf("Timestamp %s\n", timestamp)
 			gprestore(gprestorePath, restoreHelperPath, timestamp,
 				"--redirect-db", "restoredb",
 				"--redirect-schema", "schema_to_redirect",
