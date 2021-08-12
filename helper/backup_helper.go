@@ -2,6 +2,7 @@ package helper
 
 import (
 	"bufio"
+	"compress/gzip"
 	"fmt"
 	"io"
 	"os"
@@ -20,8 +21,11 @@ import (
 func doBackupAgent() error {
 	var lastRead uint64
 	var (
-		pipeWriter BackupPipeWriterCloser
-		writeCmd   *exec.Cmd
+		finalWriter io.Writer
+		gzipWriter  *gzip.Writer
+		bufIoWriter *bufio.Writer
+		writeHandle io.WriteCloser
+		writeCmd    *exec.Cmd
 	)
 	tocfile := &toc.SegmentTOC{}
 	tocfile.DataEntries = make(map[uint]toc.SegmentDataEntry)
@@ -56,14 +60,14 @@ func doBackupAgent() error {
 			return err
 		}
 		if i == 0 {
-			pipeWriter, writeCmd, err = getBackupPipeWriter()
+			finalWriter, gzipWriter, bufIoWriter, writeHandle, writeCmd, err = getBackupPipeWriter(*compressionLevel)
 			if err != nil {
 				return err
 			}
 		}
 
 		log(fmt.Sprintf("Backing up table with oid %d\n", oid))
-		numBytes, err := io.Copy(pipeWriter, reader)
+		numBytes, err := io.Copy(finalWriter, reader)
 		if err != nil {
 			return errors.Wrap(err, strings.Trim(errBuf.String(), "\x00"))
 		}
@@ -82,7 +86,15 @@ func doBackupAgent() error {
 		}
 	}
 
-	_ = pipeWriter.Close()
+	/*
+	 * The order for flushing and closing the writers below is very specific
+	 * to ensure all data is written to the file and file handles are not leaked.
+	 */
+	if gzipWriter != nil {
+		_ = gzipWriter.Close()
+	}
+	_ = bufIoWriter.Flush()
+	_ = writeHandle.Close()
 	if *pluginConfigFile != "" {
 		/*
 		 * When using a plugin, the agent may take longer to finish than the
@@ -117,33 +129,31 @@ func getBackupPipeReader(currentPipe string) (io.Reader, io.ReadCloser, error) {
 	return reader, readHandle, nil
 }
 
-func getBackupPipeWriter() (pipe BackupPipeWriterCloser, writeCmd *exec.Cmd, err error) {
+func getBackupPipeWriter(compressLevel int) (io.Writer, *gzip.Writer, *bufio.Writer, io.WriteCloser, *exec.Cmd, error) {
 	var writeHandle io.WriteCloser
+	var err error
+	var writeCmd *exec.Cmd
 	if *pluginConfigFile != "" {
 		writeCmd, writeHandle, err = startBackupPluginCommand()
 	} else {
 		writeHandle, err = os.Create(*dataFile)
 	}
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 
-	if *compressionLevel == 0 {
-		pipe = NewCommonBackupPipeWriterCloser(writeHandle)
-		return
+	var finalWriter io.Writer
+	var gzipWriter *gzip.Writer
+	bufIoWriter := bufio.NewWriter(writeHandle)
+	finalWriter = bufIoWriter
+	if compressLevel > 0 {
+		gzipWriter, err = gzip.NewWriterLevel(bufIoWriter, compressLevel)
+		if err != nil {
+			return nil, nil, nil, nil, nil, err
+		}
+		finalWriter = gzipWriter
 	}
-
-	if *compressionType == "gzip" {
-		pipe, err = NewGZipBackupPipeWriterCloser(writeHandle, *compressionLevel)
-		return
-	}
-	if *compressionType == "zstd" {
-		pipe, err = NewZSTDBackupPipeWriterCloser(writeHandle, *compressionLevel)
-		return
-	}
-
-	writeHandle.Close()
-	return nil, nil, fmt.Errorf("unknown compression type '%s' (compression level %d)", *compressionType, *compressionLevel)
+	return finalWriter, gzipWriter, bufIoWriter, writeHandle, writeCmd, nil
 }
 
 func startBackupPluginCommand() (*exec.Cmd, io.WriteCloser, error) {
