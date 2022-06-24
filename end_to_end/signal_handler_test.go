@@ -11,7 +11,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-var _ = Describe("Signal handler tests", func() {
+var _ = Describe("Signal handler tests", FlakeAttempts(3), func() {
 	BeforeEach(func() {
 		end_to_end_setup()
 		testhelper.AssertQueryRuns(backupConn, "CREATE table bigtable(id int unique); INSERT INTO bigtable SELECT generate_series(1,10000000)")
