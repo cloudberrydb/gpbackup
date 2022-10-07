@@ -155,11 +155,9 @@ func restoreDataFromTimestamp(fpInfo filepath.FilePathInfo, dataEntries []toc.Ma
 		if len(opts.IncludedRelations) > 0 || len(opts.ExcludedRelations) > 0 || len(opts.IncludedSchemas) > 0 || len(opts.ExcludedSchemas) > 0 {
 			isFilter = true
 		}
-		compressStr := " --compression-type %s "
-		if !backupConfig.Compressed {
-			compressStr = fmt.Sprintf(compressStr, "none")
-		} else {
-			compressStr = fmt.Sprintf(compressStr, utils.GetPipeThroughProgram().Name)
+		compressStr := ""
+		if backupConfig.Compressed {
+			compressStr = fmt.Sprintf(" --compression-type %s ", utils.GetPipeThroughProgram().Name)
 		}
 		utils.StartGpbackupHelpers(globalCluster, fpInfo, "--restore-agent", MustGetFlagString(options.PLUGIN_CONFIG), compressStr, MustGetFlagBool(options.ON_ERROR_CONTINUE), isFilter, &wasTerminated, initialPipes, backupConfig.SingleDataFile, origSize, destSize)
 	}
