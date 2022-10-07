@@ -1566,6 +1566,7 @@ var _ = Describe("backup and restore end to end tests", func() {
 		})
 	})
 	Describe("Restore to a different-sized cluster", func() {
+		testutils.SkipIfBefore6(backupConn)
 		if useOldBackupVersion {
 			Skip("This test is not needed for old backup versions")
 		}
@@ -1668,7 +1669,7 @@ var _ = Describe("backup and restore end to end tests", func() {
 
 					Expect(err).To(Not(HaveOccurred()))
 					if !reflect.DeepEqual(expectedIncrRowMap, actualIncrRowMap) {
-						Fail(fmt.Sprintf("Expected row count map for incremental restore\n%v\nto equal\n%v\n", actualRowMap, expectedRowMap))
+						Fail(fmt.Sprintf("Expected row count map for incremental restore\n%v\nto equal\n%v\n", actualIncrRowMap, expectedIncrRowMap))
 					}
 				}
 			},
@@ -1718,7 +1719,7 @@ var _ = Describe("backup and restore end to end tests", func() {
 				"--on-error-continue")
 			output, err := gprestoreCmd.CombinedOutput()
 			Expect(err).To(HaveOccurred())
-			Expect(string(output)).To(ContainSubstring("Cannot restore a backup taken on a cluster with 5 segments to a cluster with 3 segments unless the --resize-cluster flag is used."))
+			Expect(string(output)).To(ContainSubstring(fmt.Sprintf("Cannot restore a backup taken on a cluster with 5 segments to a cluster with %d segments unless the --resize-cluster flag is used.", segmentCount)))
 		})
 	})
 })
