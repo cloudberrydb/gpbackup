@@ -62,7 +62,7 @@ var _ = Describe("backup integration tests", func() {
 
 				// For GPDB 7+, the root partition is not included.
 				// TODO: Should the root be included?
-				if connectionPool.Version.Before("7") {
+				if false {
 					Expect(aoIncrementalMetadata[aoPartParentTableFQN].LastDDLTimestamp).To(Not(BeEmpty()))
 				}
 
@@ -107,7 +107,7 @@ var _ = Describe("backup integration tests", func() {
 
 					// For GPDB 7+, the root partition is not included.
 					// TODO: Should the root be included?
-					if connectionPool.Version.Before("7") {
+					if false {
 						Expect(aoIncrementalMetadata[aoPartParentTableFQN].LastDDLTimestamp).To(Not(BeEmpty()))
 					}
 				})
@@ -149,7 +149,7 @@ var _ = Describe("backup integration tests", func() {
 
 					// For GPDB 7+, the root partition is not included.
 					// TODO: Should the root be included?
-					if connectionPool.Version.Before("7") {
+					if false {
 						Expect(aoIncrementalMetadata[aoPartParentTableFQN].LastDDLTimestamp).To(Not(BeEmpty()))
 					}
 				})

@@ -80,22 +80,9 @@ func (r Relation) GetUniqueID() UniqueID {
  */
 func getUserTableRelations(connectionPool *dbconn.DBConn) []Relation {
 	childPartitionFilter := ""
-	if !MustGetFlagBool(options.LEAF_PARTITION_DATA) && connectionPool.Version.Before("7") {
-		// Filter out non-external child partitions in GPDB6 and earlier.
-		// In GPDB7+ we do not want to exclude child partitions, they function as separate tables.
-		childPartitionFilter = `
-	AND c.oid NOT IN (
-		SELECT p.parchildrelid
-		FROM pg_partition_rule p
-			LEFT JOIN pg_exttable e ON p.parchildrelid = e.reloid
-		WHERE e.reloid IS NULL)`
-	}
 
 	// In GPDB 7+, root partitions are marked as relkind 'p'.
-	relkindFilter := `'r'`
-	if connectionPool.Version.AtLeast("7") {
-		relkindFilter = `'r', 'p'`
-	}
+	relkindFilter := `'r','p'`
 
 	query := fmt.Sprintf(`
 	SELECT n.oid AS schemaoid,
@@ -120,10 +107,7 @@ func getUserTableRelations(connectionPool *dbconn.DBConn) []Relation {
 
 func getUserTableRelationsWithIncludeFiltering(connectionPool *dbconn.DBConn, includedRelationsQuoted []string) []Relation {
 	// In GPDB 7+, root partitions are marked as relkind 'p'.
-	relkindFilter := `'r'`
-	if connectionPool.Version.AtLeast("7") {
-		relkindFilter = `'r', 'p'`
-	}
+	relkindFilter := `'r','p'`
 
 	includeOids := getOidsFromRelationList(connectionPool, includedRelationsQuoted)
 	oidStr := strings.Join(includeOids, ", ")
@@ -229,33 +213,8 @@ func GetAllSequences(connectionPool *dbconn.DBConn) []Sequence {
 		ORDER BY n.nspname, c.relname`,
 		relationAndSchemaFilterClause(), ExtensionFilterClause("c"))
 
-	before7Query := fmt.Sprintf(`
-		SELECT n.oid AS schemaoid,
-			c.oid AS oid,
-			quote_ident(n.nspname) AS schema,
-			quote_ident(c.relname) AS name,
-			coalesce(d.refobjid::text, '') AS owningtableoid,
-			coalesce(quote_ident(m.nspname), '') AS owningtableschema,
-			coalesce(quote_ident(t.relname), '') AS owningtable,
-			coalesce(quote_ident(a.attname), '') AS owningcolumn
-		FROM pg_class c
-			JOIN pg_namespace n ON n.oid = c.relnamespace
-			LEFT JOIN pg_depend d ON c.oid = d.objid AND d.deptype = 'a'
-			LEFT JOIN pg_class t ON t.oid = d.refobjid
-			LEFT JOIN pg_namespace m ON m.oid = t.relnamespace
-			LEFT JOIN pg_attribute a ON a.attrelid = d.refobjid AND a.attnum = d.refobjsubid
-		WHERE c.relkind = 'S'
-			AND %s
-			AND %s
-		ORDER BY n.nspname, c.relname`,
-		relationAndSchemaFilterClause(), ExtensionFilterClause("c"))
 
-	query := ""
-	if connectionPool.Version.Before("7") {
-		query = before7Query
-	} else {
-		query = atLeast7Query
-	}
+	query := atLeast7Query
 
 	results := make([]Sequence, 0)
 	err := connectionPool.Select(&results, query)
@@ -288,22 +247,6 @@ func GetAllSequences(connectionPool *dbconn.DBConn) []Sequence {
 }
 
 func GetSequenceDefinition(connectionPool *dbconn.DBConn, seqName string) SequenceDefinition {
-	startValQuery := ""
-	if connectionPool.Version.AtLeast("6") {
-		startValQuery = "start_value AS startval,"
-	}
-
-	before7Query := fmt.Sprintf(`
-		SELECT last_value AS lastval,
-			%s
-			increment_by AS increment,
-			max_value AS maxval,
-			min_value AS minval,
-			cache_value AS cacheval,
-			is_cycled AS iscycled,
-			is_called AS iscalled
-		FROM %s`, startValQuery, seqName)
-
 	atLeast7Query := fmt.Sprintf(`
 		SELECT s.seqstart AS startval,
 			r.last_value AS lastval,
@@ -317,12 +260,7 @@ func GetSequenceDefinition(connectionPool *dbconn.DBConn, seqName string) Sequen
 		FROM %s r
 		JOIN pg_sequence s ON s.seqrelid = '%s'::regclass::oid;`, seqName, seqName)
 
-	query := ""
-	if connectionPool.Version.Before("7") {
-		query = before7Query
-	} else {
-		query = atLeast7Query
-	}
+	query := atLeast7Query
 
 	result := SequenceDefinition{}
 	err := connectionPool.Get(&result, query)
@@ -381,18 +319,6 @@ func GetAllViews(connectionPool *dbconn.DBConn) []View {
 		defer connectionPool.MustExec("ROLLBACK TO SAVEPOINT gpbackup_get_views")
 	}
 
-	before6Query := fmt.Sprintf(`
-	SELECT
-		c.oid AS oid,
-		quote_ident(n.nspname) AS schema,
-		quote_ident(c.relname) AS name,
-		pg_get_viewdef(c.oid) AS definition
-	FROM pg_class c
-		LEFT JOIN pg_namespace n ON n.oid = c.relnamespace
-		LEFT JOIN pg_tablespace t ON t.oid = c.reltablespace
-	WHERE c.relkind IN ('m', 'v')
-		AND %s
-		AND %s`, relationAndSchemaFilterClause(), ExtensionFilterClause("c"))
 
 	// Materialized views were introduced in GPDB 7 and backported to GPDB 6.2.
 	// Reloptions and tablespace added to pg_class in GPDB 6
@@ -412,12 +338,7 @@ func GetAllViews(connectionPool *dbconn.DBConn) []View {
 		AND %s
 		AND %s`, relationAndSchemaFilterClause(), ExtensionFilterClause("c"))
 
-	query := ""
-	if connectionPool.Version.Before("6") {
-		query = before6Query
-	} else {
-		query = atLeast6Query
-	}
+	query := atLeast6Query
 
 	results := make([]View, 0)
 	err := connectionPool.Select(&results, query)
@@ -470,13 +391,7 @@ func LockTables(connectionPool *dbconn.DBConn, tables []Relation) {
 	lastBatchSize := len(tables) % batchSize
 	tableBatches := GenerateTableBatches(tables, batchSize)
 	currentBatchSize := batchSize
-	if connectionPool.Version.AtLeast("7") {
-		lockMode = `IN ACCESS SHARE MODE COORDINATOR ONLY`
-	} else if connectionPool.Version.AtLeast("6.21.0") {
-		lockMode = `IN ACCESS SHARE MODE MASTER ONLY`
-	} else {
-		lockMode = `IN ACCESS SHARE MODE`
-	}
+	lockMode = `IN ACCESS SHARE MODE `
 	// The LOCK TABLE query could block if someone else is holding an
 	// AccessExclusiveLock on the table.  In the case gpbackup is interrupted,
 	// cancelBlockedQueries() will cancel these queries during cleanup.

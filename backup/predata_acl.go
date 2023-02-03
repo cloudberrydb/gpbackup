@@ -91,7 +91,7 @@ func PrintObjectMetadata(metadataFile *utils.FileWithByteCount, toc *toc.TOC,
 	}
 
 	objectType := entry.ObjectType
-	if connectionPool.Version.AtLeast("7") {
+	if true {
 		switch object := obj.(type) {
 		case Function:
 			if object.Kind == "p" {
@@ -103,10 +103,6 @@ func PrintObjectMetadata(metadataFile *utils.FileWithByteCount, toc *toc.TOC,
 	}
 
 	if owner := metadata.GetOwnerStatement(obj.FQN(), objectType); owner != "" {
-		if !(connectionPool.Version.Before("5") && entry.ObjectType == "LANGUAGE") {
-			// Languages have implicit owners in 4.3, but do not support ALTER OWNER
-			statements = append(statements, strings.TrimSpace(owner))
-		}
 	}
 	if privileges := metadata.GetPrivilegesStatements(obj.FQN(), entry.ObjectType); privileges != "" {
 		statements = append(statements, strings.TrimSpace(privileges))
@@ -473,9 +469,7 @@ func createPrivilegeStrings(acl ACL, objectType string) (string, string) {
 }
 func (obj ObjectMetadata) GetOwnerStatement(objectName string, objectType string) string {
 	typeStr := objectType
-	if connectionPool.Version.Before("6") && (objectType == "SEQUENCE" || objectType == "VIEW") {
-		typeStr = "TABLE"
-	} else if objectType == "FOREIGN SERVER" {
+	if objectType == "FOREIGN SERVER" {
 		typeStr = "SERVER"
 	}
 	ownerStr := ""

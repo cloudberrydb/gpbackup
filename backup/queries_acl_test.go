@@ -21,7 +21,7 @@ var _ = Describe("backup/queries_acl tests", func() {
 
 		getSecurityLabelReplace := func() (string, string, string) {
 			securityLabelSelectReplace, securityLabelJoinReplace, sharedSecurityLabelJoinReplace := "", "", ""
-			if connectionPool.Version.AtLeast("6") {
+			if true {
 				securityLabelSelectReplace = `
 		coalesce(sec.label,'') AS securitylabel,
 		coalesce(sec.provider, '') AS securitylabelprovider,`
@@ -81,7 +81,7 @@ var _ = Describe("backup/queries_acl tests", func() {
 			securityLabelSelectReplace, securityLabelJoinReplace, _ := getSecurityLabelReplace()
 			aclLateralJoin := ""
 			aclCols := ""
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				aclLateralJoin = fmt.Sprintf(
 					`LEFT JOIN LATERAL unnest(o.acl) ljl_unnest ON o.acl IS NOT NULL AND array_length(o.acl, 1) != 0`)
 				aclCols = "ljl_unnest"

@@ -82,10 +82,8 @@ func CopyTableOut(connectionPool *dbconn.DBConn, table Table, destinationToWrite
 	copyCommand := fmt.Sprintf("PROGRAM '%s%s %s %s'", checkPipeExistsCommand, customPipeThroughCommand, sendToDestinationCommand, destinationToWrite)
 
 	columnNames := ""
-	if connectionPool.Version.AtLeast("7") {
 		// process column names to exclude generated columns from data copy out
-		columnNames = ConstructTableAttributesList(table.ColumnDefs)
-	}
+	columnNames = ConstructTableAttributesList(table.ColumnDefs)
 
 	query := fmt.Sprintf("COPY %s%s TO %s WITH CSV DELIMITER '%s' ON SEGMENT IGNORE EXTERNAL PARTITIONS;", table.FQN(), columnNames, copyCommand, tableDelim)
 	gplog.Verbose("Worker %d: %s", connNum, query)
@@ -337,13 +335,7 @@ func GetBackupDataSet(tables []Table) ([]Table, int64) {
 // the lock, the call will fail instead of block. Return the failure for handling.
 func LockTableNoWait(dataTable Table, connNum int) error {
 	var lockMode string
-	if connectionPool.Version.AtLeast("7") {
-		lockMode = `IN ACCESS SHARE MODE NOWAIT COORDINATOR ONLY`
-	} else if connectionPool.Version.AtLeast("6.21.0") {
-		lockMode = `IN ACCESS SHARE MODE NOWAIT MASTER ONLY`
-	} else {
-		lockMode = `IN ACCESS SHARE MODE NOWAIT`
-	}
+	lockMode = `IN ACCESS SHARE MODE`
 	query := fmt.Sprintf("LOCK TABLE %s %s;", dataTable.FQN(), lockMode)
 	gplog.Verbose("Worker %d: %s", connNum, query)
 	_, err := connectionPool.Exec(query, connNum)

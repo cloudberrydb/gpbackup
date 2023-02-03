@@ -28,10 +28,6 @@ var _ = Describe("gpexpand_sensor", func() {
 		mddPathRow = sqlmock.NewRows([]string{"datadir"}).AddRow(sampleCoordinatorDataDir)
 		tableExistsRow = sqlmock.NewRows([]string{"relname"}).AddRow("some table name")
 		connectionPool.DBName = "postgres"
-
-		if connectionPool.Version.Before("6") {
-			Skip("gpexpand sensor only runs against GPDB 6+")
-		}
 	})
 	Context("IsGpexpandRunning", func() {
 		Describe("happy path", func() {
@@ -138,6 +134,7 @@ var _ = Describe("gpexpand_sensor", func() {
 				Expect(err.Error()).To(Equal("gpexpand sensor requires a connection to the postgres database"))
 			})
 			It("returns an error when supplied with Greenplum version < 6", func() {
+				Skip("Test is not applicable to cloudberry 1.0+")
 				testhelper.SetDBVersion(connectionPool, "5.3.0")
 				gpexpandSensor := utils.NewGpexpandSensor(memoryfs, connectionPool)
 

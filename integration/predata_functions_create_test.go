@@ -96,7 +96,7 @@ var _ = Describe("backup integration create statement tests", func() {
 					Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 0, DataAccess: "c",
 					Language: "sql", ExecLocation: "a",
 				}
-				if connectionPool.Version.AtLeast("7") {
+				if true {
 					addFunction.PlannerSupport = "-"
 					addFunction.Kind = "f"
 					addFunction.Parallel = "u"
@@ -123,7 +123,7 @@ var _ = Describe("backup integration create statement tests", func() {
 					Volatility: "s", IsStrict: true, IsSecurityDefiner: true, Config: "SET search_path TO 'pg_temp'", Cost: 200,
 					NumRows: 200, DataAccess: "m", Language: "sql", ExecLocation: "a",
 				}
-				if connectionPool.Version.AtLeast("7") {
+				if true {
 					appendFunction.PlannerSupport = "-"
 					appendFunction.Kind = "f"
 					appendFunction.Parallel = "u"
@@ -149,7 +149,7 @@ var _ = Describe("backup integration create statement tests", func() {
 					Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 1000, DataAccess: "c",
 					Language: "sql", ExecLocation: "a",
 				}
-				if connectionPool.Version.AtLeast("7") {
+				if true {
 					dupFunction.PlannerSupport = "-"
 					dupFunction.Kind = "f"
 					dupFunction.Parallel = "u"
@@ -179,7 +179,7 @@ var _ = Describe("backup integration create statement tests", func() {
 					ResultType: sql.NullString{String: "integer", Valid: true},
 					Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 0, DataAccess: "c",
 					Language: "sql", ExecLocation: "m", IsWindow: true}
-				if connectionPool.Version.AtLeast("7") {
+				if true {
 					windowFunction.PlannerSupport = "-"
 					windowFunction.Kind = "w"
 					windowFunction.Parallel = "u"
@@ -210,7 +210,7 @@ var _ = Describe("backup integration create statement tests", func() {
 					Volatility: "v", IsStrict: false, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 0, DataAccess: "c",
 					Language: "sql", IsWindow: false, ExecLocation: "s",
 				}
-				if connectionPool.Version.AtLeast("7") {
+				if true {
 					segmentFunction.PlannerSupport = "-"
 					segmentFunction.Kind = "f"
 					segmentFunction.Parallel = "u"
@@ -240,7 +240,7 @@ var _ = Describe("backup integration create statement tests", func() {
 					Volatility: "v", IsStrict: false, IsLeakProof: true, IsSecurityDefiner: false, Config: "", Cost: 100, NumRows: 0, DataAccess: "c",
 					Language: "sql", IsWindow: false, ExecLocation: "a",
 				}
-				if connectionPool.Version.AtLeast("7") {
+				if true {
 					leakProofFunction.PlannerSupport = "-"
 					leakProofFunction.Kind = "f"
 					leakProofFunction.Parallel = "u"
@@ -357,7 +357,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				IdentArgs: sql.NullString{String: "numeric, numeric", Valid: true}, TransitionFunction: 1, PreliminaryFunction: 2,
 				TransitionDataType: "numeric", InitialValue: "0", MInitValIsNull: true,
 			}
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				basicAggregateDef.Kind = "n"
 				basicAggregateDef.Finalmodify = "r"
 				basicAggregateDef.Mfinalmodify = "r"
@@ -399,7 +399,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				IdentArgs: sql.NullString{String: `VARIADIC "any" ORDER BY VARIADIC "any"`, Valid: true}, TransitionFunction: 3, FinalFunction: 4,
 				TransitionDataType: "internal", InitValIsNull: true, FinalFuncExtra: true, Hypothetical: true, MInitValIsNull: true,
 			}
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				complexAggregateDef.Hypothetical = false
 				complexAggregateDef.Kind = "h"
 				complexAggregateDef.Finalmodify = "w"
@@ -423,7 +423,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				SortOperator: "+", SortOperatorSchema: "pg_catalog", TransitionDataType: "numeric",
 				InitialValue: "0", IsOrdered: false, MInitValIsNull: true,
 			}
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				aggregateDef.Kind = "n"
 				aggregateDef.Finalmodify = "r"
 				aggregateDef.Mfinalmodify = "r"
@@ -447,7 +447,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				FinalFunction: 0, SortOperator: "", TransitionDataType: "numeric", TransitionDataSize: 1000,
 				InitialValue: "0", IsOrdered: false, MInitValIsNull: true,
 			}
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				aggregateDef.Kind = "n"
 				aggregateDef.Finalmodify = "r"
 				aggregateDef.Mfinalmodify = "r"
@@ -471,7 +471,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				FinalFunction: 5, SerialFunction: 6, DeserialFunction: 7, TransitionDataType: "internal",
 				IsOrdered: false, InitValIsNull: true, MInitValIsNull: true,
 			}
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				aggregateDef.Kind = "n"
 				aggregateDef.Finalmodify = "r"
 				aggregateDef.Mfinalmodify = "r"
@@ -496,7 +496,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				MTransitionDataType: "numeric", MTransitionDataSize: 100, MFinalFunction: 1,
 				MFinalFuncExtra: true, MInitialValue: "0", MInitValIsNull: false,
 			}
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				aggregateDef.Kind = "n"
 				aggregateDef.Finalmodify = "r"
 				aggregateDef.Mfinalmodify = "r"
@@ -591,7 +591,7 @@ var _ = Describe("backup integration create statement tests", func() {
 	Describe("PrintCreateLanguageStatements", func() {
 		It("creates procedural languages", func() {
 			plpythonString := "plpython"
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				plpythonString = "plpython3"
 			}
 
@@ -601,7 +601,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			}
 			langOwner := ""
 			var langMetadata backup.ObjectMetadata
-			if connectionPool.Version.Before("5") {
+			if false {
 				langOwner = testutils.GetUserByID(connectionPool, 10)
 				langMetadata = backup.ObjectMetadata{ObjectType: "LANGUAGE", Privileges: []backup.ACL{}, Owner: langOwner, Comment: "This is a language comment"}
 			} else {
@@ -611,7 +611,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			plpythonInfo := backup.ProceduralLanguage{Oid: 1, Name: fmt.Sprintf("%su", plpythonString), Owner: langOwner, IsPl: true, PlTrusted: false, Handler: 1, Inline: 2}
 
 			langMetadataMap := map[backup.UniqueID]backup.ObjectMetadata{plpythonInfo.GetUniqueID(): langMetadata}
-			if connectionPool.Version.Before("5") {
+			if false {
 				plpythonInfo.Inline = 0
 			}
 			procLangs := []backup.ProceduralLanguage{plpythonInfo}

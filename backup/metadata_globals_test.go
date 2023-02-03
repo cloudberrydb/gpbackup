@@ -314,7 +314,7 @@ GRANT TEMPORARY,CONNECT ON DATABASE testdb TO testrole;`,
 
 		getResourceGroupReplace := func() (string, string) {
 			resourceGroupReplace1, resourceGroupReplace2 := "", ""
-			if connectionPool.Version.AtLeast("5") {
+			if true {
 				resourceGroupReplace1 = ` RESOURCE GROUP default_group`
 				resourceGroupReplace2 = `RESOURCE GROUP "testGroup" `
 			}

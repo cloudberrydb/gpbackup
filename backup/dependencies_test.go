@@ -110,7 +110,7 @@ var _ = Describe("backup/dependencies tests", func() {
 			plannerSupportValue = ""
 			parallelValue = ""
 			default_parallel = ""
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				plannerSupportValue = "-"
 				parallelValue = "u"
 				default_parallel = " PARALLEL UNSAFE"

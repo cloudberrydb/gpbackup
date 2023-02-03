@@ -85,34 +85,24 @@ SET standard_conforming_strings = on;
 SET default_with_oids = off;
 `
 
-	if connectionPool.Version.Is("4") {
-		setupQuery += "SET gp_strict_xml_parse = off;\n"
-	}
-	if connectionPool.Version.AtLeast("5") {
-		setupQuery += "SET gp_ignore_error_table = on;\n"
-	}
-	if connectionPool.Version.Before("6") {
-		setupQuery += "SET allow_system_table_mods = 'DML';\n"
-	}
+	setupQuery += "SET gp_ignore_error_table = on;\n"
 
-	if connectionPool.Version.AtLeast("6") {
-		setupQuery += "SET allow_system_table_mods = true;\n"
-		setupQuery += "SET lock_timeout = 0;\n"
-		setupQuery += "SET default_transaction_read_only = off;\n"
-		setupQuery += "SET xmloption = content;\n"
+	setupQuery += "SET allow_system_table_mods = true;\n"
+	setupQuery += "SET lock_timeout = 0;\n"
+	setupQuery += "SET default_transaction_read_only = off;\n"
+	setupQuery += "SET xmloption = content;\n"
 
-		// If the backup is from a GPDB version less than 6.0,
-		// we need to use legacy hash operators when restoring
-		// the tables, unless we're restoring to a cluster of
-		// a different size since in that case the data will be
-		// redistributed during the restore process.
-		backupConfigMajorVer, _ := strconv.Atoi(strings.Split(backupConfig.DatabaseVersion, ".")[0])
-		if backupConfigMajorVer < 6 && !resizeRestore {
-			setupQuery += "SET gp_use_legacy_hashops = on;\n"
-			gplog.Warn("This backup set was taken on a version of Greenplum prior to 6.x. This restore will use the legacy hash operators when loading data.")
-			gplog.Warn("To use the new Greenplum 6.x default hash operators, these tables will need to be redistributed.")
-			gplog.Warn("For more information, refer to the migration guide located as https://docs.greenplum.org/latest/install_guide/migrate.html.")
-		}
+	// If the backup is from a GPDB version less than 6.0,
+	// we need to use legacy hash operators when restoring
+	// the tables, unless we're restoring to a cluster of
+	// a different size since in that case the data will be
+	// redistributed during the restore process.
+	backupConfigMajorVer, _ := strconv.Atoi(strings.Split(backupConfig.DatabaseVersion, ".")[0])
+	if false && backupConfigMajorVer < 6 && !resizeRestore {
+		setupQuery += "SET gp_use_legacy_hashops = on;\n"
+		gplog.Warn("This backup set was taken on a version of Greenplum prior to 6.x. This restore will use the legacy hash operators when loading data.")
+		gplog.Warn("To use the new Greenplum 6.x default hash operators, these tables will need to be redistributed.")
+		gplog.Warn("For more information, refer to the migration guide located as https://docs.greenplum.org/latest/install_guide/migrate.html.")
 	}
 
 	// If we're restoring to a different-sized cluster, disable the
@@ -134,20 +124,7 @@ SET default_with_oids = off;
 }
 
 func SetMaxCsvLineLengthQuery(connectionPool *dbconn.DBConn) string {
-	if connectionPool.Version.AtLeast("6") {
-		return ""
-	}
-
-	var maxLineLength int
-	if connectionPool.Version.Is("4") && connectionPool.Version.AtLeast("4.3.30") {
-		maxLineLength = 1024 * 1024 * 1024 // 1GB
-	} else if connectionPool.Version.Is("5") && connectionPool.Version.AtLeast("5.11.0") {
-		maxLineLength = 1024 * 1024 * 1024
-	} else {
-		maxLineLength = 4 * 1024 * 1024 // 4MB
-	}
-
-	return fmt.Sprintf("SET gp_max_csv_line_length = %d;\n", maxLineLength)
+	return ""
 }
 
 func InitializeBackupConfig() {
@@ -369,13 +346,7 @@ func GetExistingTableFQNs() ([]string, error) {
 	existingTableFQNs := make([]string, 0)
 	var relkindFilter string
 
-	if connectionPool.Version.Before("6") {
-		relkindFilter = "'r', 'S'"
-	} else if connectionPool.Version.Is("6") {
-		relkindFilter = "'r', 'S', 'f'"
-	} else if connectionPool.Version.AtLeast("7") {
-		relkindFilter = "'r', 'S', 'f', 'p'"
-	}
+	relkindFilter = "'r', 'S', 'f', 'p'"
 	query := fmt.Sprintf(`SELECT quote_ident(n.nspname) || '.' || quote_ident(c.relname)
 			  FROM pg_catalog.pg_class c
 				LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace

@@ -67,7 +67,7 @@ func initializeConnectionPool(timestamp string) {
 		connectionPool.MustExec(fmt.Sprintf("SET application_name TO 'gpbackup_%s'", timestamp), connNum)
 		// Begins transaction in repeatable read
 		connectionPool.MustBegin(connNum)
-		if connectionPool.Version.AtLeast(SNAPSHOT_GPDB_MIN_VERSION) && backupSnapshot == "" {
+		if backupSnapshot == "" {
 			backupSnapshot, err = GetSynchronizedSnapshot(connectionPool)
 			if err != nil {
 				gplog.FatalOnError(err)
@@ -94,18 +94,12 @@ func SetSessionGUCs(connNum int) {
 	// getting the max value of the GUC.
 	connectionPool.MustExec("SELECT set_config('extra_float_digits', (SELECT max_val FROM pg_settings WHERE name = 'extra_float_digits'), false)", connNum)
 
-	if connectionPool.Version.AtLeast("5") {
-		connectionPool.MustExec("SET synchronize_seqscans TO off", connNum)
-	}
-	if connectionPool.Version.AtLeast("6") {
-		connectionPool.MustExec("SET INTERVALSTYLE = POSTGRES", connNum)
-		connectionPool.MustExec("SET lock_timeout = 0", connNum)
-	}
+	connectionPool.MustExec("SET synchronize_seqscans TO off", connNum)
+	connectionPool.MustExec("SET INTERVALSTYLE = POSTGRES", connNum)
+	connectionPool.MustExec("SET lock_timeout = 0", connNum)
 
-	if connectionPool.Version.AtLeast("7") {
-		// This is a GPDB7+ GUC that can terminate sessions with open transactions that have been idle for too long, so we disable it.
-		connectionPool.MustExec("SET idle_in_transaction_session_timeout = 0", connNum)
-	}
+	// This is a GPDB7+ GUC that can terminate sessions with open transactions that have been idle for too long, so we disable it.
+	connectionPool.MustExec("SET idle_in_transaction_session_timeout = 0", connNum)
 }
 
 func NewBackupConfig(dbName string, dbVersion string, backupVersion string, plugin string, timestamp string, opts options.Options) *history.BackupConfig {
@@ -198,9 +192,7 @@ func RetrieveAndProcessTables() ([]Table, []Table) {
 	tableRelations := GetIncludedUserTableRelations(connectionPool, quotedIncludeRelations)
 	LockTables(connectionPool, tableRelations)
 
-	if connectionPool.Version.AtLeast("6") {
-		tableRelations = append(tableRelations, GetForeignTableRelations(connectionPool)...)
-	}
+	tableRelations = append(tableRelations, GetForeignTableRelations(connectionPool)...)
 
 	tables := ConstructDefinitionsForTables(connectionPool, tableRelations)
 
@@ -223,9 +215,6 @@ func retrieveFunctions(sortables *[]Sortable, metadataMap MetadataMap) ([]Functi
 }
 
 func retrieveTransforms(sortables *[]Sortable) {
-	if connectionPool.Version.Before("7") {
-		return
-	}
 	gplog.Verbose("Retrieving transform information")
 	transforms := GetTransforms(connectionPool)
 	objectCounts["Transforms"] = len(transforms)
@@ -239,15 +228,11 @@ func retrieveAndBackupTypes(metadataFile *utils.FileWithByteCount, sortables *[]
 	composites := GetCompositeTypes(connectionPool)
 	domains := GetDomainTypes(connectionPool)
 	rangeTypes := make([]RangeType, 0)
-	if connectionPool.Version.AtLeast("6") {
-		rangeTypes = GetRangeTypes(connectionPool)
-	}
+	rangeTypes = GetRangeTypes(connectionPool)
 	typeMetadata := GetMetadataForObjectType(connectionPool, TYPE_TYPE)
 
 	backupShellTypes(metadataFile, shells, bases, rangeTypes)
-	if connectionPool.Version.AtLeast("5") {
-		backupEnumTypes(metadataFile, typeMetadata)
-	}
+	backupEnumTypes(metadataFile, typeMetadata)
 
 	objectCounts["Types"] += len(shells)
 	objectCounts["Types"] += len(bases)
@@ -264,7 +249,7 @@ func retrieveAndBackupTypes(metadataFile *utils.FileWithByteCount, sortables *[]
 func retrieveConstraints(sortables *[]Sortable, metadataMap MetadataMap, tables ...Relation) []Constraint {
 	gplog.Verbose("Retrieving constraints")
 	constraints := GetConstraints(connectionPool, tables...)
-	if len(constraints) > 0 && connectionPool.Version.AtLeast("7") {
+	if len(constraints) > 0 {
 		RenameExchangedPartitionConstraints(connectionPool, &constraints)
 	}
 
@@ -316,14 +301,7 @@ func retrieveViews(sortables *[]Sortable) {
 }
 
 func retrieveTSObjects(sortables *[]Sortable, metadataMap MetadataMap) {
-	if !connectionPool.Version.AtLeast("5") {
-		return
-	}
-	gplog.Verbose("Retrieving Text Search Parsers")
-	retrieveTSParsers(sortables, metadataMap)
-	retrieveTSConfigurations(sortables, metadataMap)
-	retrieveTSTemplates(sortables, metadataMap)
-	retrieveTSDictionaries(sortables, metadataMap)
+	return
 }
 
 func retrieveTSParsers(sortables *[]Sortable, metadataMap MetadataMap) {
@@ -412,12 +390,7 @@ func retrieveCasts(sortables *[]Sortable, metadataMap MetadataMap) {
 }
 
 func retrieveFDWObjects(sortables *[]Sortable, metadataMap MetadataMap) {
-	if !connectionPool.Version.AtLeast("6") {
-		return
-	}
-	retrieveForeignDataWrappers(sortables, metadataMap)
-	retrieveForeignServers(sortables, metadataMap)
-	retrieveUserMappings(sortables)
+	return
 }
 
 func retrieveForeignDataWrappers(sortables *[]Sortable, metadataMap MetadataMap) {
@@ -491,15 +464,7 @@ func backupResourceQueues(metadataFile *utils.FileWithByteCount) {
 }
 
 func backupResourceGroups(metadataFile *utils.FileWithByteCount) {
-	if !connectionPool.Version.AtLeast("5") {
-		return
-	}
-	gplog.Verbose("Writing CREATE RESOURCE GROUP statements to metadata file")
-	resGroups := GetResourceGroups(connectionPool)
-	objectCounts["Resource Groups"] = len(resGroups)
-	resGroupMetadata := GetCommentsForObjectType(connectionPool, TYPE_RESOURCEGROUP)
-	PrintResetResourceGroupStatements(metadataFile, globalTOC)
-	PrintCreateResourceGroupStatements(metadataFile, globalTOC, resGroups, resGroupMetadata)
+	return
 }
 
 func backupRoles(metadataFile *utils.FileWithByteCount) {
@@ -560,9 +525,6 @@ func backupEnumTypes(metadataFile *utils.FileWithByteCount, typeMetadata Metadat
 }
 
 func backupAccessMethods(metadataFile *utils.FileWithByteCount) {
-	if connectionPool.Version.Before("7") {
-		return
-	}
 	gplog.Verbose("Writing CREATE ACCESS METHOD statements to metadata file")
 	accessMethods := GetAccessMethods(connectionPool)
 	objectCounts["Access Methods"] = len(accessMethods)
@@ -612,7 +574,7 @@ func backupDependentObjects(metadataFile *utils.FileWithByteCount, tables []Tabl
 
 	backupSet := createBackupSet(sortables)
 	relevantDeps := GetDependencies(connectionPool, backupSet, tables)
-	if connectionPool.Version.Is("4") && !tableOnly {
+	if false && !tableOnly {
 		AddProtocolDependenciesForGPDB4(relevantDeps, tables, protocols)
 	}
 
@@ -621,11 +583,6 @@ func backupDependentObjects(metadataFile *utils.FileWithByteCount, tables []Tabl
 	PrintDependentObjectStatements(metadataFile, globalTOC, sortedSlice, filteredMetadata, domainConstraints, funcInfoMap)
 	PrintIdentityColumns(metadataFile, globalTOC, sequences)
 	PrintAlterSequenceStatements(metadataFile, globalTOC, sequences)
-	extPartInfo, partInfoMap := GetExternalPartitionInfo(connectionPool)
-	if connectionPool.Version.Before("7") && len(extPartInfo) > 0 {
-		gplog.Verbose("Writing EXCHANGE PARTITION statements to metadata file")
-		PrintExchangeExternalPartitionStatements(metadataFile, globalTOC, extPartInfo, partInfoMap, tables)
-	}
 }
 
 func backupConversions(metadataFile *utils.FileWithByteCount) {
@@ -637,30 +594,15 @@ func backupConversions(metadataFile *utils.FileWithByteCount) {
 }
 
 func backupOperatorFamilies(metadataFile *utils.FileWithByteCount) {
-	if !connectionPool.Version.AtLeast("5") {
-		return
-	}
-	gplog.Verbose("Writing CREATE OPERATOR FAMILY statements to metadata file")
-	operatorFamilies := GetOperatorFamilies(connectionPool)
-	objectCounts["Operator Families"] = len(operatorFamilies)
-	operatorFamilyMetadata := GetMetadataForObjectType(connectionPool, TYPE_OPERATORFAMILY)
-	PrintCreateOperatorFamilyStatements(metadataFile, globalTOC, operatorFamilies, operatorFamilyMetadata)
+	return
 }
 
 func backupCollations(metadataFile *utils.FileWithByteCount) {
-	if !connectionPool.Version.AtLeast("6") {
-		return
-	}
-	gplog.Verbose("Writing CREATE COLLATION statements to metadata file")
-	collations := GetCollations(connectionPool)
-	objectCounts["Collations"] = len(collations)
-	collationMetadata := GetMetadataForObjectType(connectionPool, TYPE_COLLATION)
-	PrintCreateCollationStatements(metadataFile, globalTOC, collations, collationMetadata)
+	return
 }
 
 func backupExtensions(metadataFile *utils.FileWithByteCount) {
-	if !(len(MustGetFlagStringArray(options.INCLUDE_SCHEMA)) == 0 &&
-		connectionPool.Version.AtLeast("5")) {
+	if !(len(MustGetFlagStringArray(options.INCLUDE_SCHEMA)) == 0 ) {
 		return
 	}
 	gplog.Verbose("Writing CREATE EXTENSION statements to metadata file")
@@ -678,7 +620,7 @@ func backupIndexes(metadataFile *utils.FileWithByteCount) {
 	gplog.Verbose("Writing CREATE INDEX statements to metadata file")
 	indexes := GetIndexes(connectionPool)
 	objectCounts["Indexes"] = len(indexes)
-	if objectCounts["Indexes"] > 0 && connectionPool.Version.Is("6") {
+	if objectCounts["Indexes"] > 0 && false {
 		// This bug is not addressed in versions prior to GPDB6
 		// New partition exchange syntax in GPDB7+ obviates the need for this renaming
 		RenameExchangedPartitionIndexes(connectionPool, &indexes)

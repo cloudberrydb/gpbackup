@@ -54,7 +54,7 @@ var _ = Describe("backup integration tests", func() {
 
 			Expect(result.Name).To(Equal("template0"))
 			Expect(result.Encoding).To(Equal("UTF8"))
-			if connectionPool.Version.AtLeast("6") {
+			if true {
 				/*
 				 * These values are slightly different between mac and linux
 				 * so we use a regexp to match them
@@ -73,7 +73,7 @@ var _ = Describe("backup integration tests", func() {
 		})
 		It("returns a database info struct for a complex database", func() {
 			var expectedDB backup.Database
-			if connectionPool.Version.Before("6") {
+			if false {
 				testhelper.AssertQueryRuns(connectionPool, "CREATE DATABASE create_test_db ENCODING 'UTF8' TEMPLATE template0")
 				expectedDB = backup.Database{Oid: 1, Name: "create_test_db", Tablespace: "pg_default", Encoding: "UTF8", Collate: "", CType: ""}
 			} else {
@@ -233,7 +233,7 @@ var _ = Describe("backup integration tests", func() {
 				Createwexthdfs:  false,
 				TimeConstraints: nil,
 			}
-			if connectionPool.Version.Before("5") {
+			if false {
 				expectedRole.ResGroup = ""
 			}
 			for _, role := range results {
@@ -253,7 +253,7 @@ CONNECTION LIMIT 4 PASSWORD 'swordfish' VALID UNTIL '2099-01-01 00:00:00-08'
 CREATEEXTTABLE (protocol='http')
 CREATEEXTTABLE (protocol='gpfdist', type='readable')
 CREATEEXTTABLE (protocol='gpfdist', type='writable')`
-			if connectionPool.Version.Before("6") {
+			if false {
 				setupQuery += `
 CREATEEXTTABLE (protocol='gphdfs', type='readable')
 CREATEEXTTABLE (protocol='gphdfs', type='writable')`
@@ -301,10 +301,10 @@ CREATEEXTTABLE (protocol='gphdfs', type='writable')`
 				},
 			}
 
-			if connectionPool.Version.AtLeast("5") {
+			if true {
 				expectedRole.ResGroup = "default_group"
 			}
-			if connectionPool.Version.AtLeast("6") {
+			if true {
 				expectedRole.Createrexthdfs = false
 				expectedRole.Createwexthdfs = false
 			}
@@ -425,7 +425,7 @@ CREATEEXTTABLE (protocol='gphdfs', type='writable')`
 			testhelper.AssertQueryRuns(connectionPool, "CREATE ROLE role1 SUPERUSER NOINHERIT")
 
 			// Function and cast already exist on 4x
-			if connectionPool.Version.AtLeast("5") {
+			if true {
 				testhelper.AssertQueryRuns(connectionPool, "CREATE OR REPLACE FUNCTION pg_catalog.text(timestamp without time zone) RETURNS text STRICT IMMUTABLE LANGUAGE SQL AS 'SELECT textin(timestamp_out($1));';")
 				testhelper.AssertQueryRuns(connectionPool, "CREATE CAST (timestamp without time zone AS text) WITH FUNCTION pg_catalog.text(timestamp without time zone) AS IMPLICIT;")
 				defer testhelper.AssertQueryRuns(connectionPool, "DROP FUNCTION pg_catalog.text(timestamp without time zone) CASCADE;")
@@ -457,7 +457,7 @@ CREATEEXTTABLE (protocol='gphdfs', type='writable')`
 				Createwexthdfs:  false,
 				TimeConstraints: nil,
 			}
-			if connectionPool.Version.Before("5") {
+			if false {
 				expectedRole.ResGroup = ""
 			}
 			for _, role := range results {
@@ -545,7 +545,7 @@ CREATEEXTTABLE (protocol='gphdfs', type='writable')`
 		})
 		It("handles implicit cast of oid to text", func() {
 			// Function and cast already exist on 4x
-			if connectionPool.Version.AtLeast("5") {
+			if true {
 				testhelper.AssertQueryRuns(connectionPool, "CREATE OR REPLACE FUNCTION pg_catalog.text(oid) RETURNS text STRICT IMMUTABLE LANGUAGE SQL AS 'SELECT textin(oidout($1));';")
 				testhelper.AssertQueryRuns(connectionPool, "CREATE CAST (oid AS text) WITH FUNCTION pg_catalog.text(oid) AS IMPLICIT;")
 				defer testhelper.AssertQueryRuns(connectionPool, "DROP FUNCTION pg_catalog.text(oid) CASCADE;")
@@ -572,7 +572,7 @@ CREATEEXTTABLE (protocol='gphdfs', type='writable')`
 			testhelper.AssertQueryRuns(connectionPool, "ALTER ROLE role1 SET client_min_messages TO 'info'")
 
 			defaultStorageOptionsString := "appendonly=true, compresslevel=6, orientation=row, compresstype=none"
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				defaultStorageOptionsString = "compresslevel=6, compresstype=none"
 			}
 			testhelper.AssertQueryRuns(connectionPool, fmt.Sprintf("ALTER ROLE role1 SET gp_default_storage_options TO '%s'", defaultStorageOptionsString))
@@ -610,7 +610,7 @@ CREATEEXTTABLE (protocol='gphdfs', type='writable')`
 	Describe("GetTablespaces", func() {
 		It("returns a tablespace", func() {
 			var expectedTablespace backup.Tablespace
-			if connectionPool.Version.Before("6") {
+			if false {
 				testhelper.AssertQueryRuns(connectionPool, "CREATE TABLESPACE test_tablespace FILESPACE test_dir")
 				expectedTablespace = backup.Tablespace{Oid: 0, Tablespace: "test_tablespace", FileLocation: "test_dir"}
 			} else {

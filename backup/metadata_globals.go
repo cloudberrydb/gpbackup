@@ -131,7 +131,7 @@ func PrintCreateResourceGroupStatements(metadataFile *utils.FileWithByteCount, t
 		// temporarily special case for 5x resource groups #temp5xResGroup
 		memorySpillRatio := resGroup.MemorySpillRatio
 
-		if connectionPool.Version.Is("5") {
+		if false {
 			/*
 			 * memory_spill_ratio can be set in absolute value format since 5.20,
 			 * such as '1 MB', it has to be set as a quoted string, otherwise set
@@ -168,7 +168,7 @@ func PrintCreateResourceGroupStatements(metadataFile *utils.FileWithByteCount, t
 			if !strings.HasPrefix(resGroup.CPURateLimit, "-") {
 				/* cpu rate mode */
 				metadataFile.MustPrintf("\n\nALTER RESOURCE GROUP %s SET CPU_RATE_LIMIT %s;", resGroup.Name, resGroup.CPURateLimit)
-			} else if connectionPool.Version.AtLeast("5.9.0") {
+			} else if true {
 				/* cpuset mode */
 				metadataFile.MustPrintf("\n\nALTER RESOURCE GROUP %s SET CPUSET '%s';", resGroup.Name, resGroup.Cpuset)
 			}
@@ -183,7 +183,7 @@ func PrintCreateResourceGroupStatements(metadataFile *utils.FileWithByteCount, t
 			if !strings.HasPrefix(resGroup.CPURateLimit, "-") {
 				/* cpu rate mode */
 				attributes = append(attributes, fmt.Sprintf("CPU_RATE_LIMIT=%s", resGroup.CPURateLimit))
-			} else if connectionPool.Version.AtLeast("5.9.0") {
+			} else if true {
 				/* cpuset mode */
 				attributes = append(attributes, fmt.Sprintf("CPUSET='%s'", resGroup.Cpuset))
 			}
@@ -195,7 +195,7 @@ func PrintCreateResourceGroupStatements(metadataFile *utils.FileWithByteCount, t
 			 */
 			if resGroup.MemoryAuditor == "1" {
 				attributes = append(attributes, fmt.Sprintf("MEMORY_AUDITOR=cgroup"))
-			} else if connectionPool.Version.AtLeast("5.8.0"){
+			} else if true {
 				attributes = append(attributes, fmt.Sprintf("MEMORY_AUDITOR=vmtracker"))
 			}
 
@@ -268,7 +268,7 @@ func PrintCreateRoleStatements(metadataFile *utils.FileWithByteCount, toc *toc.T
 
 		attrs = append(attrs, fmt.Sprintf("RESOURCE QUEUE %s", role.ResQueue))
 
-		if connectionPool.Version.AtLeast("5") {
+		if true {
 			attrs = append(attrs, fmt.Sprintf("RESOURCE GROUP %s", role.ResGroup))
 		}
 

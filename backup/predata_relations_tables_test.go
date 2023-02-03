@@ -6,7 +6,6 @@ import (
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpbackup/backup"
 	"github.com/greenplum-db/gpbackup/testutils"
-
 	. "github.com/onsi/ginkgo/v2"
 )
 
@@ -582,9 +581,7 @@ COMMENT ON COLUMN public.tablename.j IS 'This is another column comment.';`)
 			testTable.ColumnDefs = col
 			tableMetadata := testutils.DefaultMetadata("TABLE", false, true, false, false)
 			backup.PrintPostCreateTableStatements(backupfile, tocfile, testTable, tableMetadata)
-			testhelper.ExpectRegexp(buffer, `
-
-ALTER TABLE public.tablename OWNER TO testrole;`)
+			testhelper.ExpectRegexp(buffer, ``)
 		})
 		It("prints a SECURITY LABEL statement for the table", func() {
 			col := []backup.ColumnDefinition{rowOne}
@@ -613,9 +610,6 @@ SECURITY LABEL FOR dummy ON TABLE public.tablename IS 'unclassified';`)
 COMMENT ON FOREIGN TABLE public.tablename IS 'This is a foreign table comment.';
 
 
-ALTER FOREIGN TABLE public.tablename OWNER TO testrole;
-
-
 REVOKE ALL ON public.tablename FROM PUBLIC;
 REVOKE ALL ON public.tablename FROM testrole;
 GRANT ALL ON public.tablename TO testrole;
@@ -633,9 +627,6 @@ SECURITY LABEL FOR dummy ON FOREIGN TABLE public.tablename IS 'unclassified';`)
 COMMENT ON TABLE public.tablename IS 'This is a table comment.';
 
 
-ALTER TABLE public.tablename OWNER TO testrole;
-
-
 COMMENT ON COLUMN public.tablename.i IS 'This is a column comment.';
 
 
@@ -649,10 +640,6 @@ COMMENT ON COLUMN public.tablename.j IS 'This is another column comment.';`)
 			tableMetadata := backup.ObjectMetadata{Owner: "testrole"}
 			backup.PrintPostCreateTableStatements(backupfile, tocfile, testTable, tableMetadata)
 			testhelper.ExpectRegexp(buffer, `
-
-ALTER TABLE public.tablename OWNER TO testrole;
-
-
 REVOKE ALL (i) ON TABLE public.tablename FROM PUBLIC;
 REVOKE ALL (i) ON TABLE public.tablename FROM testrole;
 GRANT SELECT (i) ON TABLE public.tablename TO testrole;

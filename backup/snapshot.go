@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	SNAPSHOT_GPDB_MIN_VERSION = "6.21.0"
+	SNAPSHOT_GPDB_MIN_VERSION = "1.1.0"
 )
 
  // Export synchronized snapshot using connection 0 and return snapshotId value as string

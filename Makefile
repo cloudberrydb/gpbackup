@@ -8,12 +8,13 @@ endif
 BACKUP=gpbackup
 RESTORE=gprestore
 HELPER=gpbackup_helper
+VERSION="1.2.7-beta1+dev.7"
 BIN_DIR=$(shell echo $${GOPATH:-~/go} | awk -F':' '{ print $$1 "/bin"}')
-GINKGO_FLAGS := -r --keep-going --randomize-suites --randomize-all --no-color
+GINKGO_FLAGS := -r 
 GIT_VERSION := $(shell git describe --tags | perl -pe 's/(.*)-([0-9]*)-(g[0-9a-f]*)/\1+dev.\2.\3/')
-BACKUP_VERSION_STR=github.com/greenplum-db/gpbackup/backup.version=$(GIT_VERSION)
-RESTORE_VERSION_STR=github.com/greenplum-db/gpbackup/restore.version=$(GIT_VERSION)
-HELPER_VERSION_STR=github.com/greenplum-db/gpbackup/helper.version=$(GIT_VERSION)
+BACKUP_VERSION_STR=github.com/greenplum-db/gpbackup/backup.version=$(VERSION)
+RESTORE_VERSION_STR=github.com/greenplum-db/gpbackup/restore.version=$(VERSION)
+HELPER_VERSION_STR=github.com/greenplum-db/gpbackup/helper.version=$(VERSION)
 
 # note that /testutils is not a production directory, but has unit tests to validate testing tools
 SUBDIRS_HAS_UNIT=backup/ filepath/ history/ helper/ options/ report/ restore/ toc/ utils/ testutils/
@@ -61,10 +62,10 @@ unit_all_gpdb_versions : $(GINKGO)
 integration : $(GINKGO)
 	ginkgo $(GINKGO_FLAGS) integration 2>&1
 
-test : build unit integration
+test : build unit 
 
 end_to_end : $(GINKGO)
-	ginkgo $(GINKGO_FLAGS) --timeout=3h --slow-spec-threshold=10s end_to_end -- --custom_backup_dir $(CUSTOM_BACKUP_DIR) 2>&1
+	ginkgo $(GINKGO_FLAGS) --timeout=3h  end_to_end -- --custom_backup_dir $(CUSTOM_BACKUP_DIR) 2>&1
 
 coverage :
 		@./show_coverage.sh

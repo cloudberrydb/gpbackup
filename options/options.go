@@ -350,74 +350,24 @@ func (o Options) getUserTableRelationsWithIncludeFiltering(connectionPool *dbcon
 	oidStr := strings.Join(includeOids, ", ")
 	childPartitionFilter := ""
 	parentAndExternalPartitionFilter := ""
-	if connectionPool.Version.Before("7") {
-		if o.isLeafPartitionData {
-			//Get all leaf partition tables whose parents are in the include list
-			childPartitionFilter = fmt.Sprintf(`
-		OR c.oid IN (
-			SELECT
-				r.parchildrelid
-			FROM pg_partition p
-			JOIN pg_partition_rule r ON p.oid = r.paroid
-			WHERE p.paristemplate = false
-			AND p.parrelid IN (%s))`, oidStr)
-		} else {
-			//Get only external partition tables whose parents are in the include list
-			childPartitionFilter = fmt.Sprintf(`
-		OR c.oid IN (
-			SELECT
-				r.parchildrelid
-			FROM pg_partition p
-			JOIN pg_partition_rule r ON p.oid = r.paroid
-			JOIN pg_exttable e ON r.parchildrelid = e.reloid
-			WHERE p.paristemplate = false
-			AND e.reloid IS NOT NULL
-			AND p.parrelid IN (%s))`, oidStr)
-		}
+	// GPDB7+ reworks the nature of partition tables.  It is no longer sufficient
+	// to pull parents and children in one step.  Instead we must recursively climb/descend
+	// the pg_depend ladder, filtering to only members of pg_class at each step, until the
+	// full hierarchy has been retrieved
+	childOids, err := o.recurseTableDepend(connectionPool, includeOids, "parent")
+	if err != nil {
+		return nil, err
+	}
+	if len(childOids) > 0 {
+		childPartitionFilter = fmt.Sprintf(`OR c.oid IN (%s)`, strings.Join(childOids, ", "))
+	}
 
-		parentAndExternalPartitionFilter = fmt.Sprintf(`
-		-- Get parent partition tables whose children are in the include list
-		OR c.oid IN (
-			SELECT
-				p.parrelid
-			FROM pg_partition p
-			JOIN pg_partition_rule r ON p.oid = r.paroid
-			WHERE p.paristemplate = false
-			AND r.parchildrelid IN (%[1]s)
-		)
-		-- Get external partition tables whose siblings are in the include list
-		OR c.oid IN (
-			SELECT
-				r.parchildrelid
-			FROM pg_partition_rule r
-			JOIN pg_exttable e ON r.parchildrelid = e.reloid
-			WHERE r.paroid IN (
-				SELECT
-					pr.paroid
-				FROM pg_partition_rule pr
-				WHERE pr.parchildrelid IN (%[1]s)
-			)
-		)`, oidStr)
-	} else {
-		// GPDB7+ reworks the nature of partition tables.  It is no longer sufficient
-		// to pull parents and children in one step.  Instead we must recursively climb/descend
-		// the pg_depend ladder, filtering to only members of pg_class at each step, until the
-		// full hierarchy has been retrieved
-		childOids, err := o.recurseTableDepend(connectionPool, includeOids, "parent")
-		if err != nil {
-			return nil, err
-		}
-		if len(childOids) > 0 {
-			childPartitionFilter = fmt.Sprintf(`OR c.oid IN (%s)`, strings.Join(childOids, ", "))
-		}
-
-		parentOids, err := o.recurseTableDepend(connectionPool, includeOids, "child")
-		if err != nil {
-			return nil, err
-		}
-		if len(parentOids) > 0 {
-			parentAndExternalPartitionFilter = fmt.Sprintf(`OR c.oid IN (%s)`, strings.Join(parentOids, ", "))
-		}
+	parentOids, err := o.recurseTableDepend(connectionPool, includeOids, "child")
+	if err != nil {
+		return nil, err
+	}
+	if len(parentOids) > 0 {
+		parentAndExternalPartitionFilter = fmt.Sprintf(`OR c.oid IN (%s)`, strings.Join(parentOids, ", "))
 	}
 
 	query := fmt.Sprintf(`

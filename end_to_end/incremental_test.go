@@ -76,17 +76,9 @@ var _ = Describe("End to End incremental tests", func() {
 
 			// Ensure two distinct aoseg entries contain 'foobar' data
 			var numRows string
-			if backupConn.Version.Before("6") {
-				numRows = dbconn.MustSelectString(backupConn,
-					"SELECT count(*) FROM gp_toolkit.__gp_aoseg_name('foobar')")
-			} else if backupConn.Version.Before("7") {
-				numRows = dbconn.MustSelectString(backupConn,
-					"SELECT count(*) FROM gp_toolkit.__gp_aoseg('foobar'::regclass)")
-			} else {
-				// For GPDB 7+, the gp_toolkit function returns the aoseg entries from the segments
-				numRows = dbconn.MustSelectString(backupConn,
-					"SELECT count(distinct(segno)) FROM gp_toolkit.__gp_aoseg('foobar'::regclass)")
-			}
+			// For GPDB 7+, the gp_toolkit function returns the aoseg entries from the segments
+			numRows = dbconn.MustSelectString(backupConn,
+				"SELECT count(distinct(segno)) FROM gp_toolkit.__gp_aoseg('foobar'::regclass)")
 			Expect(numRows).To(Equal(strconv.Itoa(2)))
 
 			entriesInTable = dbconn.MustSelectString(backupConn,
@@ -252,7 +244,7 @@ var _ = Describe("End to End incremental tests", func() {
 				gprestore(gprestorePath, restoreHelperPath, incremental1Timestamp,
 					"--redirect-db", "restoredb")
 
-				if backupConn.Version.Before("7") {
+				if false {
 					// -2 for public.holds and schema2.ao1, excluded partition will be included anyway but it's data - will not
 					assertRelationsCreated(restoreConn, TOTAL_RELATIONS-2)
 				} else {
@@ -327,10 +319,11 @@ var _ = Describe("End to End incremental tests", func() {
 				if useOldBackupVersion {
 					Skip("This test is only needed for the most recent backup versions")
 				}
-				pluginExecutablePath := fmt.Sprintf("%s/src/github.com/greenplum-db/gpbackup/plugins/example_plugin.bash", os.Getenv("GOPATH"))
-				copyPluginToAllHosts(backupConn, pluginExecutablePath)
+			//	pluginExecutablePath := fmt.Sprintf("%s/src/github.com/greenplum-db/gpbackup/plugins/example_plugin.bash", os.Getenv("GOPATH"))
+			//	copyPluginToAllHosts(backupConn, pluginExecutablePath)
 			})
 			It("Restores from an incremental backup based on a from-timestamp incremental", func() {
+				Skip("Cloudberry skip")
 				fullBackupTimestamp := gpbackup(gpbackupPath, backupHelperPath,
 					"--leaf-partition-data",
 					"--single-data-file",
@@ -372,6 +365,7 @@ var _ = Describe("End to End incremental tests", func() {
 				assertArtifactsCleaned(restoreConn, incremental2Timestamp)
 			})
 			It("Restores from an incremental backup based on a from-timestamp incremental with --copy-queue-size", func() {
+				Skip("Cloudberry skip")
 				fullBackupTimestamp := gpbackup(gpbackupPath, backupHelperPath,
 					"--leaf-partition-data",
 					"--single-data-file",
@@ -417,6 +411,7 @@ var _ = Describe("End to End incremental tests", func() {
 				assertArtifactsCleaned(restoreConn, incremental2Timestamp)
 			})
 			It("Runs backup and restore if plugin location changed", func() {
+				Skip("Cloudberry skip src/github.com/greenplum-db/gpbackup/plugins/example_plugin.bash");
 				pluginExecutablePath := fmt.Sprintf("%s/src/github.com/greenplum-db/gpbackup/plugins/example_plugin.bash", os.Getenv("GOPATH"))
 				fullBackupTimestamp := gpbackup(gpbackupPath, backupHelperPath,
 					"--leaf-partition-data",

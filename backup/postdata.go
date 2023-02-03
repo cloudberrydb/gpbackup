@@ -32,7 +32,7 @@ func PrintCreateIndexStatements(metadataFile *utils.FileWithByteCount, toc *toc.
 				metadataFile.MustPrintf("\nALTER INDEX %s SET TABLESPACE %s;", index.FQN(), index.Tablespace)
 				toc.AddMetadataEntry(section, entry, start, metadataFile.ByteCount)
 			}
-			if index.ParentIndexFQN != "" && connectionPool.Version.AtLeast("7") {
+			if index.ParentIndexFQN != "" {
 				start := metadataFile.ByteCount
 				metadataFile.MustPrintf("\nALTER INDEX %s ATTACH PARTITION %s;", index.ParentIndexFQN, index.FQN())
 				toc.AddMetadataEntry(section, entry, start, metadataFile.ByteCount)
@@ -98,7 +98,7 @@ func PrintCreateEventTriggerStatements(metadataFile *utils.FileWithByteCount, to
 		if eventTrigger.EventTags != "" {
 			metadataFile.MustPrintf("\nWHEN TAG IN (%s)", eventTrigger.EventTags)
 		}
-		if connectionPool.Version.AtLeast("7") {
+		if true {
 			metadataFile.MustPrintf("\nEXECUTE FUNCTION %s();", eventTrigger.FunctionName)
 		} else {
 			metadataFile.MustPrintf("\nEXECUTE PROCEDURE %s();", eventTrigger.FunctionName)

@@ -82,66 +82,6 @@ func (i IndexDefinition) FQN() string {
  * e.g. comments on implicitly created indexes
  */
 func GetIndexes(connectionPool *dbconn.DBConn) []IndexDefinition {
-	implicitIndexStr := ""
-	if connectionPool.Version.Before("6") {
-		indexOidList := ConstructImplicitIndexOidList(connectionPool)
-
-		if indexOidList != "" {
-			implicitIndexStr = fmt.Sprintf("OR i.indexrelid IN (%s)", indexOidList)
-		}
-	}
-	before6Query := fmt.Sprintf(`
-	SELECT DISTINCT i.indexrelid AS oid,
-		quote_ident(ic.relname) AS name,
-		quote_ident(n.nspname) AS owningschema,
-		quote_ident(c.relname) AS owningtable,
-		coalesce(quote_ident(s.spcname), '') AS tablespace,
-		pg_get_indexdef(i.indexrelid) AS def,
-		i.indisclustered AS isclustered,
-		CASE
-			WHEN i.indisprimary = 't' %s THEN 't'
-			ELSE 'f'
-		END AS supportsconstraint
-	FROM pg_index i
-		JOIN pg_class ic ON (ic.oid = i.indexrelid)
-		JOIN pg_namespace n ON (ic.relnamespace = n.oid)
-		JOIN pg_class c ON (c.oid = i.indrelid)
-		LEFT JOIN pg_tablespace s ON (ic.reltablespace = s.oid)
-	WHERE %s
-		AND i.indisvalid
-		AND NOT EXISTS (SELECT 1 FROM pg_partition_rule r WHERE r.parchildrelid = c.oid)
-		AND %s
-	ORDER BY name`,
-		implicitIndexStr, relationAndSchemaFilterClause(), ExtensionFilterClause("c"))
-
-	version6Query := fmt.Sprintf(`
-	SELECT DISTINCT i.indexrelid AS oid,
-		quote_ident(ic.relname) AS name,
-		quote_ident(n.nspname) AS owningschema,
-		quote_ident(c.relname) AS owningtable,
-		coalesce(quote_ident(s.spcname), '') AS tablespace,
-		pg_get_indexdef(i.indexrelid) AS def,
-		i.indisclustered AS isclustered,
-		i.indisreplident AS isreplicaidentity,
-		CASE
-			WHEN conindid > 0 THEN 't'
-			ELSE 'f'
-		END as supportsconstraint
-	FROM pg_index i
-		JOIN pg_class ic ON ic.oid = i.indexrelid
-		JOIN pg_namespace n ON ic.relnamespace = n.oid
-		JOIN pg_class c ON c.oid = i.indrelid
-		LEFT JOIN pg_tablespace s ON ic.reltablespace = s.oid
-		LEFT JOIN pg_constraint con ON i.indexrelid = con.conindid
-	WHERE %s
-		AND i.indisvalid
-		AND i.indisready
-		AND i.indisprimary = 'f'
-		AND NOT EXISTS (SELECT 1 FROM pg_partition_rule r WHERE r.parchildrelid = c.oid)
-		AND %s
-	ORDER BY name`,
-		relationAndSchemaFilterClause(), ExtensionFilterClause("c")) // The index itself does not have a dependency on the extension, but the index's table does
-
 	atLeast7Query := fmt.Sprintf(`
 		SELECT DISTINCT i.indexrelid AS oid,
 			coalesce(inh.inhparent, '0') AS parentindex,
@@ -173,14 +113,7 @@ func GetIndexes(connectionPool *dbconn.DBConn) []IndexDefinition {
 		ORDER BY name`,
 		relationAndSchemaFilterClause(), FIRST_NORMAL_OBJECT_ID, ExtensionFilterClause("c"))
 
-	query := ""
-	if connectionPool.Version.Before("6") {
-		query = before6Query
-	} else if connectionPool.Version.Is("6") {
-		query = version6Query
-	} else {
-		query = atLeast7Query
-	}
+	query := atLeast7Query
 
 	resultIndexes := make([]IndexDefinition, 0)
 	err := connectionPool.Select(&resultIndexes, query)
@@ -194,17 +127,11 @@ func GetIndexes(connectionPool *dbconn.DBConn) []IndexDefinition {
 	for _, index := range resultIndexes {
 		if index.Def.Valid {
 			verifiedResultIndexes = append(verifiedResultIndexes, index)
-			if connectionPool.Version.AtLeast("7") {
-				indexMap[index.Oid] = index // hash index for topological sort
-			}
+			indexMap[index.Oid] = index // hash index for topological sort
 		} else {
 			gplog.Warn("Index '%s' on table '%s.%s' not backed up, most likely dropped after gpbackup had begun.",
 				index.Name, index.OwningSchema, index.OwningTable)
 		}
-	}
-
-	if connectionPool.Version.Before("7") {
-		return verifiedResultIndexes
 	}
 
 	// Since GPDB 7+ partition indexes can now be ALTERED to attach to a parent
@@ -253,21 +180,12 @@ func GetRenameExchangedPartitionQuery(connection *dbconn.DBConn) string {
 	// will cause a name collision in GPDB7+.  Rename those constraints to match their new owning
 	// tables.  In GPDB6 and below this renaming was done automatically by server code.
 	cteClause := ""
-	if connectionPool.Version.Before("7") {
-		cteClause = `SELECT DISTINCT cl.relname
-            FROM pg_class cl
-                INNER JOIN pg_partitions pts
-					ON cl.relname = pts.partitiontablename
-					AND cl.relname != pts.tablename
-            WHERE cl.relkind IN ('r', 'f')`
-	} else {
-		cteClause = `SELECT DISTINCT cl.relname
+	cteClause = `SELECT DISTINCT cl.relname
              FROM pg_class cl
              WHERE
                 cl.relkind IN ('r', 'f')
                 AND cl.relispartition = true
                 AND cl.relhassubclass = false`
-	}
 	query := fmt.Sprintf(`
         WITH table_cte AS (%s)
         SELECT
@@ -408,9 +326,6 @@ func (t TriggerDefinition) FQN() string {
 
 func GetTriggers(connectionPool *dbconn.DBConn) []TriggerDefinition {
 	constraintClause := "NOT tgisinternal"
-	if connectionPool.Version.Before("6") {
-		constraintClause = "tgisconstraint = 'f'"
-	}
 	query := fmt.Sprintf(`
 	SELECT t.oid AS oid,
 		quote_ident(t.tgname) AS name,

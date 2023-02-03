@@ -34,15 +34,10 @@ func SplitTablesByPartitionType(tables []Table, includeList []string) ([]Table, 
 		includeSet := utils.NewSet(includeList)
 		for _, table := range tables {
 			if table.IsExternal && table.PartitionLevelInfo.Level == "l" {
-				if connectionPool.Version.Before("7") {
-					// GPDB7+ has different conventions for external partitions
-					// and does not need the suffix added
-					table.Name = AppendExtPartSuffix(table.Name)
-				}
 				metadataTables = append(metadataTables, table)
 			}
 			partType := table.PartitionLevelInfo.Level
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				// In GPDB 7+, we need to dump out the leaf partition DDL along with their
 				// ALTER TABLE ATTACH PARTITION commands to construct the partition table
 				metadataTables = append(metadataTables, table)
@@ -53,8 +48,7 @@ func SplitTablesByPartitionType(tables []Table, includeList []string) ([]Table, 
 				if partType != "p" && partType != "i" {
 					dataTables = append(dataTables, table)
 				}
-			} else if connectionPool.Version.AtLeast("7") &&
-				table.AttachPartitionInfo != (AttachPartitionInfo{}) {
+			} else if table.AttachPartitionInfo != (AttachPartitionInfo{}) {
 				// For GPDB 7+ and without --leaf-partition-data, we must exclude the
 				// leaf partitions from dumping data. The COPY will be called on the
 				// top-most root partition.
@@ -65,25 +59,16 @@ func SplitTablesByPartitionType(tables []Table, includeList []string) ([]Table, 
 		}
 	} else {
 		var excludeList *utils.FilterSet
-		if connectionPool.Version.AtLeast("7") {
-			excludeList = utils.NewExcludeSet(MustGetFlagStringArray(options.EXCLUDE_RELATION))
-		} else {
-			excludeList = utils.NewExcludeSet([]string{})
-		}
+		excludeList = utils.NewExcludeSet(MustGetFlagStringArray(options.EXCLUDE_RELATION))
 
 		for _, table := range tables {
 			// In GPDB 7+, we need to filter out leaf and intermediate subroot partitions
 			// from being added to the metadata table list if their root partition parent
 			// is in the exclude list. This is to prevent ATTACH PARTITION statements
 			// against nonexistant root partitions from being printed to the metadata file.
-			if connectionPool.Version.AtLeast("7") &&
-				table.AttachPartitionInfo != (AttachPartitionInfo{}) &&
+			if table.AttachPartitionInfo != (AttachPartitionInfo{}) &&
 				!excludeList.MatchesFilter(table.AttachPartitionInfo.Parent) {
 				continue
-			}
-
-			if connectionPool.Version.Before("7") && table.IsExternal && table.PartitionLevelInfo.Level == "l" {
-				table.Name = AppendExtPartSuffix(table.Name)
 			}
 
 			metadataTables = append(metadataTables, table)
@@ -281,7 +266,7 @@ func PrintPostCreateTableStatements(metadataFile *utils.FileWithByteCount, toc *
 				utils.MakeFQN(alteredPartitionRelation.OldSchema, alteredPartitionRelation.Name), alteredPartitionRelation.NewSchema))
 	}
 
-	if connectionPool.Version.AtLeast("7") {
+	if true {
 		attachInfo := table.AttachPartitionInfo
 		if (attachInfo != AttachPartitionInfo{}) {
 			statements = append(statements,
@@ -303,7 +288,7 @@ func generateSequenceDefinitionStatement(sequence Sequence) string {
 	minVal := int64(math.MinInt64)
 
 	// Identity columns cannot be defined with `AS smallint/integer`
-	if connectionPool.Version.AtLeast("7") && sequence.OwningColumnAttIdentity == "" {
+	if sequence.OwningColumnAttIdentity == "" {
 		if definition.Type != "bigint" {
 			statement += fmt.Sprintf("\n\tAS %s", definition.Type)
 		}
@@ -315,7 +300,7 @@ func generateSequenceDefinitionStatement(sequence Sequence) string {
 			minVal = int64(math.MinInt32)
 		}
 	}
-	if connectionPool.Version.AtLeast("6") {
+	if true {
 		statement += fmt.Sprintf("\n\tSTART WITH %d", definition.StartVal)
 	} else if !definition.IsCalled {
 		statement += fmt.Sprintf("\n\tSTART WITH %d", definition.LastVal)

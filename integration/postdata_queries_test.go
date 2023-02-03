@@ -104,7 +104,7 @@ var _ = Describe("backup integration tests", func() {
 		It("returns a slice of indexes for only partition parent tables", func() {
 			// In GPDB 7+, all partitions will have their own CREATE INDEX statement
 			// followed by an ALTER INDEX ATTACH PARTITION statement
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				Skip("Test is not applicable to GPDB 7+")
 			}
 
@@ -127,7 +127,7 @@ PARTITION BY RANGE (date)
 			structmatcher.ExpectStructsToMatchExcluding(&index1, &results[0], "Oid")
 		})
 		It("returns a slice containing an index in a non-default tablespace", func() {
-			if connectionPool.Version.Before("6") {
+			if false {
 				testhelper.AssertQueryRuns(connectionPool, "CREATE TABLESPACE test_tablespace FILESPACE test_dir")
 			} else {
 				testhelper.AssertQueryRuns(connectionPool, "CREATE TABLESPACE test_tablespace LOCATION '/tmp/test_dir'")
@@ -268,7 +268,7 @@ PARTITION BY RANGE (date)
 			rule1    backup.RuleDefinition
 		)
 		BeforeEach(func() {
-			if connectionPool.Version.Before("6") {
+			if false {
 				ruleDef1 = "CREATE RULE double_insert AS ON INSERT TO public.rule_table1 DO INSERT INTO public.rule_table1 (i) VALUES (1);"
 				ruleDef2 = "CREATE RULE update_notify AS ON UPDATE TO public.rule_table1 DO NOTIFY rule_table1;"
 			} else {
@@ -346,7 +346,7 @@ PARTITION BY RANGE (date)
 		It("returns a slice of multiple triggers", func() {
 			triggerString1 := `CREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON public.trigger_table1 FOR EACH STATEMENT EXECUTE PROCEDURE "RI_FKey_check_ins"()`
 			triggerString2 := `CREATE TRIGGER sync_trigger_table2 AFTER INSERT OR DELETE OR UPDATE ON public.trigger_table2 FOR EACH STATEMENT EXECUTE PROCEDURE "RI_FKey_check_ins"()`
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				triggerString1 = `CREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON public.trigger_table1 FOR EACH ROW EXECUTE FUNCTION "RI_FKey_check_ins"()`
 				triggerString2 = `CREATE TRIGGER sync_trigger_table2 AFTER INSERT OR DELETE OR UPDATE ON public.trigger_table2 FOR EACH ROW EXECUTE FUNCTION "RI_FKey_check_ins"()`
 
@@ -383,7 +383,7 @@ PARTITION BY RANGE (date)
 		It("returns a slice of triggers for a specific schema", func() {
 			triggerString1 := `CREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON public.trigger_table1 FOR EACH STATEMENT EXECUTE PROCEDURE "RI_FKey_check_ins"()`
 			triggerString2 := `CREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON testschema.trigger_table1 FOR EACH STATEMENT EXECUTE PROCEDURE "RI_FKey_check_ins"()`
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				triggerString1 = `CREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON public.trigger_table1 FOR EACH ROW EXECUTE FUNCTION "RI_FKey_check_ins"()`
 				triggerString2 = `CREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON testschema.trigger_table1 FOR EACH ROW EXECUTE FUNCTION "RI_FKey_check_ins"()`
 			}
@@ -409,7 +409,7 @@ PARTITION BY RANGE (date)
 		It("returns a slice of triggers belonging to filtered tables", func() {
 			triggerString1 := `CREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON public.trigger_table1 FOR EACH STATEMENT EXECUTE PROCEDURE "RI_FKey_check_ins"()`
 			triggerString2 := `CREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON testschema.trigger_table1 FOR EACH STATEMENT EXECUTE PROCEDURE "RI_FKey_check_ins"()`
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				triggerString1 = `CREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON public.trigger_table1 FOR EACH ROW EXECUTE FUNCTION "RI_FKey_check_ins"()`
 				triggerString2 = `CREATE TRIGGER sync_trigger_table1 AFTER INSERT OR DELETE OR UPDATE ON testschema.trigger_table1 FOR EACH ROW EXECUTE FUNCTION "RI_FKey_check_ins"()`
 			}

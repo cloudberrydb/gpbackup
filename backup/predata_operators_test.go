@@ -23,7 +23,7 @@ var _ = Describe("backup/predata_operators tests", func() {
 		BeforeEach(func() {
 			operatorMetadata = testutils.DefaultMetadata("OPERATOR", false, true, true, false)
 			operator = backup.Operator{Oid: 0, Schema: "public", Name: "##", Procedure: "public.path_inter", LeftArgType: "public.path", RightArgType: `public."PATH"`, CommutatorOp: "0", NegatorOp: "0", RestrictFunction: "-", JoinFunction: "-", CanHash: false, CanMerge: false}
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				createStatementFuncRepl = "FUNCTION"
 			} else {
 				createStatementFuncRepl = "PROCEDURE"

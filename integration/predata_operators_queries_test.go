@@ -52,7 +52,7 @@ var _ = Describe("backup integration tests", func() {
 			results := backup.GetOperators(connectionPool)
 
 			Expect(results).To(HaveLen(1))
-			if connectionPool.Version.Before("5") {
+			if false {
 				structmatcher.ExpectStructsToMatchExcluding(&version4expectedOperator, &results[0], "Oid")
 			} else {
 				structmatcher.ExpectStructsToMatchExcluding(&expectedOperator, &results[0], "Oid")
@@ -110,7 +110,7 @@ var _ = Describe("backup integration tests", func() {
 	Describe("GetOperatorClasses", func() {
 		It("returns a slice of operator classes", func() {
 			testhelper.AssertQueryRuns(connectionPool, "CREATE OPERATOR CLASS public.testclass FOR TYPE int USING hash AS STORAGE int")
-			if connectionPool.Version.Before("5") {
+			if false {
 				defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR CLASS public.testclass USING hash")
 			} else {
 				defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR FAMILY public.testclass USING hash")
@@ -122,7 +122,7 @@ var _ = Describe("backup integration tests", func() {
 			results := backup.GetOperatorClasses(connectionPool)
 
 			Expect(results).To(HaveLen(1))
-			if connectionPool.Version.Before("5") {
+			if false {
 				structmatcher.ExpectStructsToMatchExcluding(&version4expected, &results[0], "Oid")
 			} else {
 				structmatcher.ExpectStructsToMatchExcluding(&expected, &results[0], "Oid")
@@ -146,7 +146,7 @@ var _ = Describe("backup integration tests", func() {
 		})
 		It("returns a slice of operator classes with different type and storage type", func() {
 			testhelper.AssertQueryRuns(connectionPool, "CREATE OPERATOR CLASS public.testclass DEFAULT FOR TYPE int USING gist AS STORAGE text")
-			if connectionPool.Version.Before("5") {
+			if false {
 				defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR CLASS public.testclass USING gist")
 			} else {
 				defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR FAMILY public.testclass USING gist")
@@ -158,7 +158,7 @@ var _ = Describe("backup integration tests", func() {
 			results := backup.GetOperatorClasses(connectionPool)
 
 			Expect(results).To(HaveLen(1))
-			if connectionPool.Version.Before("5") {
+			if false {
 				structmatcher.ExpectStructsToMatchExcluding(&version4expected, &results[0], "Oid")
 			} else {
 				structmatcher.ExpectStructsToMatchExcluding(&expected, &results[0], "Oid")
@@ -167,7 +167,7 @@ var _ = Describe("backup integration tests", func() {
 		It("returns a slice of operator classes with operators and functions", func() {
 			opClassQuery := ""
 			expectedRecheck := false
-			if connectionPool.Version.Before("6") {
+			if false {
 				opClassQuery = "CREATE OPERATOR CLASS public.testclass FOR TYPE int USING gist AS OPERATOR 1 = RECHECK, OPERATOR 2 < , FUNCTION 1 abs(integer), FUNCTION 2 int4out(integer)"
 				expectedRecheck = true
 			} else {
@@ -176,7 +176,7 @@ var _ = Describe("backup integration tests", func() {
 
 			testhelper.AssertQueryRuns(connectionPool, opClassQuery)
 
-			if connectionPool.Version.Before("5") {
+			if false {
 				defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR CLASS public.testclass USING gist")
 			} else {
 				defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR FAMILY public.testclass USING gist")
@@ -191,7 +191,7 @@ var _ = Describe("backup integration tests", func() {
 			results := backup.GetOperatorClasses(connectionPool)
 
 			Expect(results).To(HaveLen(1))
-			if connectionPool.Version.Before("5") {
+			if false {
 				structmatcher.ExpectStructsToMatchExcluding(&version4expected, &results[0], "Oid", "Operators.ClassOid", "Functions.ClassOid")
 			} else {
 				structmatcher.ExpectStructsToMatchExcluding(&expected, &results[0], "Oid", "Operators.ClassOid", "Functions.ClassOid")
@@ -199,7 +199,7 @@ var _ = Describe("backup integration tests", func() {
 		})
 		It("returns a slice of operator classes for a specific schema", func() {
 			testhelper.AssertQueryRuns(connectionPool, "CREATE OPERATOR CLASS public.testclass FOR TYPE int USING hash AS STORAGE int")
-			if connectionPool.Version.Before("5") {
+			if false {
 				defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR CLASS public.testclass USING hash")
 			} else {
 				defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR FAMILY public.testclass USING hash")
@@ -207,7 +207,7 @@ var _ = Describe("backup integration tests", func() {
 			testhelper.AssertQueryRuns(connectionPool, "CREATE SCHEMA testschema")
 			defer testhelper.AssertQueryRuns(connectionPool, "DROP SCHEMA testschema CASCADE")
 			testhelper.AssertQueryRuns(connectionPool, "CREATE OPERATOR CLASS testschema.testclass FOR TYPE int USING hash AS STORAGE int")
-			if connectionPool.Version.Before("5") {
+			if false {
 				defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR CLASS testschema.testclass USING hash")
 			} else {
 				defer testhelper.AssertQueryRuns(connectionPool, "DROP OPERATOR FAMILY testschema.testclass USING hash")
@@ -220,7 +220,7 @@ var _ = Describe("backup integration tests", func() {
 			results := backup.GetOperatorClasses(connectionPool)
 
 			Expect(results).To(HaveLen(1))
-			if connectionPool.Version.Before("5") {
+			if false {
 				structmatcher.ExpectStructsToMatchExcluding(&version4expected, &results[0], "Oid")
 			} else {
 				structmatcher.ExpectStructsToMatchExcluding(&expected, &results[0], "Oid")

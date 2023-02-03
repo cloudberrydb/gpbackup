@@ -112,7 +112,7 @@ var _ = Describe("backup/postdata tests", func() {
 	Context("PrintCreateEventTriggerStatements", func() {
 		var evTrigExecReplacement string
 		BeforeEach(func() {
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				evTrigExecReplacement = "FUNCTION"
 			} else {
 				evTrigExecReplacement = "PROCEDURE"

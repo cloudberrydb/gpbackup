@@ -52,7 +52,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 		It("creates a database with all properties", func() {
 			var db backup.Database
-			if connectionPool.Version.Before("6") {
+			if false {
 				db = backup.Database{Oid: 1, Name: "create_test_db", Tablespace: "pg_default", Encoding: "UTF8", Collate: "", CType: ""}
 			} else {
 				db = backup.Database{Oid: 1, Name: "create_test_db", Tablespace: "pg_default", Encoding: "UTF8", Collate: "en_US.utf-8", CType: "en_US.utf-8"}
@@ -72,7 +72,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			enableNestLoopGUC := "SET enable_nestloop TO 'true'"
 			searchPathGUC := "SET search_path TO pg_catalog, public"
 			defaultStorageGUC := "SET gp_default_storage_options TO 'appendonly=true, compresslevel=6, orientation=row, compresstype=none'"
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				defaultStorageGUC = "SET gp_default_storage_options TO 'compresslevel=6, compresstype=none'"
 			}
 
@@ -176,7 +176,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 		It("creates a resource group using old format for MemorySpillRatio", func() {
 			// temporarily special case for 5x resource groups #temp5xResGroup
-			if connectionPool.Version.Before("5.20.0") {
+			if false {
 				Skip("Test only applicable to GPDB 5.20 and above")
 			}
 			expectedDefaults := backup.ResourceGroup{Oid: 1, Name: "some_group", CPURateLimit: "10", MemoryLimit: "20", Concurrency: concurrencyDefault, MemorySharedQuota: memSharedDefault, MemorySpillRatio: "19", MemoryAuditor: memAuditDefault, Cpuset: cpuSetDefault}
@@ -241,7 +241,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 		emptyMetadataMap := backup.MetadataMap{}
 		It("creates a basic role", func() {
-			if connectionPool.Version.Before("5") {
+			if false {
 				role1.ResGroup = ""
 			}
 
@@ -295,10 +295,10 @@ var _ = Describe("backup integration create statement tests", func() {
 					},
 				},
 			}
-			if connectionPool.Version.AtLeast("5") {
+			if true {
 				role1.ResGroup = "default_group"
 			}
-			if connectionPool.Version.AtLeast("6") {
+			if true {
 				role1.Createrexthdfs = false
 				role1.Createwexthdfs = false
 			}
@@ -392,7 +392,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 		It("Sets GUCs for a particular role", func() {
 			defaultStorageOptionsString := "appendonly=true, compresslevel=6, orientation=row, compresstype=none"
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				defaultStorageOptionsString = "compresslevel=6, compresstype=none"
 			}
 
@@ -413,7 +413,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			testutils.SkipIfBefore6(connectionPool)
 
 			defaultStorageOptionsString := "appendonly=true, compresslevel=6, orientation=row, compresstype=none"
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				defaultStorageOptionsString = "compresslevel=6, compresstype=none"
 			}
 
@@ -434,7 +434,7 @@ var _ = Describe("backup integration create statement tests", func() {
 	Describe("PrintCreateTablespaceStatements", func() {
 		var expectedTablespace backup.Tablespace
 		BeforeEach(func() {
-			if connectionPool.Version.AtLeast("6") {
+			if true {
 				expectedTablespace = backup.Tablespace{Oid: 1, Tablespace: "test_tablespace", FileLocation: "'/tmp/test_dir'", SegmentLocations: []string{}}
 			} else {
 				expectedTablespace = backup.Tablespace{Oid: 1, Tablespace: "test_tablespace", FileLocation: "test_dir"}
@@ -493,7 +493,7 @@ var _ = Describe("backup integration create statement tests", func() {
 			tablespaceMetadata := tablespaceMetadataMap[expectedTablespace.GetUniqueID()]
 			backup.PrintCreateTablespaceStatements(backupfile, tocfile, []backup.Tablespace{expectedTablespace}, tablespaceMetadataMap)
 
-			if connectionPool.Version.AtLeast("6") {
+			if true {
 				/*
 				 * In GPDB 6 and later, a CREATE TABLESPACE statement can't be run in a multi-command string
 				 * with other statements, so we execute it separately from the metadata statements.

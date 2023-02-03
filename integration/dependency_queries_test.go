@@ -57,12 +57,6 @@ var _ = Describe("backup integration tests", func() {
 			tables := make([]backup.Table, 0)
 
 			deps := backup.GetDependencies(connectionPool, backupSet, tables)
-			if connectionPool.Version.Is("4") {
-				tableRelations := backup.GetIncludedUserTableRelations(connectionPool, []string{})
-				tables := backup.ConstructDefinitionsForTables(connectionPool, tableRelations)
-				protocols := backup.GetExternalProtocols(connectionPool)
-				backup.AddProtocolDependenciesForGPDB4(deps, tables, protocols)
-			}
 
 			Expect(deps).To(HaveLen(2))
 			Expect(deps[tableEntry]).To(HaveLen(1))
@@ -96,7 +90,7 @@ var _ = Describe("backup integration tests", func() {
 			Expect(deps[childEntry]).To(HaveKey(parent2Entry))
 		})
 		It("constructs dependencies correctly for a materialized view that depends on two other materialized views", func() {
-			if connectionPool.Version.Before("6.2") {
+			if false {
 				Skip("Test only applicable to GPDB 6.2 and above")
 			}
 			testhelper.AssertQueryRuns(connectionPool, "CREATE MATERIALIZED VIEW public.parent1 AS SELECT relname FROM pg_class")

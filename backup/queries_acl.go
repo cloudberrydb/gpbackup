@@ -73,11 +73,7 @@ var (
 func InitializeMetadataParams(connectionPool *dbconn.DBConn) {
 	TYPE_ACCESS_METHOD = MetadataQueryParams{ObjectType: "ACCESS METHOD", NameField: "amname", OidField: "oid", CatalogTable: "pg_am"}
 	TYPE_AGGREGATE = MetadataQueryParams{ObjectType: "AGGREGATE", NameField: "proname", SchemaField: "pronamespace", ACLField: "proacl", OwnerField: "proowner", CatalogTable: "pg_proc"}
-	if connectionPool.Version.AtLeast("7") {
-		TYPE_AGGREGATE.FilterClause = "prokind = 'a'"
-	} else {
-		TYPE_AGGREGATE.FilterClause = "proisagg = 't'"
-	}
+	TYPE_AGGREGATE.FilterClause = "prokind = 'a'"
 	TYPE_CAST = MetadataQueryParams{ObjectType: "CAST", NameField: "typname", OidField: "oid", OidTable: "pg_type", CatalogTable: "pg_cast"}
 	TYPE_COLLATION = MetadataQueryParams{ObjectType: "COLLATION", NameField: "collname", OidField: "oid", SchemaField: "collnamespace", OwnerField: "collowner", CatalogTable: "pg_collation"}
 	TYPE_CONSTRAINT = MetadataQueryParams{ObjectType: "CONSTRAINT", NameField: "conname", SchemaField: "connamespace", OidField: "oid", CatalogTable: "pg_constraint"}
@@ -88,18 +84,10 @@ func InitializeMetadataParams(connectionPool *dbconn.DBConn) {
 	TYPE_FOREIGNDATAWRAPPER = MetadataQueryParams{ObjectType: "FOREIGN DATA WRAPPER", NameField: "fdwname", ACLField: "fdwacl", OwnerField: "fdwowner", CatalogTable: "pg_foreign_data_wrapper"}
 	TYPE_FOREIGNSERVER = MetadataQueryParams{ObjectType: "SERVER", NameField: "srvname", ACLField: "srvacl", OwnerField: "srvowner", CatalogTable: "pg_foreign_server"}
 	TYPE_FUNCTION = MetadataQueryParams{ObjectType: "FUNCTION", NameField: "proname", SchemaField: "pronamespace", ACLField: "proacl", OwnerField: "proowner", CatalogTable: "pg_proc"}
-	if connectionPool.Version.AtLeast("7") {
-		TYPE_FUNCTION.FilterClause = "prokind <> 'a'"
-	} else {
-		TYPE_FUNCTION.FilterClause = "proisagg = 'f'"
-	}
+	TYPE_FUNCTION.FilterClause = "prokind <> 'a'"
 	TYPE_INDEX = MetadataQueryParams{ObjectType: "INDEX", NameField: "relname", OidField: "indexrelid", OidTable: "pg_class", CommentTable: "pg_class", CatalogTable: "pg_index"}
 	TYPE_PROCLANGUAGE = MetadataQueryParams{ObjectType: "LANGUAGE", NameField: "lanname", ACLField: "lanacl", CatalogTable: "pg_language"}
-	if connectionPool.Version.Before("5") {
-		TYPE_PROCLANGUAGE.OwnerField = "10" // In GPDB 4.3, there is no lanowner field in pg_language, but languages have an implicit owner
-	} else {
-		TYPE_PROCLANGUAGE.OwnerField = "lanowner"
-	}
+	TYPE_PROCLANGUAGE.OwnerField = "lanowner"
 	TYPE_OPERATOR = MetadataQueryParams{ObjectType: "OPERATOR", NameField: "oprname", SchemaField: "oprnamespace", OidField: "oid", OwnerField: "oprowner", CatalogTable: "pg_operator"}
 	TYPE_OPERATORCLASS = MetadataQueryParams{ObjectType: "OPERATOR CLASS", NameField: "opcname", SchemaField: "opcnamespace", OidField: "oid", OwnerField: "opcowner", CatalogTable: "pg_opclass"}
 	TYPE_OPERATORFAMILY = MetadataQueryParams{ObjectType: "OPERATOR FAMILY", NameField: "opfname", SchemaField: "opfnamespace", OidField: "oid", OwnerField: "opfowner", CatalogTable: "pg_opfamily"}
@@ -119,9 +107,7 @@ func InitializeMetadataParams(connectionPool *dbconn.DBConn) {
 	TYPE_TSTEMPLATE = MetadataQueryParams{ObjectType: "TEXT SEARCH TEMPLATE", NameField: "tmplname", OidField: "oid", SchemaField: "tmplnamespace", CatalogTable: "pg_ts_template"}
 	TYPE_TRIGGER = MetadataQueryParams{ObjectType: "TRIGGER", NameField: "tgname", OidField: "oid", CatalogTable: "pg_trigger"}
 	TYPE_TYPE = MetadataQueryParams{ObjectType: "TYPE", NameField: "typname", SchemaField: "typnamespace", OwnerField: "typowner", CatalogTable: "pg_type"}
-	if connectionPool.Version.AtLeast("6") {
-		TYPE_TYPE.ACLField = "typacl"
-	}
+	TYPE_TYPE.ACLField = "typacl"
 }
 
 type MetadataQueryStruct struct {
@@ -152,16 +138,9 @@ func GetMetadataForObjectType(connectionPool *dbconn.DBConn, params MetadataQuer
 		// Cannot use unnest() in CASE statements anymore in GPDB 7+ so convert
 		// it to a LEFT JOIN LATERAL. We do not use LEFT JOIN LATERAL for GPDB 6
 		// because the CASE unnest() logic is more performant.
-		if connectionPool.Version.AtLeast("7") {
-			aclLateralJoin = fmt.Sprintf(
-				`LEFT JOIN LATERAL unnest(o.%[1]s) ljl_unnest ON o.%[1]s IS NOT NULL AND array_length(o.%[1]s, 1) != 0`, params.ACLField)
-			aclCols = "ljl_unnest"
-		} else {
-			aclCols = fmt.Sprintf(`CASE
-			WHEN %[1]s IS NULL THEN NULL
-			WHEN array_upper(%[1]s, 1) = 0 THEN %[1]s[0]
-			ELSE unnest(%[1]s) END`, params.ACLField)
-		}
+		aclLateralJoin = fmt.Sprintf(
+			`LEFT JOIN LATERAL unnest(o.%[1]s) ljl_unnest ON o.%[1]s IS NOT NULL AND array_length(o.%[1]s, 1) != 0`, params.ACLField)
+		aclCols = "ljl_unnest"
 
 		kindCol = fmt.Sprintf(`CASE
 		WHEN %[1]s IS NULL THEN ''
@@ -187,19 +166,17 @@ func GetMetadataForObjectType(connectionPool *dbconn.DBConn, params MetadataQuer
 		ownerCol = fmt.Sprintf("quote_ident(pg_get_userbyid(%s))", params.OwnerField)
 	}
 	secCols := ""
-	if connectionPool.Version.AtLeast("6") {
-		secCols = `coalesce(sec.label,'') AS securitylabel,
+	secCols = `coalesce(sec.label,'') AS securitylabel,
 		coalesce(sec.provider, '') AS securitylabelprovider,`
 		secTable := "pg_seclabel"
 		secSubidFilter := " AND sec.objsubid = 0"
-		if params.Shared {
-			secTable = "pg_shseclabel"
-			secSubidFilter = ""
-		}
-		joinClause += fmt.Sprintf(
-			` LEFT JOIN %s sec ON (sec.objoid = o.oid AND sec.classoid = '%s'::regclass%s)`,
-			secTable, tableName, secSubidFilter)
+	if params.Shared {
+		secTable = "pg_shseclabel"
+		secSubidFilter = ""
 	}
+	joinClause += fmt.Sprintf(
+		` LEFT JOIN %s sec ON (sec.objoid = o.oid AND sec.classoid = '%s'::regclass%s)`,
+		secTable, tableName, secSubidFilter)
 	if params.FilterClause != "" {
 		filterClause += " AND " + params.FilterClause
 	}
@@ -326,16 +303,8 @@ func GetDefaultPrivileges(connectionPool *dbconn.DBConn) []DefaultPrivileges {
 	// because the CASE unnest() logic is more performant.
 	aclCols := "''"
 	aclLateralJoin := ""
-	if connectionPool.Version.AtLeast("7") {
-		aclLateralJoin =
-			`LEFT JOIN LATERAL unnest(a.defaclacl) ljl_unnest ON a.defaclacl IS NOT NULL AND array_length(a.defaclacl, 1) != 0`
-		aclCols = "ljl_unnest"
-	} else {
-		aclCols = `CASE
-			WHEN a.defaclacl IS NULL THEN NULL
-			WHEN array_upper(a.defaclacl, 1) = 0 THEN a.defaclacl[0]
-			ELSE unnest(a.defaclacl) END`
-	}
+	aclLateralJoin =`LEFT JOIN LATERAL unnest(a.defaclacl) ljl_unnest ON a.defaclacl IS NOT NULL AND array_length(a.defaclacl, 1) != 0`
+	aclCols = "ljl_unnest"
 
 	query := fmt.Sprintf(`
 	SELECT a.oid,

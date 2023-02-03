@@ -64,73 +64,6 @@ func (t BaseType) FQN() string {
 
 func GetBaseTypes(connectionPool *dbconn.DBConn) []BaseType {
 	gplog.Verbose("Getting base types")
-	version4query := fmt.Sprintf(`
-	SELECT t.oid,
-		quote_ident(n.nspname) AS schema,
-		quote_ident(t.typname) AS name,
-		t.typinput AS input,
-		t.typoutput AS output,
-		t.typreceive AS receive,
-		t.typsend AS send,
-		t.typlen AS internallength,
-		t.typbyval AS ispassedbyvalue,
-		CASE WHEN t.typalign = '-' THEN '' ELSE t.typalign END AS alignment,
-		t.typstorage AS storage,
-		coalesce(t.typdefault, '') AS defaultval,
-		CASE WHEN t.typelem != 0::regproc THEN pg_catalog.format_type(t.typelem, NULL) ELSE '' END AS element,
-		'U' AS category,
-		t.typdelim AS delimiter,
-		coalesce(array_to_string(e.typoptions, ', '), '') AS storageoptions
-	FROM pg_type t
-		JOIN pg_namespace n ON t.typnamespace = n.oid
-		LEFT JOIN pg_type_encoding e ON t.oid = e.typid
-		/*
-		 * Identify if this is an automatically generated array type and exclude it if so.
-		 * In GPDB 4, all automatically-generated array types are guaranteed to be
-		 * the name of the corresponding base type prepended with an underscore.
-		 */
-		LEFT JOIN pg_type ut ON ( --ut for underlying type
-			t.typelem = ut.oid
-			AND length(t.typname) > 1
-			AND t.typname[0] = '_'
-			AND substring(t.typname FROM 2) = ut.typname)
-	WHERE %s
-		AND t.typtype = 'b'
-		AND ut.oid IS NULL
-		AND %s`, SchemaFilterClause("n"), ExtensionFilterClause("t"))
-
-	version5query := fmt.Sprintf(`
-	SELECT t.oid,
-		quote_ident(n.nspname) AS schema,
-		quote_ident(t.typname) AS name,
-		t.typinput AS input,
-		t.typoutput AS output,
-		CASE WHEN t.typreceive = '-'::regproc THEN '' ELSE t.typreceive::regproc::text END AS receive,
-		CASE WHEN t.typsend = '-'::regproc THEN '' ELSE t.typsend::regproc::text END AS send,
-		CASE WHEN t.typmodin = '-'::regproc THEN '' ELSE t.typmodin::regproc::text END AS modin,
-		CASE WHEN t.typmodout = '-'::regproc THEN '' ELSE t.typmodout::regproc::text END AS modout,
-		t.typlen AS internallength,
-		t.typbyval AS ispassedbyvalue,
-		CASE WHEN t.typalign = '-' THEN '' ELSE t.typalign END AS alignment,
-		t.typstorage AS storage,
-		coalesce(t.typdefault, '') AS defaultval,
-		CASE WHEN t.typelem != 0::regproc THEN pg_catalog.format_type(t.typelem, NULL) ELSE '' END AS element,
-		'U' AS category,
-		t.typdelim AS delimiter,
-		coalesce(array_to_string(e.typoptions, ', '), '') AS storageoptions
-	FROM pg_type t
-		JOIN pg_namespace n ON t.typnamespace = n.oid
-		LEFT JOIN pg_type_encoding e ON t.oid = e.typid
-		/*
-		 * Identify if this is an automatically generated array type and exclude it if so.
-		 * In GPDB 5 and 6 we use the typearray field to identify these array types.
-		 */
-		LEFT JOIN pg_type ut ON t.oid = ut.typarray
-	WHERE %s
-		AND t.typtype = 'b'
-		AND ut.oid IS NULL
-		AND %s`, SchemaFilterClause("n"), ExtensionFilterClause("t"))
-
 	atLeast6Query := fmt.Sprintf(`
 	SELECT t.oid,
 		quote_ident(n.nspname) AS schema,
@@ -167,29 +100,8 @@ func GetBaseTypes(connectionPool *dbconn.DBConn) []BaseType {
 
 	results := make([]BaseType, 0)
 	var err error
-	if connectionPool.Version.Is("4") {
-		err = connectionPool.Select(&results, version4query)
-	} else if connectionPool.Version.Is("5") {
-		err = connectionPool.Select(&results, version5query)
-	} else {
-		err = connectionPool.Select(&results, atLeast6Query)
-	}
+	err = connectionPool.Select(&results, atLeast6Query)
 	gplog.FatalOnError(err)
-	/*
-	 * GPDB 4.3 has no built-in regproc-to-text cast and uses "-" in place of
-	 * NULL for several fields, so to avoid dealing with hyphens later on we
-	 * replace those with empty strings here.
-	 */
-	if connectionPool.Version.Before("5") {
-		for i := range results {
-			if results[i].Send == "-" {
-				results[i].Send = ""
-			}
-			if results[i].Receive == "-" {
-				results[i].Receive = ""
-			}
-		}
-	}
 	return results
 }
 
@@ -253,19 +165,6 @@ type Attribute struct {
 func getCompositeTypeAttributes(connectionPool *dbconn.DBConn) map[uint32][]Attribute {
 	gplog.Verbose("Getting composite type attributes")
 
-	before6Query := `
-	SELECT t.oid AS compositetypeoid,
-		quote_ident(a.attname) AS name,
-		pg_catalog.format_type(a.atttypid, a.atttypmod) AS type,
-		coalesce(quote_literal(d.description),'') AS comment
-	FROM pg_type t
-		JOIN pg_class c ON t.typrelid = c.oid
-		JOIN pg_attribute a ON t.typrelid = a.attrelid
-		LEFT JOIN pg_description d ON (d.objoid = a.attrelid AND d.classoid = 'pg_class'::regclass AND d.objsubid = a.attnum)
-	WHERE t.typtype = 'c'
-		AND c.relkind = 'c'
-	ORDER BY t.oid, a.attnum`
-
 	atLeast6Query := `
 	SELECT t.oid AS compositetypeoid,
 		quote_ident(a.attname) AS name,
@@ -287,12 +186,7 @@ func getCompositeTypeAttributes(connectionPool *dbconn.DBConn) map[uint32][]Attr
 		AND a.attisdropped = false
 	ORDER BY t.oid, a.attnum`
 
-	query := ""
-	if connectionPool.Version.Before("6") {
-		query = before6Query
-	} else {
-		query = atLeast6Query
-	}
+	query := atLeast6Query
 
 	results := make([]Attribute, 0)
 	err := connectionPool.Select(&results, query)
@@ -338,19 +232,6 @@ func (t Domain) FQN() string {
 func GetDomainTypes(connectionPool *dbconn.DBConn) []Domain {
 	gplog.Verbose("Getting domain types")
 	results := make([]Domain, 0)
-	before6query := fmt.Sprintf(`
-	SELECT t.oid,
-		quote_ident(n.nspname) AS schema,
-		quote_ident(t.typname) AS name,
-		coalesce(t.typdefault, '') AS defaultval,
-		format_type(t.typbasetype, t.typtypmod) AS basetype,
-		t.typnotnull AS notnull
-	FROM pg_type t
-		JOIN pg_namespace n ON t.typnamespace = n.oid
-	WHERE %s
-		AND t.typtype = 'd'
-		AND %s
-	ORDER BY n.nspname, t.typname`, SchemaFilterClause("n"), ExtensionFilterClause("t"))
 
 	atLeast6Query := fmt.Sprintf(`
 	SELECT t.oid,
@@ -374,12 +255,7 @@ func GetDomainTypes(connectionPool *dbconn.DBConn) []Domain {
 		AND %s
 	ORDER BY n.nspname, t.typname`, SchemaFilterClause("n"), ExtensionFilterClause("t"))
 
-	query := ""
-	if connectionPool.Version.Before("6") {
-		query = before6query
-	} else {
-		query = atLeast6Query
-	}
+	query := atLeast6Query
 
 	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
@@ -407,7 +283,7 @@ func (t EnumType) FQN() string {
 
 func GetEnumTypes(connectionPool *dbconn.DBConn) []EnumType {
 	enumSortClause := "ORDER BY e.enumsortorder"
-	if connectionPool.Version.Is("5") {
+	if false {
 		enumSortClause = "ORDER BY e.oid"
 	}
 	query := fmt.Sprintf(`
@@ -562,17 +438,6 @@ func (c Collation) FQN() string {
 }
 
 func GetCollations(connectionPool *dbconn.DBConn) []Collation {
-
-	before7Query := fmt.Sprintf(`
-        SELECT c.oid,
-        	quote_ident(n.nspname) AS schema,
-        	quote_ident(c.collname) AS name,
-        	c.collcollate AS collate,
-        	c.collctype AS ctype
-        FROM pg_collation c
-        	JOIN pg_namespace n ON c.collnamespace = n.oid
-        WHERE %s`, SchemaFilterClause("n"))
-
 	atLeast7Query := fmt.Sprintf(`
         SELECT c.oid,
         	quote_ident(n.nspname) AS schema,
@@ -585,12 +450,7 @@ func GetCollations(connectionPool *dbconn.DBConn) []Collation {
         	JOIN pg_namespace n ON c.collnamespace = n.oid
         WHERE %s`, SchemaFilterClause("n"))
 
-	query := ""
-	if connectionPool.Version.Before("7") {
-		query = before7Query
-	} else {
-		query = atLeast7Query
-	}
+	query := atLeast7Query
 
 	results := make([]Collation, 0)
 	err := connectionPool.Select(&results, query)

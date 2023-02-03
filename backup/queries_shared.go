@@ -123,38 +123,10 @@ func GetConstraints(connectionPool *dbconn.DBConn, includeTables ...Relation) []
 	// tables must propogate to children. For GPDB versions 5 or lower, this
 	// field will default to false.
 	conIsLocal := ""
-	if connectionPool.Version.AtLeast("6") {
-		conIsLocal = `con.conislocal,`
-	}
+	conIsLocal = `con.conislocal,`
 	// This query is adapted from the queries underlying \d in psql.
 	tableQuery := ""
-	if connectionPool.Version.Before("7") {
-		tableQuery = fmt.Sprintf(`
-		SELECT con.oid,
-			quote_ident(n.nspname) AS schema,
-			quote_ident(conname) AS name,
-			contype,
-			%s
-			pg_get_constraintdef(con.oid, TRUE) AS def,
-			quote_ident(n.nspname) || '.' || quote_ident(c.relname) AS owningobject,
-			'f' AS isdomainconstraint,
-			CASE
-				WHEN pt.parrelid IS NULL THEN 'f'
-				ELSE 't'
-			END AS ispartitionparent
-		FROM pg_constraint con
-			LEFT JOIN pg_class c ON con.conrelid = c.oid
-			LEFT JOIN pg_partition pt ON con.conrelid = pt.parrelid
-			JOIN pg_namespace n ON n.oid = con.connamespace
-		WHERE %s
-			AND %s
-			AND c.relname IS NOT NULL
-			AND contype != 't'
-			AND conrelid NOT IN (SELECT parchildrelid FROM pg_partition_rule)
-			AND (conrelid, conname) NOT IN (SELECT i.inhrelid, con.conname FROM pg_inherits i JOIN pg_constraint con ON i.inhrelid = con.conrelid JOIN pg_constraint p ON i.inhparent = p.conrelid WHERE con.conname = p.conname)
-		GROUP BY con.oid, conname, contype, c.relname, n.nspname, %s pt.parrelid`, conIsLocal, "%s", ExtensionFilterClause("c"), conIsLocal)
-	} else {
-		tableQuery = fmt.Sprintf(`
+	tableQuery = fmt.Sprintf(`
 		SELECT con.oid,
 			quote_ident(n.nspname) AS schema,
 			quote_ident(conname) AS name,
@@ -178,7 +150,6 @@ func GetConstraints(connectionPool *dbconn.DBConn, includeTables ...Relation) []
 			AND (c.relispartition IS FALSE OR conislocal IS TRUE)
 			AND (conrelid, conname) NOT IN (SELECT i.inhrelid, con.conname FROM pg_inherits i JOIN pg_constraint con ON i.inhrelid = con.conrelid JOIN pg_constraint p ON i.inhparent = p.conrelid WHERE con.conname = p.conname)
 		GROUP BY con.oid, conname, contype, c.relname, n.nspname, con.conislocal, pt.partrelid`, "%s", ExtensionFilterClause("c"))
-	}
 
 	nonTableQuery := fmt.Sprintf(`
 	SELECT con.oid,
@@ -215,25 +186,7 @@ func GetConstraints(connectionPool *dbconn.DBConn, includeTables ...Relation) []
 	err := connectionPool.Select(&results, query)
 	gplog.FatalOnError(err)
 
-	if connectionPool.Version.Before("6") {
-		// Remove all constraints that have NULL definitions. This can happen
-		// if the query above is run and a concurrent constraint drop happens
-		// just before the pg_get_constraintdef function executes. Note that
-		// GPDB 6+ pg_get_constraintdef uses an MVCC snapshot instead of
-		// syscache so we only need to verify for GPDB 4.3 and 5 (technically
-		// only GPDB 5 since 4.3 will get a cache error on the query).
-		verifiedResults := make([]Constraint, 0)
-		for _, result := range results {
-			if result.Def.Valid {
-				verifiedResults = append(verifiedResults, result)
-			} else {
-				gplog.Warn("Constraint '%s.%s' not backed up, most likely dropped after gpbackup had begun.", result.Schema, result.Name)
-			}
-		}
-		return verifiedResults
-	} else {
-		return results
-	}
+	return results
 }
 
 func RenameExchangedPartitionConstraints(connectionPool *dbconn.DBConn, constraints *[]Constraint) {

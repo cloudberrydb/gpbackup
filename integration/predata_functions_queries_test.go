@@ -21,7 +21,7 @@ var _ = Describe("backup integration tests", func() {
 		var proparallelValue string
 		BeforeEach(func() {
 			testutils.SkipIfBefore5(connectionPool)
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				prokindValue = "f"
 				plannerSupportValue = "-"
 				proparallelValue = "u"
@@ -99,7 +99,7 @@ LANGUAGE SQL`)
 		})
 		It("returns a window function", func() {
 			testutils.SkipIfBefore6(connectionPool)
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				// GPDB7 only allows set-returning functions to execute on coordinator
 				testhelper.AssertQueryRuns(connectionPool, `CREATE FUNCTION public.add(integer, integer) RETURNS SETOF integer
 AS 'SELECT $1 + $2'
@@ -114,7 +114,7 @@ LANGUAGE SQL WINDOW`)
 			results := backup.GetFunctions(connectionPool)
 
 			var windowFunction backup.Function
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				windowFunction = backup.Function{
 					Schema: "public", Name: "add", ReturnsSet: true, FunctionBody: "SELECT $1 + $2",
 					BinaryPath: "", Arguments: sql.NullString{String: "integer, integer", Valid: true},
@@ -138,7 +138,7 @@ LANGUAGE SQL WINDOW`)
 		It("returns a function to execute on coordinator and all segments", func() {
 			testutils.SkipIfBefore6(connectionPool)
 
-			if connectionPool.Version.Is("6") {
+			if false {
 				testhelper.AssertQueryRuns(connectionPool, `CREATE FUNCTION public.srf_on_coordinator(integer, integer) RETURNS integer
 AS 'SELECT $1 + $2'
 LANGUAGE SQL WINDOW
@@ -163,7 +163,7 @@ EXECUTE ON ALL SEGMENTS;`)
 
 			results := backup.GetFunctions(connectionPool)
 			var prokindValue string
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				prokindValue = "w"
 			} else {
 				prokindValue = ""
@@ -177,7 +177,7 @@ EXECUTE ON ALL SEGMENTS;`)
 				Volatility: "v", IsStrict: false, IsSecurityDefiner: false,
 				PlannerSupport: plannerSupportValue, Config: "", Cost: 100, NumRows: 0, DataAccess: "c",
 				Language: "sql", IsWindow: true, ExecLocation: "m", Parallel: proparallelValue}
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				srfOnCoordinatorFunction.ExecLocation = "c"
 
 				// GPDB7 only allows set-returning functions to execute on coordinator
@@ -194,7 +194,7 @@ EXECUTE ON ALL SEGMENTS;`)
 				Volatility: "v", IsStrict: false, IsSecurityDefiner: false,
 				PlannerSupport: plannerSupportValue, Config: "", Cost: 100, NumRows: 0, DataAccess: "c",
 				Language: "sql", IsWindow: true, ExecLocation: "s", Parallel: proparallelValue}
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				// GPDB7 only allows set-returning functions to execute on all segments
 				srfOnAllSegmentsFunction.ReturnsSet = true
 				srfOnAllSegmentsFunction.NumRows = 1000
@@ -206,11 +206,11 @@ EXECUTE ON ALL SEGMENTS;`)
 			structmatcher.ExpectStructsToMatchExcluding(&results[1], &srfOnCoordinatorFunction, "Oid")
 		})
 		It("returns a function to execute on initplan", func() {
-			if connectionPool.Version.Before("6.5") {
+			if false {
 				Skip("Test only applicable to GPDB6.5 and above")
 			}
 
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				// GPDB7 only allows set-returning functions to execute on coordinator
 				testhelper.AssertQueryRuns(connectionPool, `CREATE FUNCTION public.srf_on_initplan(integer, integer) RETURNS SETOF integer
 AS 'SELECT $1 + $2'
@@ -227,7 +227,7 @@ EXECUTE ON INITPLAN;`)
 			results := backup.GetFunctions(connectionPool)
 
 			var srfOnInitplan backup.Function
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				// GPDB7 only allows set-returning functions to execute on coordinator
 				srfOnInitplan = backup.Function{
 					Schema: "public", Name: "srf_on_initplan", ReturnsSet: true, FunctionBody: "SELECT $1 + $2",
@@ -515,7 +515,7 @@ SORTOP = ~>~ );`)
 				TransitionFunction: transitionOid, FinalFunction: 0, SortOperator: "~>~", SortOperatorSchema: "pg_catalog", TransitionDataType: "character",
 				InitialValue: "", InitValIsNull: true, MInitValIsNull: true, IsOrdered: false,
 			}
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				aggregateDef.Kind = "n"
 				aggregateDef.Finalmodify = "r"
 				aggregateDef.Mfinalmodify = "r"
@@ -545,11 +545,11 @@ CREATE AGGREGATE public.agg_prefunc(numeric, numeric) (
 				IdentArgs: sql.NullString{String: "numeric, numeric", Valid: true}, TransitionFunction: transitionOid, PreliminaryFunction: prelimOid,
 				FinalFunction: 0, SortOperator: "", TransitionDataType: "numeric", InitialValue: "0", MInitValIsNull: true, IsOrdered: false,
 			}
-			if connectionPool.Version.AtLeast("6") {
+			if true {
 				aggregateDef.PreliminaryFunction = 0
 				aggregateDef.CombineFunction = prelimOid
 			}
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				aggregateDef.Kind = "n"
 				aggregateDef.Finalmodify = "r"
 				aggregateDef.Mfinalmodify = "r"
@@ -586,11 +586,11 @@ CREATE AGGREGATE testschema.agg_prefunc(numeric, numeric) (
 				IdentArgs: sql.NullString{String: "numeric, numeric", Valid: true}, TransitionFunction: transitionOid, PreliminaryFunction: prelimOid,
 				FinalFunction: 0, SortOperator: "", TransitionDataType: "numeric", InitialValue: "0", MInitValIsNull: true, IsOrdered: false,
 			}
-			if connectionPool.Version.AtLeast("6") {
+			if true {
 				aggregateDef.PreliminaryFunction = 0
 				aggregateDef.CombineFunction = prelimOid
 			}
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				aggregateDef.Kind = "n"
 				aggregateDef.Finalmodify = "r"
 				aggregateDef.Mfinalmodify = "r"
@@ -627,7 +627,7 @@ CREATE AGGREGATE public.agg_hypo_ord (VARIADIC "any" ORDER BY VARIADIC "any")
 				IdentArgs: sql.NullString{String: `VARIADIC "any" ORDER BY VARIADIC "any"`, Valid: true}, TransitionFunction: transitionOid,
 				FinalFunction: finalOid, TransitionDataType: "internal", InitValIsNull: true, MInitValIsNull: true, FinalFuncExtra: true, Hypothetical: true,
 			}
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				aggregateDef.Hypothetical = false
 				aggregateDef.Kind = "h"
 				aggregateDef.Finalmodify = "w"
@@ -661,7 +661,7 @@ CREATE AGGREGATE public.agg_combinefunc(numeric, numeric) (
 				FinalFunction: 0, SortOperator: "", TransitionDataType: "numeric", TransitionDataSize: 1000,
 				InitialValue: "0", MInitValIsNull: true, IsOrdered: false,
 			}
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				aggregateDef.Kind = "n"
 				aggregateDef.Finalmodify = "r"
 				aggregateDef.Mfinalmodify = "r"
@@ -694,7 +694,7 @@ CREATE AGGREGATE public.myavg (numeric) (
 				FinalFunction: 0, SortOperator: "", TransitionDataType: "internal",
 				IsOrdered: false, InitValIsNull: true, MInitValIsNull: true,
 			}
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				aggregateDef.Kind = "n"
 				aggregateDef.Finalmodify = "r"
 				aggregateDef.Mfinalmodify = "r"
@@ -732,7 +732,7 @@ CREATE AGGREGATE public.moving_agg(numeric,numeric) (
 				MTransitionDataType: "numeric", MTransitionDataSize: 100, MFinalFunction: sfuncOid,
 				MFinalFuncExtra: true, MInitialValue: "0", MInitValIsNull: false,
 			}
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				aggregateDef.Kind = "n"
 				aggregateDef.Finalmodify = "r"
 				aggregateDef.Mfinalmodify = "r"
@@ -865,7 +865,7 @@ LANGUAGE SQL`)
 	Describe("GetProceduralLanguages", func() {
 		It("returns a slice of procedural languages", func() {
 			plpythonString := "plpython"
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				plpythonString = "plpython3"
 			}
 
@@ -875,11 +875,11 @@ LANGUAGE SQL`)
 			pythonHandlerOid := testutils.OidFromObjectName(connectionPool, "pg_catalog", fmt.Sprintf("%s_call_handler", plpythonString), backup.TYPE_FUNCTION)
 
 			expectedPlpythonInfo := backup.ProceduralLanguage{Oid: 1, Name: fmt.Sprintf("%su", plpythonString), Owner: "testrole", IsPl: true, PlTrusted: false, Handler: pythonHandlerOid, Inline: 0, Validator: 0}
-			if connectionPool.Version.AtLeast("5") {
+			if true {
 				pythonInlineOid := testutils.OidFromObjectName(connectionPool, "pg_catalog", fmt.Sprintf("%s_inline_handler", plpythonString), backup.TYPE_FUNCTION)
 				expectedPlpythonInfo.Inline = pythonInlineOid
 			}
-			if connectionPool.Version.AtLeast("6") {
+			if true {
 				expectedPlpythonInfo.Validator = testutils.OidFromObjectName(connectionPool, "pg_catalog", fmt.Sprintf("%s_validator", plpythonString), backup.TYPE_FUNCTION)
 			}
 

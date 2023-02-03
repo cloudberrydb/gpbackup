@@ -257,7 +257,7 @@ ENCODING 'UTF-8'`)
 			})
 			It("prints a CREATE block for a table using error logging with an error table", func() {
 				// Error tables were removed in GPDB 5
-				if connectionPool.Version.AtLeast("5") {
+				if true {
 					Skip("Test does not apply for GPDB versions after 5")
 				}
 				extTableDef.ErrTableName = "error_table"
@@ -282,7 +282,7 @@ LOG ERRORS`)
 			})
 			It("prints a LOG ERRORS PERSISTENTLY block for an external table using persistent error logging", func() {
 				// PERSISTENTLY option is specifically for GPDB 5+
-				if connectionPool.Version.AtLeast("5") {
+				if true {
 					Skip("Test does not apply for GPDB versions after 5")
 				}
 				extTableDef.LogErrors = true

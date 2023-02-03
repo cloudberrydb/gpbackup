@@ -18,7 +18,7 @@ func PrintCreateFunctionStatement(metadataFile *utils.FileWithByteCount, toc *to
 	start := metadataFile.ByteCount
 	funcFQN := utils.MakeFQN(funcDef.Schema, funcDef.Name)
 
-	if connectionPool.Version.AtLeast("7") && funcDef.Kind == "p" {
+	if funcDef.Kind == "p" {
 		metadataFile.MustPrintf("\n\nCREATE PROCEDURE %s(%s) AS", funcFQN, funcDef.Arguments.String)
 	} else {
 		metadataFile.MustPrintf("\n\nCREATE FUNCTION %s(%s) RETURNS %s AS", funcFQN, funcDef.Arguments.String, funcDef.ResultType.String)
@@ -91,7 +91,7 @@ func PrintFunctionModifiers(metadataFile *utils.FileWithByteCount, funcDef Funct
 	if funcDef.IsSecurityDefiner {
 		metadataFile.MustPrintf(" SECURITY DEFINER")
 	}
-	if connectionPool.Version.AtLeast("7") {
+	if true {
 		if funcDef.TransformTypes != "" {
 			metadataFile.MustPrintf("\nTRANSFORM %s\n", funcDef.TransformTypes)
 		}
@@ -112,7 +112,7 @@ func PrintFunctionModifiers(metadataFile *utils.FileWithByteCount, funcDef Funct
 	}
 
 	// Stored procedures do not permit parallelism declarations
-	if connectionPool.Version.AtLeast("7") && funcDef.Kind != "p" {
+	if  funcDef.Kind != "p" {
 		switch funcDef.Parallel {
 		case "u":
 			metadataFile.MustPrintf(" PARALLEL UNSAFE")
@@ -168,14 +168,8 @@ func PrintCreateAggregateStatement(metadataFile *utils.FileWithByteCount, toc *t
 	if aggDef.SortOperator != "" {
 		metadataFile.MustPrintf(",\n\tSORTOP = %s.\"%s\"", aggDef.SortOperatorSchema, aggDef.SortOperator)
 	}
-	if connectionPool.Version.Before("7") {
-		if aggDef.Hypothetical {
-			metadataFile.MustPrintf(",\n\tHYPOTHETICAL")
-		}
-	} else {
-		if aggDef.Kind == "h" {
-			metadataFile.MustPrintf(",\n\tHYPOTHETICAL")
-		}
+	if aggDef.Kind == "h" {
+		metadataFile.MustPrintf(",\n\tHYPOTHETICAL")
 	}
 	if aggDef.MTransitionFunction != 0 {
 		metadataFile.MustPrintf(",\n\tMSFUNC = %s", funcInfoMap[aggDef.MTransitionFunction].QualifiedName)
@@ -199,7 +193,7 @@ func PrintCreateAggregateStatement(metadataFile *utils.FileWithByteCount, toc *t
 		metadataFile.MustPrintf(",\n\tMINITCOND = '%s'", aggDef.MInitialValue)
 	}
 
-	if connectionPool.Version.AtLeast("7") {
+	if true {
 		var defaultFinalModify string
 		if aggDef.Kind == "o" {
 			defaultFinalModify = "w"
@@ -325,9 +319,7 @@ func PrintCreateLanguageStatements(metadataFile *utils.FileWithByteCount, toc *t
 	for _, procLang := range procLangs {
 		start := metadataFile.ByteCount
 		metadataFile.MustPrintf("\n\nCREATE ")
-		if connectionPool.Version.AtLeast("6") {
-			metadataFile.MustPrintf("OR REPLACE ")
-		}
+		metadataFile.MustPrintf("OR REPLACE ")
 		if procLang.PlTrusted {
 			metadataFile.MustPrintf("TRUSTED ")
 		}

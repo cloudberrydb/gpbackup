@@ -108,7 +108,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		})
 		Describe("PrintCreateBaseTypeStatement", func() {
 			It("creates base types", func() {
-				if connectionPool.Version.AtLeast("6") {
+				if true {
 					baseType.Category = "N"
 					baseType.Preferred = true
 					baseType.Collatable = true
@@ -151,7 +151,7 @@ var _ = Describe("backup integration create statement tests", func() {
 				Oid: 1, Schema: "public", Name: "domain_type", BaseType: "character(8)", DefaultVal: "'abc'::bpchar", NotNull: true, Collation: ""}
 			It("creates domain types", func() {
 				constraints := make([]backup.Constraint, 0)
-				if connectionPool.Version.AtLeast("6") {
+				if true {
 					testhelper.AssertQueryRuns(connectionPool, "CREATE COLLATION public.some_coll (lc_collate = 'POSIX', lc_ctype = 'POSIX')")
 					defer testhelper.AssertQueryRuns(connectionPool, "DROP COLLATION public.some_coll")
 					domainType.Collation = "public.some_coll"
@@ -214,7 +214,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		It("creates a basic collation", func() {
 			testutils.SkipIfBefore6(connectionPool)
 			collation := backup.Collation{Oid: 1, Schema: "public", Name: "testcollation", Collate: "POSIX", Ctype: "POSIX"}
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				collation.IsDeterministic = "true"
 				collation.Provider = "c"
 			}
@@ -231,7 +231,7 @@ var _ = Describe("backup integration create statement tests", func() {
 		It("creates a basic collation with comment and owner", func() {
 			testutils.SkipIfBefore6(connectionPool)
 			collation := backup.Collation{Oid: 1, Schema: "public", Name: "testcollation", Collate: "POSIX", Ctype: "POSIX"}
-			if connectionPool.Version.AtLeast("7") {
+			if true {
 				collation.IsDeterministic = "true"
 				collation.Provider = "c"
 			}

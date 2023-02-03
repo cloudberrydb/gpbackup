@@ -21,11 +21,7 @@ func PrintCreateOperatorStatement(metadataFile *utils.FileWithByteCount, toc *to
 	var leftArg string
 	var rightArg string
 	var createStatementFuncRepl string
-	if connectionPool.Version.AtLeast("7") {
-		createStatementFuncRepl = "FUNCTION"
-	} else {
-		createStatementFuncRepl = "PROCEDURE"
-	}
+	createStatementFuncRepl = "FUNCTION"
 	if operator.LeftArgType != "-" {
 		leftArg = operator.LeftArgType
 		optionalFields = append(optionalFields, fmt.Sprintf("LEFTARG = %s", leftArg))

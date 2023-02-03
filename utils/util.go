@@ -24,8 +24,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-const MINIMUM_GPDB4_VERSION = "4.3.17"
-const MINIMUM_GPDB5_VERSION = "5.1.0"
+const MINIMUM_GPDB4_VERSION = "1.1.0"
+const MINIMUM_GPDB5_VERSION = "1.1.0"
 
 /*
  * General helper functions
@@ -179,31 +179,18 @@ func InitializeSignalHandler(cleanupFunc func(bool), procDesc string, termFlag *
 func TerminateHangingCopySessions(connectionPool *dbconn.DBConn, fpInfo filepath.FilePathInfo, appName string) {
 	var query string
 	copyFileName := fpInfo.GetSegmentPipePathForCopyCommand()
-	if connectionPool.Version.Before("6") {
-		query = fmt.Sprintf(`SELECT
-		pg_terminate_backend(procpid)
-	FROM pg_stat_activity
-	WHERE application_name = '%s'
-	AND current_query LIKE '%%%s%%'
-	AND procpid <> pg_backend_pid()`, appName, copyFileName)
-	} else {
-		query = fmt.Sprintf(`SELECT
-		pg_terminate_backend(pid)
+	query = fmt.Sprintf(`SELECT
+	pg_terminate_backend(pid)
 	FROM pg_stat_activity
 	WHERE application_name = '%s'
 	AND query LIKE '%%%s%%'
 	AND pid <> pg_backend_pid()`, appName, copyFileName)
-	}
 	// We don't check the error as the connection may have finished or been previously terminated
 	_, _ = connectionPool.Exec(query)
 }
 
 func ValidateGPDBVersionCompatibility(connectionPool *dbconn.DBConn) {
-	if connectionPool.Version.Before(MINIMUM_GPDB4_VERSION) {
-		gplog.Fatal(errors.Errorf(`GPDB version %s is not supported. Please upgrade to GPDB %s.0 or later.`, connectionPool.Version.VersionString, MINIMUM_GPDB4_VERSION), "")
-	} else if connectionPool.Version.Is("5") && connectionPool.Version.Before(MINIMUM_GPDB5_VERSION) {
-		gplog.Fatal(errors.Errorf(`GPDB version %s is not supported. Please upgrade to GPDB %s or later.`, connectionPool.Version.VersionString, MINIMUM_GPDB5_VERSION), "")
-	}
+	
 }
 
 func LogExecutionTime(start time.Time, name string) {

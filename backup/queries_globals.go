@@ -69,9 +69,7 @@ func (db Database) FQN() string {
 
 func GetDefaultDatabaseEncodingInfo(connectionPool *dbconn.DBConn) Database {
 	lcQuery := ""
-	if connectionPool.Version.AtLeast("6") {
-		lcQuery = "datcollate AS collate, datctype AS ctype,"
-	}
+	lcQuery = "datcollate AS collate, datctype AS ctype,"
 
 	query := fmt.Sprintf(`
 	SELECT datname AS name,
@@ -88,9 +86,7 @@ func GetDefaultDatabaseEncodingInfo(connectionPool *dbconn.DBConn) Database {
 
 func GetDatabaseInfo(connectionPool *dbconn.DBConn) Database {
 	lcQuery := ""
-	if connectionPool.Version.AtLeast("6") {
-		lcQuery = "datcollate AS collate, datctype AS ctype,"
-	}
+	lcQuery = "datcollate AS collate, datctype AS ctype,"
 	query := fmt.Sprintf(`
 	SELECT d.oid,
 		quote_ident(d.datname) AS name,
@@ -116,13 +112,8 @@ func GetDatabaseGUCs(connectionPool *dbconn.DBConn) []string {
 		ELSE ('SET ' || option_name || ' TO ''' || option_value || '''')
 	END AS string
 	FROM pg_options_to_table((%s))`
-	if connectionPool.Version.Before("6") {
-		subQuery := fmt.Sprintf("SELECT datconfig FROM pg_database WHERE datname = '%s'", utils.EscapeSingleQuotes(connectionPool.DBName))
-		query = fmt.Sprintf(query, subQuery)
-	} else {
-		subQuery := fmt.Sprintf("SELECT setconfig FROM pg_db_role_setting WHERE setrole = 0 AND setdatabase = (SELECT oid FROM pg_database WHERE datname = '%s')", utils.EscapeSingleQuotes(connectionPool.DBName))
-		query = fmt.Sprintf(query, subQuery)
-	}
+	subQuery := fmt.Sprintf("SELECT setconfig FROM pg_db_role_setting WHERE setrole = 0 AND setdatabase = (SELECT oid FROM pg_database WHERE datname = '%s')", utils.EscapeSingleQuotes(connectionPool.DBName))
+	query = fmt.Sprintf(query, subQuery)
 	return dbconn.MustSelectStringSlice(connectionPool, query)
 }
 
@@ -217,8 +208,7 @@ func (rg ResourceGroup) FQN() string {
 func GetResourceGroups(connectionPool *dbconn.DBConn) []ResourceGroup {
 	selectClause := ""
 	// This is when pg_dumpall was changed to use the actual values
-	if connectionPool.Version.AtLeast("5.2.0") {
-		selectClause += `
+	selectClause += `
 		SELECT g.oid,
 			quote_ident(g.rsgname) AS name,
 			t1.value AS concurrency,
@@ -226,16 +216,6 @@ func GetResourceGroups(connectionPool *dbconn.DBConn) []ResourceGroup {
 			t3.value AS memorylimit,
 			t4.value AS memorysharedquota,
 			t5.value AS memoryspillratio`
-	} else { // GPDB 5.0.0 and 5.1.0
-		selectClause += `
-		SELECT g.oid,
-			quote_ident(g.rsgname) AS name,
-			t1.proposed AS concurrency,
-			t2.value    AS cpuratelimit,
-			t3.proposed AS memorylimit,
-			t4.proposed AS memorysharedquota,
-			t5.proposed AS memoryspillratio`
-	}
 
 	fromClause := `
 	FROM pg_resgroup g
@@ -256,7 +236,7 @@ func GetResourceGroups(connectionPool *dbconn.DBConn) []ResourceGroup {
 	// 5.8.0. Default the value to '0' (vmtracker) since there could
 	// be a resource group created before 5.8.0 which will not have
 	// this memoryauditor field defined.
-	if connectionPool.Version.AtLeast("5.8.0") {
+	if true {
 		selectClause += `,
 		coalesce(t6.value, '0') AS memoryauditor`
 
@@ -268,7 +248,7 @@ func GetResourceGroups(connectionPool *dbconn.DBConn) []ResourceGroup {
 	// 5.9.0. Default the value to '-1' since there could be a
 	// resource group created before 5.9.0 which will not have this
 	// cpuset field defined.
-	if connectionPool.Version.AtLeast("5.9.0") {
+	if true {
 		selectClause += `,
 		coalesce(t7.value, '-1') AS cpuset`
 
@@ -340,23 +320,17 @@ func (r Role) FQN() string {
  */
 func GetRoles(connectionPool *dbconn.DBConn) []Role {
 	resgroupQuery := ""
-	if connectionPool.Version.AtLeast("5") {
-		resgroupQuery = "(SELECT quote_ident(rsgname) FROM pg_resgroup WHERE pg_resgroup.oid = rolresgroup) AS resgroup,"
-	}
+	resgroupQuery = "(SELECT quote_ident(rsgname) FROM pg_resgroup WHERE pg_resgroup.oid = rolresgroup) AS resgroup,"
 	replicationQuery := ""
 	readExtHdfs := "rolcreaterexthdfs,"
 	writeExtHdfs := "rolcreatewexthdfs,"
-	if connectionPool.Version.AtLeast("6") {
-		replicationQuery = "rolreplication,"
-		readExtHdfs = ""
-		writeExtHdfs = ""
-	}
+	replicationQuery = "rolreplication,"
+	readExtHdfs = ""
+	writeExtHdfs = ""
 
 	var whereClause string
-	if connectionPool.Version.AtLeast("7") {
-		whereClause = `
+	whereClause = `
 	WHERE rolname !~ '^pg_'`
-	}
 
 	query := fmt.Sprintf(`
 	SELECT oid,
@@ -426,7 +400,7 @@ func GetRoleGUCs(connectionPool *dbconn.DBConn) map[string][]RoleGUC {
 		END AS config`
 
 	var gucsForDBQuery string
-	if connectionPool.Version.AtLeast("6") {
+	if true {
 		gucsForDBQuery = `UNION
 	SELECT quote_ident(r.rolname) AS rolename,
 		quote_ident(d.datname) AS dbname,
@@ -444,7 +418,7 @@ func GetRoleGUCs(connectionPool *dbconn.DBConn) map[string][]RoleGUC {
 			FROM pg_roles %s) AS options`, gucsForDBQuery)
 
 	var whereClause string
-	if connectionPool.Version.AtLeast("7") {
+	if true {
 		whereClause = `
 	WHERE rolename !~ '^pg_'`
 	}
@@ -509,21 +483,11 @@ func (rm RoleMember) GetMetadataEntry() (string, toc.MetadataEntry) {
 func GetRoleMembers(connectionPool *dbconn.DBConn) []RoleMember {
 	var caseClause string
 	var whereClause string
-	if connectionPool.Version.AtLeast("5") {
-		caseClause = `
+	caseClause = `
 		WHEN pg_get_userbyid(pga.grantor) like 'unknown (OID='||pga.grantor::regclass||')'
 		THEN '' ELSE quote_ident(pg_get_userbyid(pga.grantor))`
-	} else {
-		caseClause = `
-		WHEN pg_get_userbyid(pga.grantor) like 'unknown (OID='||pga.grantor||')'
-		THEN '' ELSE quote_ident(pg_get_userbyid(pga.grantor))`
-	}
 
-	if connectionPool.Version.AtLeast("7") {
-		whereClause = fmt.Sprintf(`WHERE roleid >= %d`, FIRST_NORMAL_OBJECT_ID)
-	} else {
-		whereClause = ``
-	}
+	whereClause = fmt.Sprintf(`WHERE roleid >= %d`, FIRST_NORMAL_OBJECT_ID)
 
 	query := fmt.Sprintf(`
 	SELECT quote_ident(pg_get_userbyid(pga.roleid)) AS role,
@@ -570,14 +534,6 @@ func (t Tablespace) FQN() string {
 }
 
 func GetTablespaces(connectionPool *dbconn.DBConn) []Tablespace {
-	before6Query := `
-	SELECT t.oid,
-		quote_ident(t.spcname) AS tablespace,
-		quote_ident(f.fsname) AS filelocation
-	FROM pg_tablespace t
-		JOIN pg_filespace f ON t.spcfsoid = f.oid
-	WHERE spcname != 'pg_default'
-		AND spcname != 'pg_global'`
 	atLeast6Query := `
 	SELECT oid,
 		quote_ident(spcname) AS tablespace,
@@ -589,13 +545,9 @@ func GetTablespaces(connectionPool *dbconn.DBConn) []Tablespace {
 
 	results := make([]Tablespace, 0)
 	var err error
-	if connectionPool.Version.Before("6") {
-		err = connectionPool.Select(&results, before6Query)
-	} else {
-		err = connectionPool.Select(&results, atLeast6Query)
-		for i := 0; i < len(results); i++ {
-			results[i].SegmentLocations = GetSegmentTablespaces(connectionPool, results[i].Oid)
-		}
+	err = connectionPool.Select(&results, atLeast6Query)
+	for i := 0; i < len(results); i++ {
+		results[i].SegmentLocations = GetSegmentTablespaces(connectionPool, results[i].Oid)
 	}
 	gplog.FatalOnError(err)
 	return results

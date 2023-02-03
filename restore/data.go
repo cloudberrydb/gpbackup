@@ -56,11 +56,7 @@ func CopyTableIn(connectionPool *dbconn.DBConn, tableName string, tableAttribute
 		}
 	}
 	for i := 0; i < batches; i++ {
-		if connectionPool.Version.AtLeast("7") {
-			gplog.Verbose(`Executing "%s" on coordinator`, query)
-		} else {
-			gplog.Verbose(`Executing "%s" on master`, query)
-		}
+		gplog.Verbose(`Executing "%s" on coordinator`, query)
 		result, err := connectionPool.Exec(query, whichConn)
 		if err != nil {
 			errStr := fmt.Sprintf("Error loading data into table %s", tableName)
@@ -251,7 +247,7 @@ func restoreDataFromTimestamp(fpInfo filepath.FilePathInfo, dataEntries []toc.Co
 					if !MustGetFlagBool(options.ON_ERROR_CONTINUE) {
 						dataProgressBar.(*pb.ProgressBar).NotPrint = true
 						return
-					} else if connectionPool.Version.AtLeast("6") && backupConfig.SingleDataFile {
+					} else if backupConfig.SingleDataFile {
 						// inform segment helpers to skip this entry
 						utils.CreateSkipFileOnSegments(fmt.Sprintf("%d", entry.Oid), tableName, globalCluster, globalFPInfo)
 					}

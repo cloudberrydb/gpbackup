@@ -307,16 +307,12 @@ func backupPostdata(metadataFile *utils.FileWithByteCount) {
 	backupIndexes(metadataFile)
 	backupRules(metadataFile)
 	backupTriggers(metadataFile)
-	if connectionPool.Version.AtLeast("6") {
-		backupDefaultPrivileges(metadataFile)
-		if len(MustGetFlagStringArray(options.INCLUDE_SCHEMA)) == 0 {
-			backupEventTriggers(metadataFile)
-		}
+	backupDefaultPrivileges(metadataFile)
+	if len(MustGetFlagStringArray(options.INCLUDE_SCHEMA)) == 0 {
+		backupEventTriggers(metadataFile)
 	}
-	if connectionPool.Version.AtLeast("7") {
-		backupRowLevelSecurityPolicies(metadataFile)
-		backupExtendedStatistic(metadataFile)
-	}
+	backupRowLevelSecurityPolicies(metadataFile)
+	backupExtendedStatistic(metadataFile)
 
 	logCompletionMessage("Post-data metadata backup")
 }
@@ -472,14 +468,7 @@ func cancelBlockedQueries(timestamp string) {
 	// Query for all blocked queries
 	pids := make([]int64, 0)
 	var findBlockedQuery string
-	if conn.Version.Before("6") {
-		findBlockedQuery = fmt.Sprintf("SELECT procpid from pg_stat_activity WHERE application_name='gpbackup_%s' AND waiting='t' AND waiting_reason='lock';", timestamp)
-	}
-	if conn.Version.Is("6") {
-		findBlockedQuery = fmt.Sprintf("SELECT pid from pg_stat_activity WHERE application_name='gpbackup_%s' AND waiting='t' AND waiting_reason='lock';", timestamp)
-	} else if conn.Version.AtLeast("7") {
-		findBlockedQuery = fmt.Sprintf("SELECT pid from pg_stat_activity WHERE application_name='gpbackup_%s' AND wait_event_type='Lock';", timestamp)
-	}
+	findBlockedQuery = fmt.Sprintf("SELECT pid from pg_stat_activity WHERE application_name='gpbackup_%s' AND wait_event_type='Lock';", timestamp)
 	err := conn.Select(&pids, findBlockedQuery)
 	gplog.FatalOnError(err)
 
@@ -500,9 +489,7 @@ func cancelBlockedQueries(timestamp string) {
 		select {
 		case <-tickerCheckCanceled.C:
 			blockedQueryCount := fmt.Sprintf("SELECT count(*) from pg_stat_activity WHERE application_name='gpbackup_%s' AND waiting='t' AND  waiting_reason='lock';", timestamp)
-			if conn.Version.AtLeast("7") {
-				blockedQueryCount = fmt.Sprintf("SELECT count(*) from pg_stat_activity WHERE application_name='gpbackup_%s' AND wait_event_type='Lock';", timestamp)
-			}
+			blockedQueryCount = fmt.Sprintf("SELECT count(*) from pg_stat_activity WHERE application_name='gpbackup_%s' AND wait_event_type='Lock';", timestamp)
 			count = dbconn.MustSelectString(conn, blockedQueryCount)
 			if count == "0" {
 				return
@@ -556,47 +543,25 @@ func getTableLocks(table Table) []TableLocks {
 	conn.MustConnect(1)
 	var query string
 	defer conn.Close()
-	if conn.Version.Before("6") {
-		query = fmt.Sprintf(`
-		SELECT c.oid as oid,
-		coalesce(a.datname, '') as database,
-		n.nspname || '.' || c.relname as relation,
-		l.mode,
-		l.GRANTED as granted,
-		coalesce(a.application_name, '') as application,
-		coalesce(a.usename, '') as user,
-		a.procpid as pid
-		FROM pg_stat_activity a
-		JOIN pg_locks l ON l.pid = a.procpid
-		JOIN pg_class c on c.oid = l.relation
-		JOIN pg_namespace n on n.oid=c.relnamespace
-		WHERE (a.datname = '%s' OR a.datname IS NULL)
-		AND NOT a.procpid = pg_backend_pid()
-		AND relation = '%s'::regclass
-		AND mode = 'AccessExclusiveLock'
-		ORDER BY a.query_start;
-		`, conn.DBName, table.FQN())
-	} else {
-		query = fmt.Sprintf(`
-		SELECT c.oid as oid,
-		coalesce(a.datname, '') as database,
-		n.nspname || '.' || c.relname relation,
-		l.mode,
-		l.GRANTED as granted,
-		coalesce(a.application_name, '') as application,
-		coalesce(a.usename, '') as user,
-		a.pid
-		FROM pg_stat_activity a
-		JOIN pg_locks l ON l.pid = a.pid
-		JOIN pg_class c on c.oid = l.relation
-		JOIN pg_namespace n on n.oid=c.relnamespace
-		WHERE (a.datname = '%s' OR a.datname IS NULL)
-		AND NOT a.pid = pg_backend_pid()
-		AND relation = '%s'::regclass
-		AND mode = 'AccessExclusiveLock'
-		ORDER BY a.query_start;
-		`, conn.DBName, table.FQN())
-	}
+	query = fmt.Sprintf(`
+	SELECT c.oid as oid,
+	coalesce(a.datname, '') as database,
+	n.nspname || '.' || c.relname relation,
+	l.mode,
+	l.GRANTED as granted,
+	coalesce(a.application_name, '') as application,
+	coalesce(a.usename, '') as user,
+	a.pid
+	FROM pg_stat_activity a
+	JOIN pg_locks l ON l.pid = a.pid
+	JOIN pg_class c on c.oid = l.relation
+	JOIN pg_namespace n on n.oid=c.relnamespace
+	WHERE (a.datname = '%s' OR a.datname IS NULL)
+	AND NOT a.pid = pg_backend_pid()
+	AND relation = '%s'::regclass
+	AND mode = 'AccessExclusiveLock'
+	ORDER BY a.query_start;
+	`, conn.DBName, table.FQN())
 
 	locksResults := make([]TableLocks, 0)
 	err := conn.Select(&locksResults, query)

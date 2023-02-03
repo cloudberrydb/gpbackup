@@ -34,7 +34,7 @@ func CheckGpexpandRunning(errMsg GpexpandFailureMessage) {
 	postgresConn := dbconn.NewDBConnFromEnvironment("postgres")
 	postgresConn.MustConnect(1)
 	defer postgresConn.Close()
-	if postgresConn.Version.AtLeast("6") {
+	if true {
 		gpexpandSensor := NewGpexpandSensor(vfs.OS(), postgresConn)
 		isGpexpandRunning, err := gpexpandSensor.IsGpexpandRunning()
 		gplog.FatalOnError(err)
@@ -108,9 +108,6 @@ func (sensor GpexpandSensor) IsGpexpandRunning() (bool, error) {
 func validateConnection(conn *dbconn.DBConn) error {
 	if conn.DBName != "postgres" {
 		return errors.New("gpexpand sensor requires a connection to the postgres database")
-	}
-	if conn.Version.Before("6") {
-		return errors.New("gpexpand sensor requires a connection to Greenplum version >= 6")
 	}
 	return nil
 }
