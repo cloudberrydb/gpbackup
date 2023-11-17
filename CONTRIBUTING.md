@@ -1,62 +1,84 @@
-# Contributing
+Cloudberry Database community welcomes contributions from anyone, new and
+experienced! We appreciate your interest in contributing. This guide will help
+you get started with the contribution.
 
-We warmly welcome and greatly appreciate contributions from the
-community. By participating you agree to the [code of
-conduct](https://github.com/greenplum-db/gpbackup/blob/main/CODE-OF-CONDUCT.md).
-Overall, we follow GPDB's comprehensive contribution policy. Please
-refer to it [here](https://github.com/greenplum-db/gpdb#contributing)
-for details.
+## Code of Conduct
 
-## Getting Started
+Everyone who participates in Cloudberry Database, either as a user or a
+contributor, is obliged to follow our community [Code of
+Conduct](./CODE_OF_CONDUCT.md). Every violation against it will be reviewed
+and investigated and will result in a response that is deemed necessary and
+appropriate to the circumstances. The moderator team is obligated to maintain
+confidentiality regarding the reporter of an incident.
 
-* Sign our [Contributor License Agreement](https://cla.pivotal.io/sign/greenplum)
-* Fork the gpbackup repository on GitHub
-* Run `go get github.com/greenplum-db/gpbackup/...` and add your fork as a remote
-* Run `make depend` to install required dependencies
-* Follow the README to set up your environment and run the tests
+Some behaviors that contribute to creating a positive environment include:
 
-## Creating a change
+* Use welcoming and inclusive language.
+* Respect differing viewpoints and experiences.
+* Accept constructive criticism gracefully.
+* Foster what's best for the community.
+* Show empathy for community members.
 
-* Create your own feature branch (e.g. `git checkout -b
-  gpbackup_branch`) and make changes on this branch.
-* Try and follow similar coding styles as found throughout the code
-  base.
-* Make commits as logical units for ease of reviewing.
-* Rebase with main often to stay in sync with upstream.
+## GitHub Contribution Workflow
+
+1. Fork this repo to your own GitHub account.
+2. Clone down the repo to your local system.
+
+```
+git clone https://github.com/your-user-name/gpbackup.git
+```
+
+3. Add the upstream repo. (You only have to do this once, not every time.)
+
+```
+git remote add upstream https://github.com/cloudberrydb/gpbackup.git
+```
+
+4. Create a new branch to hold your work.
+
+```
+git checkout -b new-branch-name
+```
+
+5. Work on your new code.
+
 * Add new tests to cover your code. We use
   [Ginkgo](http://onsi.github.io/ginkgo/) and
   [Gomega](https://onsi.github.io/gomega/) for testing.
-* Ensure a well written commit message as explained
-  [here](https://chris.beams.io/posts/git-commit/).
-* Run `make format`, `make test`, and `make end_to_end` in your
-  feature branch and ensure they are successful.
-* Push your local branch to the fork (e.g. `git push <your_fork>
-  gpbackup_branch`)
+* Run `make format`, `make test`, and `make end_to_end` in your feature branch
+  and ensure they are successful.
 
-## Submitting a Pull Request
+6. Commit your changes.
 
-* Create a [pull request from your
-  fork](https://docs.github.com/en/github/collaborating-with-issues-and-pull-requests/creating-a-pull-request-from-a-fork).
-* Address PR feedback with fixup and/or squash commits:
 ```
-git add .
-git commit --fixup <commit SHA>
-  -- or --
-git commit --squash <commit SHA>
-```
-* Once approved, before merging into main squash your fixups with:
-```
-git rebase -i --autosquash origin/main
-git push --force-with-lease $USER <my-feature-branch>
+git add <the change files>
+git commit
 ```
 
-Your contribution will be analyzed for product fit and engineering
-quality prior to merging. Your pull request is much more likely to be
-accepted if it is small and focused with a clear message that conveys
-the intent of your change.
+7. Push your changes to your GitHub repo.
 
-## Community
+```
+git push origin new-branch-name
+```
 
-Connect with Greenplum on:
-* [Slack](https://greenplum.slack.com/)
-* [Dev Google Group mailing list](https://groups.google.com/a/greenplum.org/forum/#!forum/gpdb-dev/join)
+8. Open a PR(Pull Request).
+
+Go to the repo on GitHub. There will be a message about your recently pushed
+branch, asking if you would like to open a pull request. Follow the prompts,
+compare across repositories, and submit the PR.
+
+9. Get your code reviewed.
+10. Congratulations! Once your PR is approved, and passes the CI/CD without
+errors, then the code will be merged. Your code will be shipped in the recent
+future releases.
+
+## Sync your branch with the upstream
+
+Before working on your next contribution, make sure your local repository is
+up to date:
+
+```
+git checkout main
+git fetch upstream
+git rebase upstream/main
+```
