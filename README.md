@@ -1,15 +1,28 @@
-# Greenplum Backup
+# gpbackup for CloudberryDB
 
-`gpbackup` and `gprestore` are Go utilities for performing Greenplum Database backups.  They are still currently in active development.
+[![Slack](https://img.shields.io/badge/Join_Slack-6a32c9)](https://communityinviter.com/apps/cloudberrydb/welcome)
+[![Twitter Follow](https://img.shields.io/twitter/follow/cloudberrydb)](https://twitter.com/cloudberrydb)
+[![Website](https://img.shields.io/badge/Visit%20Website-eebc46)](https://cloudberrydb.org)
+[![GitHub Discussions](https://img.shields.io/github/discussions/cloudberrydb/cloudberrydb)](https://github.com/orgs/cloudberrydb/discussions)
+![GitHub License](https://img.shields.io/github/license/cloudberrydb/gpbackup)
+
+---
+
+`gpbackup` and `gprestore` are Go utilities for performing Greenplum database
+backups, which are developed by Greenplum Database team. This repo is a fork
+of gpbackup, dedicated to support CloduberryDB 1.0+. You will feel no change
+using gpbackup in CloudberryDB just as well in Greenplum.
 
 ## Pre-Requisites
 
-The project requires the Go Programming language version 1.11 or higher. Follow the directions [here](https://golang.org/doc/) for installation, usage and configuration instructions.
+The project requires the Go Programming language version 1.11 or higher.
+Follow the directions [here](https://golang.org/doc/) for installation, usage
+and configuration instructions.
 
 ## Downloading
 
 ```bash
-go get github.com/greenplum-db/gpbackup/...
+go get github.com/cloudberrydb/gpbackup/...
 ```
 
 This will place the code in `$GOPATH/github.com/greenplum-db/gpbackup`.
@@ -60,7 +73,8 @@ To run only unit tests, use
 make unit
 ```
 To run only integration tests (requires a running GPDB instance), use
-```bash
+
+```
 make integration
 ```
 
@@ -69,7 +83,8 @@ To run end to end tests (requires a running GPDB instance), use
 make end_to_end
 ```
 
-**We provide the following targets to help developers ensure their code fits Go standard formatting guidelines.**
+**We provide the following targets to help developers ensure their code fits
+Go standard formatting guidelines.**
 
 To run a linting tool that checks for basic coding errors, use
 ```bash
@@ -84,8 +99,11 @@ To automatically format your code and add/remove imports, use
 ```bash
 make format
 ```
-This target runs [goimports](https://godoc.org/golang.org/x/tools/cmd/goimports) and [gofmt](https://golang.org/cmd/gofmt/).
-We will only accept code that has been formatted using this target or an equivalent `gofmt` call.
+
+This target runs
+[goimports](https://godoc.org/golang.org/x/tools/cmd/goimports) and
+[gofmt](https://golang.org/cmd/gofmt/). We will only accept code that has been
+formatted using this target or an equivalent `gofmt` call.
 
 ## Running the utilities
 
@@ -108,18 +126,13 @@ To remove the compiled binaries and other generated files, run
 make clean
 ```
 
-# More Information
-
-The Greenplum Backup [wiki](https://github.com/greenplum-db/gpbackup/wiki) for this project has several articles providing a more in-depth explanation of certain aspects of gpbackup and gprestore.
-
-# How to Contribute
-
-See [CONTRIBUTING.md file](https://github.com/greenplum-db/gpbackup/blob/master/CONTRIBUTING.md).
-
 # Code Formatting
 
-We use `goimports` to format go code. See https://godoc.org/golang.org/x/tools/cmd/goimports
-The following command formats the gpbackup codebase excluding the vendor directory and also lists the files updated.
+We use `goimports` to format go code. See
+https://godoc.org/golang.org/x/tools/cmd/goimports The following command
+formats the gpbackup codebase excluding the vendor directory and also lists
+the files updated.
+
 ```bash
 goimports -w -l $(find . -type f -name '*.go' -not -path "./vendor/*")
 ```
@@ -128,8 +141,8 @@ goimports -w -l $(find . -type f -name '*.go' -not -path "./vendor/*")
 
 ## Dummy Security Label module is not installed or configured
 
-If you see errors in many integration tests (below), review the
-Validation and code quality [Test setup](#Test setup) section above:
+If you see errors in many integration tests (below), review the Validation and
+code quality [Test setup](#Test setup) section above:
 
 ```
 SECURITY LABEL FOR dummy ON TYPE public.testtype IS 'unclassified';
@@ -142,9 +155,9 @@ SECURITY LABEL FOR dummy ON TYPE public.testtype IS 'unclassified';
 
 ## Tablespace already exists
 
-If you see errors indicating the `test_tablespace` tablespace already
-exists (below), execute `psql postgres -c 'DROP TABLESPACE
-test_tablespace'` to cleanup the environment and rerun the tests.
+If you see errors indicating the `test_tablespace` tablespace already exists
+(below), execute `psql postgres -c 'DROP TABLESPACE test_tablespace'` to
+cleanup the environment and rerun the tests.
 
 ```
     CREATE TABLESPACE test_tablespace LOCATION '/tmp/test_dir'
@@ -154,3 +167,17 @@ test_tablespace'` to cleanup the environment and rerun the tests.
             Code: "42710",
             Message: "tablespace \"test_tablespace\" already exists",
 ```
+
+## How to Contribute
+
+See [CONTRIBUTING.md file](./CONTRIBUTING.md).
+
+## License
+
+Licensed under Apache License Version 2.0. For more details, please refer to
+the [LICENSE](./LICENSE).
+
+## Acknowledgment
+
+Thanks to all the Greenplum Backup contributors, more details in its [GitHub
+page](https://github.com/greenplum-db/gpbackup).
