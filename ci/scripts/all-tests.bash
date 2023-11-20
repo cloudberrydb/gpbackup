@@ -27,7 +27,7 @@ cat <<SCRIPT > /tmp/run_tests.bash
   if [[ -f /opt/gcc_env.sh ]]; then
       source /opt/gcc_env.sh
   fi
-  cd \${GOPATH}/src/github.com/greenplum-db/gpbackup
+  cd \${GOPATH}/src/github.com/cloudberrydb/gpbackup
   export OLD_BACKUP_VERSION="${GPBACKUP_VERSION}"
 
   # Set the GPDB version to use for the unit tests

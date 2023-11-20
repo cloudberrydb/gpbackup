@@ -58,7 +58,7 @@ resources:
   type: git
   icon: github-circle
   source:
-    uri: https://github.com/greenplum-db/gpbackup
+    uri: https://github.com/cloudberrydb/gpbackup
     branch: ((gpbackup-git-branch))
 
 - name: diffdb_src
@@ -95,7 +95,7 @@ resources:
   icon: github-circle
   source:
     branch: ((dp/dev/gpbackup-s3-plugin-git-branch))
-    uri: https://github.com/greenplum-db/gpbackup-s3-plugin
+    uri: https://github.com/cloudberrydb/gpbackup-s3-plugin
 
 - name: gpbackup_ddboost_plugin
   type: git

@@ -5,12 +5,12 @@ import (
 	"regexp"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/greenplum-db/gpbackup/backup"
-	"github.com/greenplum-db/gpbackup/history"
-	"github.com/greenplum-db/gpbackup/options"
-	"github.com/greenplum-db/gpbackup/report"
-	"github.com/greenplum-db/gpbackup/toc"
-	"github.com/greenplum-db/gpbackup/utils"
+	"github.com/cloudberrydb/gpbackup/backup"
+	"github.com/cloudberrydb/gpbackup/history"
+	"github.com/cloudberrydb/gpbackup/options"
+	"github.com/cloudberrydb/gpbackup/report"
+	"github.com/cloudberrydb/gpbackup/toc"
+	"github.com/cloudberrydb/gpbackup/utils"
 	"gopkg.in/cheggaaa/pb.v1"
 
 	. "github.com/onsi/ginkgo/v2"

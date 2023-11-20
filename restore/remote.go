@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/greenplum-db/gp-common-go-libs/cluster"
-	"github.com/greenplum-db/gp-common-go-libs/gplog"
-	"github.com/greenplum-db/gp-common-go-libs/iohelper"
-	"github.com/greenplum-db/gpbackup/options"
+	"github.com/cloudberrydb/gp-common-go-libs/cluster"
+	"github.com/cloudberrydb/gp-common-go-libs/gplog"
+	"github.com/cloudberrydb/gp-common-go-libs/iohelper"
+	"github.com/cloudberrydb/gpbackup/options"
 	"github.com/pkg/errors"
 )
 

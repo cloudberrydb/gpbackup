@@ -29,7 +29,7 @@ options:
   restore_multipart_chunksize: 100MB
 CONFIG
 
-  pushd ~/go/src/github.com/greenplum-db/gpbackup/plugins
+  pushd ~/go/src/github.com/cloudberrydb/gpbackup/plugins
     ./plugin_test.sh \${GPHOME}/bin/gpbackup_s3_plugin \${HOME}/s3_config.yaml
   popd
 SCRIPT

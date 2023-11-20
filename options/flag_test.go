@@ -3,8 +3,8 @@ package options_test
 import (
 	"flag"
 
-	"github.com/greenplum-db/gp-common-go-libs/testhelper"
-	"github.com/greenplum-db/gpbackup/options"
+	"github.com/cloudberrydb/gp-common-go-libs/testhelper"
+	"github.com/cloudberrydb/gpbackup/options"
 	"github.com/spf13/pflag"
 
 	. "github.com/onsi/ginkgo/v2"

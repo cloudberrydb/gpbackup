@@ -6,13 +6,13 @@ import (
 	"os/exec"
 	path "path/filepath"
 
-	"github.com/greenplum-db/gp-common-go-libs/cluster"
-	"github.com/greenplum-db/gp-common-go-libs/dbconn"
-	"github.com/greenplum-db/gp-common-go-libs/iohelper"
-	"github.com/greenplum-db/gp-common-go-libs/testhelper"
-	"github.com/greenplum-db/gpbackup/filepath"
-	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
+	"github.com/cloudberrydb/gp-common-go-libs/cluster"
+	"github.com/cloudberrydb/gp-common-go-libs/dbconn"
+	"github.com/cloudberrydb/gp-common-go-libs/iohelper"
+	"github.com/cloudberrydb/gp-common-go-libs/testhelper"
+	"github.com/cloudberrydb/gpbackup/filepath"
+	"github.com/cloudberrydb/gpbackup/testutils"
+	"github.com/cloudberrydb/gpbackup/utils"
 	. "github.com/onsi/ginkgo/v2"
 )
 
@@ -310,7 +310,7 @@ var _ = Describe("End to End plugin tests", func() {
 			})
 			It("runs gpbackup and gprestore with plugin, single-data-file, and no-compression", func() {
 				Skip("Cloudberry skip")
-				pluginExecutablePath := fmt.Sprintf("%s/src/github.com/greenplum-db/gpbackup/plugins/example_plugin.bash", os.Getenv("GOPATH"))
+				pluginExecutablePath := fmt.Sprintf("%s/src/github.com/cloudberrydb/gpbackup/plugins/example_plugin.bash", os.Getenv("GOPATH"))
 				copyPluginToAllHosts(backupConn, pluginExecutablePath)
 
 				timestamp := gpbackup(gpbackupPath, backupHelperPath,
@@ -330,7 +330,7 @@ var _ = Describe("End to End plugin tests", func() {
 			})
 			It("runs gpbackup and gprestore with plugin, single-data-file, no-compression, and copy-queue-size", func() {
 				Skip("Cloudberry skip")
-				pluginExecutablePath := fmt.Sprintf("%s/src/github.com/greenplum-db/gpbackup/plugins/example_plugin.bash", os.Getenv("GOPATH"))
+				pluginExecutablePath := fmt.Sprintf("%s/src/github.com/cloudberrydb/gpbackup/plugins/example_plugin.bash", os.Getenv("GOPATH"))
 				copyPluginToAllHosts(backupConn, pluginExecutablePath)
 
 				timestamp := gpbackup(gpbackupPath, backupHelperPath,
@@ -352,7 +352,7 @@ var _ = Describe("End to End plugin tests", func() {
 			})
 			It("runs gpbackup and gprestore with plugin and single-data-file", func() {
 				Skip("Cloudberry skip")
-				pluginExecutablePath := fmt.Sprintf("%s/src/github.com/greenplum-db/gpbackup/plugins/example_plugin.bash", os.Getenv("GOPATH"))
+				pluginExecutablePath := fmt.Sprintf("%s/src/github.com/cloudberrydb/gpbackup/plugins/example_plugin.bash", os.Getenv("GOPATH"))
 				copyPluginToAllHosts(backupConn, pluginExecutablePath)
 
 				timestamp := gpbackup(gpbackupPath, backupHelperPath,
@@ -371,7 +371,7 @@ var _ = Describe("End to End plugin tests", func() {
 			})
 			It("runs gpbackup and gprestore with plugin, single-data-file, and copy-queue-size", func() {
 				Skip("Cloudberry skip")
-				pluginExecutablePath := fmt.Sprintf("%s/src/github.com/greenplum-db/gpbackup/plugins/example_plugin.bash", os.Getenv("GOPATH"))
+				pluginExecutablePath := fmt.Sprintf("%s/src/github.com/cloudberrydb/gpbackup/plugins/example_plugin.bash", os.Getenv("GOPATH"))
 				copyPluginToAllHosts(backupConn, pluginExecutablePath)
 
 				timestamp := gpbackup(gpbackupPath, backupHelperPath,
@@ -392,7 +392,7 @@ var _ = Describe("End to End plugin tests", func() {
 			})
 			It("runs gpbackup and gprestore with plugin and metadata-only", func() {
 				Skip("Cloudberry skip")
-				pluginExecutablePath := fmt.Sprintf("%s/src/github.com/greenplum-db/gpbackup/plugins/example_plugin.bash", os.Getenv("GOPATH"))
+				pluginExecutablePath := fmt.Sprintf("%s/src/github.com/cloudberrydb/gpbackup/plugins/example_plugin.bash", os.Getenv("GOPATH"))
 				copyPluginToAllHosts(backupConn, pluginExecutablePath)
 
 				timestamp := gpbackup(gpbackupPath, backupHelperPath,
@@ -418,7 +418,7 @@ var _ = Describe("End to End plugin tests", func() {
 			if useOldBackupVersion {
 				Skip("This test is only needed for the most recent backup versions")
 			}
-			pluginExecutablePath := fmt.Sprintf("%s/src/github.com/greenplum-db/gpbackup/plugins/example_plugin.bash", os.Getenv("GOPATH"))
+			pluginExecutablePath := fmt.Sprintf("%s/src/github.com/cloudberrydb/gpbackup/plugins/example_plugin.bash", os.Getenv("GOPATH"))
 			copyPluginToAllHosts(backupConn, pluginExecutablePath)
 
 			timestamp := gpbackup(gpbackupPath, backupHelperPath,
@@ -441,7 +441,7 @@ var _ = Describe("End to End plugin tests", func() {
 			if useOldBackupVersion {
 				Skip("This test is only needed for the most recent backup versions")
 			}
-			pluginExecutablePath := fmt.Sprintf("%s/src/github.com/greenplum-db/gpbackup/plugins/example_plugin.bash", os.Getenv("GOPATH"))
+			pluginExecutablePath := fmt.Sprintf("%s/src/github.com/cloudberrydb/gpbackup/plugins/example_plugin.bash", os.Getenv("GOPATH"))
 			copyPluginToAllHosts(backupConn, pluginExecutablePath)
 
 			timestamp := gpbackup(gpbackupPath, backupHelperPath,
@@ -464,7 +464,7 @@ var _ = Describe("End to End plugin tests", func() {
 			if useOldBackupVersion {
 				Skip("This test is only needed for the latest backup version")
 			}
-			pluginsDir := fmt.Sprintf("%s/src/github.com/greenplum-db/gpbackup/plugins", os.Getenv("GOPATH"))
+			pluginsDir := fmt.Sprintf("%s/src/github.com/cloudberrydb/gpbackup/plugins", os.Getenv("GOPATH"))
 			copyPluginToAllHosts(backupConn, fmt.Sprintf("%s/example_plugin.bash", pluginsDir))
 			command := exec.Command("bash", "-c", fmt.Sprintf("%s/plugin_test.sh %s/example_plugin.bash %s/example_plugin_config.yaml", pluginsDir, pluginsDir, pluginsDir))
 			mustRunCommand(command)

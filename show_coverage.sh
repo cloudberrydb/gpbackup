@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DIR="github.com/greenplum-db/gpbackup"
+DIR="github.com/cloudberrydb/gpbackup"
 RESULTS="/tmp/results.out"
 go test -coverpkg $DIR/backup $DIR/integration -coverprofile=/tmp/coverage.out 2> /dev/null | awk '{print $2 " test " $4 "\t" $5}' | awk -F"/" '{print $4}' > $RESULTS
 for PACKAGE in "backup" "restore" "utils"; do

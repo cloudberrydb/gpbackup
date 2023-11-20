@@ -5,15 +5,15 @@ package main
 import (
 	"os"
 
-	"github.com/greenplum-db/gpbackup/options"
-	. "github.com/greenplum-db/gpbackup/restore"
+	"github.com/cloudberrydb/gpbackup/options"
+	. "github.com/cloudberrydb/gpbackup/restore"
 	"github.com/spf13/cobra"
 )
 
 func main() {
 	var rootCmd = &cobra.Command{
 		Use:     "gprestore",
-		Short:   "gprestore is the parallel restore utility for Greenplum",
+		Short:   "gprestore is the parallel restore utility for CloudberryDB",
 		Args:    cobra.NoArgs,
 		Version: GetVersion(),
 		Run: func(cmd *cobra.Command, args []string) {
