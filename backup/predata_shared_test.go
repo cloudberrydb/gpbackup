@@ -3,8 +3,8 @@ package backup_test
 import (
 	"database/sql"
 
-	"github.com/greenplum-db/gpbackup/backup"
-	"github.com/greenplum-db/gpbackup/testutils"
+	"github.com/cloudberrydb/gpbackup/backup"
+	"github.com/cloudberrydb/gpbackup/testutils"
 
 	. "github.com/onsi/ginkgo/v2"
 )

@@ -1,8 +1,8 @@
-Package: GreenplumBackupTools
+Package: BackupTools
 Priority: extra
-Maintainer: gpdb-dp@pivotal.io
+Maintainer: CloudberryDB team
 Architecture: ${ARCH}
 Version: ${GPBACKUP_TOOLS_VERSION}
 Provides: gpbackup_tools
-Description: gpbackup and gprestore are Go utilities for performing Greenplum Database backups.
-Homepage: https://github.com/greenplum-db/gpbackup
+Description: gpbackup and gprestore are Go utilities for performing Cloudberry Database backups.
+Homepage: https://github.com/cloudberrydb/gpbackup

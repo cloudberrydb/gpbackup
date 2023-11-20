@@ -10,10 +10,10 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/greenplum-db/gp-common-go-libs/gplog"
-	"github.com/greenplum-db/gpbackup/options"
-	"github.com/greenplum-db/gpbackup/toc"
-	"github.com/greenplum-db/gpbackup/utils"
+	"github.com/cloudberrydb/gp-common-go-libs/gplog"
+	"github.com/cloudberrydb/gpbackup/options"
+	"github.com/cloudberrydb/gpbackup/toc"
+	"github.com/cloudberrydb/gpbackup/utils"
 )
 
 var (

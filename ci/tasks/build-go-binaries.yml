@@ -8,9 +8,9 @@ image_resource:
 
 inputs:
 - name: gpbackup
-  path: go/src/github.com/greenplum-db/gpbackup
+  path: go/src/github.com/cloudberrydb/gpbackup
 - name: gpbackup_s3_plugin
-  path: go/src/github.com/greenplum-db/gpbackup-s3-plugin
+  path: go/src/github.com/cloudberrydb/gpbackup-s3-plugin
 - name: gpbackup_manager_src
   path: go/src/github.com/pivotal/gp-backup-manager
 
@@ -19,4 +19,4 @@ outputs:
 - name: go_components
 
 run:
-  path: go/src/github.com/greenplum-db/gpbackup/ci/scripts/build-go-binaries.bash
+  path: go/src/github.com/cloudberrydb/gpbackup/ci/scripts/build-go-binaries.bash

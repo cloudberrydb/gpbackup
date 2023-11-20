@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/greenplum-db/gp-common-go-libs/operating"
+	"github.com/cloudberrydb/gp-common-go-libs/operating"
 	"github.com/klauspost/compress/zstd"
 	"golang.org/x/sys/unix"
 
@@ -29,7 +29,7 @@ var (
 	dataFileFullPath = filepath.Join(testDir, "test_data")
 	pluginBackupPath = filepath.Join(pluginDir, "test_data")
 	errorFile        = fmt.Sprintf("%s_error", pipeFile)
-	pluginConfigPath = fmt.Sprintf("%s/src/github.com/greenplum-db/gpbackup/plugins/example_plugin_config.yaml", os.Getenv("GOPATH"))
+	pluginConfigPath = fmt.Sprintf("%s/src/github.com/cloudberrydb/gpbackup/plugins/example_plugin_config.yaml", os.Getenv("GOPATH"))
 )
 
 const (

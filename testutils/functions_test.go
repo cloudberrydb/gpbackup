@@ -3,9 +3,9 @@ package testutils_test
 import (
 	"testing"
 
-	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/toc"
-	"github.com/greenplum-db/gpbackup/utils"
+	"github.com/cloudberrydb/gpbackup/testutils"
+	"github.com/cloudberrydb/gpbackup/toc"
+	"github.com/cloudberrydb/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

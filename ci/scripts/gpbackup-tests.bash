@@ -14,7 +14,7 @@ ssh -t ${default_ami_user}@cdw " \
     sudo mkdir -p /home/gpadmin/go/src/github.com/greenplum-db && \
     sudo chown gpadmin:gpadmin -R /home/gpadmin"
 
-scp -r -q gpbackup cdw:/home/gpadmin/go/src/github.com/greenplum-db/gpbackup
+scp -r -q gpbackup cdw:/home/gpadmin/go/src/github.com/cloudberrydb/gpbackup
 
 if test -f dummy_seclabel/dummy_seclabel*.so; then
   scp dummy_seclabel/dummy_seclabel*.so cdw:${GPHOME}/lib/postgresql/dummy_seclabel.so
@@ -54,7 +54,7 @@ cat <<SCRIPT > /tmp/run_tests.bash
     gpconfig -s shared_preload_libraries | grep dummy_seclabel
   fi
 
-  cd \${GOPATH}/src/github.com/greenplum-db/gpbackup
+  cd \${GOPATH}/src/github.com/cloudberrydb/gpbackup
   make depend # Needed to install ginkgo
 
   # NOTE: This is a temporary hotfix intended to skip these tests when running on CCP cluster

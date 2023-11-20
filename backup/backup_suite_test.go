@@ -9,11 +9,11 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/greenplum-db/gp-common-go-libs/dbconn"
-	"github.com/greenplum-db/gpbackup/backup"
-	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/toc"
-	"github.com/greenplum-db/gpbackup/utils"
+	"github.com/cloudberrydb/gp-common-go-libs/dbconn"
+	"github.com/cloudberrydb/gpbackup/backup"
+	"github.com/cloudberrydb/gpbackup/testutils"
+	"github.com/cloudberrydb/gpbackup/toc"
+	"github.com/cloudberrydb/gpbackup/utils"
 	"github.com/spf13/pflag"
 
 	. "github.com/onsi/ginkgo/v2"

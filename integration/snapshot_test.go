@@ -3,8 +3,8 @@ package integration
 import (
 	"fmt"
 
-	"github.com/greenplum-db/gpbackup/backup"
-	"github.com/greenplum-db/gpbackup/testutils"
+	"github.com/cloudberrydb/gpbackup/backup"
+	"github.com/cloudberrydb/gpbackup/testutils"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

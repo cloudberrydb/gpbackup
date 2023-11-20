@@ -17,17 +17,17 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	"github.com/greenplum-db/gp-common-go-libs/cluster"
-	"github.com/greenplum-db/gp-common-go-libs/dbconn"
-	"github.com/greenplum-db/gp-common-go-libs/iohelper"
-	"github.com/greenplum-db/gp-common-go-libs/operating"
-	"github.com/greenplum-db/gp-common-go-libs/structmatcher"
-	"github.com/greenplum-db/gp-common-go-libs/testhelper"
-	"github.com/greenplum-db/gpbackup/backup"
-	"github.com/greenplum-db/gpbackup/filepath"
-	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/toc"
-	"github.com/greenplum-db/gpbackup/utils"
+	"github.com/cloudberrydb/gp-common-go-libs/cluster"
+	"github.com/cloudberrydb/gp-common-go-libs/dbconn"
+	"github.com/cloudberrydb/gp-common-go-libs/iohelper"
+	"github.com/cloudberrydb/gp-common-go-libs/operating"
+	"github.com/cloudberrydb/gp-common-go-libs/structmatcher"
+	"github.com/cloudberrydb/gp-common-go-libs/testhelper"
+	"github.com/cloudberrydb/gpbackup/backup"
+	"github.com/cloudberrydb/gpbackup/filepath"
+	"github.com/cloudberrydb/gpbackup/testutils"
+	"github.com/cloudberrydb/gpbackup/toc"
+	"github.com/cloudberrydb/gpbackup/utils"
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 
@@ -124,13 +124,13 @@ func buildOldBinaries(version string) (string, string) {
 	mustRunCommand(command)
 	command = exec.Command("dep", "ensure")
 	mustRunCommand(command)
-	gpbackupOldPath, err := Build("github.com/greenplum-db/gpbackup",
+	gpbackupOldPath, err := Build("github.com/cloudberrydb/gpbackup",
 		"-tags", "gpbackup", "-ldflags",
-		fmt.Sprintf("-X github.com/greenplum-db/gpbackup/backup.version=%s", version))
+		fmt.Sprintf("-X github.com/cloudberrydb/gpbackup/backup.version=%s", version))
 	Expect(err).ShouldNot(HaveOccurred())
-	gpbackupHelperOldPath, err := Build("github.com/greenplum-db/gpbackup",
+	gpbackupHelperOldPath, err := Build("github.com/cloudberrydb/gpbackup",
 		"-tags", "gpbackup_helper", "-ldflags",
-		fmt.Sprintf("-X github.com/greenplum-db/gpbackup/helper.version=%s", version))
+		fmt.Sprintf("-X github.com/cloudberrydb/gpbackup/helper.version=%s", version))
 	Expect(err).ShouldNot(HaveOccurred())
 	command = exec.Command("git", "checkout", "-", "-f")
 	mustRunCommand(command)
@@ -355,7 +355,7 @@ var _ = BeforeSuite(func() {
 	// This is used to run tests from an older gpbackup version to gprestore latest
 	useOldBackupVersion = os.Getenv("OLD_BACKUP_VERSION") != ""
 	pluginConfigPath =
-		fmt.Sprintf("%s/src/github.com/greenplum-db/gpbackup/plugins/example_plugin_config.yaml",
+		fmt.Sprintf("%s/src/github.com/cloudberrydb/gpbackup/plugins/example_plugin_config.yaml",
 			os.Getenv("GOPATH"))
 	var err error
 	testhelper.SetupTestLogger()

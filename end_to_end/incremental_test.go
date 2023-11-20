@@ -6,8 +6,8 @@ import (
 	"os/exec"
 	"strconv"
 
-	"github.com/greenplum-db/gp-common-go-libs/dbconn"
-	"github.com/greenplum-db/gp-common-go-libs/testhelper"
+	"github.com/cloudberrydb/gp-common-go-libs/dbconn"
+	"github.com/cloudberrydb/gp-common-go-libs/testhelper"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -411,8 +411,8 @@ var _ = Describe("End to End incremental tests", func() {
 				assertArtifactsCleaned(restoreConn, incremental2Timestamp)
 			})
 			It("Runs backup and restore if plugin location changed", func() {
-				Skip("Cloudberry skip src/github.com/greenplum-db/gpbackup/plugins/example_plugin.bash");
-				pluginExecutablePath := fmt.Sprintf("%s/src/github.com/greenplum-db/gpbackup/plugins/example_plugin.bash", os.Getenv("GOPATH"))
+				Skip("Cloudberry skip src/github.com/cloudberrydb/gpbackup/plugins/example_plugin.bash");
+				pluginExecutablePath := fmt.Sprintf("%s/src/github.com/cloudberrydb/gpbackup/plugins/example_plugin.bash", os.Getenv("GOPATH"))
 				fullBackupTimestamp := gpbackup(gpbackupPath, backupHelperPath,
 					"--leaf-partition-data",
 					"--plugin-config", pluginConfigPath)

@@ -6,15 +6,15 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/greenplum-db/gp-common-go-libs/dbconn"
-	"github.com/greenplum-db/gp-common-go-libs/gplog"
-	"github.com/greenplum-db/gp-common-go-libs/iohelper"
-	"github.com/greenplum-db/gpbackup/filepath"
-	"github.com/greenplum-db/gpbackup/history"
-	"github.com/greenplum-db/gpbackup/options"
-	"github.com/greenplum-db/gpbackup/report"
-	"github.com/greenplum-db/gpbackup/toc"
-	"github.com/greenplum-db/gpbackup/utils"
+	"github.com/cloudberrydb/gp-common-go-libs/dbconn"
+	"github.com/cloudberrydb/gp-common-go-libs/gplog"
+	"github.com/cloudberrydb/gp-common-go-libs/iohelper"
+	"github.com/cloudberrydb/gpbackup/filepath"
+	"github.com/cloudberrydb/gpbackup/history"
+	"github.com/cloudberrydb/gpbackup/options"
+	"github.com/cloudberrydb/gpbackup/report"
+	"github.com/cloudberrydb/gpbackup/toc"
+	"github.com/cloudberrydb/gpbackup/utils"
 )
 
 /*

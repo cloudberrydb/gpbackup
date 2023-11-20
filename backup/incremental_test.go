@@ -1,15 +1,15 @@
 package backup_test
 
 import (
-	"github.com/greenplum-db/gp-common-go-libs/operating"
-	"github.com/greenplum-db/gp-common-go-libs/structmatcher"
-	"github.com/greenplum-db/gp-common-go-libs/testhelper"
-	"github.com/greenplum-db/gpbackup/backup"
-	"github.com/greenplum-db/gpbackup/filepath"
-	"github.com/greenplum-db/gpbackup/history"
-	"github.com/greenplum-db/gpbackup/report"
-	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/toc"
+	"github.com/cloudberrydb/gp-common-go-libs/operating"
+	"github.com/cloudberrydb/gp-common-go-libs/structmatcher"
+	"github.com/cloudberrydb/gp-common-go-libs/testhelper"
+	"github.com/cloudberrydb/gpbackup/backup"
+	"github.com/cloudberrydb/gpbackup/filepath"
+	"github.com/cloudberrydb/gpbackup/history"
+	"github.com/cloudberrydb/gpbackup/report"
+	"github.com/cloudberrydb/gpbackup/testutils"
+	"github.com/cloudberrydb/gpbackup/toc"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

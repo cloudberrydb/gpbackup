@@ -5,12 +5,12 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/greenplum-db/gp-common-go-libs/dbconn"
-	"github.com/greenplum-db/gp-common-go-libs/testhelper"
-	"github.com/greenplum-db/gpbackup/options"
-	"github.com/greenplum-db/gpbackup/restore"
-	"github.com/greenplum-db/gpbackup/toc"
-	"github.com/greenplum-db/gpbackup/utils"
+	"github.com/cloudberrydb/gp-common-go-libs/dbconn"
+	"github.com/cloudberrydb/gp-common-go-libs/testhelper"
+	"github.com/cloudberrydb/gpbackup/options"
+	"github.com/cloudberrydb/gpbackup/restore"
+	"github.com/cloudberrydb/gpbackup/toc"
+	"github.com/cloudberrydb/gpbackup/utils"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

@@ -17,7 +17,7 @@ ssh -t ${default_ami_user}@cdw " \
 
 ssh -t ${default_ami_user}@sdw1 "sudo yum -y install zstd"
 
-scp -r -q gpbackup cdw:/home/gpadmin/go/src/github.com/greenplum-db/gpbackup
+scp -r -q gpbackup cdw:/home/gpadmin/go/src/github.com/cloudberrydb/gpbackup
 
 if test -f dummy_seclabel/dummy_seclabel*.so; then
   scp dummy_seclabel/dummy_seclabel*.so cdw:${GPHOME}/lib/postgresql/dummy_seclabel.so

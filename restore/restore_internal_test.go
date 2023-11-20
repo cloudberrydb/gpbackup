@@ -1,7 +1,7 @@
 package restore
 
 import (
-	"github.com/greenplum-db/gpbackup/toc"
+	"github.com/cloudberrydb/gpbackup/toc"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

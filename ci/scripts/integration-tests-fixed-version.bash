@@ -15,7 +15,7 @@ GOPATH=/home/gpadmin/go
 
 mkdir -p ${GOPATH}/bin ${GOPATH}/src/github.com/greenplum-db
 cp -R $(pwd)/gpbackup ${GOPATH}/src/github.com/greenplum-db
-tar -zxf gpbackup_1.12.1_dependencies/*.tar.gz -C ${GOPATH}/src/github.com/greenplum-db/gpbackup
+tar -zxf gpbackup_1.12.1_dependencies/*.tar.gz -C ${GOPATH}/src/github.com/cloudberrydb/gpbackup
 chown -R gpadmin:gpadmin ${GOPATH}
 
 cat<<SCRIPT > /home/gpadmin/.bashrc
@@ -33,7 +33,7 @@ set -ex
 
 #!/bin/bash
 
-cd \${GOPATH}/src/github.com/greenplum-db/gpbackup
+cd \${GOPATH}/src/github.com/cloudberrydb/gpbackup
 
 git checkout ${GPBACKUP_VERSION}
 

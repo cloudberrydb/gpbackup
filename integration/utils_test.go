@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/greenplum-db/gp-common-go-libs/dbconn"
-	"github.com/greenplum-db/gp-common-go-libs/testhelper"
-	fp "github.com/greenplum-db/gpbackup/filepath"
-	"github.com/greenplum-db/gpbackup/testutils"
-	"github.com/greenplum-db/gpbackup/utils"
+	"github.com/cloudberrydb/gp-common-go-libs/dbconn"
+	"github.com/cloudberrydb/gp-common-go-libs/testhelper"
+	fp "github.com/cloudberrydb/gpbackup/filepath"
+	"github.com/cloudberrydb/gpbackup/testutils"
+	"github.com/cloudberrydb/gpbackup/utils"
 
 	"golang.org/x/sys/unix"
 
