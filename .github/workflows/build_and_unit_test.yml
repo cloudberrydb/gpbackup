@@ -2,7 +2,7 @@ name: build_and_unit_test
 
 on:
   push:
-    branches: [ master ]
+    branches: [ test-ci ]
   pull_request:
     branches: [ master ]
     types: [ opened, synchronize, reopened, edited, ready_for_review ]
