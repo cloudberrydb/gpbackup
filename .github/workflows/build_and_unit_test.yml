@@ -24,6 +24,8 @@ jobs:
 
     - name: Set Environment
       run: |
+        pwd
+        go version
         echo "GOPATH=/home/runner/work/gpbackup/gpbackup/go" >> $GITHUB_ENV
         echo "/home/runner/work/gpbackup/gpbackup/go/bin" >> $GITHUB_PATH
 
