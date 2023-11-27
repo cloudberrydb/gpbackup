@@ -19,5 +19,7 @@ jobs:
       with:
         go-version: 1.17
 
+    - name: set ssh
+      run: git config --global --add url."git@github.com:".insteadOf "https://github.com/"
     - name: Set Environment
       run: go get https://github.com/greenplum-db/gpbackup/...
