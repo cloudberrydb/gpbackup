@@ -33,6 +33,8 @@ jobs:
     - name: Dependencies
       run: |
         cd /home/runner/work/gpbackup/gpbackup/go/src/github.com/cloudberrydb/gpbackup
+        pwd
+        go env
         make depend
 
     - name: Build
