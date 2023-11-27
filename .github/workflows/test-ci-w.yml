@@ -26,7 +26,7 @@ jobs:
 
     - name: Dependencies
       run: |
-        cd ${GOPATH}/src/github.com/cloudberrydb/gpbackup
+        cd /home/runner/work/gpbackup/gpbackup/go/src/github.com/cloudberrydb/gpbackup
         make depend
 
     - name: Build
