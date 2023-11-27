@@ -26,21 +26,21 @@ jobs:
       run: |
         pwd
         go env
-
-
+        echo "/home/runner/work/gpbackup/gpbackup/go" >> $GITHUB_ENV
+        echo "/home/runner/work/gpbackup/gpbackup/go/bin" >> $GITHUB_PATH
         pwd
         go env
     - name: Dependencies
       run: |
-        cd ${GOPATH}/src/github.com/cloudberrydb/gpbackup
+        cd /home/runner/work/gpbackup/gpbackup/go/src/github.com/cloudberrydb/gpbackup
         make depend
 
     - name: Build
       run: |
-        cd ${GOPATH}/src/github.com/cloudberrydb/gpbackup
+        cd /home/runner/work/gpbackup/gpbackup/go/src/github.com/cloudberrydb/gpbackup
         make build
 
     - name: Unit Test
       run: |
-        cd ${GOPATH}/src/github.com/cloudberrydb/gpbackup
+        cd /home/runner/work/gpbackup/gpbackup/go/src/github.com/cloudberrydb/gpbackup
         make unit_all_gpdb_versions
