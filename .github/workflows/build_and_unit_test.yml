@@ -25,11 +25,11 @@ jobs:
     - name: Set Environment
       run: |
         pwd
-        go version
+        go env
         echo "GOPATH=/home/runner/work/gpbackup/gpbackup/go" >> $GITHUB_ENV
         echo "/home/runner/work/gpbackup/gpbackup/go/bin" >> $GITHUB_PATH
         pwd
-        go version
+        go env
     - name: Dependencies
       run: |
         cd ${GOPATH}/src/github.com/cloudberrydb/gpbackup
