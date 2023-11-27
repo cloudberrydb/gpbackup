@@ -28,7 +28,8 @@ jobs:
         go version
         echo "GOPATH=/home/runner/work/gpbackup/gpbackup/go" >> $GITHUB_ENV
         echo "/home/runner/work/gpbackup/gpbackup/go/bin" >> $GITHUB_PATH
-
+        pwd
+        go verson
     - name: Dependencies
       run: |
         cd ${GOPATH}/src/github.com/cloudberrydb/gpbackup
