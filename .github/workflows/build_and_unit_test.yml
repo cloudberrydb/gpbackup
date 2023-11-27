@@ -32,12 +32,12 @@ jobs:
         go env
     - name: Dependencies
       run: |
-        cd ${GOPATH}/src/github.com/cloudberrydb/gpbackup
+        cd ${GITHUB_ENV}/src/github.com/cloudberrydb/gpbackup
         make depend
 
     - name: Build
       run: |
-        cd ${GOPATH}/src/github.com/cloudberrydb/gpbackup
+        cd ${GITHUB_ENV}/src/github.com/cloudberrydb/gpbackup
         make build
 
     - name: Unit Test
