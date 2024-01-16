@@ -289,7 +289,7 @@ var _ = Describe("Deadlock handling", func() {
 	})
 	It("runs gpbackup and defers 2 deadlocked tables to main worker", func() {
 		if true {
-			Skip(fmt.Sprintf("This test is not needed for old backup versions or GPDB versions < %s", backup.SNAPSHOT_GPDB_MIN_VERSION))
+			Skip(fmt.Sprintf("This test is not needed for old backup versions or CloudberryDB versions < %s", backup.SNAPSHOT_GPDB_MIN_VERSION))
 		}
 		// Acquire AccessExclusiveLock on public.foo to block gpbackup when it attempts
 		// to grab AccessShareLocks before its metadata dump section.

@@ -127,7 +127,7 @@ func (report *Report) WriteBackupReportFile(reportFilename string, timestamp str
 	reportInfo := make([]LineInfo, 0)
 	reportInfo = append(reportInfo,
 		LineInfo{Key: "timestamp key:", Value: timestamp},
-		LineInfo{Key: "gpdb version:", Value: report.DatabaseVersion},
+		LineInfo{Key: "database version:", Value: report.DatabaseVersion},
 		LineInfo{Key: "gpbackup version:", Value: fmt.Sprintf("%s\n", report.BackupVersion)},
 		LineInfo{Key: "database name:", Value: report.DatabaseName},
 		LineInfo{Key: "command line:", Value: gpbackupCommandLine},
@@ -159,7 +159,7 @@ func (report *Report) WriteBackupReportFile(reportFilename string, timestamp str
 	reportInfo = append(reportInfo,
 		LineInfo{Key: "segment count:", Value: fmt.Sprintf("%d", report.SegmentCount)})
 
-	_, err = fmt.Fprint(reportFile, "Greenplum Database Backup Report\n\n")
+	_, err = fmt.Fprint(reportFile, "Cloudberry Database Backup Report\n\n")
 	if err != nil {
 		gplog.Error("Unable to write backup report file %s", reportFilename)
 		return
@@ -184,12 +184,12 @@ func WriteRestoreReportFile(reportFilename string, backupTimestamp string, start
 	gprestoreCommandLine := strings.Join(os.Args, " ")
 	start, end, duration := GetDurationInfo(startTimestamp, operating.System.Now())
 
-	utils.MustPrintf(reportFile, "Greenplum Database Restore Report\n\n")
+	utils.MustPrintf(reportFile, "Cloudberry Database Restore Report\n\n")
 
 	reportInfo := make([]LineInfo, 0)
 	reportInfo = append(reportInfo,
 		LineInfo{Key: "timestamp key:", Value: backupTimestamp},
-		LineInfo{Key: "gpdb version:", Value: connectionPool.Version.VersionString},
+		LineInfo{Key: "database version:", Value: connectionPool.Version.VersionString},
 		LineInfo{Key: "gprestore version:", Value: fmt.Sprintf("%s\n", restoreVersion)},
 		LineInfo{Key: "database name:", Value: connectionPool.DBName},
 		LineInfo{Key: "command line:", Value: fmt.Sprintf("%s\n", gprestoreCommandLine)},
