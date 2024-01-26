@@ -20,34 +20,48 @@ Follow the directions [here](https://golang.org/doc/) for installation, usage
 and configuration instructions. Make sure to set the [Go PATH environment
 variable](https://go.dev/doc/install) before starting the following steps.
 
-## Download & Build
+## Downloading & Building
 
-1. Downloading the latest version:
+1. Downloading the latest version of this repo:
 
-```bash
-go install github.com/cloudberrydb/gpbackup@latest
-```
+    ```bash
+    go install github.com/cloudberrydb/gpbackup@latest
+    ```
 
-This will place the code in `$GOPATH/pkg/mod/github.com/cloudberrydb/gpbackup`.
+    This will place the code in `$GOPATH/pkg/mod/github.com/cloudberrydb/gpbackup`.
 
-2. Building and installing binaries
+2. Entering the directory of `cloudberrydb/gpbackup`. Then, building and installing binaries of source code:
 
-Make the `gpbackup` directory your current working directory and run:
+    ```bash
+    cd <$GOPATH/pkg/mod/github.com/cloudberrydb/gpbackup>
+    make depend
+    make build
+    ```
 
-```bash
-make depend
-make build
-```
+    You might encounter the `fatal: Not a git repository (or any of the parent directories): .git` prompt after running `make depend`. Ignore this prompt, because this does not affect the building.
 
-The `build` target will put the `gpbackup` and `gprestore` binaries in
-`$HOME/go/bin`. This will also attempt to copy `gpbackup_helper` to the
-CloudberryDB segments (retrieving hostnames from `gp_segment_configuration`).
-Pay attention to the output as it will indicate whether this operation was
-successful.
+    The `build` target will put the `gpbackup` and `gprestore` binaries in
+    `$HOME/go/bin`. This will also attempt to copy `gpbackup_helper` to the
+    CloudberryDB segments (retrieving hostnames from `gp_segment_configuration`).
+    Pay attention to the output as it will indicate whether this operation was
+    successful.
 
-`make build_linux` is for cross compiling on macOS, and the target is Linux.
+    `make build_linux` is for cross-compiling on macOS, and the target is Linux.
 
-`make install` will scp the `gpbackup_helper` binary (used with -single-data-file flag) to all hosts
+    `make install` will scp the `gpbackup_helper` binary (used with -single-data-file flag) to all hosts.
+
+3. Checking whether the build is successful by checking whether your `$HOME/go/bin` directory contains `gpback`, `gprestore`, and `gpbackup_helper`.
+
+    ```bash
+    ls $HOME/go/bin
+    ```
+
+4. Validating whether the installation is successful:
+
+    ```bash
+    gpbackup --version
+    gprestore --version
+    ```
 
 ## Running the utilities
 
